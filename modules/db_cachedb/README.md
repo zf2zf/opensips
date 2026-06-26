@@ -1,56 +1,56 @@
 ---
-title: "db_cachedb Module"
+title: "db_cachedb 模块"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-#### The idea
+#### 思路
 
 
-The db_cachedb module will expose the same front db api, however it will run on top
-				of a NoSQL back-end, emulating the SQL calls to the back-end specific queries.
+db_cachedb 模块将公开相同的前端 DB API，但它将运行在
+NoSQL 后端之上，将 SQL 调用 emulation 到后端特定的查询。
 
-				Thus, any OpenSIPS module that would regularily need a regular SQL-based database,
-				will now be able to run over a NoSQL back-end, allowing for a much easier distribution
-				and integration of the currently existing OpenSIPS modules in a distributed environment.
-
-
-### Dependencies
+因此，任何通常需要常规基于 SQL 的数据库的 OpenSIPS 模块，
+现在将能够在 NoSQL 后端上运行，从而在分布式环境中
+更轻松地分发和集成现有的 OpenSIPS 模块。
 
 
-#### OpenSIPS Modules
+### 依赖
 
 
-The following modules must be loaded before this module:
+#### OpenSIPS 模块
 
 
-- *At least one NoSQL cachedb_* module*.
+以下模块必须在此模块之前加载：
 
 
-#### External Libraries or Applications
+- *至少一个 NoSQL cachedb_* 模块*。
 
 
-The following libraries or applications must be installed before running
-	OpenSIPS with this module loaded:
+#### 外部库或应用程序
 
 
-- *None*.
+以下库或应用程序必须在运行
+加载了此模块的 OpenSIPS 之前安装：
 
 
-### Exported Parameters
+- *无*。
+
+
+### 导出的参数
 
 
 #### cachedb_url (str)
 
 
-The URL for the CacheDB back-end to be used. It can be set more than one time.
+要使用的 CacheDB 后端的 URL。可以设置多个。
 
 
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 modparam("db_cachedb","cachedb_url","mongodb:mycluster://127.0.0.1:27017/db.col")
 ...
@@ -58,16 +58,16 @@ modparam("db_cachedb","cachedb_url","mongodb:mycluster://127.0.0.1:27017/db.col"
 ```
 
 
-### Examples of Usage
+### 使用示例
 
 
-#### Distributed Subscriber Base
+#### 分布式订阅者库
 
 
-In order to achieve such a setup, one would have to  set the db_url parameter of the auth_db module to point to the DB_CACHEDB URL.
+为了实现这样的设置，需要将 auth_db 模块的 db_url 参数设置为指向 DB_CACHEDB URL。
 
 
-```c title="OpenSIPS CFG Snippet for using DB_CACHEDB"
+```c title="使用 DB_CACHEDB 的 OpenSIPS CFG 片段"
 loadmodule "auth_db.so"
 modparam("auth_db", "load_credentials", "$avp(user_rpid)=rpid")
 
@@ -81,42 +81,43 @@ modparam("auth_db","db_url","cachedb://mongodb:mycluster")
 ```
 
 
-With such a setup, the auth_db module will load the subscribers from the MongoDB cluster, in the 'my_db' database, in the 'subscriber' collection.
+通过这样的设置，auth_db 模块将从 MongoDB 集群的 'my_db' 数据库中的 'subscriber' collection 中加载订阅者。
 
 
-The same mechanism/setup can be used to run other modules ( like usrloc, dialog, permissions, drouting, etc ) on top of a cachedb cluster.
+相同的机制/设置可用于在其他模块（如 usrloc、dialog、permissions、drouting 等）上运行 cachedb 集群。
 
 
-### Current Limitations
+### 当前限制
 
 
-#### CacheDB modules integration
+#### CacheDB 模块集成
 
 
-Currently the only cachedb_* module that implements this functionality is the cachedb_mongodb module, so currently you can only emulate SQL queries to a MongoDB instance/cluster.
-
-				There are plans to also extend this functionality to other cachedb_* backends, like Cassandra and CouchBase.
+目前实现此功能的唯一 cachedb_* 模块是 cachedb_mongodb 模块，因此目前您只能向 MongoDB 实例/集群 emulation SQL 查询。
 
 
-#### Extensive Testing Needed
+计划还将此功能扩展到其他 cachedb_* 后端，如 Cassandra 和 CouchBase。
 
 
-Since there are many OpenSIPS modules that currently use the DB interface, it wasn't feasible to test all scenarios with all modules, and there still might be some incompatibilities.  
-
-				The module was tested with some regularily used modules ( like usrloc, dialog, permissions, drouting ), but more testing is very much welcome, and feedback is appreciated.
+#### 需要广泛测试
 
 
-#### CacheDB Specific 'schema' and other incompatibilities
+由于目前有许多 OpenSIPS 模块使用 DB 接口，测试所有模块的所有场景是不可行的，因此仍可能存在一些不兼容性。
+
+该模块已用一些常用模块（如 usrloc、dialog、permissions、drouting）进行了测试，但非常欢迎更多测试，并感谢反馈。
 
 
-Since the NoSQL backends do not usually have a strict schema involved,
-				we do not provide scripts for creating such schemas, since the insertion ops will trigger the dynamically creation of the schema and info.
+#### CacheDB 特定的 'schema' 和其他不兼容性
 
-				Still, a specific data collection needs to be present, and that is the equivalent of the 'version' table from the SQL. Since most modules check the version table at the module setup, it's the user's responsability to setup such a 'version' collection in the respective NoSQL back-end.
 
-				For example, for the MongoDB cluster, 'version' is a reserved keyword, so one would have to change the default version table that OpenSIPS uses ( via the 'db_version_table' global parameter ) and then manually insert the version number with something like db.my_version_table.insert({table_version : NumberInt(5), table_name : "address"})
+由于 NoSQL 后端通常没有严格的 schema，
+我们不提供创建此类 schema 的脚本，因为插入操作将触发 schema 和信息的动态创建。
+
+但是，特定的数据集合需要存在，那就是 SQL 中 'version' 表的等价物。由于大多数模块在模块设置时会检查 version 表，用户有责任在相应的 NoSQL 后端中设置这样的 'version' 集合。
+
+例如，对于 MongoDB 集群，'version' 是一个保留关键字，因此必须更改 OpenSIPS 使用的默认 version 表（通过 'db_version_table' 全局参数），然后手动插入版本号，类似于 db.my_version_table.insert({table_version : NumberInt(5), table_name : "address"})
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

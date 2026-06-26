@@ -1,85 +1,79 @@
 ---
-title: "exec Module"
-description: "The Exec module enables the execution of external commands from the OpenSIPS script. Any valid shell commands are accepted. The final input string is evaluated and executed using the \"/bin/sh\" symlink/binary. OpenSIPS may additionally pass a lot more information about the request using en..."
+title: "exec 模块"
+description: "Exec 模块支持从 OpenSIPS 脚本执行外部命令。接受任何有效的 shell 命令。最终输入字符串通过 \"/bin/sh\" 符号链接/二进制进行评估和执行。OpenSIPS 还可以通过环境变量传递更多关于请求的信息..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Exec module enables the execution of external commands from the
-		OpenSIPS script. Any valid shell commands are accepted. The final input
-		string is evaluated and executed using the "/bin/sh" symlink/binary.
-		OpenSIPS may additionally pass a lot more information about the request
-		using environment variables:
+Exec 模块支持从 OpenSIPS 脚本执行外部命令。
+		接受任何有效的 shell 命令。最终输入字符串通过
+		"/bin/sh" 符号链接/二进制进行评估和执行。
+		OpenSIPS 还可以通过环境变量传递更多关于请求的信息：
 
 
-- SIP_HF_<hf_name> contains value of each header field in
-			request. If a header field occurred multiple times, values are
-			concatenated and comma-separated. <hf_name> is in capital
-			letters. Ff a header-field name occurred in compact form,
-			<hf_name> is canonical.
-- SIP_TID is transaction identifier. All request retransmissions or
-			CANCELs/ACKs associated with a previous INVITE result in the same
-			value.
-- SIP_DID is dialog identifier, which is the same as to-tag.
-			Initially, it is empty.
-- SIP_SRCIP is source IP address from which request came.
-- SIP_ORURI is original request URI.
-- SIP_RURI is *current* request URI (if
-			unchanged, equal to original).
-- SIP_USER is userpart of *current* request URI.
-- SIP_OUSER is userpart of original request URI.
+- SIP_HF_<hf_name> 包含每个头域的值。
+			如果某个头域出现多次,值将用逗号连接。
+			<hf_name> 为大写。如果头域名称以紧凑形式出现,
+			<hf_name> 为规范形式。
+- SIP_TID 是事务标识符。所有与先前 INVITE 相关的请求重传或
+			CANCEL/ACK 会产生相同的值。
+- SIP_DID 是对话标识符,与 to-tag 相同。
+			最初为空。
+- SIP_SRCIP 是请求来源的 IP 地址。
+- SIP_ORURI 是原始请求 URI。
+- SIP_RURI 是*当前*请求 URI（如果
+			未更改,则等于原始 URI）。
+- SIP_USER 是*当前*请求 URI 的 userpart。
+- SIP_OUSER 是原始请求 URI 的 userpart。
 
 
-NOTE: Any environment variables which are given to the exec module
-		functions must be specified using the '$$' delimiter (e.g., $$SIP_OUSER),
-		otherwise they will be evaluated as OpenSIPS pseudo-variables,
-		throwing scripting errors.
+注意：传递给 exec 模块函数的任何环境变量必须使用 '$$' 分隔符指定
+		（例如 $$SIP_OUSER）,否则它们将被评估为 OpenSIPS 伪变量,
+		从而引发脚本错误。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following  modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+		加载本模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### setvars (integer)
 
 
-Set to 1 to enable setting all above-mentioned environment variables
-		for all executed commands.
+设置为 1 以启用为所有执行的命令设置上述所有环境变量。
 
 
-**WARNING: Before enabling this parameter, make sure
-		your "/bin/sh" is safe from the Shellshock bash vulnerability!!!**
+**警告：在启用此参数之前,请确保您的 "/bin/sh" 不受 Shellshock bash 漏洞影响！！！**
 
 
-*Default value is 0 (disabled).*
+*默认值为 0（禁用）。*
 
 
-```c title="Set 'setvars' parameter"
+```c title="设置 'setvars' 参数"
 ...
 modparam("exec", "setvars", 1)
 ...
@@ -89,126 +83,114 @@ modparam("exec", "setvars", 1)
 #### time_to_kill (integer)
 
 
-If set, this parameter specifies the longest time (in seconds) that a
-		program is allowed to execute. Once this duration is exceeded, the
-		program is terminated (SIGTERM).
+如果设置,此参数指定程序允许执行的最长时间（秒）。
+		一旦超过此持续时间,程序将被终止（SIGTERM）。
 
 
-NOTE: due to internal limitations, a SIGTERM will actually be sent to
-		**all** job pids once the "time_to_kill"
-		expiration timeout hits. On a standard system, this should have no
-		side-effects, as pids are monotonically increasing in a slow manner,
-		and OpenSIPS should run under the "opensips" user, thus rendering it
-		unable to terminate non-child processes. If this is not the case on
-		your system, do not use the OpenSIPS "time_to_kill" feature -- rather
-		implement it within your external app!
+注意：由于内部限制,一旦 "time_to_kill"
+		过期超时命中,实际上会向**所有**作业 pid 发送 SIGTERM。
+		在标准系统上,这应该没有副作用,因为 pid 以缓慢的方式单调递增,
+		OpenSICS 应在 "opensips" 用户下运行,因此无法终止非子进程。
+		如果您的系统不是这种情况,请不要使用 OpenSIPS "time_to_kill" 功能——而是在您的外部应用程序中实现它！
 
 
-*Default value is 0 (disabled).*
+*默认值为 0（禁用）。*
 
 
-```c title="Set 'time_to_kill' parameter"
+```c title="设置 'time_to_kill' 参数"
 ...
 modparam("exec", "time_to_kill", 20)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### exec(command, [stdin], [stdout], [stderr], [envavp])
 
 
-Executes an external command. The input is passed to the standard input of the new
-		process, if specified, and the output is saved in the output variable.
+执行外部命令。输入被传递给新进程的标准输入（如果指定）,
+		输出保存在输出变量中。
 
 
-The function waits for the external script until it provided all its output (not
-		necessary to actually finish). If no output (standard output or standard error)
-		is required by the function, it will not block at all - it will simply launch the
-		external script and continue the script.
+该函数等待外部脚本提供其所有输出后才继续（不必
+		实际完成）。如果函数不需要任何输出（标准输出或标准错误）,
+		它根本不会阻塞——只是启动外部脚本并继续执行脚本。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *command (string)* - command to be executed
-- *stdin (string, optional)* - string to be
-				passed to the standard input of the command
-- *stdout (var, optional)* - optional
-				output variable which will hold the standard output of the
-				process
-- *stderr (var, optional)* - optional
-				output variable which will hold the standard error of the
-				process
-- *envavp (var, optional)* - optional AVP
-				which holds the values for the
-			environment variables to be passed for the command. The names of the environment
-			variables will be "OSIPS_EXEC_#", where "#" starts from 0. For example, if we
-			push two values (e.g. "b" and "a") into an AVP variable, which acts like a stack,
-			OSIPS_EXEC_0 will hold "a", while OSIPS_EXEC_1 will hold "b".
+- *command (string)* - 要执行的命令
+- *stdin (string, 可选)* - 要传递给命令
+				标准输入的字符串
+- *stdout (var, 可选)* - 可选输出变量,
+				将保存进程的标准输出
+- *stderr (var, 可选)* - 可选输出变量,
+				将保存进程的标准错误
+- *envavp (var, 可选)* - 可选 AVP,
+				保存要传递给命令的环境变量值。
+				环境变量的名称将为 "OSIPS_EXEC_#",其中 "#" 从 0 开始。
+				例如,如果您将两个值（例如 "b" 和 "a"）压入一个 AVP 变量,
+				它像堆栈一样工作,OSIPS_EXEC_0 将保存 "a",
+				而 OSIPS_EXEC_1 将保存 "b"。
 
 
-NOTE: If expecting a multi-line formatted output, you should use $avp
-		variables for the "stdout" and "stderr" parameters, to avoid only
-		receiving the last lines of each stream.
+注意：如果期望多行格式的输出,您应该使用 $avp 变量作为 "stdout" 和 "stderr" 参数,
+		以避免只接收每个流的最后一行。
 
 
-WARNING: any OpenSIPS pseudo-vars which may contain special bourne shell (sh/bash)
-		characters should be placed inside quotes, e.g.
+警告：任何可能包含特殊 bourne shell（sh/bash）字符的 OpenSIPS 伪变量应放在引号内,
+		例如
 		exec("update-stats.sh '$(ct{re.subst,/'//g})'");
 
 
-WARNING: "stdin"/"stdout"/"stderr" parameters are not designed for large amounts of
-		data, so one should be careful when using them. Because of the basic implementation,
-		filled up pipes could cause a read deadlock.
+警告："stdin"/"stdout"/"stderr" 参数不是为大量数据设计的,
+		因此使用时应小心。由于基本实现,充满的管道可能导致读取死锁。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		LOCAL_ROUTE, STARTUP_ROUTE, TIMER_ROUTE, EVENT_ROUTE, ONREPLY_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、
+		LOCAL_ROUTE、STARTUP_ROUTE、TIMER_ROUTE、EVENT_ROUTE、ONREPLY_ROUTE。
 
 
-```c title="exec usage"
+```c title="exec 使用示例"
 ...
 $avp(env) = "a";
 $avp(env) = "b";
 exec("ls -l", , $var(out), $var(err), $avp(env));
-xlog("The output is $var(out)\n");
-xlog("Received the following error\n$var(err)");
+xlog("输出是 $var(out)\n");
+xlog("收到以下错误\n$var(err)");
 ...
 $var(input) = "input";
-exec("/home/../myscript.sh", "this is my $var(input) for exec\n", , , $avp(env));
+exec("/home/../myscript.sh", "这是我的 $var(input) 用于 exec\n", , , $avp(env));
 ...
 ```
 
 
-### Exported Asynchronous Functions
+### 导出的异步函数
 
 
 #### exec(command, [stdin], [stdout], [stderr], [envavp])
 
 
-Executes an external command. This function does exactly the same as
-		[exec](#func_exec) (in terms of input, output and processing),
-		but in an asynchronous way. The script execution is suspended until
-		the external script provided all its output. OpenSIPS waits for the
-		external script to close its output stream, not necessarily to
-		terminate (so the script may still be running when OpenSIPS
-		resumes the script execution on "seeing" EOF on the the output stream)
+执行外部命令。此函数在输入、输出和处理方面与
+		[exec](#func_exec) 完全相同,
+		但以异步方式工作。脚本执行被挂起,直到外部脚本提供其所有输出。
+		OpenSIPS 等待外部脚本关闭其输出流,
+		而不必等待其终止（因此当 OpenSIPS 在输出流上"看到"EOF 时恢复脚本执行,
+		脚本可能仍在运行）
 
 
-NOTE: this function ignore the "stderr" parameter for now - the
-		asynchronous waiting is done only on the output stream !! This may
-		be fixed in the following versions.
+注意：此函数目前忽略 "stderr" 参数——异步等待仅在输出流上进行！！
+		这可能在后续版本中修复。
 
 
-To read and understand more on the asynchronous functions, how to use
-		them and what are their advantages, please refer to the OpenSIPS 
-		online Manual.
+要阅读和理解异步函数、如何使用它们及其优势,
+		请参阅 OpenSIPS 在线手册。
 
 
-```c title="async exec usage"
+```c title="异步 exec 使用示例"
 {
 ...
 async(exec("ruri-changer.sh", $ru, $ru), resume);
@@ -220,17 +202,16 @@ route [resume] {
 ```
 
 
-### Known Issues
+### 已知问题
 
 
-When imposing an execution timeout using
-		**[time to kill](#param_time_to_kill)**,
-		make sure your "/bin/sh" is a shell which does not fork when executed,
-		case in which the job itself will not be killed, but rather its parent shell,
-		while the job is silently inherited by "init" and will continue to run.
-		"/bin/dash" is one of these troublesome shell environments.
+使用 [time to kill](#param_time_to_kill) 设置执行超时时,
+		请确保您的 "/bin/sh" 是一个执行时不会 fork 的 shell,
+		在这种情况下,作业本身不会被杀死,而是其父 shell,
+		作业将被 init 静默继承并继续运行。
+		"/bin/dash" 就是这种麻烦的 shell 环境之一。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权

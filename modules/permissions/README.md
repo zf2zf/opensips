@@ -2,188 +2,150 @@
 title: "permissions Module"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-#### Call Routing
+#### 呼叫路由
 
 
-The module can be used to determine if a call has appropriate
-		permission to be established.
-		Permission rules are stored in plaintext configuration files similar to
-		`hosts.allow` and `hosts.deny` files used by tcpd.
+该模块可用于判断呼叫是否具有建立连接的适当权限。
+权限规则存储在纯文本配置文件中，类似于
+`hosts.allow` 和 `hosts.deny` 文件（由 tcpd 使用）。
 
 
-When `allow_routing` function is
-		called it tries to find a rule that matches selected fields of the
-		message.
+当调用 `allow_routing` 函数时，
+它会尝试找到与消息选定字段匹配的规则。
 
 
-OpenSIPS is a forking proxy and therefore a single message can be sent
-		to different destinations simultaneously. When checking permissions
-		all the destinations must be checked and if one of them fails, the
-		forwarding will fail.
+OpenSIPS 是一个分叉代理（forking proxy），因此单个消息可以同时发送到不同的目的地。在检查权限时，必须检查所有目的地，如果其中任何一个失败，则转发将失败。
 
 
-The matching algorithm is as follows, first match wins:
+匹配算法如下，优先匹配原则：
 
 
-- Create a set of pairs of form (From, R-URI of branch 1),
-			(From, R-URI of branch 2), etc.
-- Routing will be allowed when all pairs match an entry in the
-			allow file.
-- Otherwise routing will be denied when one of pairs matches an
-			entry in the deny file.
-- Otherwise, routing will be allowed.
+- 创建一组配对，形式为 (From, 分支1的 R-URI)、
+(From, 分支2的 R-URI) 等。
+- 当所有配对都匹配 allow 文件中的条目时，允许路由。
+- 否则，当某个配对匹配 deny 文件中的条目时，拒绝路由。
+- 否则，允许路由。
 
 
-A non-existing permission control file is treated as if it were an
-		empty file. Thus, permission control can be turned off by providing
-		no permission control files.
+不存在的权限控制文件被视为空文件。因此，可以通过不提供任何权限控制文件来关闭权限控制。
 
 
-From header field and Request-URIs are always compared with regular
-		expressions! For the syntax see the sample file:
-		`config/permissions.allow`.
+From 头域和 Request-URI 始终使用正则表达式进行比较！有关语法，请参阅示例文件：
+`config/permissions.allow`。
 
 
-#### Registration Permissions
+#### 注册权限
 
 
-In addition to call routing it is also possible to check REGISTER
-		messages and decide--based on the configuration files--whether the
-		message should be allowed and the registration accepted or not.
+除了呼叫路由外，还可以检查 REGISTER
+消息，并根据配置文件决定是否允许该消息以及是否接受注册。
 
 
-Main purpose of the function is to prevent registration of "prohibited"
-		IP addresses. One example, when a malicious user registers a contact
-		containing IP address of a PSTN gateway, he might be able to bypass
-		authorization checks performed by the SIP proxy. That is undesirable
-		and therefore attempts to register IP address of a PSTN gateway should
-		be rejected. Files `config/register.allow` and `config/register.deny` contain an example
-		configuration.
+该函数的主要目的是防止"禁止" IP 地址进行注册。例如，当恶意用户注册包含 PSTN 网关 IP 地址的 contact 时，他可能能够绕过 SIP 代理执行的授权检查。这是不希望的，因此应拒绝尝试注册 PSTN 网关 IP 地址。文件 `config/register.allow` 和 `config/register.deny` 包含示例配置。
 
 
-Function for registration checking is called `allow_register` and the algorithm is very
-		similar to the algorithm described in
-		[sec call routing](#call_routing). The only difference is in the way
-		how pairs are created.
+注册检查函数的名称为 `allow_register`，其算法与
+[呼叫路由](#call_routing) 中描述的算法非常相似。唯一的区别在于配对的创建方式。
 
 
-Instead of From header field the function uses To header field because
-		To header field in REGISTER messages contains the URI of the person
-		being registered. Instead of the Request-URI of branches the function
-		uses Contact header field.
+该函数使用 To 头域而不是 From 头域，因为
+REGISTER 消息中的 To 头域包含被注册人员的 URI。该函数使用 Contact 头域而不是分支的 Request-URI。
 
 
-Thus, pairs used in matching will look like this: (To, Contact 1),
-		(To, Contact 2), (To, Contact 3), and so on..
+因此，匹配中使用的配对如下：(To, Contact 1)、
+(To, Contact 2)、(To, Contact 3)，依此类推。
 
 
-The algorithm of matching is same as described in
-		[sec call routing](#call_routing).
+匹配算法与 [呼叫路由](#call_routing) 中描述的相同。
 
 
-#### URI Permissions
+#### URI 权限
 
 
-The module can be used to determine if request is
-		allowed to the destination specified by an URI stored in
-		a pvar.  Permission rules are stored in
-		plaintext configuration files similar to
-		`hosts.allow` and
-		`hosts.deny` used by tcpd.
+该模块可用于确定请求是否允许访问由
+pvar 中存储的 URI 指定的目的地。权限规则存储在纯文本配置文件中，类似于
+`hosts.allow` 和
+`hosts.deny`（由 tcpd 使用）。
 
 
-When `allow_uri`
-		function is called, it tries to find a rule that matches
-		selected fields of the message.
-		The matching algorithm is as follows, first match wins:
+当调用 `allow_uri` 函数时，它尝试找到与消息选定字段匹配的规则。
+匹配算法如下，优先匹配原则：
 
 
-- Create a pair <From URI, URI stored in pvar>.
-- Request will be allowed when the pair matches
-			an entry in the allow file.
-- Otherwise request will be denied when the pair
-			matches an entry in the	deny file.
-- Otherwise, request will be allowed.
+- 创建配对 <From URI, pvar 中存储的 URI>。
+- 当配对匹配 allow 文件中的条目时，允许请求。
+- 否则，当配对匹配 deny 文件中的条目时，拒绝请求。
+- 否则，允许请求。
 
 
-A non-existing permission control file is treated as if it were an
-		empty file. Thus, permission control can be turned off by providing
-		no permission control files.
+不存在的权限控制文件被视为空文件。因此，可以通过不提供任何权限控制文件来关闭权限控制。
 
 
-From URI and URI stored in pvar are always compared with regular
-		expressions! For the syntax see the sample file:
-		`config/permissions.allow`.
+From URI 和 pvar 中存储的 URI 始终使用正则表达式进行比较！有关语法，请参阅示例文件：
+`config/permissions.allow`。
 
 
-#### Address Permissions
+#### 地址权限
 
 
-The module can be used to determine if an address (IP
-		address and port) matches any of the IP subnets
-		stored in cached OpenSIPS database table.
-		Port 0 in cached database table matches any port.  Group ID, IP
-		address, port and transport protocol values to be matched can be either taken from
-		the request (`check_source_address`) or given as pvar
-		arguments or directly as strings(`check_address`).
+该模块可用于确定地址（IP
+地址和端口）是否与缓存的 OpenSIPS 数据库表中存储的 IP 子网匹配。缓存数据库表中的端口 0 匹配任何端口。要匹配的组 ID、IP
+地址、端口和传输协议值可以来自请求（`check_source_address`），也可以作为 pvar
+参数或直接作为字符串给出（`check_address`）。
 
 
-Addresses stored in cached database table can be grouped
-		together into one or more groups specified by a group
-		identifier (unsigned integer). Group identifier is given as
-		argument to `check_address` and
-		`check_source_address`.
+存储在缓存数据库表中的地址可以按组标识符（无符号整数）分组为一个或多个组。组标识符作为
+`check_address` 和
+`check_source_address` 的参数给出。
 
 
-Otherwise the request is rejected.
+否则，请求被拒绝。
 
 
-The address database table is specified by module parameters.
+地址数据库表由模块参数指定。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *无其他 OpenSIPS 模块的依赖*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### default_allow_file (string)
 
 
-Default allow file used by functions without parameters. If you
-		don't specify full pathname then the directory in which is the main
-		config file is located will be used.
+默认的 allow 文件，用于没有参数的函数。如果你
+不指定完整路径名，则使用主配置文件所在的目录。
 
 
-*Default value is "permissions.allow".*
+*默认值为 "permissions.allow"。*
 
 
-```c title="Set default_allow_file parameter"
+```c title="设置 default_allow_file 参数"
 ...
 modparam("permissions", "default_allow_file", "/etc/permissions.allow")
 ...
@@ -193,15 +155,14 @@ modparam("permissions", "default_allow_file", "/etc/permissions.allow")
 #### default_deny_file (string)
 
 
-Default file containing deny rules. The file is used by functions
-		without parameters. If you don't specify full pathname then the
-		directory in which the main config file is located will be used.
+包含拒绝规则的默认文件。该文件用于没有参数的函数。
+如果你不指定完整路径名，则使用主配置文件所在的目录。
 
 
-*Default value is "permissions.deny".*
+*默认值为 "permissions.deny"。*
 
 
-```c title="Set default_deny_file parameter"
+```c title="设置 default_deny_file 参数"
 ...
 modparam("permissions", "default_deny_file", "/etc/permissions.deny")
 ...
@@ -211,20 +172,17 @@ modparam("permissions", "default_deny_file", "/etc/permissions.deny")
 #### check_all_branches (integer)
 
 
-If set then allow_routing functions will check Request-URI of all
-		branches (default). If disabled then only Request-URI of the first
-		branch will be checked.
+如果设置，则 allow_routing 函数将检查所有分支的 Request-URI（默认）。如果禁用，则仅检查第一个分支的 Request-URI。
 
 
-> [!WARNING]
-> Do not disable this parameter unless you really know what you
-		are doing.
+> [!警告]
+> 除非你真正知道自己在做什么，否则不要禁用此参数。
 
 
-*Default value is 1.*
+*默认值为 1。*
 
 
-```c title="Set check_all_branches parameter"
+```c title="设置 check_all_branches 参数"
 ...
 modparam("permissions", "check_all_branches", 0)
 ...
@@ -234,20 +192,18 @@ modparam("permissions", "check_all_branches", 0)
 #### allow_suffix (string)
 
 
-Suffix to be appended to basename to create filename of the allow
-		file when version with one parameter of either
-		`allow_routing` or
-		`allow_register` is used.
+当使用 `allow_routing` 或
+`allow_register` 的一参数版本时，附加到基本名称以创建 allow 文件名的后缀。
 
 
-> [!NOTE]
-> Including leading dot.
+> [!注意]
+> 包括前导点。
 
 
-*Default value is ".allow".*
+*默认值为 ".allow"。*
 
 
-```c title="Set allow_suffix parameter"
+```c title="设置 allow_suffix 参数"
 ...
 modparam("permissions", "allow_suffix", ".allow")
 ...
@@ -257,20 +213,18 @@ modparam("permissions", "allow_suffix", ".allow")
 #### deny_suffix (string)
 
 
-Suffix to be appended to basename to create filename of the deny file
-		when version with one parameter of either
-		`allow_routing` or
-		`allow_register` is used.
+当使用 `allow_routing` 或
+`allow_register` 的一参数版本时，附加到基本名称以创建 deny 文件名的后缀。
 
 
-> [!NOTE]
-> Including leading dot.
+> [!注意]
+> 包括前导点。
 
 
-*Default value is ".deny".*
+*默认值为 ".deny"。*
 
 
-```c title="Set deny_suffix parameter"
+```c title="设置 deny_suffix 参数"
 ...
 modparam("permissions", "deny_suffix", ".deny")
 ...
@@ -280,24 +234,20 @@ modparam("permissions", "deny_suffix", ".deny")
 #### db_url (string)
 
 
-The URL of the database to be used for loading the data related to
-		IP-based checking ("address" table).
+用于加载 IP 检查相关数据（"address" 表）的数据库 URL。
 
 
-This parameter is optional and it is needed only if you use
-		functions related to IP-based checking. If you do so, you need to
-		explicitly set this parameter (it will not inherit from 
-		"db_default_url")
+此参数是可选的，仅在你使用 IP 检查相关函数时才需要。如果这样做，你需要显式设置此参数（它不会从
+"db_default_url" 继承）。
 
 
-Since version 2.2, this URL represents the db_url for the 
-		"default" partition.
+从版本 2.2 开始，此 URL 表示 "default" 分区的 db_url。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("permissions", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
@@ -307,16 +257,14 @@ modparam("permissions", "db_url", "dbdriver://username:password@dbhost/dbname")
 #### address_table (string)
 
 
-Name of database table containing matching rules used by
-		`allow_register` function.
-		Since version 2.2, this table name also represents the default table
-		name for partitions without a 'table_name' setting.
+包含 `allow_register` 函数使用的匹配规则的数据库表名。
+从版本 2.2 开始，此表名也代表没有 'table_name' 设置的分区的默认表名。
 
 
-*Default value is "address".*
+*默认值为 "address"。*
 
 
-```c title="Set address_table parameter"
+```c title="设置 address_table 参数"
 ...
 modparam("permissions", "address_table", "pbx")
 ...
@@ -326,15 +274,12 @@ modparam("permissions", "address_table", "pbx")
 #### partition (string)
 
 
-Specify a new IP-based checking partition (data source).  This
-		parameter may be set multiple times.  Each partition may have a
-		specific "db_url" and "table_name".  If not specified, these values
-		will be inherited from [db url](#param_db_url), db_default_url
-		or [address table](#param_address_table), respectively.  The name of
-		the default partition is 'default'.
+指定一个新的基于 IP 检查的分区（数据源）。此
+参数可以设置多次。每个分区可以有特定的 "db_url" 和 "table_name"。如果未指定，这些值将从 [db url](#param_db_url)、db_default_url
+或 [address table](#param_address_table) 继承。默认分区的名称为 'default'。
 
 
-```c title="Set partition parameter"
+```c title="设置 partition 参数"
 ...
 modparam("permissions", "partition", "
 	inbound:
@@ -347,14 +292,13 @@ modparam("permissions", "partition", "
 #### grp_col (string)
 
 
-Name of address table column containing group
-		identifier of the address.
+地址表列的名称，包含地址的组标识符。
 
 
-*Default value is "grp".*
+*默认值为 "grp"。*
 
 
-```c title="Set grp_col parameter"
+```c title="设置 grp_col 参数"
 ...
 modparam("permissions", "grp_col", "group_id")
 ...
@@ -364,14 +308,13 @@ modparam("permissions", "grp_col", "group_id")
 #### ip_col (string)
 
 
-Name of address table column containing IP address
-		part of the address.
+地址表列的名称，包含地址的 IP 地址部分。
 
 
-*Default value is "ip".*
+*默认值为 "ip"。*
 
 
-```c title="Set ip_col parameter"
+```c title="设置 ip_col 参数"
 ...
 modparam("permissions", "ip_col", "ipess")
 ...
@@ -381,15 +324,13 @@ modparam("permissions", "ip_col", "ipess")
 #### mask_col (string)
 
 
-Name of address table column containing network mask of
-		the address.  Possible values are 0-128. It should be up to 32 if 
-		the IP is v4 and up to 128 if the IP is v6.
+地址表列的名称，包含地址的网络掩码。可能的值为 0-128。如果 IP 是 v4，应该是最多 32；如果是 v6，应该是最多 128。
 
 
-*Default value is "mask".*
+*默认值为 "mask"。*
 
 
-```c title="Set mask_col parameter"
+```c title="设置 mask_col 参数"
 ...
 modparam("permissions", "mask_col", "subnet_length")
 ...
@@ -399,14 +340,13 @@ modparam("permissions", "mask_col", "subnet_length")
 #### port_col (string)
 
 
-Name of address table column containing port
-		part of the address.
+地址表列的名称，包含地址的端口部分。
 
 
-*Default value is "port".*
+*默认值为 "port"。*
 
 
-```c title="Set port_col parameter"
+```c title="设置 port_col 参数"
 ...
 modparam("permissions", "port_col", "prt")
 ...
@@ -416,20 +356,17 @@ modparam("permissions", "port_col", "prt")
 #### proto_col (string)
 
 
-Name of address table column containing transport
-		protocol that is matched against transport protocol of
-		received request.  Possible values that can be stored in
-		proto_col are "any", "udp",
-		"tcp", "tls",
-		"sctp", and "none".  Value
-		"any" matches always and value
-		"none" never.
+地址表列的名称，包含传输协议，该协议与接收请求的传输协议进行匹配。可以存储在 proto_col 中的可能值为 "any"、"udp"、
+"tcp"、"tls"、
+"sctp" 和 "none"。值
+"any" 始终匹配，值
+"none" 从不匹配。
 
 
-*Default value is "proto".*
+*默认值为 "proto"。*
 
 
-```c title="Set proto_col parameter"
+```c title="设置 proto_col 参数"
 ...
 modparam("permissions", "proto_col", "transport")
 ...
@@ -439,17 +376,15 @@ modparam("permissions", "proto_col", "transport")
 #### pattern_col (string)
 
 
-Name of address table column containinga a pattern (a shell wildcard
-		pattern, like the ones used for file name matching) that is matched 
-		against the arguments received by
-		`check_address`
-		or `check_source_address`.
+地址表列的名称，包含一个模式（shell 通配符模式，类似于文件名匹配使用的模式），该模式与
+`check_address`
+或 `check_source_address` 接收的参数进行匹配。
 
 
-*Default value is "pattern".*
+*默认值为 "pattern"。*
 
 
-```c title="Set pattern_col parameter"
+```c title="设置 pattern_col 参数"
 ...
 modparam("permissions", "pattern_col", "wildcard_col")
 ...
@@ -459,81 +394,64 @@ modparam("permissions", "pattern_col", "wildcard_col")
 #### info_col (string)
 
 
-Name of address table column containing a string
-		that is added as value to a pvar given as argument
-		to `check_address`
-		or `check_source_address` in
-		case the function succedes.
+地址表列的名称，包含一个字符串，
+如果函数成功，该字符串将作为值添加到 `check_address`
+或 `check_source_address` 的 pvar 参数中。
 
 
-*Default value is "context_info".*
+*默认值为 "context_info"。*
 
 
-```c title="Set info_col parameter"
+```c title="设置 info_col 参数"
 ...
 modparam("permissions", "info_col", "info_col")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### check_address(group_id, ip, port, proto [, context_info], [pattern], [partition])
 
 
-Returns 1 if group id, IP address, port and protocol given as
-		arguments match an IP subnet found in cached address table,
-		as described in [sec address permissions](#address_permissions) .
-		The function takes 4 mandatory arguments and 3 optional ones.
+如果作为参数给出的组 ID、IP 地址、端口和协议与缓存地址表中找到的 IP 子网匹配（如 [地址权限](#address_permissions) 中所述），则返回 1。
+此函数接受 4 个强制参数和 3 个可选参数。
 
 
-This function can be useful to check if a request can be allowed
-		without authentication.
+此函数可用于在无需认证的情况下检查请求是否允许。
 
 
-Meaning of the parameter is as follows:
+参数含义如下：
 
 
 - group_id (int)
-This argument represents the group id to be matched.
-			If the group_id argument is "0", the query can match any group
-			in the cached address table.
+此参数表示要匹配的组 ID。如果 group_id 参数为 "0"，则查询可以匹配缓存地址表中的任何组。
 - ip (string)
-This argument represents the ip address to be matched.
-			This argument cannot be null/empty.
+此参数表示要匹配的 IP 地址。此参数不能为空。
 - port (int)
-This argument represents the port to be matched.
-			Cached address table entry containing port value 0
-			matches any port.
-			Also, a *0* value for the argument will match any port in the
-			address table.
+此参数表示要匹配的端口。包含端口值 0 的缓存地址表条目匹配任何端口。
+参数的 *0* 值也将匹配地址表中的任何端口。
 - proto (string)
-This argument represents the protocol used for transport;
-			Transport protocol is either "ANY" or any
-			valid transport protocol value: "UDP, "TCP", "TLS", and "SCTP".
-- context_info (var, optional)
-This argument represents the variable in wich the context_info field
-			from the cached address table will be stored in case of match.
-- pattern (string, optional)
-This argument is a string to be matched against the wildcard
-			pattern field from the address table.
-- partition (string, optional)
-An optional parition name for the group id. If no partition
-			specified, the "default" one will be used.
+此参数表示传输使用的协议；传输协议是 "ANY" 或任何有效的传输协议值："UDP"、"TCP"、"TLS" 和 "SCTP"。
+- context_info (var, 可选)
+此参数表示在匹配时缓存地址表中的 context_info 字段将被存储在其中的变量。
+- pattern (string, 可选)
+此参数是一个字符串，要与地址表中的通配符模式字段进行匹配。
+- partition (string, 可选)
+组 ID 的可选分区名称。如果未指定分区，将使用 "default" 分区。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		LOCAL_ROUTE, BRANCH_ROUTE, STARTUP_ROUTE, TIMER_ROUTE, EVENT_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、
+LOCAL_ROUTE、BRANCH_ROUTE、STARTUP_ROUTE、TIMER_ROUTE、EVENT_ROUTE 使用。
 
 
-```c title="check_address() usage"
+```c title="check_address() 使用示例"
 ...
 
-// Checks if the tuple IP address/port (given as strings) and source protocol
-// (given as pvar), belongs to group 4, verifies if the string "texttest"
-// matches the wildcard pattern field in the database table and stores the
-// context information in $avp(ctx)
+// 检查 IP 地址/端口元组（作为字符串给出）和源协议
+// （作为 pvar 给出），是否属于组 4，验证字符串 "texttest"
+// 是否匹配数据库表中的通配符模式字段，并将上下文信息存储在 $avp(ctx)
 if (check_address( 4, "192.168.2.135", 5700, "$socket_in(proto)", $avp(ctx), "texttest")) {
 	t_relay();
 	xlog("$avp(ctx)\n");
@@ -545,15 +463,15 @@ if (check_address( 4, "192.168.2.135", 5700, "$socket_in(proto)", , , "my_part")
 }
 ...
 
-// Checks if the tuple IP address/port/protocol of the source message is in group 4
+// 检查源消息的 IP 地址/端口/协议元组是否在组 4 中
 if (check_address( 4, "$si", "$sp", "$socket_in(proto)")) {
 	t_relay();
 }
 
 ...
 
-// Checks if the tuple IP address/port/protocol stored in AVPs s:ip/s:port/s:proto
-// is in group 4 and stores context information in $avp(ctx)
+// 检查存储在 AVP s:ip/s:port/s:proto 中的 IP 地址/端口/协议元组
+// 是否在组 4 中，并将上下文信息存储在 $avp(ctx)
 $avp(ip) = "192.168.2.135";
 $avp(port) = 5061;
 $avp(proto) = "any";
@@ -565,10 +483,9 @@ if (check_address( 4, $avp(ip), $avp(port), $avp(proto), $avp(ctx), , $avp(parti
 
 ...
 
-// Checks if the tuple IP address/port (given as strings) and source protocol
-// (given as pvar) is in group 4, verifies if string the "texttest" matches
-// the wildcard pattern field in the database table, without storing any
-// context information
+// 检查 IP 地址/端口元组（作为字符串给出）和源协议
+// （作为 pvar 给出）是否在组 4 中，验证字符串 "texttest" 是否匹配
+// 数据库表中的通配符模式字段，不存储任何上下文信息
 if (check_address( 4,$si, 5700, $socket_in(proto), ,"texttest")) {
 	t_relay();
 }
@@ -580,17 +497,17 @@ if (check_address( 4,$si, 5700, $socket_in(proto), ,"texttest")) {
 #### check_source_address(group_id , [context_info], [pattern], [partition])
 
 
-Equivalent to check_address(group_id, "$si", "$sp", "$socket_in(proto)", context_info, pattern, partition).
+等价于 check_address(group_id, "$si", "$sp", "$socket_in(proto)", context_info, pattern, partition)。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		LOCAL_ROUTE, BRANCH_ROUTE, STARTUP_ROUTE, TIMER_ROUTE, EVENT_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、
+LOCAL_ROUTE、BRANCH_ROUTE、STARTUP_ROUTE、TIMER_ROUTE、EVENT_ROUTE 使用。
 
 
-```c title="check_source_address() usage"
+```c title="check_source_address() 使用示例"
 ...
-// Check if source address/port/proto is in group 4 and stores
-// context information in $avp(ctx)
+// 检查源地址/端口/协议是否在组 4 中，并将
+// 上下文信息存储在 $avp(ctx)
 if (check_source_address( 4,$avp(ctx), , , $avp(my_partition))) {
 	xlog("$avp(ctx)\n");
 }else {
@@ -603,31 +520,26 @@ if (check_source_address( 4,$avp(ctx), , , $avp(my_partition))) {
 #### get_source_group(var,[partition])
 
 
-Checks if an entry with the source ip/port/protocol is
-		found in cached address or subnet table in any group.
-		If yes, returns that group in the variable parameter.
-		If not returns -1.  Port value 0 in cached address and
-		subnet table matches any port. Optionally, you can also
-		specify the partition. If no partition
-		specified, the "default" one will be used.
+检查在缓存地址表或子网表中是否存在源 IP/端口/协议的条目。
+如果是，则在变量参数中返回该组。如果不是，返回 -1。缓存地址表和子网表中的端口值 0 匹配任何端口。你也可以指定分区。如果未指定分区，将使用 "default" 分区。
 
 
-Parameters:
+参数：
 
 
 - *var* (var)
-- *partition* (string, optional)
+- *partition* (string, 可选)
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		LOCAL_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、
+LOCAL_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="get_source_group() usage"
+```c title="get_source_group() 使用示例"
 ...
 
 if ( get_source_group( $var(group)) ) {
-   # do something with $var(group)
+   # 对 $var(group) 进行操作
    xlog("group is $var(group)\n");
 };
 ...
@@ -637,16 +549,15 @@ if ( get_source_group( $var(group)) ) {
 #### allow_routing()
 
 
-Returns true if all pairs constructed as described in [sec call routing](#call_routing) have appropriate permissions according to
-		the configuration files. This function uses default configuration
-		files specified in `default_allow_file` and
-		`default_deny_file`.
+如果 [呼叫路由](#call_routing) 中描述的所有配对都具有适当的权限（根据配置文件），则返回 true。此函数使用
+`default_allow_file` 和
+`default_deny_file` 中指定的默认配置文件。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE 使用。
 
 
-```c title="allow_routing usage"
+```c title="allow_routing 使用示例"
 ...
 if (allow_routing()) {
 	t_relay();
@@ -658,26 +569,22 @@ if (allow_routing()) {
 #### allow_routing(basename)
 
 
-Returns true if all pairs constructed as described in [sec call routing](#call_routing) have appropriate permissions according
-		to the configuration files given as parameters.
+如果 [呼叫路由](#call_routing) 中描述的所有配对都具有适当的权限（根据作为参数给出的配置文件），则返回 true。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *basename* (string) - Basename from which allow
-			and deny filenames will be created by appending contents of
-			`allow_suffix` and `deny_suffix`
-			parameters.
-If the parameter doesn't contain full pathname then the function
-			expects the file to be located in the same directory as the main
-			configuration file of the server.
+- *basename* (string) - 基本名称，将通过附加
+`allow_suffix` 和 `deny_suffix`
+参数的内容来创建 allow 和 deny 文件名。
+如果参数不包含完整路径名，则函数期望该文件位于服务器主配置文件所在的同一目录中。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE 使用。
 
 
-```c title="allow_routing(basename) usage"
+```c title="allow_routing(basename) 使用示例"
 ...
 if (allow_routing("basename")) {
 	t_relay();
@@ -689,26 +596,22 @@ if (allow_routing("basename")) {
 #### allow_register(basename)
 
 
-The function returns true if all pairs constructed as described in [sec registration permissions](#registration_permissions) have appropriate permissions
-		according to the configuration files given as parameters.
+如果 [注册权限](#registration_permissions) 中描述的所有配对都具有适当的权限（根据作为参数给出的配置文件），则函数返回 true。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *basename* (string) - Basename from which allow
-			and deny filenames will be created by appending contents of
-			`allow_suffix` and `deny_suffix`
-			parameters.
-If the parameter doesn't contain full pathname then the function
-			expects the file to be located in the same directory as the main
-			configuration file of the server.
+- *basename* (string) - 基本名称，将通过附加
+`allow_suffix` 和 `deny_suffix`
+参数的内容来创建 allow 和 deny 文件名。
+如果参数不包含完整路径名，则函数期望该文件位于服务器主配置文件所在的同一目录中。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE 使用。
 
 
-```c title="allow_register(basename) usage"
+```c title="allow_register(basename) 使用示例"
 ...
 if ($rm=="REGISTER") {
 	if (allow_register("register")) {
@@ -725,112 +628,91 @@ if ($rm=="REGISTER") {
 #### allow_uri(basename, uri)
 
 
-Returns true if the pair constructed as described in [sec uri permissions](#uri_permissions) have appropriate permissions
-		according to the configuration files specified by the parameter.
+如果 [URI 权限](#uri_permissions) 中描述的配对具有适当的权限（根据参数指定的配置文件），则返回 true。
 
 
-Meaning of the parameter is as follows:
+参数含义如下：
 
 
-- *basename* (string) - Basename from which allow
-			and deny filenames will be created by appending contents of
-			`allow_suffix` and `deny_suffix`
-			parameters.
-If the parameter doesn't contain full pathname then the function
-			expects the file to be located in the same directory as the main
-			configuration file of the server.
-- *uri* (string) - SIP URI to be checked.
+- *basename* (string) - 基本名称，将通过附加
+`allow_suffix` 和 `deny_suffix`
+参数的内容来创建 allow 和 deny 文件名。
+如果参数不包含完整路径名，则函数期望该文件位于服务器主配置文件所在的同一目录中。
+- *uri* (string) - 要检查的 SIP URI。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE 使用。
 
 
-```c title="allow_uri(basename, uri) usage"
+```c title="allow_uri(basename, uri) 使用示例"
 ...
-if (allow_uri("basename", $rt)) {  // Check Refer-To URI
+if (allow_uri("basename", $rt)) {  // 检查 Refer-To URI
 	t_relay();
 };
-if (allow_uri("basename", $avp(uri)) {  // Check URI stored in $avp(uri)
+if (allow_uri("basename", $avp(uri)) {  // 检查存储在 $avp(uri) 中的 URI
 	t_relay();
 };
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### address_reload
 
 
-Causes permissions module to re-read the contents of
-				the address database table into cache
-				memory.  In cache memory the entries are
-				for performance reasons stored in two
-                                different tables:  address table and
-				subnet table depending on the value of
-				the mask field (32 or smaller).
+使权限模块将地址数据库表的内容重新读入缓存内存。在缓存内存中，出于性能原因，条目存储在两个不同的表中：地址表和子网表（取决于掩码字段的值，32 或更小）。
 
 
-Parameters:
+参数：
 
 
 - *partition* -
-					the name of the partition to be reloaded. If none
-					specified all the partitions shall be reloaded.
+要重载的分区名称。如果未指定，所有分区都将被重载。
 
 
 #### address_dump
 
 
-Causes permissions module to dump contents of
-				the address table from cache memory.
+使权限模块从缓存内存中转储地址表的内容。
 
 
-Parameters:
+参数：
 
 
 - *partition* -
-					the name of the partition to be dumped. If none
-					specified all the partitions shall be dumped.
+要转储的分区名称。如果未指定，所有分区都将被转储。
 
 
 #### subnet_dump
 
 
-Causes permissions module to dump
-				contents of cache memory subnet table.
+使权限模块从缓存内存中转储子网表的内容。
 
 
-Parameters:
+参数：
 
 
 - *partition* -
-					the name of the partition to be dumped. If none
-					specified all the partitions shall be dumped.
+要转储的分区名称。如果未指定，所有分区都将被转储。
 
 
 #### allow_uri
 
 
-Tests if (URI, Contact) pair is allowed according to
-		allow/deny files.  The files must already have been
-		 loaded by OpenSIPS.
+测试（URI, Contact）配对是否根据 allow/deny 文件允许。文件必须已由 OpenSIPS 加载。
 
 
-Parameters:
+参数：
 
 
 - *basename* -
-						Basename from
-		which allow and deny filenames will be created by
-		appending contents of allow_suffix and deny_suffix
-		parameters.
-- *URI* - URI to be tested
-- *Contact* - Contact
-						to be tested
+基本名称，将通过附加 allow_suffix 和 deny_suffix 参数的内容来创建 allow 和 deny 文件名。
+- *URI* - 要测试的 URI
+- *Contact* - 要测试的 Contact
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可协议授权。

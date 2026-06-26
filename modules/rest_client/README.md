@@ -1,603 +1,374 @@
 ---
-title: "rest_client Module"
-description: "The *rest_client* module provides a means of interacting with an HTTP server by doing RESTful queries, such as GET, POST and PUT."
+title: "rest_client 模块"
+description: "*rest_client* 模块提供了与 HTTP 服务器交互的方式，通过执行 RESTful 查询（如 GET、POST 和 PUT）来与 HTTP 服务器进行交互。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+*rest_client* 模块提供了与 HTTP 服务器交互的方式，通过执行 RESTful 查询（如 GET、POST 和 PUT）来与 HTTP 服务器进行交互。
 
+### TCP 连接复用
 
-The *rest_client* module provides a means of interacting
-	with an HTTP server by doing RESTful queries, such as GET, POST and PUT.
+除非服务器通过 "Connection: close" 明确指示，否则模块将尽可能保持和复用其创建的 TCP 连接，无论脚本编写者执行的是阻塞还是异步 HTTP 请求。这些连接不在 OpenSIPS 工作进程之间共享——每个工作进程维护自己的连接集。
 
+### 依赖
 
-### TCP Connection Reusage
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载：
 
-Unless specified otherwise by the server through a "Connection: close"
-	indication, the module will keep and reuse the TCP connections it creates
-	as much as possible, regardless if the script writer performs blocking or
-	asynchronous HTTP requests.  These connections are not shared among OpenSIPS
-	workers — each worker maintains its own set of connections.
+- *无其他 OpenSIPS 模块依赖。*
 
+#### 外部库或应用程序
 
-### Dependencies
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
+- *libcurl*。
 
-#### OpenSIPS Modules
-
-
-The following modules must be loaded before this module:
-
-
-- *No dependencies on other OpenSIPS modules.*.
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
-
-
-- *libcurl*.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### curl_timeout (integer)
 
+任何 HTTP(S) 传输完成所允许的最长时间。此时间间隔包括初始连接时间窗口，因此此参数的值必须大于或等于[连接超时](#param_connection_timeout)。
 
-The maximum allowed time for any HTTP(S) transfer to complete.  This
-		interval is inclusive of the initial connect time window, hence the value
-		of this parameter must be greater than or equal to
-		[connection timeout](#param_connection_timeout).
+*默认值为 "20" 秒。*
 
-
-*Default value is "20" seconds.*
-
-
-```c title="Setting the curl_timeout parameter"
+```c title="设置 curl_timeout 参数"
 ...
 modparam("rest_client", "curl_timeout", 10)
 ...
 ```
 
-
 #### connection_timeout (integer)
 
+与服务器建立连接所允许的最长时间。
 
-The maximum allowed time to establish a connection with the server.
+*默认值为 "20" 秒。*
 
-
-*Default value is "20" seconds.*
-
-
-```c title="Setting the connection_timeout parameter"
+```c title="设置 connection_timeout 参数"
 ...
 modparam("rest_client", "connection_timeout", 4)
 ...
 ```
 
-
 #### connect_poll_interval (integer)
 
+仅与异步请求相关。允许完全控制我们希望多快地检测 libcurl 完成的阻塞 TCP/TLS 握手，从而使异步传输可以在后台运行。较低的[连接轮询间隔](#param_connect_poll_interval)可能会加快所有异步 HTTP 传输，但也会增加 CPU 使用率。
 
-Only relevant with async requests.  Allows complete control over how
-		quickly we want to detect libcurl's completed blocking TCP/TLS handshakes,
-		so the async transfers can be put in the background.  A lower
-		[connect poll interval](#param_connect_poll_interval) may speed up all async
-		HTTP transfers, but will also increase CPU usage.
+*默认值为 "20" 毫秒。*
 
-
-*Default value is "20" milliseconds.*
-
-
-```c title="Setting the connect_poll_interval parameter"
+```c title="设置 connect_poll_interval 参数"
 ...
 modparam("rest_client", "connect_poll_interval", 2)
 ...
 ```
 
-
 #### max_async_transfers (integer)
 
+单个 OpenSIPS 工作进程允许同时运行的最大异步 HTTP 传输数。只要某个工作进程的此阈值已达到，该工作进程尝试执行的所有新异步传输都将以阻塞方式进行，并附带适当的日志警告。
 
-Maximum number of asynchronous HTTP transfers *a single*
-		OpenSIPS worker is allowed to run simultaneously. As long as this threshold
-		is reached for a worker, all new async transfers it attempts to perform
-		will be done in a blocking manner, with appropriate logging warnings.
+*默认值为 "100"。*
 
-
-*Default value is "100".*
-
-
-```c title="Setting the max_async_transfers parameter"
+```c title="设置 max_async_transfers 参数"
 ...
 modparam("rest_client", "max_async_transfers", 300)
 ...
 ```
 
-
 #### max_transfer_size (integer)
 
+单次传输（下载）所允许的最大大小。在传输过程中达到此限制将导致传输立即停止，在脚本级别返回错误 -10。值为 **0** 将禁用此检查。
 
-The maximum allowed size of a single transfer (download).  Reaching
-		this limit during a transfer will cause the transfer to stop
-		immediately, returning error -10 at script level.  A value of
-		**0** will disable the check.
+*默认值为 "10240" (KB)。*
 
-
-*Default value is "10240" (KB).*
-
-
-```c title="Setting the max_transfer_size parameter"
+```c title="设置 max_transfer_size 参数"
 ...
 modparam("rest_client", "max_transfer_size", 64)
 ...
 ```
 
-
 #### ssl_verifypeer (integer)
 
+设置为 0 以禁用对远程对等方证书的验证。验证使用随 libcurl 提供的默认 CA 证书包进行。
 
-Set this to 0 in order to disable the verification of the remote peer's
-		certificate. Verification is done using a default bundle of CA certificates
-		which come with libcurl.
+*默认值为 "1"（启用）。*
 
-
-*Default value is "1" (enabled).*
-
-
-```c title="Setting the ssl_verifypeer parameter"
+```c title="设置 ssl_verifypeer 参数"
 ...
 modparam("rest_client", "ssl_verifypeer", 0)
 ...
 ```
 
-
 #### ssl_verifyhost (integer)
 
+设置为 0 以禁用对远程对等方实际对应于证书中列出的服务器的验证。
 
-Set this to 0 in order to disable the verification that the remote peer
-		actually corresponds to the server listed in the certificate.
+*默认值为 "1"（启用）。*
 
-
-*Default value is "1" (enabled).*
-
-
-```c title="Setting the ssl_verifyhost parameter"
+```c title="设置 ssl_verifyhost 参数"
 ...
 modparam("rest_client", "ssl_verifyhost", 0)
 ...
 ```
 
-
 #### ssl_capath (integer)
 
+用于主机验证的 CA 证书的可选路径。
 
-An optional path for CA certificates to be used for host verifications.
-
-
-```c title="Setting the ssl_capath parameter"
+```c title="设置 ssl_capath 参数"
 ...
 modparam("rest_client", "ssl_capath", "/home/opensips/ca_certificates")
 ...
 ```
 
-
 #### curl_http_version (integer)
 
+对所有请求使用特定的 HTTP 版本。可能的值：
 
-Use a specific HTTP version for all requests. Possible values:
+- 0（默认）- 使用 libcurl 认为合适的版本
+- 1 - 强制使用 HTTP 1.0 请求
+- 2 - 强制使用 HTTP 1.1 请求
+- 3 - 尝试 HTTP 2 请求。如果 HTTP 2 无法与服务器协商，则回退到 HTTP 1.1。需要 libcurl 7.33.0+。
+- 4 - 仅通过 TLS（HTTPS）尝试 HTTP 2。如果 HTTP 2 无法与 HTTPS 服务器协商，则回退到 HTTP 1.1。对于明文 HTTP 服务器，请使用 HTTP 1.1。需要 libcurl 7.47.0+。
+- 5 - 使用 HTTP 2 发送非 TLS HTTP 请求，无需 HTTP 1.1 升级。它需要预先知道服务器支持 HTTP 2。HTTPS 请求仍将以标准方式通过 TLS 握手中的协商协议版本进行 HTTP/2。需要 libcurl 7.49.0+。
 
+*更多详情请参阅[此处](https://curl.haxx.se/libcurl/c/CURLOPT_HTTP_VERSION.html)，此设置的文档灵感来自此处*
 
-- 0 (default) - use whatever is deemed fit by libcurl
-- 1 - enforce HTTP 1.0 requests
-- 2 - enforce HTTP 1.1 requests
-- 3 - attempt HTTP 2 requests. Fall back to HTTP 1.1 if HTTP 2
-				cannot be negotiated with the server. Requires libcurl 7.33.0+.
-- 4 - attempt HTTP 2 over TLS (HTTPS) only. Fall back to HTTP
-				1.1 if HTTP 2 cannot be negotiated with the HTTPS server.
-				For clear text HTTP servers, use HTTP 1.1.
-				Requires libcurl 7.47.0+.
-- 5 - Issue non-TLS HTTP requests using HTTP 2 without HTTP 1.1
-				Upgrade. It requires prior knowledge that the server supports
-				HTTP 2 straight away. HTTPS requests will still do HTTP/2 the
-				standard way with negotiated protocol version in the TLS
-				handshake. Requires libcurl 7.49.0+.
-
-
-*more details [here](https://curl.haxx.se/libcurl/c/CURLOPT_HTTP_VERSION.html), where the documentation for
-			this setting was inspired (read: pilfered) from*
-
-
-```c title="Setting the curl_http_version parameter"
+```c title="设置 curl_http_version 参数"
 ...
 modparam("rest_client", "curl_http_version", 3)
 ...
 ```
 
-
 #### enable_expect_100 (boolean)
 
+当 POST 或 PUT 请求的正文大小超过 1024 字节时，包含 "Expect: 100-continue" HTTP 头字段。启用后，等待服务器 "100 Continue" 回复的超时时间为 1 秒，之后开始上传正文。
 
-Include a "Expect: 100-continue" HTTP header field whenever the body
-		size of a POST or PUT request exceeds 1024 bytes.  Once enabled, the
-		timeout for waiting for a "100 Continue" reply from the server is 1
-		second, after which the body upload will begin.
+*默认值为 "false"（禁用）。*
 
-
-*Default value is "false" (disabled).*
-
-
-```c title="Setting the enable_expect_100 parameter"
+```c title="设置 enable_expect_100 参数"
 ...
 modparam("rest_client", "enable_expect_100", true)
 ...
 ```
 
-
 #### no_concurrent_connects (boolean)
 
+设置为 *true* 以仅允许一个 OpenSIPS 工作进程一次连接到给定 URL 主机名。当一个工作进程正在连接时，所有其他工作进程在尝试对同一主机名执行任何 rest_client 操作时都将收到错误代码 **-4（正在连接）**，无论操作是同步还是异步。
 
-Set to *true* in order to only allow one OpenSIPS
-		worker to connect to a given URL hostname at a time.  While a worker
-		is connecting, all other workers will receive error code
-		**-4 (already connecting)** when attempting
-		to perform any rest_client operation to the same hostname, regardless if
-		the operation is sync or async.
+对于同步传输，工作进程序列化的范围扩展到整个 cURL 传输（TCP 连接 + 上传 + 下载），因为所有三个阶段都在单个 cURL 库调用中进行。
 
+此参数可用于防止因失败的（挂起的）HTTP 服务导致所有 OpenSIPS 工作进程并发阻塞而引起的系统中断，而没有更多空闲工作进程来处理传入的 SIP 数据包。
 
-For sync transfers, the scope of the worker process serialization
-		extends to the entire cURL transfer (TCP connect + upload + download),
-		as all three phases take place within a single cURL library call.
+*默认值为 "false"（禁用）。*
 
-
-This parameter may be useful in order to prevent system outages caused
-		by concurrent blocking of all OpenSIPS workers on a failed (hanging)
-		HTTP service, with no more free workers being left to process incoming
-		SIP packets.
-
-
-*Default value is "false" (disabled).*
-
-
-```c title="Setting the no_concurrent_connects parameter"
+```c title="设置 no_concurrent_connects 参数"
 ...
 modparam("rest_client", "no_concurrent_connects", true)
 ...
 ```
 
-
 #### curl_conn_lifetime (integer)
 
+仅当[禁用并发连接](#param_no_concurrent_connects)启用时相关。通过设置此参数，脚本开发人员可以利用 libcURL 的连接复用功能，如果该工作进程已知已具有到目标 URL 主机名的 TCP 连接（通过之前的 rest_xxx() 函数调用建立），则可以完全跳过"无并发传输"逻辑。
 
-Only relevant when [no concurrent connects](#param_no_concurrent_connects) is enabled.
-		By setting this parameter, script developers can leverage the connection
-		reusage capabilities of libcURL and entirely skip the "no concurrent transfers"
-		logic on a given SIP worker, should that worker already be known to have a TCP
-		connection to the target URL hostname
-		(established by a previous rest_xxx() function call).
+该参数表示 TCP 连接在 libcURL 中保持复用的生命周期（以秒为单位），此设置通常取决于操作系统，也可能受启用/禁用 keepalives 的影响。有关 cURL TCP 连接最大生命周期的更多信息，请参阅您的操作系统和/或 libcurl 文档。
 
+*默认值为 *0*（禁用）。*
 
-The parameter denotes the lifetime, in seconds, of TCP connections kept
-		within libcURL for reusage, a setting which is often operating system
-		dependant, and which may also be affected by enabling/disabling keepalives.
-		Consult your operating system's and/or libcurl's documentation for further
-		information on the max lifetime of your cURL TCP connections.
-
-
-*Default value is *0* (disabled).*
-
-
-```c title="Setting the curl_conn_lifetime parameter"
+```c title="设置 curl_conn_lifetime 参数"
 ...
 modparam("rest_client", "curl_conn_lifetime", 1800)
 ...
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### rest_get(url, body_pv, [ctype_pv], [retcode_pv])
 
+对给定的 *url* 执行阻塞 HTTP GET 并返回资源的表示。
 
-Perform a blocking HTTP GET on the given *url* and
-		return a representation of the resource.
-
-
-Parameters:
-
+参数：
 
 - *url* (string)
-- *body_pv* (var) - output variable which will hold the
-				body of the HTTP response.
-- *ctype_pv* (var, optional) - output variable which will
-				contain the value of the "Content-Type:" header of the response.
-- *retcode_pv* (var, optional) - output variable which will
-				retain the status code of the HTTP response.
-				A **0** status code value means no HTTP
-				reply arrived at all.
+- *body_pv* (var) - 输出变量，将包含 HTTP 响应的正文。
+- *ctype_pv* (var，可选) - 输出变量，将包含响应 "Content-Type:" 头字段的值。
+- *retcode_pv* (var，可选) - 输出变量，将保留 HTTP 响应的状态码。**0** 状态码值表示根本没有收到 HTTP 回复。
 
+**返回码**
 
-**Return Codes**
+- **1** - 成功
+- **-1** - 连接被拒绝。
+- **-2** - 连接超时（TCP 连接建立之前超过了[连接超时](#param_connection_timeout)）
+- **-3** - 传输超时（收到最后一个字节之前超过了[curl 超时](#param_curl_timeout)）。*retcode_pv* 可能被设置为 200 或 0，取决于是否收到 200 OK。如果是，*body_pv* 将包含部分下载的数据，风险自负！（我们建议您仅将此数据用于日志/调试目的）
+- **-4** - 正在连接（另一个 OpenSIPS 工作进程正在连接此 URL 主机名。请参阅[无并发连接](#param_no_concurrent_connects)了解更多信息）。
+- **-10** - 内部错误（内存不足、意外的 libcurl 错误等）
 
+此函数可以从任何路由使用。
 
-- **1** - Success
-- **-1** - Connection Refused.
-- **-2** - Connection Timeout
-	(the [connection timeout](#param_connection_timeout) was exceeded
-	before a TCP connection could be established)
-- **-3** - Transfer Timeout
-	(the [curl timeout](#param_curl_timeout) was exceeded before the
-	last byte was received). The *retcode_pv* may
-	be set to 200 or 0, depending whether a 200 OK was received or not.
-	If it was, the *body_pv* will contain partially
-	downloaded data, use at your own risk! (we recommend you only use
-	this data for logging / debugging purposes)
-- **-4** - Already Connecting
-	(another OpenSIPS worker is already connecting to this URL hostname.
-	Consult [no concurrent connects](#param_no_concurrent_connects) for more info).
-- **-10** - Internal Error (out of
-		memory, unexpected libcurl error, etc.)
-
-
-This function can be used from any route.
-
-
-```c title="rest_get usage"
+```c title="rest_get 用法"
 ...
-# Example of querying a REST service to get the credit of an account
+# 查询 REST 服务获取账户信用的示例
 $var(rc) = rest_get("https://getcredit.org/?account=$fU",
                     $var(credit),
                     $var(ct),
                     $var(rcode));
 if ($var(rc) < 0) {
-	xlog("rest_get() failed with $var(rc), acc=$fU\n");
-	send_reply(500, "Server Internal Error");
+	xlog("rest_get() 失败，错误码 $var(rc)，账户=$fU\n");
+	send_reply(500, "服务器内部错误");
 	exit;
 }
 
 if ($var(rcode) != 200) {
-	xlog("L_INFO", "rest_get() rcode=$var(rcode), acc=$fU\n");
-	send_reply(403, "Forbidden");
+	xlog("L_INFO", "rest_get() 响应码=$var(rcode)，账户=$fU\n");
+	send_reply(403, "禁止访问");
 	exit;
 }
 ...
 ```
-
 
 #### rest_post(url, send_body, [send_ctype], recv_body_pv, [recv_ctype_pv], [retcode_pv])
 
+对给定的 *url* 执行阻塞 HTTP POST。
 
-Perform a blocking HTTP POST on the given *url*.
+请注意，*send_body* 参数也可以接受格式字符串，但不能大于 1024 字节。对于较大的消息，您必须在伪变量中构建它们并传递给函数。
 
-
-Note that the *send_body* parameter can also accept a format-string
-		but it cannot be larger than 1024 bytes. For larger messages, you must build them in a
-		pseudo-variable and pass it to the function.
-
-
-Parameters:
-
+参数：
 
 - *url* (string)
-- *send_body* (string) - The request body.
-- *send_ctype* (string, optional) - The MIME
-				Content-Type header for the request. The default is
-				*"application/x-www-form-urlencoded"*
-- *recv_body_pv* (var) - output variable which
-				will hold the body of the HTTP response.
-- *recv_ctype_pv* (var, optional) - output
-				variable which will contain the value of the "Content-Type"
-				header of the response
-- *retcode_pv* (var, optional) - output variable
-				which will retain the status code of the HTTP response.
-				A **0** status code value means no HTTP
-				reply arrived at all.
+- *send_body* (string) - 请求正文。
+- *send_ctype* (string，可选) - 请求的 MIME Content-Type 头。默认值为 *"application/x-www-form-urlencoded"*
+- *recv_body_pv* (var) - 输出变量，将包含 HTTP 响应的正文。
+- *recv_ctype_pv* (var，可选) - 输出变量，将包含响应 "Content-Type" 头的值
+- *retcode_pv* (var，可选) - 输出变量，将保留 HTTP 响应的状态码。**0** 状态码值表示根本没有收到 HTTP 回复。
 
+**返回码**
 
-**Return Codes**
+- **1** - 成功
+- **-1** - 连接被拒绝。
+- **-2** - 连接超时（TCP 连接建立之前超过了[连接超时](#param_connection_timeout)）
+- **-3** - 传输超时（收到最后一个字节之前超过了[curl 超时](#param_curl_timeout)）。*retcode_pv* 可能被设置为 200 或 0，取决于是否收到 200 OK。如果是，*body_pv* 将包含部分下载的数据，风险自负！（我们建议您仅将此数据用于日志/调试目的）
+- **-4** - 正在连接（另一个 OpenSIPS 工作进程正在连接此 URL 主机名。请参阅[无并发连接](#param_no_concurrent_connects)了解更多信息）。
+- **-10** - 内部错误（内存不足、意外的 libcurl 错误等）
 
+此函数可以从任何路由使用。
 
-- **1** - Success
-- **-1** - Connection Refused.
-- **-2** - Connection Timeout
-	(the [connection timeout](#param_connection_timeout) was exceeded
-	before a TCP connection could be established)
-- **-3** - Transfer Timeout
-	(the [curl timeout](#param_curl_timeout) was exceeded before the
-	last byte was received). The *retcode_pv* may
-	be set to 200 or 0, depending whether a 200 OK was received or not.
-	If it was, the *body_pv* will contain partially
-	downloaded data, use at your own risk! (we recommend you only use
-	this data for logging / debugging purposes)
-- **-4** - Already Connecting
-	(another OpenSIPS worker is already connecting to this URL hostname.
-	Consult [no concurrent connects](#param_no_concurrent_connects) for more info).
-- **-10** - Internal Error (out of
-		memory, unexpected libcurl error, etc.)
-
-
-This function can be used from any route.
-
-
-```c title="rest_post usage"
+```c title="rest_post 用法"
 ...
-# Creating a resource using a RESTful service with an HTTP POST request
+# 使用 HTTP POST 请求通过 RESTful 服务创建资源
 $var(rc) = rest_post("https://myserver.org/register_user",
                      $fU, , $var(body), $var(ct), $var(rcode));
 if ($var(rc) < 0) {
-	xlog("rest_post() failed with $var(rc), user=$fU\n");
-	send_reply(500, "Server Internal Error 1");
+	xlog("rest_post() 失败，错误码 $var(rc)，用户=$fU\n");
+	send_reply(500, "服务器内部错误 1");
 	exit;
 }
 
 if ($var(rcode) != 200) {
-	xlog("rest_post() rcode=$var(rcode), user=$fU\n");
-	send_reply(500, "Server Internal Error 2");
+	xlog("rest_post() 响应码=$var(rcode)，用户=$fU\n");
+	send_reply(500, "服务器内部错误 2");
 	exit;
 }
 ...
 ```
-
 
 #### rest_put(url, send_body, [send_ctype], recv_body_pv[, [recv_ctype_pv][, [retcode_pv]]])
 
+对给定的 *url* 执行阻塞 HTTP PUT。
 
-Perform a blocking HTTP PUT on the given *url*.
+与[rest post](#func_rest_post)类似，*send_body_pv* 参数也可以接受格式字符串，但不能大于 1024 字节。对于较大的消息，您必须在伪变量中构建它们并传递给函数。
 
-
-Similar to [rest post](#func_rest_post), the *send_body_pv*
-		parameter can also accept a format-string but it cannot be larger than 1024 bytes. For
-		larger messages, you must build them in a pseudo-variable and pass it to the function.
-
-
-Parameters:
-
+参数：
 
 - *url* (string)
-- *send_body* (string) - The request body.
-- *send_ctype* (string, optional) - The MIME
-				Content-Type header for the request. The default is
-				*"application/x-www-form-urlencoded"*
-- *recv_body_pv* (var) - output variable which
-				will hold the body of the HTTP response.
-- *recv_ctype_pv* (var, optional) - output variable
-				which will contain the value of the "Content-Type" header of the response
-- *retcode_pv* (var, optional) - output variable
-				which will retain the status code of the HTTP response.
-				A **0** status code value means no HTTP
-				reply arrived at all.
+- *send_body* (string) - 请求正文。
+- *send_ctype* (string，可选) - 请求的 MIME Content-Type 头。默认值为 *"application/x-www-form-urlencoded"*
+- *recv_body_pv* (var) - 输出变量，将包含 HTTP 响应的正文。
+- *recv_ctype_pv* (var，可选) - 输出变量，将包含响应 "Content-Type" 头的值
+- *retcode_pv* (var，可选) - 输出变量，将保留 HTTP 响应的状态码。**0** 状态码值表示根本没有收到 HTTP 回复。
 
+**返回码**
 
-**Return Codes**
+- **1** - 成功
+- **-1** - 连接被拒绝。
+- **-2** - 连接超时（TCP 连接建立之前超过了[连接超时](#param_connection_timeout)）
+- **-3** - 传输超时（收到最后一个字节之前超过了[curl 超时](#param_curl_timeout)）。*retcode_pv* 可能被设置为 200 或 0，取决于是否收到 200 OK。如果是，*body_pv* 将包含部分下载的数据，风险自负！（我们建议您仅将此数据用于日志/调试目的）
+- **-4** - 正在连接（另一个 OpenSIPS 工作进程正在连接此 URL 主机名。请参阅[无并发连接](#param_no_concurrent_connects)了解更多信息）。
+- **-10** - 内部错误（内存不足、意外的 libcurl 错误等）
 
+此函数可以从任何路由使用。
 
-- **1** - Success
-- **-1** - Connection Refused.
-- **-2** - Connection Timeout
-	(the [connection timeout](#param_connection_timeout) was exceeded
-	before a TCP connection could be established)
-- **-3** - Transfer Timeout
-	(the [curl timeout](#param_curl_timeout) was exceeded before the
-	last byte was received). The *retcode_pv* may
-	be set to 200 or 0, depending whether a 200 OK was received or not.
-	If it was, the *body_pv* will contain partially
-	downloaded data, use at your own risk! (we recommend you only use
-	this data for logging / debugging purposes)
-- **-4** - Already Connecting
-	(another OpenSIPS worker is already connecting to this URL hostname.
-	Consult [no concurrent connects](#param_no_concurrent_connects) for more info).
-- **-10** - Internal Error (out of
-		memory, unexpected libcurl error, etc.)
-
-
-This function can be used from any route.
-
-
-```c title="rest_put usage"
+```c title="rest_put 用法"
 ...
-# Creating/Updating a resource using a RESTful service with an HTTP PUT request
+# 使用 HTTP PUT 请求通过 RESTful 服务创建/更新资源
 $var(rc) = rest_put("https://myserver.org/users/$fU",
                     $var(userinfo), , $var(body), $var(ct), $var(rcode));
 if ($var(rc) < 0) {
-	xlog("rest_put() failed with $var(rc), user=$fU\n");
-	send_reply(500, "Server Internal Error 3");
+	xlog("rest_put() 失败，错误码 $var(rc)，用户=$fU\n");
+	send_reply(500, "服务器内部错误 3");
 	exit;
 }
 
 if ($var(rcode) != 200) {
-	xlog("rest_put() rcode=$var(rcode), user=$fU\n");
-	send_reply(500, "Server Internal Error 4");
+	xlog("rest_put() 响应码=$var(rcode)，用户=$fU\n");
+	send_reply(500, "服务器内部错误 4");
 	exit;
 }
 ...
 ```
 
-
 #### rest_append_hf(txt)
 
+将 *txt* 追加到后续请求的 HTTP 头。通过在执行请求之前多次调用可以追加多个头。
 
-Append *txt* to the HTTP headers of the subsequent request.
-		Multiple headers can be appended by making multiple calls
-		before executing a request.
+*txt* 的内容应符合 HTTP 头的规范（例如，Field: Value）
 
-
-The contents of *txt* should adhere to the
-		specification for HTTP headers (ex. Field: Value)
-
-
-Parameters
-
+参数
 
 - *txt* (string)
 
+此函数可以从任何路由使用。
 
-This function can be used from any route.
-
-
-```c title="rest_append_hf usage"
+```c title="rest_append_hf 用法"
 ...
-# Example of querying a REST service requiring additional headers
+# 查询需要额外头的 REST 服务的示例
 
 rest_append_hf("Authorization: Bearer mF_9.B5f-4.1JqM");
 $var(rc) = rest_get("http://getcredit.org/?account=$fU", $var(credit));
 ...
-		
-```
 
+```
 
 #### rest_init_client_tls(tls_client_domain)
 
+强制在下次 GET/POST/PUT 请求期间最多使用一次特定的 TLS 域。有关 TLS 客户端域的更多信息，请参阅 tls_mgm 模块。
 
-Force a specific TLS domain to be used at most once, during the next
-		GET/POST/PUT request.  Refer to the tls_mgm module for additional info
-		regarding TLS client domains.
+如果使用此函数，您还必须确保 tls_mgm 已加载并正确配置。
 
-
-If using this function, you must also ensure that tls_mgm is loaded
-		and properly configured.
-
-
-Parameters
-
+参数
 
 - *tls_client_domain* (string)
 
+此函数可以从任何路由使用。
 
-This function can be used from any route.
-
-
-```c title="rest_init_client_tls usage"
+```c title="rest_init_client_tls 用法"
 ...
 rest_init_client_tls("dom1");
 if (!rest_get("https://example.com"))
-    xlog("query failed\n");
+    xlog("查询失败\n");
 ...
-		
+
 ```
 
-
-### Exported Asynchronous Functions
-
+### 导出的异步函数
 
 #### rest_get(url, body_pv[, [ctype_pv][, [retcode_pv]]])
 
+执行异步 HTTP GET。此函数的行为与**[rest get](#func_rest_get)**完全相同（在输入、输出和处理方面），但以非阻塞方式进行。脚本执行被挂起，直到整个 HTTP 响应内容可用。
 
-Perform an asynchronous HTTP GET.  This function behaves exactly the same as
-		**[rest get](#func_rest_get)**
-		(in terms of input, output and processing),
-		but in a non-blocking manner.  Script execution is suspended until the
-		entire content of the HTTP response is available.
-
-
-```c title="async rest_get usage"
+```c title="异步 rest_get 用法"
 route {
 	...
 	async(rest_get("http://getcredit.org/?account=$fU",
@@ -607,14 +378,14 @@ route {
 route [resume] {
 	$var(rc) = $rc;
 	if ($var(rc) < 0) {
-		xlog("async rest_get() failed with $var(rc), acc=$fU\n");
-		send_reply(500, "Server Internal Error");
+		xlog("异步 rest_get() 失败，错误码 $var(rc)，账户=$fU\n");
+		send_reply(500, "服务器内部错误");
 		exit;
 	}
 
 	if ($var(rcode) != 200) {
-		xlog("L_INFO", "async rest_get() rcode=$var(rcode), acc=$fU\n");
-		send_reply(403, "Forbidden");
+		xlog("L_INFO", "异步 rest_get() 响应码=$var(rcode)，账户=$fU\n");
+		send_reply(403, "禁止访问");
 		exit;
 	}
 
@@ -622,18 +393,11 @@ route [resume] {
 }
 ```
 
-
 #### rest_post(url, send_body_pv, [send_ctype_pv], recv_body_pv[, [recv_ctype_pv][, [retcode_pv]]])
 
+执行异步 HTTP POST。此函数的行为与**[rest post](#func_rest_post)**完全相同（在输入、输出和处理方面），但以非阻塞方式进行。脚本执行被挂起，直到整个 HTTP 响应内容可用。
 
-Perform an asynchronous HTTP POST.  This function behaves exactly the same as
-		**[rest post](#func_rest_post)** (in
-		terms of input, output and processing), but in a non-blocking manner.
-		Script execution is suspended until the entire content of the HTTP
-		response is available.
-
-
-```c title="async rest_post usage"
+```c title="异步 rest_post 用法"
 route {
 	...
 	async(rest_post("http://myserver.org/register_user",
@@ -643,13 +407,13 @@ route {
 route [resume] {
 	$var(rc) = $rc;
 	if ($var(rc) < 0) {
-		xlog("async rest_post() failed with $var(rc), user=$fU\n");
-		send_reply(500, "Server Internal Error 1");
+		xlog("异步 rest_post() 失败，错误码 $var(rc)，用户=$fU\n");
+		send_reply(500, "服务器内部错误 1");
 		exit;
 	}
 	if ($var(rcode) != 200) {
-		xlog("async rest_post() rcode=$var(rcode), user=$fU\n");
-		send_reply(500, "Server Internal Error 2");
+		xlog("异步 rest_post() 响应码=$var(rcode)，用户=$fU\n");
+		send_reply(500, "服务器内部错误 2");
 		exit;
 	}
 
@@ -657,18 +421,11 @@ route [resume] {
 }
 ```
 
-
 #### rest_put(url, send_body_pv, [send_ctype_pv], recv_body_pv[, [recv_ctype_pv][, [retcode_pv]]])
 
+执行异步 HTTP PUT。此函数的行为与**[rest put](#func_rest_put)**完全相同（在输入、输出和处理方面），但以非阻塞方式进行。脚本执行被挂起，直到整个 HTTP 响应内容可用。
 
-Perform an asynchronous HTTP PUT.  This function behaves exactly the same as
-		**[rest put](#func_rest_put)** (in
-		terms of input, output and processing), but in a non-blocking manner.
-		Script execution is suspended until the entire content of the HTTP
-		response is available.
-
-
-```c title="async rest_put usage"
+```c title="异步 rest_put 用法"
 route {
 	...
 	async(rest_put("http://myserver.org/users/$fU", $var(userinfo), ,
@@ -678,13 +435,13 @@ route {
 route [resume] {
 	$var(rc) = $rc;
 	if ($var(rc) < 0) {
-		xlog("async rest_put() failed with $var(rc), user=$fU\n");
-		send_reply(500, "Server Internal Error 3");
+		xlog("异步 rest_put() 失败，错误码 $var(rc)，用户=$fU\n");
+		send_reply(500, "服务器内部错误 3");
 		exit;
 	}
 	if ($var(rcode) != 200) {
-		xlog("async rest_put() rcode=$var(rcode), user=$fU\n");
-		send_reply(500, "Server Internal Error 4");
+		xlog("异步 rest_put() 响应码=$var(rcode)，用户=$fU\n");
+		send_reply(500, "服务器内部错误 4");
 		exit;
 	}
 
@@ -692,64 +449,48 @@ route [resume] {
 }
 ```
 
+### 导出的脚本转换
 
-### Exported script transformations
-
-
-The module also provides a way for encoding and decoding parameters
-			contained in an arbitrary script variable, in accordance with
-			RFC3986. This is done by applying a transformation to a script
-			variable containing the data to be encoded. The value of the
-			original variable is not altered and a corresponding string value
-			is returned. The transformation is performed through libcurl API
-			method curl_easy_escape (or curl_escape for libcurl < 7.15.4).
-
+该模块还提供了一种对包含在任意脚本变量中的参数进行编码和解码的方法，符合 RFC3986。这是通过对包含要编码的数据的脚本变量应用转换来完成的。原始变量的值不会改变，并返回一个相应的字符串值。转换通过 libcurl API 方法 curl_easy_escape 执行（或用于 libcurl < 7.15.4 的 curl_escape）。
 
 #### {rest.escape}
 
+此转换的结果是生成可安全用于 URI 构建的百分号编码字符串值。
 
-The result of this transformation is to produce percent encoded string value which can be safely used in URI construction.
+此转换没有参数。
 
-
-There are no parameters for this transformation.
-
-
-```c title="rest.escape usage"
+```c title="rest.escape 用法"
 ...
-# This example would produce log entry: "Output: call%40example.com%26safe%3Dfalse"
+# 此示例将生成日志条目："Output: call%40example.com%26safe%3Dfalse"
 $var(tmp) = "call@example.com&safe=false";
 xlog("Output: $(var(tmp){rest.escape})\n");
 
-# Encode call ID before transmission:
+# 传输前编码呼叫 ID：
 $var(rc) = rest_get("https://call-info.org/?id=$(ci{rest.escape})", $var(body_pv));
 ...
-                
-```
 
+```
 
 #### {rest.unescape}
 
+此转换的结果是解码百分号编码的字符串值。
 
-The result of this transformation is to decode percent encoded string values.
+此转换没有参数。
 
-
-There are no parameters for this transformation.
-
-
-```c title="rest.unescape usage"
+```c title="rest.unescape 用法"
 ...
-# This example would produce log entry: "Output: 1+1=2!"
+# 此示例将生成日志条目："Output: 1+1=2!"
 $var(tmp) = "1%2B1%3D2%21";
 xlog("Output: $(var(tmp){rest.unescape})\n");
 
-# This example would produce log entry: "OpenSIPs, tastes better with every SIP!"
+# 此示例将生成日志条目："OpenSIPs, tastes better with every SIP!"
 $var(tmp) = "OpenSIPs%2C%20tastes%20better%20with%20every%20SIP%21";
 xlog("$(var(tmp){rest.unescape})\n");
 ...
-                
+
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

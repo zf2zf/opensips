@@ -1,109 +1,92 @@
 ---
-title: "event_xmlrpc Module"
-description: "This module is an implementation of an XMLRPC client used to notify XMLRPC servers whenever certain notifications are raised by OpenSIPS. It acts as a transport layer for the Event Notification Interface."
+title: "event_xmlrpc 模块"
+description: "此模块是 XMLRPC 客户端的实现，用于在 OpenSIPS 引发某些通知时通知 XMLRPC 服务器。它充当 Event Notification Interface 的传输层。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of an XMLRPC client used to notify
-		XMLRPC servers whenever certain notifications are raised by OpenSIPS. It
-		acts as a transport layer for the Event Notification Interface.
+此模块是 XMLRPC 客户端的实现，用于在 OpenSIPS 引发某些通知时通知 XMLRPC 服务器。它充当 Event Notification Interface 的传输层。
 
 
-Basicly, the module executes a remote procedure call when an event is
-		raised from OpenSIPS's script, core or modules using the Event
-		Interface.
+基本上，当使用 Event Interface 从 OpenSIPS 的脚本、核心或模块引发事件时，模块执行远程过程调用。
 
 
-In order to be notified, an XMLRPC server has to subscribe for a certain
-		event provided by OpenSIPS. This can be done using the generic MI
-		Interface (*event_subscribe* function) or from
-		OpenSIPS script (*subscribe_event* core function).
+为了接收通知，XMLRPC 服务器需要订阅 OpenSIPS 提供的某个事件。这可以使用通用 MI Interface（*event_subscribe* 函数）或从 OpenSIPS 脚本（*subscribe_event* 核心函数）完成。
 
 
-### XMLRPC socket syntax
+### XMLRPC 套接字语法
 
 
 *'xmlrpc:' host ':' port ':' method*
 
 
-Meanings:
+含义：
 
 
-- *'xmlrpc:'* - informs the Event Interface
-					that the events sent to this subscriber should be handled
-					by the *event_xmlrpc* module.
-- *host* - host name of the XMLRPC server.
-- *port* - port of the XMLRPC server.
-- *method* - method called remotely by the
-					XMLRPC client.
-					NOTE: the client does not wait for a response from the
-						XMLRPC server.
+- *'xmlrpc:'* - 通知 Event Interface，发送到此订阅者的事件应由 *event_xmlrpc* 模块处理。
+- *host* - XMLRPC 服务器的主机名。
+- *port* - XMLRPC 服务器的端口。
+- *method* - XMLRPC 客户端远程调用的方法。
+					注意：客户端不等待来自 XMLRPC 服务器的响应。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *none*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### use_struct_param (integer)
 
 
-When raising an event, pack the name and value of the
-			parameters in a XMLRPC structure. This provides an easier
-			way for some XMLRPC server implementations to interpret
-			the parameters.
-			Set it to zero to disable or to non-zero to enable it.
+引发事件时，将参数的名称和值打包到 XMLRPC 结构中。这为某些 XMLRPC 服务器实现提供了一种更简单的方式来解释参数。将其设置为零以禁用，或设置为非零以启用。
 
 
-*Default value is "0 (disabled)".*
+*默认值为 "0（禁用）"。*
 
 
-```c title="Set use_struct_param parameter"
+```c title="设置 use_struct_param 参数"
 ...
 modparam("event_xmlrpc", "use_struct_param", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+没有可从配置文件使用的函数。
 
 
-### Example
+### 示例
 
 
-This is an example of an event raised by the pike module
-			when it decides an ip should be blocked:
+这是 pike 模块在决定应阻止 IP 时引发的事件示例：
 
 
-```c title="E_PIKE_BLOCKED event"
+```c title="E_PIKE_BLOCKED 事件"
 POST /RPC2 HTTP/1.1.
 Host: 127.0.0.1:8081.
 Connection: close.
@@ -127,12 +110,12 @@ Content-length: 240.
 ```
 
 
-```c title="XMLRPC socket"
-	# calls the 'block_ip' function
+```c title="XMLRPC 套接字"
+	# 调用 'block_ip' 函数
 	xmlrpc:127.0.0.1:8080:block_ip
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证

@@ -1,68 +1,62 @@
 ---
-title: "presence_reginfo Module"
-description: "The module enables the handling of \"Event: reg\" (as defined in RFC 3680) inside of the presence module. This can be used distribute the registration-info status to the subscribed watchers."
+title: "presence_reginfo 模块"
+description: "该模块支持在 presence 模块中处理 \"Event: reg\"（如 RFC 3680 中所定义）。这可用于将注册信息状态分发给订阅的 watcher。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module enables the handling of "Event: reg" (as defined 
-	      in RFC 3680) inside of the presence module. This can be used
-	      distribute the registration-info status to the subscribed watchers.
+该模块支持在 presence 模块中处理 "Event: reg"（如
+	      RFC 3680 中所定义）。这可用于将注册信息状态分发给订阅的 watcher。
 
 
-The module does not currently implement any authorization
-	      rules.  It assumes that publish requests are only issued by
-	      an authorized application and subscribe requests only by
-	      authorized users.  Authorization can thus be easily done in 
-	      OpenSIPS configuration file before calling handle_publish() 
-	      and handle_subscribe() functions.
+该模块目前不实现任何授权规则。它假设发布请求仅由授权应用发送，
+	      订阅请求仅由授权用户发送。因此，授权可以很容易地在
+	      OpenSIPS 配置文件中完成，然后再调用 handle_publish()
+	      和 handle_subscribe() 函数。
 
 
-Note: This module only activates the processing of the "reg" 
-	      in the presence module. To send dialog-info to watchers you also 
-	      need a source which PUBLISH the reg info to the presence module.
-	      For example you can use the pua_reginfo module or any external
-	      component. This approach allows to have the presence server and the
-	      reg-info aware publisher (e.g. the main proxy) on different 
-	      OpenSIPS instances.
+注意：此模块仅在 presence 模块中激活 "reg" 的处理。
+	      要向 watcher 发送 dialog-info，您还需要一个向 presence 模块发布 reg info 的来源。
+	      例如，您可以使用 pua_reginfo 模块或任何外部组件。
+	      这种方法允许将 presence 服务器和 reg-info 感知的发布者（例如主代理）放在不同的
+	      OpenSIPS 实例上。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *presence*.
+- *presence*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-None.
+无。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### default_expires (int)
 
 
-The default expires value used when missing from SUBSCRIBE
-               message (in seconds).
+当 SUBSCRIBE 消息中缺少时使用的默认 expires 值（以秒为单位）。
 
 
-*Default value is "3600".*
+*默认值为 "3600"。*
 
 
-```c title="Set default_expires parameter"
+```c title="设置 default_expires 参数"
         ...
         modparam("presence_reginfo", "default_expires", 3600)
         ...
@@ -73,28 +67,28 @@ The default expires value used when missing from SUBSCRIBE
 #### aggregate_presentities (int)
 
 
-Whether to aggregate in a single notify body all registration 
-							presentities. Useful to have all registrations on first NOTIFY
-							following initial SUBSCRIBE.
+是否在单个通知正文中聚合所有注册 presentities。
+						 Useful to have all registrations on first NOTIFY
+						following initial SUBSCRIBE.
 
 
-*Default value is "0" (disabled).*
+*默认值为 "0"（禁用）。*
 
 
-```c title="Set aggregate_presentities parameter"
-					...
-					modparam("presence_reginfo", "aggregate_presentities", 1)
-					...
-					
+```c title="设置 aggregate_presentities 参数"
+				...
+				modparam("presence_reginfo", "aggregate_presentities", 1)
+				...
+				
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-None to be used in configuration file.
+配置文件中无函数可用。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

@@ -1,109 +1,52 @@
 ---
-title: "TLS_MGM module"
-description: "This module is a management module for TLS certificates and parameters. It provides an interface for all the modules that use the TLS protocol. It also exports pseudo variables with certificate and TLS parameters."
+title: "TLS_MGM 模块"
+description: "TLS_MGM 模块是 TLS 证书和参数的管理模块。它为所有使用 TLS 协议的模块提供接口。它还导出带有证书和 TLS 参数的伪变量。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+TLS_MGM 模块是 TLS 证书和参数的管理模块。它为所有使用 TLS 协议的模块提供接口。它还导出带有证书和 TLS 参数的伪变量。
 
+### 使用
 
-This module is a management module for TLS certificates and
-			parameters. It provides an interface for all the modules that
-			use the TLS protocol. It also exports pseudo variables with
-			certificate and TLS parameters.
+此模块用于为所有使用 TLS 传输的模块（如 *proto_tls* 或 *proto_wss*）配置 TLS 证书和参数。该模块支持多个虚拟域，可以分配给不同的监听器（服务器）或新连接（客户端）。每个使用此管理模块的 TLS 模块应将自己分配给一个或多个域。
 
+该模块允许通过模块参数（脚本级别）和 SQL 表两种方式定义 TLS 域。
 
-### Usage
+包含此模块使用详情的脚本示例可在 [tls 示例](#opensips_with_tls_script_example) 中找到。
 
+### TLS 库
 
-This module is used to provision TLS certificates and parameters
-			for all the modules that use TLS transport (like
-			*proto_tls* or *proto_wss*).
-			The module supports multiple
-			virtual domains that can be assigned to different listeners
-			(servers) or new connections (clients). Each TLS module that uses
-			this management module should assign itself to one or more domains.
+除了 TLS 证书和参数外，此模块还充当实际 TLS 实现（由 *openSSL* 或 *wolfSSL* 库提供）与传输协议模块（如 *proto_tls* 或 *proto_wss*）之间的接口。*tls_mgm* 模块透明地向高级 OpenSIPS 传输模块暴露由 *tls_openssl* 和 *tls_wolfssl* 模块实现的 TLS 操作。
 
+TLS 库选择可以通过 [tls library](#param_tls_library) 模块参数进行配置。
 
-The module allows the definition of the TLS domains both via 
-			module parameters (script level) and via an SQL table.
+### TLS 域
 
+"TLS 域"这个术语意味着此 TLS 连接将具有与另一个 TLS 连接（来自另一个 TLS 域）不同的参数。因此，TLS 域与不同的 SIP 域没有直接关系，尽管它们经常结合使用。根据 TLS 握手的方向，TLS 域被称为"客户端域"（= 外出 TLS 连接）或"服务器域"（= 入站 TLS 连接）。
 
-A script example which details this module's usage can be found in
-		[tls example](#opensips_with_tls_script_example).
+如果您运行多个 SIP 域，您可以分别为每个域指定一些参数（无论您在配置文件中只有一个还是多个 socket=tls:ip:port 条目）。
 
+例如，TLS 域可用于 TLS 虚拟托管场景。OpenSIPS 为多个域提供 SIP 服务，例如 atlanta.com 和 biloxi.com。虽然两个域都将托管在单个 SIP 代理上，但 SIP 代理需要 2 个证书：一个用于 atlanta.com，一个用于 biloxi.com。对于入站 TLS 连接，SIP 代理需要在 TLS 握手期间呈现相应的证书。由于 SIP 代理还没有收到 SIP 消息（这是在 TLS 握手之后完成的），SIP 代理无法从 SIP 中检索目标域（通常是从请求 URI 中的域检索的）。因此，必须通过使用多个监听套接字或让客户端在握手过程中发送 Servername TLS 扩展（SNI）来区分这些域。
 
-### TLS libraries
+对于外出 TLS 连接，TLS 域是基于底层外出 TCP 连接的目标套接字和/或通过 AVP 在脚本级别做出决策来选择的。例如，您可以检查 RURI 或 From 等头，并将 SIP 头中的域与您为 TLS 域设置的过滤器进行匹配。
 
+注意：除 tls_handshake_timeout 和 tls_send_timeout 外，所有 TLS 参数都可以按 TLS 域设置。
 
-Besides TLS certificates and parameters, this module also acts as
-			an inteface between the actual TLS implemenation (provided by
-			*openSSL* or *wolfSSL* libraries)
-			and transport protocol modules like *proto_tls* or
-			*proto_wss*. The *tls_mgm* module
-			transparently exposes the TLS operations implemented by
-			*tls_openssl* and *tls_wolfssl* modules
-			to the higher-level OpenSIPS transport modules.
+### 定义 TLS 域
 
+TLS 域可以通过两种方式定义：
 
-The TLS library selection ca be configured through the
-			[tls library](#param_tls_library) module parameter.
+- 通过设置 *server_domain* 或 *client_domain* 模块参数
+- 通过数据库配置
 
+对于在数据库中定义的域，证书、私钥、受信任 CA 列表和 Diffie-Hellman 参数配置为 BLOB 值，而对于脚本定义的域，您必须提供文件路径。
 
-### TLS domains
+您可以同时在数据库和脚本中定义域。
 
-
-The wording 'TLS domain' means that this TLS connection will have different
-		parameters than another TLS connection (from another TLS domain). Thus, TLS
-		domains are not directly related to different SIP domains, although they
-		are often used in conjunction. Depending on the direction of the TLS handshake, a
-		TLS domain is called 'client domain' (=outgoing TLS connection) or 'server domain'
-		(= incoming TLS connection).
-
-
-If you run several SIP domains you can specify some parameters for each of them
-		separately (regardless if you have only one or multiple socket=tls:ip:port entries
-		in the config file).
-
-
-For example, TLS domains can be used in virtual hosting scenarios with TLS.
-		OpenSIPS offers SIP service for multiple domains, e.g. atlanta.com and biloxi.com. Altough
-		both domains will be hosted on a single SIP proxy, the SIP proxy needs 2 certificates: One
-		for atlanta.com and one for biloxi.com. For incoming TLS connections, the SIP proxy
-		has to present the respective certificate during the TLS handshake. As the SIP proxy
-		does not have a received SIP message yet (this is done after the TLS handshake), the SIP
-		proxy can not retrieve the target domain from SIP (which would have been usually retrieved 
-		from the domain in the request URI). Thus, distinction for these domains must be done by using multiple listening sockets or by having clients that send the Servername TLS extension(SNI) in the
-		handshake process.
-
-
-For outgoing TLS connections, the TLS domain is chosen based on the destination socket of the underlying outgoing TCP connection and/or by taking a decision at script level via an AVP. For example, you can inspect headers like RURI or From and match the domain in the SIP header with filters that you have set up for the TLS domains.
-
-
-NOTE: Except tls_handshake_timeout and tls_send_timeout all TLS parameters can be set
-		per TLS domain.
-
-
-### Defining TLS domains
-
-
-TLS domains can be defined in two ways:
-
-
-- by setting the *server_domain* or *client_domain* module parameters
-- by provisioning in DB
-
-
-For the domains defined in the DB, the certificate, private key, list of trusted CAs and Diffie-Hellman parameters are provisioned as BLOB values while for script defined domains you must provide path to files.
-
-
-You can define domains both in the DB and script at the same time.
-
-
-For any TLS domain (defined through script or DB) if not specified otherwise, the default settings are:
-
+对于任何 TLS 域（通过脚本或数据库定义），如果没有另行指定，默认设置为：
 
 - method - *SSLv23*
 - verify_cert - *1*
@@ -111,51 +54,36 @@ For any TLS domain (defined through script or DB) if not specified otherwise, th
 - certificate - *CFG_DIR/tls/cert.pem*
 - private_key - *CFG_DIR/tls/ckey.pem*
 - crl_check_all - *0*
-- crl_dir - none
-- ca_list - none
+- crl_dir - 无
+- ca_list - 无
 - ca_dir - */etc/pki/CA/*
-- cipher_list -  the OpenSSL default ciphers
-- dh_params -  none
-- ec_curve -  none
+- cipher_list - OpenSSL 默认密码
+- dh_params - 无
+- ec_curve - 无
 
+### 依赖
 
-### Dependencies
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载：
 
-#### OpenSIPS Modules
+- *tls_openssl* 或 *tls_wolfssl*，除非 [tls library](#param_tls_library) 设置为 'none'。
 
+#### 外部库依赖
 
-The following modules must be loaded before this module:
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
+- *无*。
 
-- *tls_openssl* or *tls_wolfssl*,
-				unless [tls library](#param_tls_library) is set to 'none'.
-
-
-#### Dependencies of external libraries
-
-
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
-
-
-- *None*.
-
-
-### Exported Functions
-
+### 导出的函数
 
 #### is_peer_verified
 
+如果消息通过 TLS 接收且对等方在 TLS 连接握手期间被验证，则返回 1，否则返回 -1。
 
-Returns 1 if the message is received via TLS and the peer was verified
-		during TLS connection handshake, otherwise it returns -1
+此函数可以从 REQUEST_ROUTE 使用。
 
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="is_peer_verified usage"
+```c title="is_peer_verified 使用示例"
 ...
 if (is_peer_verified()) {
         xlog("L_INFO","request from verified TLS peer\n");
@@ -165,781 +93,514 @@ if (is_peer_verified()) {
 ...
 ```
 
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### tls_mgm:list
 
+替换已弃用的 MI 命令：*tls_list*。
 
-Replaces obsolete MI command: *tls_list*.
-
-
-List all domains information.
-
+列出所有域信息。
 
 #### tls_mgm:reload
 
+替换已弃用的 MI 命令：*tls_reload*。
 
-Replaces obsolete MI command: *tls_reload*.
+从数据库重新加载 TLS 域信息。前面的数据库定义的域被丢弃，但脚本定义的域被保留。
 
+### 导出的参数
 
-Reloads the TLS domains information from the database.
-                The previous DB defined domains are discarded but the
-                script defined domains are preserved.
-
-
-### Exported Parameters
-
-
-All these parameters can be used from the opensips.cfg file,
-		to configure the behavior of OpenSIPS-TLS.
-
+所有这些参数都可以从 opensips.cfg 文件中使用，以配置 OpenSIPS-TLS 的行为。
 
 #### listen=interface
 
+不是 TLS 特有的。允许指定协议（udp、tcp、tls）、IP 地址和监听服务器所在的端口。
 
-Not specific to TLS. Allows to specify the protocol
-			(udp, tcp, tls), the IP address and the port where the
-			listening server will be.
-
-
-```c title="Set listen variable"
+```c title="设置 listen 变量"
 ...
 socket= tls:1.2.3.4:5061
 ...
-				
+					
 ```
-
 
 #### tls_library (string)
 
+选择要使用的 TLS 库。可能的值有：
 
-Selects which TLS library to use. Possible values are:
+- *auto* - 自动检测加载了哪个 TLS 库模块（*tls_openssl* 或 *tls_wolfssl*）。如果找不到模块或两个模块都找到，OpenSIPS 将无法启动。
+- *none* - 不使用任何 TLS 库；当 *tls_mgm* 模块仅由 *db_mysql*、*rabbitmq* 等模块需要用于 TLS 证书和参数管理时（而不是由 *proto_tls* 等传输模块进行 TLS 操作），这很有用。
+- *openssl* - 通过 *tls_openssl* 模块使用 *openSSL* 库。
+- *wolfssl* - 通过 *tls_wolfssl* 模块使用 *wolfSSL* 库。
 
+默认值为 *auto*。
 
-- *auto* - auto-detect which TLS library
-				module (*tls_openssl* or *tls_wolfssl*)
-				was loaded. OpenSIPS will not start if no module, or both modules are
-				found.
-- *none* - do not use any TLS library; this
-				is useful when the *tls_mgm* module is required only
-				for the management of TLS certificates and parameters by modules like
-				*db_mysql*, *rabbitmq* etc. (
-				and not for TLS operations by transport modules like
-				*proto_tls* etc.)
-- *openssl* - use the *openSSL*
-				library through the *tls_openssl* module.
-- *wolfssl* - use the *wolfSSL*
-				library through the *tls_wolfssl* module.
-
-
-Default value is *auto*.
-
-
-```c title="Set tls_library variable"
+```c title="设置 tls_library 变量"
 ...
 modparam("tls_mgm", "tls_library", "none")
 ...
-				
+					
 ```
-
 
 #### tls_method ([domain]string)
 
+设置 TLS 协议。域部分表示 TLS 域的名称。支持的 TLS 方法有：
 
-Sets the TLS protocol. The domain part represents the name of
-				the TLS domain. The supported TLS methods are:
+- *TLSv1_3* - 表示 OpenSIPS 将仅接受 TLSv1.3 连接。此版本仅在 OpenSSL 1.1.1 版本及以上可用。
+- *TLSv1_2* - 表示 OpenSIPS 将仅接受 TLSv1.2 连接（符合 rfc3261）。
+- *TLSv1* - 表示 OpenSIPS 将仅接受 TLSv1 连接（符合 rfc3261）。
+- *SSLv23* - 表示 OpenSIPS 将接受上述任何方法，但初始 SSL hello 必须为 v2（在初始 hello 中广告所有支持的协议，以便切换到更高和更安全的版本）。初始 v2 hello 意味着它不会接受来自仅支持 SSLv3 或 TLSv1 的客户端的连接。
 
+*如果您使用的是高于 1.1.0 的 OpenSSL 库，您还可以指定接受的 TLS 版本范围作为 [VLOW]-[VHIGH]。如果未指定 VLOW，它将使用支持的最小协议版本；如果未指定 VHIGH，它将使用最大协议版本。这意味着使用低值和高值都缺失的范围将接受所有支持的方法，但与 SSLv23 不同，不需要初始 hello 为 SSLv2。*
 
-- *TLSv1_3* - means OpenSIPS will
-				accept only TLSv1.3 connections. This version is only
-				available starting with OpenSSL 1.1.1 version.
-- *TLSv1_2* - means OpenSIPS will
-				accept only TLSv1.2 connections (rfc3261 conformant).
-- *TLSv1* - means OpenSIPS will
-				accept only TLSv1 connections (rfc3261 conformant).
-- *SSLv23* - means OpenSIPS will
-				accept any of the above methods, but the initial SSL
-				hello must be v2 (in the initial hello all the supported
-				protocols are advertised enabling switching to a higher
-				and more secure version). The initial v2 hello means it
-				will not accept connections from SSLv3 or TLSv1 only
-				clients.
-
-
-*If you are using an OpenSSL library newer than 1.1.0, you can
-				also specify a range of accepted TLS versions as [VLOW]-[VHIGH].
-				If VLOW is not specified it will use the minimum supported
-				protocol version and if VHIGH is not specified it will use
-				the maximum supported protocol version. This means that using
-				a range where both the low and high values are missing, will
-				accept all the supported methods, but unlike SSLv23 will not
-				require the initial hello to be SSLv2.*
-
-
-*Default value is SSLv23.*
-
+*默认值为 SSLv23。*
 
 > [!WARNING]
-> For extended compatibility with older system, best use SSLv23.
+> 为与旧系统扩展兼容，最好使用 SSLv23。
 
+如果您需要 RFC3261 一致性且您的所有客户端都支持 TLSv1（或您计划仅在不同 OpenSIPS 代理之间使用加密"隧道"），请使用 TLSv1。如果要支持较旧的客户端，请使用 SSLv23（实际上，大多数支持 SSL 的应用程序都使用 SSLv23 方法）。
 
-If you want RFC3261 conformance and all your clients support
-			TLSv1 (or you are planning to use encrypted "tunnels" only
-			between different OpenSIPS proxies) use TLSv1. If you want to
-			support older clients use SSLv23 (in fact most of the
-			applications with SSL support use the SSLv23 method).
-
-
-```c title="Set tls_method variable"
+```c title="设置 tls_method 变量"
 ...
 modparam("tls_mgm", "tls_method", "[dom]TLSv1")
 ...
-				
+					
 ```
 
-
-```c title="Set tls_method range variable"
+```c title="设置 tls_method 范围变量"
 ...
-modparam("tls_mgm", "tls_method", "[dom]TLSv1-TLSv1_3")  # between v1 and v1.3
-modparam("tls_mgm", "tls_method", "[dom]TLSv1-")         # v1 or higher
-modparam("tls_mgm", "tls_method", "[dom]-TLSv1_2")       # up to v1.2
-modparam("tls_mgm", "tls_method", "[dom]-")              # all supported
+modparam("tls_mgm", "tls_method", "[dom]TLSv1-TLSv1_3")  # v1 到 v1.3 之间
+modparam("tls_mgm", "tls_method", "[dom]TLSv1-")         # v1 或更高
+modparam("tls_mgm", "tls_method", "[dom]-TLSv1_2")       # 最高 v1.2
+modparam("tls_mgm", "tls_method", "[dom]-")              # 所有支持
 ...
-				
+					
 ```
-
 
 #### certificate ([domain](string)
 
+OpenSIPS 的公钥证书文件。它将用作入站 TLS 连接的服务器端证书，以及外出 TLS 连接的客户端证书。域部分表示 TLS 域的名称。
 
-Public certificate file for OpenSIPS. It will be used as
-			server-side certificate for incoming TLS connections, and as
-			a client-side certificate for outgoing TLS connections. The domain
-			part represents the name of the TLS domain.
+*默认值为 "CFG_DIR/tls/cert.pem"。*
 
-
-*Default value is "CFG_DIR/tls/cert.pem".*
-
-
-```c title="Set certificate variable"
+```c title="设置 certificate 变量"
 ...
 modparam("tls_mgm", "certificate", "[dom]/mycerts/certs/opensips_server_cert.pem")
 ...
-				
+					
 ```
-
 
 #### private_key ([domain](string)
 
+上述证书的私钥。我必须保存在安全的地方并保持严格的权限！域部分表示 TLS 域的名称。
 
-Private key of the above certificate. I must be kept in a
-			safe place with tight permissions! The domain part
-			represents the name of the TLS omain.
+*默认值为 "CFG_DIR/tls/ckey.pem"。*
 
-
-*Default value is "CFG_DIR/tls/ckey.pem".*
-
-
-```c title="Set private_key variable"
+```c title="设置 private_key 变量"
 ...
 modparam("tls_mgm", "private_key", "[dom]/mycerts/private/prik.pem")
 ...
-				
+					
 ```
-
 
 #### ca_list ([domain](string)
 
+受信任 CA 的列表。该文件包含接受的证书，一个接一个。它必须是文件，不是文件夹。域部分表示 TLS 域的名称。
 
-List of trusted CAs. The file contains the certificates
-			accepted, one after the other. It MUST be a file, not
-			a folder. The domain part represents the name
-			of the TLS domain.
+*默认值为 ""。*
 
-
-*Default value is "".*
-
-
-```c title="Set ca_list variable"
+```c title="设置 ca_list 变量"
 ...
 modparam("tls_mgm", "ca_list", "[dom]/mycerts/certs/ca_list.pem")
 ...
-				
+					
 ```
-
 
 #### ca_dir ([domain](string)
 
+存储受信任 CA 的目录。目录中的证书必须以哈希形式存储，如 [openssl 文档](https://www.openssl.org/docs/manmaster/man3/X509_LOOKUP_hash_dir.html) 中所述的"哈希目录方法"。域部分表示 TLS 域的名称。
 
-Directory storing trusted CAs. The certificates in the directory
-			must be in hashed form, as described in the
-			[openssl documentation](https://www.openssl.org/docs/manmaster/man3/X509_LOOKUP_hash_dir.html) for the
-			*Hashed Directory Method*. The domain part
-			represents the name of the TLS domain.
+*默认值为 "/etc/pki/CA/"。*
 
-
-*Default value is "/etc/pki/CA/".*
-
-
-```c title="Set ca_dir variable"
+```c title="设置 ca_dir 变量"
 ...
 modparam("tls_mgm", "ca_dir", "[dom]/mycerts/certs")
 ...
-				
+					
 ```
-
 
 #### crl_dir ([domain](string)
 
+存储证书吊销列表（CRL）的目录。域部分表示 TLS 域的名称。
 
-Directory storing certificate revocation lists (CRLs). The domain
-			part represents the name of the TLS domain.
+*如果未设置此参数，则不会使用 CRL。*
 
-
-*If this parameter is not set, no CRLs will be used.*
-
-
-```c title="Set crl_dir variable"
+```c title="设置 crl_dir 变量"
 ...
 modparam("tls_mgm", "crl_dir", "[dom]/mycerts/crls")
 ...
-				
+					
 ```
-
 
 #### crl_check_all ([domain](string)
 
+使用非零整数值设置此参数可为整个证书链启用 CRL 检查。
 
-Setting this parameter with a non-zero integer value enables CRL
-			checking for the entire certificate chain.
+*默认情况下，仅检查证书链中的叶证书。*
 
-
-*By default, only the leaf certificate in the certificate chain
-				is checked.*
-
-
-```c title="Set crl_check_all variable"
+```c title="设置 crl_check_all 变量"
 ...
 modparam("tls_mgm", "crl_check_all", "[dom]1")
 ...
-				
+					
 ```
-
 
 #### ciphers_list ([domain](string)
 
-
-You can specify the list of algorithms for authentication
-			and encryption that you allow. The domain part
-			represents the name of the TLS domain. To obtain a list of ciphers
-			and then choose, use the openssl application:
-
+您可以指定允许的认证和加密算法列表。域部分表示 TLS 域的名称。要获取密码列表然后选择，请使用 openssl 应用程序：
 
 - openssl ciphers 'ALL:eNULL:!LOW:!EXPORT'
 
-
 > [!WARNING]
-> Do not use the NULL algorithms (no encryption) ... only for testing!!!
+> 不要使用 NULL 算法（无加密）... 仅用于测试！！！
 
+*默认为 OpenSSL 默认密码。*
 
-*It defaults to the OpenSSL default ciphers.*
-
-
-```c title="Set ciphers_list variable"
+```c title="设置 ciphers_list 变量"
 ...
 modparam("tls_mgm", "ciphers_list", "[dom]NULL")
 ...
-				
+					
 ```
-
 
 #### dh_params ([domain](string)
 
+您可以指定包含 PEM 文件格式的 Diffie-Hellman 参数的文件。如果您想指定包含 Diffie-Hellman 模式的密码，则需要此文件。域部分表示 TLS 域的名称。
 
-You can specify a file which contains Diffie-Hellman
-			parameters as a PEM-file. This is needed if you would like
-			to specify ciphers including Diffie-Hellman mode. The 
-			domain part represents the name of the TLS domain.
+*默认不设置 dh 参数文件。*
 
-
-*It defaults to not set a dh param file.*
-
-
-```c title="Set dh_params variable"
+```c title="设置 dh_params 变量"
 ...
 modparam("tls_mgm", "dh_params", "[dom]/etc/pki/CA/dh1024.pem")
 ...
-				
+					
 ```
-
 
 #### ec_curve ([domain](string)
 
+您可以指定应用于需要椭圆曲线的密码的椭圆曲线。域部分表示 TLS 域的名称。
 
-You can specify an elliptic curve which should be used for
-			ciphers which demand an elliptic curve. The domain part
-			represents the name of the TLS domain.
-
-
-It's usable only if TLS v1.1/1.2 support was compiled.
-			A list of curves which can be used you can get by
-
+它仅在编译了 TLS v1.1/1.2 支持时才可用。您可以获取可使用的曲线列表
 
 ```c
 				openssl ecparam -list_curves
 			
 ```
 
-
-*It defaults to not set a elliptic curve.*
-
+*默认不设置椭圆曲线。*
 
 #### verify_cert ([domain](string)
 
+在 ssl_context 中激活 SSL_VERIFY_PEER。详细解释，请查看 *openssl* 文档。
 
-Activates SSL_VERIFY_PEER in the ssl_context. For a detailed
-			explanation, check the *openssl* documentation.
+域部分表示 TLS 域的名称。
 
+默认值为 *1*。
 
-The domain part represents the name of the TLS domain.
-
-
-Default value is *1*.
-
-
-```c title="Set verify_cert variable"
+```c title="设置 verify_cert 变量"
 ...
 modparam("tls_mgm", "verify_cert", "[dom]0")
 ...
-				
+					
 ```
-
 
 #### require_cert ([domain](string)
 
+在 ssl_context 中激活 SSL_VERIFY_FAIL_IF_NO_PEER_CERT。详细解释，请查看 *openssl* 文档。此参数仅对服务器域有意义，并且如果 also 设置了 [verify cert](#param_verify_cert) 参数。
 
-Activates SSL_VERIFY_FAIL_IF_NO_PEER_CERT in the ssl_context. For a
-			detailed explanation, check the *openssl*
-			documentation. This parameter only makes sense for server domains
-			and if the [verify cert](#param_verify_cert) parameter is also set.
+域部分表示 TLS 域的名称。
 
+默认值为 *1*。
 
-The domain part represents the name of the TLS domain.
-
-
-Default value is *1*.
-
-
-```c title="Set require_cert variable"
+```c title="设置 require_cert 变量"
 ...
 modparam("tls_mgm", "require_cert", "[dom]0")
 ...
-				
+					
 ```
-
 
 #### client_tls_domain_avp (string)
 
+用于强制选择特定 TLS 客户端域的 AVP 名称。将此 AVP 设置为 TLS 客户端域的名称将导致使用该特定域，而不管标准匹配机制如何。
 
-Name of the AVP used for enforcing the selection of a specific TLS
-			client domain. Setting this AVP to the name of a TLS client domain will
-			result in using that specific domain regardless of the standard matching
-			mechanism.
+注意：如果已存在到远程目标的 TLS 连接，它将被重用，设置此 AVP 无效。
 
+注意：您可以通过设置具有相同名称的 *$bavp* 变量来强制仅对特定分支使用特定域。当同时设置 *$bavp* 和 *$avp* 变量时，第一个优先。
 
-Note: If there is already an existing TLS connection to the remote target,
-			it will be reused and setting this AVP has no effect.
+*无默认值。*
 
-
-Note: You can force a particular domain to be used just for a particular
-			branch by setting the *$bavp* variable with the same
-			name. When both *$bavp* and *$avp*
-			variables are set, the first one takes precedence.
-
-
-*No default value.*
-
-
-```c title="Set client_tls_domain_avp variable"
+```c title="设置 client_tls_domain_avp 变量"
 ...
 modparam("tls_mgm", "client_tls_domain_avp", "tls_match_dom")
 ...
-				
+					
 ```
-
 
 #### client_sip_domain_avp (string)
 
+在 TLS 客户端域匹配过程中设置所用 SIP 域的 AVP 名称。
 
-Name of the AVP that sets the SIP domain used in the TLS client
-			domain matching process.
+注意：如果已存在到远程目标的 TLS 连接，它将被重用，设置此 AVP 无效。
 
+注意：您可以通过设置具有相同名称的 *$bavp* 变量来强制仅对特定分支使用特定 SIP 域。当同时设置 *$bavp* 和 *$avp* 变量时，第一个优先。
 
-Note: If there is already an existing TLS connection to the remote target,
-			it will be reused and setting this AVP has no effect.
+有关 AVP 使用示例，请参阅 [domains param](#param_server_domain_client_domain)。
 
+*无默认值。*
 
-Note: You can force a particular SIP domain to be used just for a particular
-			branch by setting the *$bavp* variable with the same
-			name. When both *$bavp* and *$avp*
-			variables are set, the first one takes precedence.
-
-
-For the AVP usage example, refer to  [domains param](#param_server_domain_client_domain).
-
-
-*No default value.*
-
-
-```c title="Set client_sip_domain_avp variable"
+```c title="设置 client_sip_domain_avp 变量"
 ...
 modparam("tls_mgm", "client_sip_domain_avp", "sip_match_dom")
 ...
-				
+					
 ```
-
 
 #### db_url (string)
 
+数据库 URL。它不能为 NULL。
 
-The database url. It cannot be NULL.
+您不能将 "tls_domain=*dom_name*" URL 参数用于 tls_mgm 模块本身的数据库 TLS 连接。
 
-
-You cannot use the "tls_domain=*dom_name*" URL parameter
-			for a TLS connection to the database for the tls_mgm module itself.
-
-
-```c title="Usage of db_url block"
+```c title="db_url 使用示例"
 modparam("tls_mgm", "db_url", "mysql://root:admin@localhost/opensips")
-				
+					
 ```
-
 
 #### db_table (string)
 
+设置数据库表名。
 
-Sets the database table name.
+默认值为 "tls_mgm"。
 
-
-Default value is "tls_mgm".
-
-
-```c title="Usage of db_table block"
+```c title="db_table 使用示例"
 modparam("tls_mgm", "db_table", "tls_mgm")
                                 
 ```
 
-
 #### domain_col (string)
 
+设置 TLS 域列的名称。
 
-Sets the name for the TLS domain column.
+默认值为 "domain"。
 
-
-Default value is "domain".
-
-
-```c title="Usage of domain_col block"
+```c title="domain_col 使用示例"
 modparam("tls_mgm", "domain_col", "tls_domain")
                                 
 ```
 
-
 #### match_ip_address_col (string)
 
+设置 IP 地址匹配列名称。
 
-Sets the IP address matching column name.
+默认值为 "match_ip_address"。
 
-
-Default value is "match_ip_address".
-
-
-```c title="Usage of match_ip_address_col block"
+```c title="match_ip_address_col 使用示例"
 modparam("tls_mgm", "match_ip_address_col", "addr")
                                 
 ```
 
-
 #### match_sip_domain_col (string)
 
+设置 SIP 域匹配列名称。
 
-Sets the SIP domain matching column name.
+默认值为 "match_sip_domain"。
 
-
-Default value is "match_sip_domain".
-
-
-```c title="Usage of match_sip_domain_col block"
+```c title="match_sip_domain_col 使用示例"
 modparam("tls_mgm", "match_sip_domain_col", "addr")
                                 
 ```
 
-
 #### tls_method_col (string)
 
+设置方法列名称。
 
-Sets the method column name.
+默认值为 "method"。
 
-
-Default value is "method".
-
-
-```c title="Usage of tls_method_col block"
+```c title="tls_method_col 使用示例"
 modparam("tls_mgm", "tls_method_col", "method")
                                 
 ```
 
-
 #### verify_cert_col (string)
 
+设置验证证书列名称。
 
-Sets the verrify certificate column name.
+默认值为 "verify_cert"。
 
-
-Default value is "verify_cert".
-
-
-```c title="Usage of vertify_cert_col block"
+```c title="vertify_cert_col 使用示例"
 modparam("tls_mgm", "verify_cert_col", "verify_cert")
                                 
 ```
 
-
 #### require_cert_col (string)
 
+设置需要证书列名称。
 
-Sets the require certificate column name.
+默认值为 "require_cert"。
 
-
-Default value is "require_cert".
-
-
-```c title="Usage of require_cert_col block"
+```c title="require_cert_col 使用示例"
 modparam("tls_mgm", "require_cert_col", "req")
                                 
 ```
 
-
 #### certificate_col (string)
 
+设置证书列名称。
 
-Sets the certificate column name.
+默认值为 "certificate"。
 
-
-Default value is "certificate".
-
-
-```c title="Usage of certificate_col block"
+```c title="certificate_col 使用示例"
 modparam("tls_mgm", "certificate_col", "certificate")
                                 
 ```
 
-
 #### private_key_col (string)
 
+设置私钥列名称。
 
-Sets the private key column name.
+默认值为 "private_key"。
 
-
-Default value is "private_key".
-
-
-```c title="Usage of private_key_col block"
+```c title="private_key_col 使用示例"
 modparam("tls_mgm", "private_key_col", "pk")
                                 
 ```
 
-
 #### crl_check_all_col (string)
 
+设置 crl_check_all 列名称。
 
-Sets the crl_check_all column name.
+默认值为 "crl_check_all"。
 
-
-Default value is "crl_check_all".
-
-
-```c title="Usage of crl_check_all block"
+```c title="crl_check_all_col 使用示例"
 modparam("tls_mgm", "crl_check_all_col", "crl_check")
                                 
 ```
 
-
 #### crl_dir_col (string)
 
+设置 crl 目录列名称。
 
-Sets the crl directory column name.
+默认值为 "crl_dir"。
 
-
-Default value is "crl_dir".
-
-
-```c title="Usage of crl_dir_col block"
+```c title="crl_dir_col 使用示例"
 modparam("tls_mgm", "crl_dir_col", "crl_dir")
                                 
 ```
 
-
 #### ca_list_col (string)
 
+设置 CA 列表列名称。
 
-Sets the CA list column name.
+默认值为 "ca_list"。
 
-
-Default value is "ca_list".
-
-
-```c title="Usage of ca_list_col block"
+```c title="ca_list_col 使用示例"
 modparam("tls_mgm", "ca_list_col", "ca_list")
                                 
 ```
 
-
 #### ca_dir_col (string)
 
+设置 CA 目录列名称。
 
-Sets the CA directory column name.
+默认值为 "ca_dir"。
 
-
-Default value is "ca_dir".
-
-
-```c title="Usage of ca_dir_col block"
+```c title="ca_dir_col 使用示例"
 modparam("tls_mgm", "ca_dir_col", "ca_dir")
                                 
 ```
 
-
 #### cipher_list_col (string)
 
+设置密码列表列名称。
 
-Sets the cipher list column name.
+默认值为 "cipher_list"。
 
-
-Default value is "cipher_list".
-
-
-```c title="Usage of cipher_list_col block"
+```c title="cipher_list_col 使用示例"
 modparam("tls_mgm", "cipher_list_col", "cipher_list")
                                 
 ```
 
-
 #### dh_params_col (string)
 
+设置 Diffie-Hellmann 参数列名称。
 
-Sets the Diffie-Hellmann parameters column name.
+默认值为 "dh_params"。
 
-
-Default value is "dh_params".
-
-
-```c title="Usage of dh_params_col block"
+```c title="dh_params_col 使用示例"
 modparam("tls_mgm", "dh_params_col", "dh_parms")
                                 
 ```
 
-
 #### ec_curve_col (string)
 
+设置 ec_curve 列名称。
 
-Sets the ec_curve column name.
+默认值为 "ec_curve"。
 
-
-Default value is "ec_curve".
-
-
-```c title="Usage of ec_curve_col block"
+```c title="ec_curve_col 使用示例"
 modparam("tls_mgm", "ec_curve_col", "ec_curve")
                                 
 ```
 
-
 #### match_ip_address (string)
 
+用于将 TLS 连接与虚拟 TLS 域匹配的 IP 地址和端口。对于 TLS 服务器域，这些值将与接收连接的套接字进行匹配。对于 TLS 客户端域，这些值将与连接的目标套接字进行比较。
 
-The IP addresses and ports used to match a TLS connection with a
-			virtual TLS domain. For TLS server domains, these values will be
-			mathced against the socket on which the connection is received. For
-			TLS client domains, the values will be compared with the destination
-			socket of the connection.
+该参数接受值列表，特殊值 "*" 表示：匹配任何地址。
 
+*默认值为 "*"（匹配任何地址）。*
 
-The parameter accepts a list of values, and the special value "*"
-				means: match any address.
-
-
-*Default value is "*" (match any address).*
-
-
-```c title="Set match_ip_address variable"
+```c title="设置 match_ip_address 变量"
 ...
 modparam("tls_mgm", "match_ip_address", "[dom1]10.0.0.10:5061, 10.0.0.11:5061")
 ...
-				
+					
 ```
-
 
 #### match_sip_domain (string)
 
+用于将 TLS 连接与虚拟 TLS 域匹配的 SIP 域。对于 TLS 服务器域，这些值将与 TLS Servername 扩展（SNI）中提供的主机名进行匹配。对于 TLS 客户端域，这些值将与 [client sip domain avp](#param_client_sip_domain_avp) AVP 的值进行比较。
 
-The SIP domains used to match a TLS connection with a
-			virtual TLS domain. For TLS server domains, these values will be
-			matched against the hostname provided in the TLS Servername extension(SNI).
-			For TLS client domains, the values will be compared with the value of
-			the [client sip domain avp](#param_client_sip_domain_avp) AVP.
+该参数接受 FQDN 列表或特殊值：
 
+- *** - 匹配任何 sip 域（包括未提供 SNI 的情况，用于 TLS 服务器域）；
+- *none* - 当没有提供 SNI 时匹配 TLS 域（仅对 TLS 服务器域有意义）。请注意，如果提供了 SNI 但不匹配任何其他 SIP 域过滤器，连接将被拒绝。
 
-The parameter accepts a list of FQDNs or the special values:
+FQDN 可以使用 Unix shell 风格通配符指定。如果有多个潜在匹配，将选择最具体的域（例如，对 "foo.bar.com" 的请求将与使用 "foo.bar.com" 指定的域匹配，而不是与使用 "*.bar.com" 的域匹配）。
 
+*默认值为 "*"（匹配任何 sip 域）。*
 
-- *** - match any sip domain(
-					including no SNI provided, in case of TLS server domains);
-- *none* - match the TLS domain
-					when there is no SNI provided (make sense only for TLS server
-					domains). Note that if a SNI is provided, but does not match any
-					other SIP domain filter, the connection will be rejected.
-
-
-The FQDNs can be specified as with Unix shell-style wildcards. If
-				there are multiple potential matches, the most specific domain will
-				be selected(eg. a request for "foo.bar.com" is matched with the domain
-				specified with "foo.bar.com" versus the one with "*.bar.com").
-
-
-*Default value is "*" (match any sip domain).*
-
-
-```c title="Set match_sip_domain variable"
+```c title="设置 match_sip_domain 变量"
 ...
 modparam("tls_mgm", "match_sip_domain", "[dom1]foo.com, bar.com, *.baz.com")
 modparam("tls_mgm", "match_sip_domain", "[default_dom]*")
 ...
-				
+					
 ```
-
 
 #### server_domain, client_domain (string)
 
+您可以通过这些参数定义虚拟 TLS 域。
 
-You can define virtual TLS domains through these parameters.
+这些参数的值表示虚拟 tls 域的名称，仅用于标识。
 
-
-The value of these parameters represents the virtual tls domain's
-				name which is only used for identification.
-
-
-```c title="Usage of tls_client_domain and tls_server_domain block"
+```c title="tls_client_domain 和 tls_server_domain 块使用示例"
 ...
 socket=tls:10.0.0.10:5061
 ...
-# set the TLS client domain AVP
+# 设置 TLS 客户端域 AVP
 modparam("tls_mgm", "client_sip_domain_avp", "tls_sip_dom")
 ...
 
-# 'atlanta' server domain
+# 'atlanta' 服务器域
 modparam("tls_mgm", "server_domain", "dom1")
 modparam("tls_mgm", "match_ip_address", "[dom1]10.0.0.10:5061")
 modparam("tls_mgm", "match_sip_domain", "[dom1]atlanta.com")
@@ -951,7 +612,7 @@ modparam("tls_mgm", "tls_method", "[dom1]tlsv1")
 modparam("tls_mgm", "verify_cert", "[dom1]1")
 modparam("tls_mgm", "require_cert", "[dom1]1")
 
-#'biloxi' server domain
+#'biloxi' 服务器域
 modparam("tls_mgm", "server_domain", "dom2")
 modparam("tls_mgm", "match_ip_address", "[dom2]10.0.0.10:5061")
 modparam("tls_mgm", "match_sip_domain", "[dom2]biloxi.com")
@@ -963,7 +624,7 @@ modparam("tls_mgm", "tls_method", "[dom2]tlsv1")
 modparam("tls_mgm", "verify_cert", "[dom2]1")
 modparam("tls_mgm", "require_cert", "[dom2]1")
 
-# generic TLS server domain, if the client does not provide SNI
+# 通用 TLS 服务器域，如果客户端不提供 SNI
 modparam("tls_mgm", "server_domain", "dom3")
 modparam("tls_mgm", "match_ip_address", "[dom3]10.0.0.10:5061")
 modparam("tls_mgm", "match_sip_domain", "[dom3]none")
@@ -975,7 +636,7 @@ modparam("tls_mgm", "tls_method", "[dom3]tlsv1")
 modparam("tls_mgm", "verify_cert", "[dom3]1")
 modparam("tls_mgm", "require_cert", "[dom3]1")
 
-# 'atlanta' client domain
+# 'atlanta' 客户端域
 modparam("tls_mgm", "client_domain", "dom4")
 modparam("tls_mgm", "match_ip_address", "[dom4]*")
 modparam("tls_mgm", "match_sip_domain", "[dom4]atlanta.com")
@@ -988,7 +649,7 @@ modparam("tls_mgm", "tls_method", "[dom4]tlsv1")
 modparam("tls_mgm", "verify_cert", "[dom4]1")
 modparam("tls_mgm", "require_cert", "[dom4]1")
 
-# 'biloxi' client domain
+# 'biloxi' 客户端域
 modparam("tls_mgm", "client_domain", "dom5")
 modparam("tls_mgm", "match_ip_address", "[dom5]*")
 modparam("tls_mgm", "match_sip_domain", "[dom5]biloxi.com")
@@ -1000,7 +661,7 @@ modparam("tls_mgm", "tls_method", "[dom5]tlsv1")
 modparam("tls_mgm", "verify_cert", "[dom5]1")
 modparam("tls_mgm", "require_cert", "[dom5]1")
 
-# TLS client domain for GW provider
+# GW 提供商的 TLS 客户端域
 modparam("tls_mgm", "client_domain", "dom6")
 modparam("tls_mgm", "match_ip_address", "[dom6]1.2.3.4:6677")
 modparam("tls_mgm", "match_sip_domain", "[dom6]*")
@@ -1014,234 +675,130 @@ modparam("tls_mgm", "verify_cert", "[dom6]0")
 ...
 route{
 ...
-    # we match the TLS client domain using the SIP domain in the RURI
+    # 我们使用 RURI 中的 SIP 域匹配 TLS 客户端域
     $avp(tls_sip_dom) = $rd;
     t_relay();
     exit;
 ...
-    # calls to the PSTN GW, will match the correct TLS domain by IP
+    # 到 PSTN GW 的呼叫，将通过 IP 匹配正确的 TLS 域
     t_relay("tls:1.2.3.4:6677");
     exit;
 ...
-				
+					
 ```
 
+### 变量
 
-### Variables
+此模块导出以下变量：
 
-
-This module exports the follong variables:
-
-
-Some variables are available for both, the peer'S certificate and
-	the local certificate. Further, some parameters can be read from the
-	"Subject" field or the "Issuer" field.
-
+某些变量可用于对等方的证书和本地证书。此外，某些参数可以从"Subject"字段或"Issuer"字段读取。
 
 #### $tls_version
 
-
-*$tls_version* - the TLS/SSL version which is
-			used on the TLS connection from which the message was received.
-			String type.
-
+*$tls_version* - 用于接收消息的 TLS 连接的 TLS/SSL 版本。字符串类型。
 
 #### $tls_description
 
-
-*$tls_description* - the TLS/SSL description
-			of the TLS connection from which the message was received. String
-			type.
-
+*$tls_description* - 用于接收消息的 TLS 连接的 TLS/SSL 描述。字符串类型。
 
 #### $tls_cipher_info
 
-
-*$tls_cipher_info* - the TLS/SSL cipher which
-			is used on the TLS connection from which the message was received.
-			String type.
-
+*$tls_cipher_info* - 用于接收消息的 TLS 连接的 TLS/SSL 密码。字符串类型。
 
 #### $tls_cipher_bits
 
-
-*$tls_cipher_bits* - the number of cipher bits
-			which are used on the TLS connection from which the message was
-			received. String and Integer type.
-
+*$tls_cipher_bits* - 用于接收消息的 TLS 连接的密码位数。字符串和整数类型。
 
 #### $tls_[peer|my]_version
 
-
-*$tls_[peer|my]_version* - the version of the
-			certificate. String type.
-
+*$tls_[peer|my]_version* - 证书的版本。字符串类型。
 
 #### $tls_[peer|my]_serial
 
-
-*$tls_[peer|my]_serial* - the serial number
-			of the certificate. String and Integer type.
-
+*$tls_[peer|my]_serial* - 证书的序列号。字符串和整数类型。
 
 #### $tls_[peer|my]_[subject|issuer]
 
+*$tls_[peer|my]_[subject|issuer]* - 证书中 issuer/subject 字段的 ASCII 转储。字符串类型。
 
-*$tls_[peer|my]_[subject|issuer]* - ASCII dump
-			of the fields in the issuer/subject section of the certificate.
-			String type.
-
-
-```c title="Example of $tls_[peer|my]_[subject|issuer]"
+```c title="$tls_[peer|my]_[subject|issuer] 示例"
 /C=AT/ST=Vienna/L=Vienna/O=enum.at/CN=enum.at
 ```
 
-
 #### $tls_[peer|my]_[subject|issuer]_cn
 
-
-*$tls_[peer|my]_[subject|issuer]_cn* -
-			commonName in the issuer/subject section of the certificate.
-			String type.
-
+*$tls_[peer|my]_[subject|issuer]_cn* - 证书 issuer/subject 部分中的 commonName。字符串类型。
 
 #### $tls_[peer|my]_[subject|issuer]_locality
 
-
-*$tls_[peer|my]_[subject|issuer]_locality* -
-			localityName in the issuer/subject section of the certificate.
-			String type.
-
+*$tls_[peer|my]_[subject|issuer]_locality* - 证书 issuer/subject 部分中的 localityName。字符串类型。
 
 #### $tls_[peer|my]_[subject|issuer]_country
 
-
-*$tls_[peer|my]_[subject|issuer]_country* -
-			countryName in the issuer/subject section of the certificate.
-			String type.
-
+*$tls_[peer|my]_[subject|issuer]_country* - 证书 issuer/subject 部分中的 countryName。字符串类型。
 
 #### $tls_[peer|my]_[subject|issuer]_state
 
-
-*$tls_[peer|my]_[subject|issuer]_state* -
-			stateOrProvinceName in the issuer/subject section of the
-			certificate. String type.
-
+*$tls_[peer|my]_[subject|issuer]_state* - 证书 issuer/subject 部分中的 stateOrProvinceName。字符串类型。
 
 #### $tls_[peer|my]_[subject|issuer]_organization
 
-
-*$tls_[peer|my]_[subject|issuer]_organization* -
-			organizationName in the issuer/subject section of the certificate.
-			String type.
-
+*$tls_[peer|my]_[subject|issuer]_organization* - 证书 issuer/subject 部分中的 organizationName。字符串类型。
 
 #### $tls_[peer|my]_[subject|issuer]_unit
 
-
-*$tls_[peer|my]_[subject|issuer]_unit* -
-			organizationalUnitName in the issuer/subject section of the
-			certificate. String type.
-
+*$tls_[peer|my]_[subject|issuer]_unit* - 证书 issuer/subject 部分中的 organizationalUnitName。字符串类型。
 
 #### $tls_[peer|my]_san_email
 
-
-*$tls_[peer|my]_san_email* - email address in
-			the "subject alternative name" extension. String type.
-
+*$tls_[peer|my]_san_email* - 证书中"subject alternative name"扩展的电子邮件地址。字符串类型。
 
 #### $tls_[peer|my]_san_hostname
 
-
-*$tls_[peer|my]_san_hostname* - hostname (DNS)
-			in the "subject alternative name" extension. String
-			type.
-
+*$tls_[peer|my]_san_hostname* - 证书中"subject alternative name"扩展的主机名（DNS）。字符串类型。
 
 #### $tls_[peer|my]_san_uri
 
-
-*$tls_[peer|my]_san_uri* - URI in the
-			"subject alternative name" extension.
-			String type.
-
+*$tls_[peer|my]_san_uri* - 证书中"subject alternative name"扩展的 URI。字符串类型。
 
 #### $tls_[peer|my]_san_ip
 
-
-*$tls_[peer|my]_san_ip* - ip address in the
-			"subject alternative name" extension.
-			String type.
-
+*$tls_[peer|my]_san_ip* - 证书中"subject alternative name"扩展的 IP 地址。字符串类型。
 
 #### $tls_peer_verified
 
-
-*$tls_peer_verified* - Returns 1 if the peer's
-			certificate was successful verified. Otherwise it returns 0.
-			String and Integer type.
-
+*$tls_peer_verified* - 如果对等方证书验证成功，返回 1。否则返回 0。字符串和整数类型。
 
 #### $tls_peer_revoked
 
-
-*$tls_peer_revoked* - Returns 1 if the peer's
-			certificate was revoked. Otherwise it returns 0.
-			String and Integer type.
-
+*$tls_peer_revoked* - 如果对等方证书被吊销，返回 1。否则返回 0。字符串和整数类型。
 
 #### $tls_peer_expired
 
-
-*$tls_peer_expired* - Returns 1 if the peer's
-			certificate is expired. Otherwise it returns 0.
-			String and Integer type.
-
+*$tls_peer_expired* - 如果对等方证书已过期，返回 1。否则返回 0。字符串和整数类型。
 
 #### $tls_peer_selfsigned
 
-
-*$tls_peer_selfsigned* - Returns 1 if the
-			peer's certificate is selfsigned. Otherwise it returns 0.
-			String and Integer type.
-
+*$tls_peer_selfsigned* - 如果对等方证书是自签名的，返回 1。否则返回 0。字符串和整数类型。
 
 #### $tls_peer_notBefore
 
-
-*$tls_peer_notBefore* - Returns the notBefore
-			validity date of the peer's certificate.
-			String type.
-
+*$tls_peer_notBefore* - 返回对等方证书的 notBefore 有效期。字符串类型。
 
 #### $tls_peer_notAfter
 
+*$tls_peer_notAfter* - 返回对等方证书的 notAfter 有效期。字符串类型。
 
-*$tls_peer_notAfter* - Returns the notAfter
-			validity date of the peer's certificate.
-			String type.
+### 带有 TLS 的 OpenSIPS - 脚本示例
 
+重要提示：TLS 支持基于 TCP，要允许 OpenSIPS 使用 TCP，它必须以多进程模式启动。因此，必须将"fork"参数设置为"yes"：
 
-### OpenSIPS with TLS - script example
-
-
-IMPORTANT: The TLS support is based on TCP, and for allowing OpenSIPS
-		to use TCP, it must be started in multi-process mode. So, there is
-		a must to have the "fork" parameter set to "yes":
-
-
-NOTE: Since the TLS engine is quite memory consuming, increase the
-		used memory by the run time parameter "-m" (see OpenSIPS -h for more
-		details).
-
+注意：由于 TLS 引擎非常消耗内存，请通过运行时参数"-m"增加使用的内存（请参阅 OpenSIPS -h 了解更多详细信息）。
 
 - fork = yes
 
-
-```c title="Script with TLS support"
-  # ----------- global configuration parameters ------------------------
+```c title="带 TLS 支持的脚本"
+  # ----------- 全局配置参数 ------------------------
   log_level=3
   stderror_enabled=no
   syslog_enabled=yes
@@ -1253,12 +810,12 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
   socket=tls:your_serv_IP:5061
   udp_workers=4
 
-  # ------------------ module loading ----------------------------------
+  # ------------------ 模块加载 ----------------------------------
 
   loadmodule "proto_tls.so"
   loadmodule "proto_udp.so"
 
-  #TLS specific settings
+  #TLS 特定设置
   loadmodule "tls_mgm.so"
 
   modparam("tls_mgm", "certificate", "/path/opensipsX_cert.pem")
@@ -1285,31 +842,31 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
   loadmodule "signaling.so"
   loadmodule "uri_db.so"
 
-  # ----------------- setting module-specific parameters ---------------
+  # ----------------- 设置模块特定参数 ---------------
 
-  # -- auth_db params --
+  # -- auth_db 参数 --
   modparam("auth_db", "db_url", "sql_url")
   modparam("auth_db", "password_column", "password")
   modparam("auth_db", "calculate_ha1", 1)
 
-  # -- registrar params --
-  # no multiple registrations
+  # -- registrar 参数 --
+  # 不允许多重注册
   modparam("registrar", "append_branches", 0)
 
-  # -------------------------  request routing logic -------------------
+  # ------------------------- 请求路由逻辑 -------------------
 
-  # main routing logic
+  # 主要路由逻辑
 
   route{
 
-  # initial sanity checks
+  # 初始完整性检查
   if (!mf_process_maxfwd_header("10")) {
       send_reply(483,"Too Many Hops");
       exit;
   };
 
-  # if somene claims to belong to our domain in From,
-  # challenge him (skip REGISTERs -- we will chalenge them later)
+  # 如果有人在 From 中声称属于我们的域，
+  # 质询他（跳过 REGISTER -- 我们稍后会质询他们）
   if (is_myself("$fd")) {
       setflag(1);
       if ( is_method("INVITE|SUBSCRIBE|MESSAGE")
@@ -1319,18 +876,18 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
               exit;
           };
           if ($au!=$fU) {
-              xlog("FROM hdr Cheating attempt in INVITE\n");
+              xlog("FROM 头 INVITE 中的欺骗尝试\n");
               send_reply(403,
                   "That is ugly -- use From=id next time (OB)");
               exit;
           };
-      }; # non-REGISTER from other domain
+      }; # 来自其他域的非 REGISTER
   } else if ( is_method("INVITE") && !is_myself("$rd") ) {
       send_reply(403, "No relaying");
       exit;
   };
 
-  /* ********   do record-route and loose-route ******* */
+  /* ******** 执行 record-route 和 loose-route ******* */
   if (!is_method("REGISTER"))
       record_route();
 
@@ -1340,7 +897,7 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
       exit;
   };
 
-  /* ******* check for requests targeted out of our domain ******* */
+  /* ******* 检查针对我们域外的请求 ******* */
   if ( !is_myself("$rd") ) {
       append_hf("P-hint: OUTBOUND\r\n");
       if ($rd=="domB.net") {
@@ -1353,7 +910,7 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
       exit;
   };
 
-  /* ******* divert to other domain according to prefixes ******* */
+  /* ******* 根据前缀将请求分流到其他域 ******* */
   if (!is_method("REGISTER")) {
       if ( $ru=~"sip:201") {
           strip(3);
@@ -1368,34 +925,34 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
       };
   };
 
-  /* ************ requests for our domain ********** */
+  /* ************ 我们域的请求 ********** */
   if (is_method("REGISTER")) {
       if (!www_authorize( "domA.net", "subscriber" )) {
-          # challenge if none or invalid credentials
+          # 如果没有或凭证无效则质询
           www_challenge( "domA.net" /* realm */,
-              "0" /* no qop -- some phones can't deal with it */);
+              "0" /* no qop -- 有些电话不能处理它 */);
           exit;
       };
       if ($au!=$tU) {
-          xlog("TO hdr Cheating attempt\n");
+          xlog("TO 头欺骗尝试\n");
           send_reply(403, "That is ugly -- use To=id in REGISTERs");
           exit;
       };
-      # it is an authenticated request, update Contact database now
+      # 这是一个经过认证的请求，立即更新联系人数据库
       if (!save("location")) {
           sl_reply_error();
       };
       exit;
   };
 
-  # native SIP destinations are handled using USRLOC DB
+  # 使用 USRLOC DB 处理本机 SIP 目的地
   if (!lookup("location")) {
-      # handle user which was not found
+      # 处理未找到的用户
       send_reply(404, "Not Found");
       exit;
   };
 
-  # remove all present Alert-info headers
+  # 删除所有现有的 Alert-info 头
   remove_hf("Alert-Info");
 
   if (is_method("INVITE") && ($rP=="TLS" || isflagset(1))) {
@@ -1404,26 +961,21 @@ NOTE: Since the TLS engine is quite memory consuming, increase the
       append_hf("Alert-info: http://foo.bar/x.wav\r\n");  # snom
   };
 
-  # do forwarding
+  # 执行转发
   if (!t_relay()) {
       sl_reply_error();
   };
 
-  #end of script
+  # 脚本结束
   }
-		
+			
 ```
 
+### 调试 TLS 连接
 
-### Debug TLS connections
+如果要调试 TLS 连接，请将以下日志语句放入您的 OpenSIPS.cfg 中。这将转储所有可用的 TLS 伪变量。
 
-
-If you want to debug TLS connections, put the following log
-	statements into your OpenSIPS.cfg.
-	This will dump all available TLS pseudo variables.
-
-
-```c title="Example of TLS logging"
+```c title="TLS 日志记录示例"
 xlog("L_INFO","================= start TLS pseudo variables ===============\n");
 xlog("L_INFO","$$tls_version                   = '$tls_version'\n");
 xlog("L_INFO","$$tls_description               = '$tls_description'\n");
@@ -1478,229 +1030,153 @@ xlog("L_INFO","$$tls_peer_notAfter             = '$tls_peer_notAfter'\n");
 xlog("L_INFO","================= end TLS pseudo variables ===============\n");
 ```
 
+## 开发者指南
 
-## Developer Guide
-
-
-### API Functions
-
+### API 函数
 
 #### find_server_domain
-
 
 struct tls_domain *find_server_domain(struct ip_addr *ip,
                     unsigned short port);
 
-
-Find a TLS server domain with given ip and port
-                    (local listening socket).
-
+查找具有给定 ip 和端口的 TLS 服务器域（本地监听套接字）。
 
 #### find_client_domain
-
 
 struct tls_domain *find_client_domain(struct ip_addr *ip,
                      unsigned short port);
 
-
-Find TLS client domain.
-
+查找 TLS 客户端域。
 
 #### get_handshake_timeout
 
-
 int get_handshake_timeout(void);
 
-
-Returns the handshanke timeout.
-
+返回握手超时。
 
 #### get_send_timeout
 
-
 int get_send_timeout(void);
 
-
-Returns the send timeout.
-
+返回发送超时。
 
 ### TLS_CONFIG
 
-
-It contains configuration variables for OpenSIPS's TLS (timeouts,
-		file paths, etc).
-
+它包含 OpenSIPS 的 TLS 配置变量（超时、文件路径等）。
 
 ### TLS_INIT
 
-
-Initialization related functions and parameters.
-
+初始化相关的函数和参数。
 
 #### ssl context
 
-
 extern SSL_CTX *default_client_ctx;
 
-
-The ssl context is a member of the TLS domain strcuture. Thus, every
-			TLS domain, default and virtual - servers and clients, have its own SSL context.
-
+ssl context 是 TLS 域结构的成员。因此，每个 TLS 域、默认和虚拟 - 服务器和客户端，都有其自己的 SSL 上下文。
 
 #### pre_init_tls
 
-
 int init_tls(void);
 
-
-Called once to pre_initialize the tls subsystem, from the main().
-			Called before parsing the configuration file.
-
+从 main() 调用一次以预初始化 tls 子系统。在解析配置文件之前调用。
 
 #### init_tls
 
-
 int init_tls(void);
 
-
-Called once to initialize the tls subsystem, from the main().
-			Called after parsing the configuration file.
-
+从 main() 调用一次以初始化 tls 子系统。在解析配置文件之后调用。
 
 #### destroy_tls
 
-
 void destroy_tls(void);
 
-
-Called once, just before cleanup.
-
+调用一次，就在清理之前。
 
 #### tls_init
 
-
 int tls_init(struct socket_info *c);
 
-
-Called once for each tls socket created, from main.c
-
+从 main.c 为每个创建的 tls 套接字调用一次。
 
 ### TLS_DOMAIN
 
-
 #### tls_domains
-
 
 extern struct tls_domain *tls_default_server_domain;
 
-
-The default TLS server domain.
-
+默认 TLS 服务器域。
 
 extern struct tls_domain *tls_default_client_domain;
 
-
-The default TLS client domain.
-
+默认 TLS 客户端域。
 
 extern struct tls_domain *tls_server_domains;
 
-
-List with defined server domains.
-
+已定义服务器域的列表。
 
 extern struct tls_domain *tls_client_domains;
 
-
-List with defined client domains.
-
+已定义客户端域的列表。
 
 #### tls_find_server_domain
-
 
 struct tls_domain *tls_find_server_domain(struct ip_addr *ip,
 			unsigned short port);
 
-
-Find a TLS server domain with given ip and port
-			(local listening socket).
-
+查找具有给定 ip 和端口的 TLS 服务器域（本地监听套接字）。
 
 #### tls_find_client_domain
-
 
 struct tls_domain *tls_find_client_domain(struct ip_addr *ip,
 			unsigned short port);
 
-
-Find TLS client domain.
-
+查找 TLS 客户端域。
 
 #### tls_find_client_domain_addr
-
 
 struct tls_domain *tls_find_client_domain_addr(struct ip_addr *ip,
 			unsigned short port);
 
-
-Find TLS client domain with given ip and port
-			(socket of the remote destination).
-
+查找具有给定 ip 和端口的 TLS 客户端域（远程目标套接字）。
 
 #### tls_find_client_domain_name
 
-
 struct tls_domain *tls_find_client_name(str name);
 
-
-Find TLS client domain with given name.
-
+按名称查找 TLS 客户端域。
 
 #### tls_new__domain
 
-
 struct tls_domain *tls_new_domain(int type);
 
-
-Creates new TLS: allocate memory, set the type and initialize members
-
+创建新 TLS：分配内存、设置类型并初始化成员
 
 #### tls_new_server_domain
 
-
 int tls_new_server_domain(struct ip_addr *ip, unsigned short port);
 
-
-Creates and adds to the list of TLS server domains a new domain.
-
+创建并添加到 TLS 服务器域列表的新域。
 
 #### tls_new_client_domain
 
-
 int tls_new_client_domain(struct ip_addr *ip, unsigned short port);
 
-
-Creates and adds to the list of TLS client domains a new socket based domain.
-
+创建并添加到 TLS 客户端域列表的基于套接字的新域。
 
 #### tls_new_client_domain_name
 
-
 int tls_new_client_domain_name(char *s, int len);
 
-
-Creates and adds to the list of TLS client domains a new name based domain.
-
+创建并添加到 TLS 客户端域列表的基于名称的新域。
 
 #### tls_free_domains
 
-
 void tls_free_domains(void);
 
+清理整个域列表。
 
-Cleans up the entire domain lists.
-<!-- CONTRIBUTORS -->
+<!-- 贡献者 -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

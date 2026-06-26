@@ -1,51 +1,49 @@
 ---
-title: "Domain Policy Module"
-description: "The Domain Policy module implements draft-lendl-domain-policy-ddds-02 in combination with draft-lendl-speermint-federations-02 and draft-lendl-speermint-technical-policy-00. These drafts define DNS records with which a domain can announce its federation memberships. A local database can ..."
+title: "Domain Policy 模块"
+description: "Domain Policy 模块实现了 draft-lendl-domain-policy-ddds-02 以及 draft-lendl-speermint-federations-02 和 draft-lendl-speermint-technical-policy-00 的组合。这些草案定义了 DNS 记录,域可以通过它公布其联盟成员身份。本地数据库可以..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Domain Policy module implements draft-lendl-domain-policy-ddds-02 in
-		combination with draft-lendl-speermint-federations-02 and 
-		draft-lendl-speermint-technical-policy-00. These drafts
-		define DNS records with which a domain can
-		announce its federation memberships. A local database can be
-		used to map policy rules to routing policy decisions.
-		This database can also contain rules concerning destination
-		domains independently of draft-lendl-domain-policy-ddds-02.
+Domain Policy 模块实现了 draft-lendl-domain-policy-ddds-02 以及
+		draft-lendl-speermint-federations-02 和
+		draft-lendl-speermint-technical-policy-00 的组合。这些草案
+		定义了 DNS 记录,域可以通过它公布其联盟成员身份。本地数据库可以
+		用于将策略规则映射到路由策略决策。
+		该数据库还可以包含与 draft-lendl-domain-policy-ddds-02 无关的
+		目标域规则。
 
 
-This module requires a database. No caching is implemented.
+此模块需要数据库。未实现缓存。
 
 
-### Dependencies
+### 依赖
 
 
-The module depends on the following modules (in the other words the 
-		listed modules must be loaded before this module):
+该模块依赖以下模块（换句话说,以下模块必须在此模块之前加载）：
 
 
-- *database* -- Any database module
+- *database* -- 任何数据库模块
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-This is URL of the database to be used.
+这是要使用的数据库的 URL。
 
 
-Default value is 
+默认值为
 			"mysql://opensipsro:opensipsro@localhost/opensips"
 
 
-```c title="Setting db_url parameter"
+```c title="设置 db_url 参数"
 modparam("domainpolicy", "db_url", "postgresql://user:pass@db_host/opensips")
 ```
 
@@ -53,13 +51,13 @@ modparam("domainpolicy", "db_url", "postgresql://user:pass@db_host/opensips")
 #### dp_table (string)
 
 
-Name of table containing the local support domain policy setup.
+包含本地支持域策略设置的表名。
 
 
-Default value is "domainpolicy".
+默认值为 "domainpolicy"。
 
 
-```c title="Setting dp_table parameter"
+```c title="设置 dp_table 参数"
 modparam("domainpolicy", "dp_table", "supportedpolicies")
 ```
 
@@ -67,14 +65,13 @@ modparam("domainpolicy", "dp_table", "supportedpolicies")
 #### dp_col_rule (string)
 
 
-Name of column containing the domain policy rule name which is equal
-		to the URI as published in the domain policy NAPTRs.
+包含域策略规则名称的列名,该名称等于域策略 NAPTR 中发布的 URI。
 
 
-Default value is "rule".
+默认值为 "rule"。
 
 
-```c title="Setting dp_col_rule parameter"
+```c title="设置 dp_col_rule 参数"
 modparam("domainpolicy", "dp_col_rule", "rules")
 ```
 
@@ -82,16 +79,15 @@ modparam("domainpolicy", "dp_col_rule", "rules")
 #### dp_col_type (string)
 
 
-Name of column containing the domain policy rule type.
-		In the case of federation names, this is "fed". For standard
-		referrals according to draft-lendl-speermint-technical-policy-00,
-		this is "std". For direct domain lookups, this is "dom".
+包含域策略规则类型的列名。
+		对于联盟名称,这是 "fed"。对于根据 draft-lendl-speermint-technical-policy-00
+		的标准转介,这是 "std"。对于直接域查找,这是 "dom"。
 
 
-Default value is "type".
+默认值为 "type"。
 
 
-```c title="Setting dp_col_rule parameter"
+```c title="设置 dp_col_rule 参数"
 modparam("domainpolicy", "dp_col_type", "type")
 ```
 
@@ -99,14 +95,14 @@ modparam("domainpolicy", "dp_col_type", "type")
 #### dp_col_att (string)
 
 
-Name of column containing the AVP's name. If the rule stored in this
-		row triggers, than dp_can_connect() will add an AVP with that name.
+包含 AVP 名称的列名。如果存储在该行中的规则被触发,
+		则 dp_can_connect() 将添加具有该名称的 AVP。
 
 
-Default value is "att".
+默认值为 "att"。
 
 
-```c title="Setting dp_col_att parameter"
+```c title="设置 dp_col_att 参数"
 modparam("domainpolicy", "dp_col_att", "attribute")
 ```
 
@@ -114,13 +110,13 @@ modparam("domainpolicy", "dp_col_att", "attribute")
 #### dp_col_val (string)
 
 
-Name of column containing the value for AVPs created by dp_can_connect().
+包含由 dp_can_connect() 创建的 AVP 值的列名。
 
 
-Default value is "val".
+默认值为 "val"。
 
 
-```c title="Setting dp_col_val parameter"
+```c title="设置 dp_col_val 参数"
 modparam("domainpolicy", "dp_col_val", "values")
 ```
 
@@ -128,15 +124,14 @@ modparam("domainpolicy", "dp_col_val", "values")
 #### port_override_avp (string)
 
 
-This parameter defines the name of the AVP where dp_apply_policy() will look
-		for an override port number.
+此参数定义 AVP 的名称,dp_apply_policy() 将在其中查找覆盖端口号。
 
 
-Default value is "portoverride".
+默认值为 "portoverride"。
 
 
-```c title="Setting port_override_avp parameter"
-# string named AVP
+```c title="设置 port_override_avp 参数"
+# 字符串类型的 AVP 名称
 modparam("domainpolicy", "port_override_avp", "portoverride")
 ```
 
@@ -144,14 +139,14 @@ modparam("domainpolicy", "port_override_avp", "portoverride")
 #### transport_override_avp (string)
 
 
-Name of the AVP which contains the override transport setting.
+包含覆盖传输设置的 AVP 名称。
 
 
-Default value is "transportoverride".
+默认值为 "transportoverride"。
 
 
-```c title="Setting transport_override_avp parameter"
-# string named AVP
+```c title="设置 transport_override_avp 参数"
+# 字符串类型的 AVP 名称
 modparam("domainpolicy", "transport_override_avp", "transportoverride")
 ```
 
@@ -159,14 +154,14 @@ modparam("domainpolicy", "transport_override_avp", "transportoverride")
 #### domain_replacement_avp (string)
 
 
-Name of the AVP which contains a domain replacement.
+包含域替换的 AVP 名称。
 
 
-Default value is "domainreplacement".
+默认值为 "domainreplacement"。
 
 
-```c title="Setting domain_replacement_avp parameter"
-# string named AVP
+```c title="设置 domain_replacement_avp 参数"
+# 字符串类型的 AVP 名称
 modparam("domainpolicy", "domain_replacement_avp", "domainreplacement")
 ```
 
@@ -174,14 +169,14 @@ modparam("domainpolicy", "domain_replacement_avp", "domainreplacement")
 #### domain_prefix_avp (string)
 
 
-Name of the AVP which contains a domain prefix.
+包含域前缀的 AVP 名称。
 
 
-Default value is "domainprefix".
+默认值为 "domainprefix"。
 
 
-```c title="Setting domain_prefix_avp parameter"
-# string named AVP
+```c title="设置 domain_prefix_avp 参数"
+# 字符串类型的 AVP 名称
 modparam("domainpolicy", "domain_prefix_avp", "domainprefix")
 ```
 
@@ -189,14 +184,14 @@ modparam("domainpolicy", "domain_prefix_avp", "domainprefix")
 #### domain_suffix_avp (string)
 
 
-Name of the AVP which contains a domain suffix.
+包含域后缀的 AVP 名称。
 
 
-Default value is "domainsuffix".
+默认值为 "domainsuffix"。
 
 
-```c title="Setting domain_suffix_avp parameter"
-# string named AVP
+```c title="设置 domain_suffix_avp 参数"
+# 字符串类型的 AVP 名称
 modparam("domainpolicy", "domain_suffix_avp", "domainsuffix")
 ```
 
@@ -204,105 +199,102 @@ modparam("domainpolicy", "domain_suffix_avp", "domainsuffix")
 #### send_socket_avp (string)
 
 
-Name of the AVP which contains a send_socket. The format of the
-		send socket (the payload of this AVP) must be in the format
-		[proto:]ip_address[:port]. The function dp_apply_policy will 
-		look for this AVP and if defined, it will force the send socket
-		to its value (smilar to the force_send_socket core function).
+包含 send_socket 的 AVP 名称。此 AVP 的格式（有效载荷）必须为
+		[proto:]ip_address[:port] 格式。dp_apply_policy 函数将
+		查找此 AVP,如果已定义,它将强制发送套接字为其值（类似于 force_send_socket 核心函数）。
 
 
-Default value is "sendsocket".
+默认值为 "sendsocket"。
 
 
-```c title="Setting send_socket_avp parameter"
-# string named AVP
+```c title="设置 send_socket_avp 参数"
+# 字符串类型的 AVP 名称
 modparam("domainpolicy", "send_socket_avp", "sendsocket")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### dp_can_connect()
 
 
-Checks the interconnection policy of the caller. It uses the domain in the 
-		request URI to perform the DP-DDDS algorithm according to draft-lendl-domain-policy-ddds-02 
-		to retrieve the domain's policy announcements. 
-		As of this version, only records conforming to draft-lendl-speermint-federations-02
-		and draft-lendl-speermint-technical-policy-00 are supported.
+检查调用者的互联策略。它使用请求 URI 中的域执行 DP-DDDS 算法,
+		根据 draft-lendl-domain-policy-ddds-02 检索域的策略公告。
+		在此版本中,仅支持符合 draft-lendl-speermint-federations-02
+		和 draft-lendl-speermint-technical-policy-00 的记录。
 
 
-Non-terminal NAPTR records will cause recursion to the replacement domain. dp_can_connect()
-		will thus look for policy rules in the referenced domain. Furthermore, an AVP for
-		"domainreplacement" (containing the new domain) will be added to the call. This
-		will redirect SRV/A record lookups to the new domain.
+非终结 NAPTR 记录将递归到替换域。dp_can_connect()
+		因此会在引用域中查找策略规则。此外,将为
+		"domainreplacement"（包含新域）添加一个 AVP 到呼叫中。这将
+		把 SRV/A 记录查找重定向到新域。
 
 
-In order to simplify direct domain-based peerings all destination domains are
-		treated as if they contain a top priority "D2P+SIP:dom" rule with the domain itself as the 
-		value of the rule. Thus any database row with type = 'dom' and rule = 'example.com'
-		will override any dynamic DNS-discovered rules.
+为了简化直接基于域的对等连接,所有目标域都被视为包含
+		优先级为 "D2P+SIP:dom" 的规则,规则值为域本身。因此,任何
+		type = 'dom' 且 rule = 'example.com' 的数据库行都将覆盖
+		任何动态 DNS 发现的规则。
 
 
-For NAPTRs with service-type "D2P+SIP:fed", the federation IDs 
-		(as extracted from the regexp field) are used to retrieve
-		policy records from a local local database (basically: "SELECT dp_col_att, dp_col_val FROM 
-		dp_table WHERE dp_col_rule = '[federationID]' AND type = 'fed'). If records are found (and all other
-		records with the same order value are fulfillable) then AVPs will be created from
-		the dp_col_att and dp_col_val columns.
+对于服务类型为 "D2P+SIP:fed" 的 NAPTR,联盟 ID
+		（从 regexp 字段提取）用于从本地数据库检索策略记录
+		（基本上是："SELECT dp_col_att, dp_col_val FROM
+		dp_table WHERE dp_col_rule = '[federationID]' AND type = 'fed'）。如果找到记录（并且
+		具有相同 order 值的所有其他记录都可满足）,则将从
+		dp_col_att 和 dp_col_val 列创建 AVP。
 
 
-For NAPTRs with service-type "D2P+SIP:std", the same procedure is performed. This time,
-		the database lookup searched for type = 'std', though.
+对于服务类型为 "D2P+SIP:std" 的 NAPTR,执行相同的过程。但是,
+		数据库查找搜索 type = 'std'。
 
 
-"D2P+SIP:fed" and "D2P+SIP:std" can be mixed freely. If two rules with the same
-		"order" match and try to set the same AVP, then the behaviour is undefined.
+"D2P+SIP:fed" 和 "D2P+SIP:std" 可以自由混合。如果具有相同
+		"order" 的两个规则匹配并尝试设置相同的 AVP,则行为未定义。
 
 
-The dp_col_att column specifies the AVP's name. If the AVP start with "s:" or "i:", the 
-		corresponding AVP type (string named or integer named) will be generated. If the excat specifier 
-		is omited, the AVP type will be guessed.
+dp_col_att 列指定 AVP 的名称。如果 AVP 以 "s:" 或 "i:" 开头,则
+		将生成相应的 AVP 类型（字符串命名或整数命名）。如果省略
+		精确说明符,则将猜测 AVP 类型。
 
 
-The dp_col_val column will always be interpreted as string. Thus, the AVP's value
-		is always string based.
+dp_col_val 列将始终被解释为字符串。因此,AVP 的值
+		始终基于字符串。
 
 
-dp_can_connect returns:
+dp_can_connect 返回：
 
 
-- *-2*: on errors during the evaluation. (DNS, DB, ...)
-- *-1*: D2P+SIP records were found, but the policy is not fullfillable.
-- *1*: D2P+SIP records were found and a call is possible
-- *2*: No D2P+SIP records were found. The destination domain does
-			not announce a policy for incoming SIP calls.
+- *-2*：评估期间的错误。（DNS、DB、...）
+- *-1*：找到 D2P+SIP 记录,但策略无法满足。
+- *1*：找到 D2P+SIP 记录且可以呼叫
+- *2*：未找到 D2P+SIP 记录。目标域未公布
+			传入 SIP 呼叫的策略。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="dp_can_connect usage"
+```c title="dp_can_connect 使用示例"
 ...
 dp_can_connect();
 switch(retcode) {
 	case -2:
-		xlog("L_INFO","Errors during the DP evaluation\n");
-		sl_send_reply(404, "We can't connect you.");
+		xlog("L_INFO","DP 评估期间出错\n");
+		sl_send_reply(404, "我们无法连接您。");
 		break;
 	case -1:
-		xlog("L_INFO","We can't connect to that domain\n");
-		sl_send_reply(404, "We can't connect you.");
+		xlog("L_INFO","我们无法连接到该域\n");
+		sl_send_reply(404, "我们无法连接您。");
 		break;
 	case 1:
-		xlog("L_INFO","We found matching policy records\n");
+		xlog("L_INFO","我们找到了匹配的策略记录\n");
 		avp_print();
 		dp_apply_policy();
 		t_relay();
 		break;
 	case 2:
-		xlog("L_INFO","No DP records found\n");
+		xlog("L_INFO","未找到 DP 记录\n");
 		t_relay();
 		break;
 }
@@ -314,58 +306,51 @@ switch(retcode) {
 #### dp_apply_policy()
 
 
-This function sets the destination URI according to the policy returned
-		from the `dp_can_connect()` function.
-		Parameter exchange between `dp_can_connect()`
-		and `dp_apply_policy()` is done via AVPs.
-		The AVPs can be configured in the module's parameter section.
+此函数根据从 `dp_can_connect()` 函数返回的策略设置目标 URI。
+		`dp_can_connect()` 和 `dp_apply_policy()` 之间的参数
+		交换通过 AVP 完成。AVP 可以在模块的参数部分配置。
 
 
-Note: The name of the AVPs must correspond with the names in the 
-		*att* column in the domainpolicy table.
+注意：AVP 的名称必须与 domainpolicy 表中
+		*att* 列中的名称对应。
 
 
-Setting the following AVPs in `dp_can_connect()`
-		(or by any other means)
-		cause the following actions in `dp_apply_policy()`:
+在 `dp_can_connect()` 中设置以下 AVP
+		（或其他方式）
+		将在 `dp_apply_policy()` 中导致以下操作：
 
 
-- *port_override_avp*: If this AVP is set, the port
-			in the destination URI is set to this port. 
-			Setting an override port disables NAPTR and
-			SRV lookups according to RFC 3263.
-- *transport_override_avp*: If this AVP is set, the transport
-			parameter in the destination URI is set to the specified transport ("udp", "tcp",
-			"tls").
-			Setting an override transport also disables NAPTR lookups, but retains 
-			an SRV lookup according to RFC 3263.
-- *domain_replacement_avp*: If this AVP is set, the domain
-			in the destination URI will be replaced by this domain.
-A non-terminal NAPTR and thus a referral to a new domain implicitly
-			sets *domain_replacement_avp* to the new domain.
-- *domain_prefix_avp*: If this AVP is set, the domain
-			in the destination URI will be prefixed with this "subdomain".  
-			E.g. if the domain in the request URI is 
-			"example.com" and the domain_prefix_avp contains "inbound", the domain 
-			in the destinaton URI is set to "inbound.example.com".
-- *domain_suffix_avp*: If this AVP is set, the domain
-			in the destination URI will have the content of the AVP appended to it.
-			E.g. if the domain in the request URI is 
-			"example.com" and the domain_suffix_avp contains "myroot.com", the domain 
-			in the destination URI is set to "example.com.myroot.com".
-- *send_socket_avp*: If this AVP is set, the sending socket
-			will be forced to the socket in the AVP. The payload format of this AVP must 
-			be [proto:]ip_address[:port].
+- *port_override_avp*：如果设置了此 AVP,则目标
+			URI 中的端口将设置为该端口。设置覆盖端口会禁用
+			NAPTR 和 SRV 查找（根据 RFC 3263）。
+- *transport_override_avp*：如果设置了此 AVP,则目标
+			URI 中的传输参数将设置为指定传输（"udp"、"tcp"、
+			"tls"）。设置覆盖传输也会禁用 NAPTR 查找,但保留
+			SRV 查找（根据 RFC 3263）。
+- *domain_replacement_avp*：如果设置了此 AVP,则目标
+			URI 中的域将被此域替换。
+		非终结 NAPTR 隐式地将 *domain_replacement_avp* 设置为新域。
+- *domain_prefix_avp*：如果设置了此 AVP,则目标
+			URI 中的域将以此"子域"为前缀。例如,如果请求 URI 中的域是
+			"example.com" 并且 domain_prefix_avp 包含 "inbound",则目标
+			URI 中的域设置为 "inbound.example.com"。
+- *domain_suffix_avp*：如果设置了此 AVP,则目标
+			URI 中的域将追加 AVP 的内容。例如,如果请求 URI 中的域是
+			"example.com" 并且 domain_suffix_avp 包含 "myroot.com",则目标
+			URI 中的域设置为 "example.com.myroot.com"。
+- *send_socket_avp*：如果设置了此 AVP,则发送套接字
+			将被强制为 AVP 中的套接字。此 AVP 的有效载荷格式必须
+			为 [proto:]ip_address[:port]。
 
 
-If both prefix/suffix and domain replacements are used, then the replacement is
-		performed first and the prefix/suffix are applied to the new domain.
+如果同时使用前缀/后缀和域替换,则首先执行替换,
+		然后将前缀/后缀应用于新域。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="dp_apply_policy usage"
+```c title="dp_apply_policy 使用示例"
 ...
 if (dp_apply_policy()) {
 	t_relay();
@@ -375,38 +360,33 @@ if (dp_apply_policy()) {
 ```
 
 
-### FIFO Commands
+### FIFO 命令
 
 
-### Usage Scenarios
+### 使用场景
 
 
-This section describes how this module can be use to implement 
-	selective VoIP peerings.
+本节描述如何使用此模块实现选择性 VoIP 对等连接。
 
 
-#### TLS Based Federation
+#### 基于 TLS 的联盟
 
 
-This example shows how a secure peering fabric can be configured based on
-	TLS and Domain Policies.
+此示例显示如何基于 TLS 和域策略配置安全对等结构。
 
 
-Let's assume that an organization called "TLSFED.org" acts as an umbrella for
-	VoIP providers who want to peer with each other but don't want to run
-	open SIP proxies. TLSFED.org's secretary acts as an X.509 Certification Authority
-	that signs the TLS keys of all member's SIP proxies. Each member should automatically
-	allow incoming calls from other members. On the other hand, the configuration for
-	this federation must not interfere with a member's participation in other VoIP
-	peering fabrics. All this can be achieved by the following configuration for
-	a participating VoIP operation called example.com:
+假设一个名为 "TLSFED.org" 的组织作为希望相互对等但不想运行
+		开放 SIP 代理的 VoIP 提供商的伞式组织。TLSFED.org 的秘书担任
+		X.509 认证机构,为所有成员 SIP 代理的 TLS 密钥签名。每个成员应自动
+		允许来自其他成员的传入呼叫。另一方面,此联盟的配置不得干扰
+		成员参与其他 VoIP 对等结构。这一切都可以通过以下配置实现
+		对于名为 example.com 的参与 VoIP 运营：
 
 
-- *Incoming SIP configuration*
-Calls from other members are expected to use TLS and authenticate
-			using a client-CERT. To implement this, we cannot share a TCP/TLS port
-			with other incoming connection. Thus we need to use tls_server_domain[] to
-			dedicate a TCP port for this federation.
+- *传入 SIP 配置*
+预期来自其他成员的呼叫使用 TLS 并使用客户端证书进行
+			认证。为此,我们不能与 TCP/TLS 端口共享其他传入连接。因此我们需要使用
+			tls_server_domain[] 为此联盟分配一个 TCP 端口。
 
   ```
   tls_server_domain[1.2.3.4:5066] {
@@ -419,12 +399,11 @@ Calls from other members are expected to use TLS and authenticate
   }
   		
   ```
-- *Outgoing SIP configuration*
-Calls to other members also must use the proper client cert. 
-			Therefore, a TLS client domain must be configured. We use the 
-			federation name as TLS client domain identifier. Therefore, the 
-			content of the "tls_client_domain_avp" must be set to this identifier 
-			(e.g. by putting it as rule into the domainpolicy table).
+- *传出 SIP 配置*
+到其他成员的呼叫也必须使用正确的客户端证书。
+			因此,需要配置 TLS 客户端域。我们使用联盟名称作为 TLS 客户端域标识符。因此,
+			"tls_client_domain_avp" 的内容必须设置为此标识符
+			（例如, 通过将其作为规则放入 domainpolicy 表）。
 
   ```
   tls_client_domain["tlsfed"] {
@@ -438,24 +417,22 @@ Calls to other members also must use the proper client cert.
   ```
 
 
-#### SIP Hub based Federation
+#### 基于 SIP Hub 的联盟
 
 
-This example shows how a peering fabric based on a central SIP hub can be configured.
+此示例显示如何配置基于中央 SIP hub 的对等结构。
 
 
-Let's assume that an organization called "HUBFED.org" acts as an umbrella for
-	VoIP providers who want to peer with each other but don't want to run
-	open SIP proxies. Instead, HUBFED.org operates a central SIP proxy which will
-	relay calls between all participating members. Each member thus only needs to
-	allow incoming calls from that central hub (which could be done by firewalling).
-	All this can be achieved by the following configuration for
-	a participating VoIP operation called example.com:
+假设一个名为 "HUBFED.org" 的组织作为希望相互对等但不想运行
+		开放 SIP 代理的 VoIP 提供商的伞式组织。相反,HUBFED.org 操作一个中央 SIP 代理,
+		它将在所有参与成员之间转发呼叫。因此,每个成员只需要
+		允许来自该中央 hub 的传入呼叫（可以通过防火墙实现）。
+		这一切都可以通过以下配置实现
+		对于名为 example.com 的参与 VoIP 运营：
 
 
-- *DNS configuration*
-The destination network announces its membership in this
-			federation.
+- *DNS 配置*
+目标网络宣布其在此联盟中的成员身份。
 
   ```
   $ORIGIN destination.example.org
@@ -463,10 +440,10 @@ The destination network announces its membership in this
                    "!^.*$!http://HUBFED.org/!" . )
   		
   ```
-- *Outgoing SIP configuration*
-Calls to other members need to be redirected to the central proxy.
-			The domainpolicy table just needs to list the federation and link
-			it to the central proxy's domain name:
+- *传出 SIP 配置*
+到其他成员的呼叫需要重定向到中央代理。
+			domainpolicy 表只需要列出联盟并将其链接到
+			中央代理的域名：
 
   ```
   mysql> select * from domainpolicy;
@@ -479,32 +456,28 @@ Calls to other members need to be redirected to the central proxy.
   ```
 
 
-#### Walled Garden Federation
+#### 隔离花园联盟
 
 
-This example assumes that a set of SIP providers have established
-	a secure Layer 3 network between their proxies. It does not
-	matter whether this network is build by means of IPsec, a private
-	Layer 2 network, or by simple firewalling. We will use the 10.x
-	network (for the walled garden net) and "http://l3fed.org/" 
-	(as federation identifier) in this example.
+此示例假设一组 SIP 提供商在其代理之间建立了
+		安全的三层网络。此网络是通过 IPsec、私有
+		二层网络还是通过简单防火墙构建并不重要。我们将使用 10.x
+		网络（用于隔离花园网络）和 "http://l3fed.org/"
+		（作为联盟标识符）在此示例中。
 
 
-A member of this federation (e.g. example.com) can not announce its
-	SIP proxy's 10.x address in the standard SRV / A records of his domain,
-	as this address is only meaningful for other members of this federation.
-	In order to facilite different IP address resolution paths within the 
-	federation vs. outside the federation, all members of "http://l3fed.org/"
-	agree to prefix the destination domains with "l3fed" before the
-	SRV (or A) lookup.
+此联盟的成员（例如 example.com）不能在其域的标准 SRV / A 记录中公布其
+		SIP 代理的 10.x 地址,因为该地址仅对该联盟的其他成员有意义。
+		为了在联盟内外启用不同的 IP 地址解析路径,"http://l3fed.org/"
+		的所有成员同意在 SRV（或 A）查找之前,
+		用 "l3fed" 作为目标域的前缀。
 
 
-Here is the configuration for example.com:
+以下是 example.com 的配置：
 
 
-- *DNS configuration*
-The destination network announces its membership in this
-			federation.
+- *DNS 配置*
+目标网络宣布其在此联盟中的成员身份。
 
   ```
   $ORIGIN example.com
@@ -517,9 +490,9 @@ The destination network announces its membership in this
   l3fedsip       IN A   10.0.0.42
   		
   ```
-- *Outgoing SIP configuration*
-The domainpolicy table just needs to link the federation identifier
-			to the agreed apon prefix:
+- *传出 SIP 配置*
+domainpolicy 表只需要将联盟标识符链接到约定的
+			前缀：
 
   ```
   mysql> select * from domainpolicy;
@@ -532,9 +505,9 @@ The domainpolicy table just needs to link the federation identifier
   ```
 
 
-### Known Limitations
+### 已知限制
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权

@@ -1,57 +1,56 @@
 ---
-title: "topology_hiding Module"
-description: "This is a module which provides topology hiding capabilities. The module can work on top of the dialog module, or as a standalone module ( thus alowing topology hiding for all types of requests )"
+title: "topology_hiding 模块"
+description: "这是一个提供拓扑隐藏功能的模块。该模块可以在 dialog 模块之上工作，也可以作为独立模块工作（因此允许对所有类型的请求进行拓扑隐藏）"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is a module which provides topology hiding capabilities.
-		The module can work on top of the dialog module, or as a standalone module ( thus alowing topology hiding for all
-		types of requests )
+这是一个提供拓扑隐藏功能的模块。
+		该模块可以在 dialog 模块之上工作，也可以作为独立模块工作
+		（因此允许对所有类型的请求进行拓扑隐藏）
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *TM - Transaction Module*.
-- *Dialog Module*, if "force_dialog"
-				module parameter is enabled, or a dialog is created from the
-				configuration script.
+- *TM - 事务模块*。
+- *Dialog 模块*，如果启用了 "force_dialog"
+				模块参数，或从配置脚本创建了 dialog。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### th_callid_passwd (string)
 
 
-The string password that will be used for encoding/decoding the callid in case of topology_hiding with callid mangling.
+在使用 callid mangling 进行 topology_hiding 时，
+		用于对 callid 进行编码/解码的字符串密码。
 
 
-*Default value is ""OpenSIPS""*
+*默认值为 ""OpenSIPS""*
 
 
-```c title="Set th_callid_passwd parameter"
+```c title="设置 th_callid_passwd 参数"
 ...
 modparam("topology_hiding", "th_callid_passwd", "my_topo_hiding_secret")
 ...
@@ -61,13 +60,14 @@ modparam("topology_hiding", "th_callid_passwd", "my_topo_hiding_secret")
 #### th_callid_prefix (string)
 
 
-The prefix that will be used for detecting callids which have been encoded by the dialog topology hiding. Make sure to change this value in case your SIP path contains multiple OpenSIPS boxes with topology hiding.
+用于检测已被 dialog 拓扑隐藏编码的 callid 的前缀。
+		如果您的 SIP 路径包含多个具有拓扑隐藏的 OpenSIPS  boxes，请确保更改此值。
 
 
-*Default value is ""DLGCH_""*
+*默认值为 ""DLGCH_""*
 
 
-```c title="Set th_callid_prefix parameter"
+```c title="设置 th_callid_prefix 参数"
 ...
 modparam("topology_hiding", "th_callid_prefix", "MYCALLIDPREFIX_")
 ...
@@ -77,13 +77,15 @@ modparam("topology_hiding", "th_callid_prefix", "MYCALLIDPREFIX_")
 #### th_passed_contact_uri_params (string)
 
 
-List of semicolon-separated Contact URI parameters that will be passed from one side to the other for topology hiding calls. To be used when end-to-end functionality uses such Contact URI parameters.
+分号分隔的 Contact URI 参数列表，
+		这些参数将在拓扑隐藏呼叫中从一侧传递到另一侧。
+		当端到端功能使用此类 Contact URI 参数时使用。
 
 
-*Default value is "empty" - do not pass any parameters*
+*默认值为 "empty" - 不传递任何参数*
 
 
-```c title="Set th_passed_contact_uri_params parameter"
+```c title="设置 th_passed_contact_uri_params 参数"
 ...
 modparam("topology_hiding", "th_passed_contact_uri_params", "paramname1;myparam;custom_param")
 ...
@@ -93,13 +95,15 @@ modparam("topology_hiding", "th_passed_contact_uri_params", "paramname1;myparam;
 #### th_passed_contact_params (string)
 
 
-List of semicolon-separated Contact header parameters that will be passed from one side to the other for topology hiding calls. To be used when end-to-end functionality uses such Contact header parameters.
+分号分隔的 Contact 头参数列表，
+		这些参数将在拓扑隐藏呼叫中从一侧传递到另一侧。
+		当端到端功能使用此类 Contact 头参数时使用。
 
 
-*Default value is "empty" - do not pass any parameters*
+*默认值为 "empty" - 不传递任何参数*
 
 
-```c title="Set th_passed_contact_params parameter"
+```c title="设置 th_passed_contact_params 参数"
 ...
 modparam("topology_hiding", "th_passed_contact_params", "paramname1;myparam;custom_param")
 ...
@@ -109,13 +113,14 @@ modparam("topology_hiding", "th_passed_contact_params", "paramname1;myparam;cust
 #### force_dialog (int)
 
 
-If set to 1, the module will internally create the dialog ( if not already created ). This will only work for INVITE based dialogs, and the dialog module must be loaded.
+如果设置为 1，模块将内部创建 dialog（如果尚未创建）。
+		这仅适用于基于 INVITE 的 dialog，并且必须加载 dialog 模块。
 
 
-*Default value is "0"*
+*默认值为 "0"*
 
 
-```c title="Set force_dialog parameter"
+```c title="设置 force_dialog 参数"
 ...
 modparam("topology_hiding", "force_dialog", 1)
 ...
@@ -125,13 +130,16 @@ modparam("topology_hiding", "force_dialog", 1)
 #### th_contact_encode_passwd (string)
 
 
-When not relying on the dialog module ( due to script writer preference or simply when doing topo hiding for non INVITE dialogs ), the module will store the needed information in a Contact URI param. The parameter configures the string password that will be used for encoding/decoding that specific param .
+当不依赖 dialog 模块时（由于脚本编写者偏好，
+		或者只是为非 INVITE dialog 进行拓扑隐藏），
+		模块会将所需信息存储在 Contact URI 参数中。
+		此参数配置用于对该特定参数进行编码/解码的字符串密码。
 
 
-*Default value is ""ToPoCtPaSS""*
+*默认值为 ""ToPoCtPaSS""*
 
 
-```c title="Set th_contact_encode_passwd parameter"
+```c title="设置 th_contact_encode_passwd 参数"
 ...
 modparam("topology_hiding", "th_contact_encode_passwd", "my_topoh_passwd")
 ...
@@ -141,13 +149,16 @@ modparam("topology_hiding", "th_contact_encode_passwd", "my_topoh_passwd")
 #### th_contact_encode_param (string)
 
 
-When not relying on the dialog module ( due to script writer preference or simply when doing topo hiding for non INVITE dialogs ), the module will store the needed information in a Contact URI param. The parameter configures the respective parameter name.
+当不依赖 dialog 模块时（由于脚本编写者偏好，
+		或者只是为非 INVITE dialog 进行拓扑隐藏），
+		模块会将所需信息存储在 Contact URI 参数中。
+		此参数配置相应参数的名称。
 
 
-*Default value is ""thinfo""*
+*默认值为 ""thinfo""*
 
 
-```c title="Set th_contact_encode_param parameter"
+```c title="设置 th_contact_encode_param 参数"
 ...
 modparam("topology_hiding", "th_contact_encode_param", "customparam")
 ...
@@ -157,18 +168,21 @@ modparam("topology_hiding", "th_contact_encode_param", "customparam")
 #### th_contact_encode_scheme (string)
 
 
-When not relying on the dialog module ( due to script writer preference or simply when doing topo hiding for non INVITE dialogs ), the module will store the needed information in a Contact URI param. This parameter configures the encoding scheme to be used for the data stored in
-			the Contact URI param. Possible values are:
+当不依赖 dialog 模块时（由于脚本编写者偏好，
+		或者只是为非 INVITE dialog 进行拓扑隐藏），
+		模块会将所需信息存储在 Contact URI 参数中。
+		此参数配置用于存储在 Contact URI 参数中的数据的编码方案。
+		可能的值有：
 
 
 - *base64*
 - *base32*
 
 
-*Default value is ""base64""*
+*默认值为 ""base64""*
 
 
-```c title="Set th_contact_encode_scheme parameter"
+```c title="设置 th_contact_encode_scheme 参数"
 ...
 modparam("topology_hiding", "th_contact_encode_scheme", "base32")
 ...
@@ -178,13 +192,13 @@ modparam("topology_hiding", "th_contact_encode_scheme", "base32")
 #### th_contact_caller_username_var (string)
 
 
-Variable used to store the value of the contact username advertised to the caller.
+用于存储向呼叫者公布的 contact 用户名的值的变量。
 
 
-*Default value is "_th_contact_caller_username_var_"*
+*默认值为 "_th_contact_caller_username_var_"*
 
 
-```c title="Set th_contact_caller_username_var parameter"
+```c title="设置 th_contact_caller_username_var 参数"
 ...
 modparam("topology_hiding", "th_contact_caller_username_var", "__topo_hiding_username_var__")
 ...
@@ -194,13 +208,13 @@ modparam("topology_hiding", "th_contact_caller_username_var", "__topo_hiding_use
 #### th_contact_callee_username_var (string)
 
 
-Variable used to store the value of the contact username advertised to the callee.
+用于存储向被叫方公布的 contact 用户名的值的变量。
 
 
-*Default value is "_th_contact_callee_username_var_"*
+*默认值为 "_th_contact_callee_username_var_"*
 
 
-```c title="Set th_contact_callee_username_var parameter"
+```c title="设置 th_contact_callee_username_var 参数"
 ...
 modparam("topology_hiding", "th_contact_callee_username_var", "__topo_hiding_username_var__")
 ...
@@ -210,107 +224,113 @@ modparam("topology_hiding", "th_contact_callee_username_var", "__topo_hiding_use
 #### th_callid_loop_protection (int)
 
 
-Include the *from_tag* when encoding the
-			topology-hiding Call-ID to ensure correct decoding in looping scenarios,
-			(when the same call with a previously encoded Call-ID is being looped back).
+在编码拓扑隐藏 Call-ID 时包含 *from_tag*，
+			以确保在循环场景中正确解码
+			（当具有先前编码的 Call-ID 的相同呼叫被循环回来时）。
 
 
-Note that enabling this parameter will increase the generated Call-ID value,
-			due to the additional from_tag information being embedded.
+请注意，启用此参数会增加生成的 Call-ID 值，
+			因为附加的 from_tag 信息被嵌入其中。
 
 
-*Default value is "0" / disabled.*
+*默认值为 "0" / 禁用。*
 
 
-```c title="Set th_callid_loop_protection parameter"
+```c title="设置 th_callid_loop_protection 参数"
 ...
 modparam("topology_hiding", "th_callid_loop_protection", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### topology_hiding()
 
 
-By calling this function on an initial request, the modules will
-			hide the topology, meaning that it will strip and restore all the Via,
-			Record-Route and Route headers and it will replace the contact with the
-			IP address of the interface where the request was received.
+通过对初始请求调用此函数，模块将隐藏拓扑，
+			这意味着它将剥离并恢复所有 Via、Record-Route 和 Route 头，
+			并用接收请求的接口 IP 地址替换 contact。
 
 
-You must note however, that the detection of the future in-dialog requests(BYE, reInvite, etc.)
-			for these dialogs on which topology hiding is applied, is not done automatically.
-			Without topology hiding and only normal dialog, the detection was
-			done when loose_route was called. But now, for this dialogs where topology
-			hiding is applied, the in dialog requests reaching OpenSIPS won't have any Route headers
-			and the RURI will point to OpenSIPS machine.
-			So, to be able to match the in-dialog requests to the corresponding dialog, a script
-			function must be called. It's name is *topology_hiding_match* and you can read
-			it's description above.
-			The in-dialog topology requests are requests with a to tag,
-			RURI pointing to opensips and with a method specific to a
-			Invite dialog. For this kind of requests you should call
-			topology_hiding_match() function. If the request is successfully matched and fixed as according to the topology hiding logic,the function returns success.
+但是您必须注意，对应用拓扑隐藏的这些 dialog 的未来
+			-dialog 内请求（BYE、reInvite 等）的检测不是自动完成的。
+			在没有拓扑隐藏且只有正常 dialog 的情况下，
+			检测是在调用 loose_route 时完成的。
+			但是现在，对于应用了拓扑隐藏的 dialog，
+			到达 OpenSIPS 的 dialog 内请求不会有任何 Route 头，
+			且 RURI 将指向 OpenSIPS 机器。
+			因此，为了能够将 dialog 内请求匹配到相应的 dialog，
+			必须调用一个脚本函数。
+			它的名称是 *topology_hiding_match*，您可以在上面阅读它的描述。
+			dialog 内拓扑请求是带有 to tag、
+			RURI 指向 opensips 且方法特定于 Invite dialog 的请求。
+			对于这类请求，您应该调用 topology_hiding_match() 函数。
+			如果请求成功匹配并根据拓扑隐藏逻辑修复，函数返回成功。
 
 
-Optionally,the function also receives a string parameter, which holds string flags.
-			Current options for the string flags are :
+可选地，该函数还接收一个字符串参数，其中包含字符串标志。
+			字符串标志的当前选项有：
 
 
-- *U* - Propagate the Username in the Contact header URI
-- *D* - Dialog ID (DID) is pushed into Contact username, rather than URI param. This option makes sense only when using topology hiding with dialog support.
-- *a* - Preserve the advertised Contact header advertised to the caller throughout the entire dialog.
-- *A* - Preserve the advertised Contact header advertised to the callee throughout the entire dialog.
-- *D* - Dialog ID (DID) is pushed into Contact username, rather than URI param. This option makes sense only when using topology hiding with dialog support.
-- *C* - Encode the callid header
-There are many cases where propagating the callid towards the callee side is not a good idea, since sometimes the callid contains the IP of the actual caller side, thus revealing part of the network topology.
-When using the "C" flag, the callid will be automatically encoded / decoded, transparent for the script writer - inside OpenSIPS (script,MI functions, etc ) all the variables related to the callid will represent the callid value for the caller side. If the callid for the callee side is needed, refer to the $TH_callee_callid pvar.
-*Note:* Changing the callid of the call using the "C" flag is only
-						available when doing topology_hiding with *dialog support*. Using this
-						flag without dialog support will not change the callid at all!.
+- *U* - 在 Contact 头 URI 中传播用户名
+- *D* - Dialog ID (DID) 被推入 Contact 用户名，而不是 URI 参数。
+			此选项仅在使用带 dialog 支持的拓扑隐藏时才有意义。
+- *a* - 在整个 dialog 期间保留向呼叫者公布的 Contact 头。
+- *A* - 在整个 dialog 期间保留向被叫方公布的 Contact 头。
+- *D* - Dialog ID (DID) 被推入 Contact 用户名，而不是 URI 参数。
+			此选项仅在使用带 dialog 支持的拓扑隐藏时才有意义。
+- *C* - 对 callid 头进行编码
+在很多情况下，将 callid 传播到被叫方并不是一个好主意，
+			因为有时 callid 包含实际呼叫方侧的 IP，
+			从而暴露部分网络拓扑。
+当使用 "C" 标志时，callid 将被自动编码/解码，
+			对脚本编写者透明 - 在 OpenSIPS 内部（脚本、MI 函数等），
+			所有与 callid 相关的变量都将表示呼叫方侧的 callid 值。
+			如果需要被叫方侧的 callid，请参阅 $TH_callee_callid pvar。
+*注：*使用 "C" 标志更改呼叫的 callid 仅在
+						使用 *dialog 支持*进行 topology_hiding 时可用。
+						在没有 dialog 支持的情况下使用此标志根本不会更改 callid！
 
 
-The second parameter can be used to advertise a particular
-			*username* in the Contact header URI, either on the
-			*caller*, either on the *callee*
-			leg, separated by */*. The format of the parameter is 
-			*caller_username|/[caller_contact_username][/callee_contact_username]*.
-			If the separator is missing, the same contact username is advertised on
-			both legs. If the separator is being used, you can control the username
-			put in contact per leg.
+第二个参数可用于在 Contact 头 URI 中公布特定的
+			*username*，可以在 *呼叫方*、*被叫方*
+			或两侧，通过 */* 分隔。
+			参数的格式为 
+			*caller_username|/[caller_contact_username][/callee_contact_username]*。
+			如果缺少分隔符，则在两侧公布相同的 contact 用户名。
+			如果使用了分隔符，您可以控制每个分支中放入的 username。
 
 
-```c title="topology_hiding usage"
+```c title="topology_hiding 使用示例"
 ...
 if(!has_totag() && is_method("INVITE")) {
 	topology_hiding();
 }
 ...
 ...
-if(!has_totag() && is_method("INVITE")) {
+if(!has_totot() && is_method("INVITE")) {
 	topology_hiding("U");
 }
 ...
-# set "opensips" for both caller and the callee's Contact username
+# 为呼叫方和被叫方的 Contact 用户名都设置 "opensips"
 if(!has_totag() && is_method("INVITE")) {
 	topology_hiding("U", "opensips");
 }
 ...
-# set "caller" in the caller's Contact username
+# 在呼叫方的 Contact 用户名中设置 "caller"
 if(!has_totag() && is_method("INVITE")) {
 	topology_hiding("U", "/caller");
 }
 ...
-# set "callee" in the callee's Contact username
+# 在被叫方的 Contact 用户名中设置 "callee"
 if(!has_totag() && is_method("INVITE")) {
 	topology_hiding("U", "//callee");
 }
 ...
-# set "caller" in the caller's Contact username and
-# "callee" in the callee's Contact username
+# 在呼叫方的 Contact 用户名中设置 "caller"，
+# 在被叫方的 Contact 用户名中设置 "callee"
 if(!has_totag() && is_method("INVITE")) {
 	topology_hiding("U", "/caller/callee");
 }
@@ -318,12 +338,12 @@ if(!has_totag() && is_method("INVITE")) {
 ```
 
 
-```c title="Calling topology_hiding_match() function for topology hiding sequential requests"
+```c title="为拓扑隐藏顺序请求调用 topology_hiding_match() 函数"
 ...
 if (has_totag())
         if(topology_hiding_match())
         {
-                xlog("Found a request $rm belonging to an existing topology hiding dialog\n");
+                xlog("找到一个属于现有拓扑隐藏 dialog 的请求 $rm\n");
                 route(relay);
                 exit;
         }
@@ -335,27 +355,25 @@ if (has_totag())
 #### topology_hiding_match([dlg_match_mode])
 
 
-This function is to be used to match and fix a sequential request
-		belong to an existing topology hiding dialog.
+此函数用于匹配和修复属于现有拓扑隐藏 dialog 的顺序请求。
 
 
-With regards to dialog matching (including the optional parameter),
-		this function behaves identically to match_dialog(). Please see the
-		dialog module documentation for further details regarding dialog
-		matching options.
+关于 dialog 匹配（包括可选参数），
+		此函数的行为与 match_dialog() 完全相同。
+		有关 dialog 匹配选项的更多详细信息，请参阅 dialog 模块文档。
 
 
-The function returns true if a topology hiding dialog exists for the request and the request has been successfully fixed.
+如果请求存在拓扑隐藏 dialog 且请求已成功修复，函数返回 true。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="topology_hiding_match_dialog() usage"
+```c title="topology_hiding_match_dialog() 使用示例"
 ...
     if (has_totag()) {
         if (!topology_hiding_match() ) {
-            xlog(" cannot match request to a dialog \n");
+            xlog(" 无法将请求匹配到 dialog \n");
 	    send_reply(404,"Not found");
         } else
 		route(RELAY);
@@ -364,18 +382,21 @@ This function can be used from REQUEST_ROUTE.
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $TH_callee_callid
 
 
-Read only variable that will contain the callid as it is propagated towards the callee side, in case topology_hiding("C") is called.
+只读变量，如果调用了 topology_hiding("C")，
+		它将包含传播到被叫方侧的 callid。
 
 
-NULL will be returned if there is no topology hiding dialog for the request or if topology_hiding with callid encoding was not used for the current dialog.
+如果没有请求的拓扑隐藏 dialog，
+		或者当前 dialog 未使用 callid 编码的 topology_hiding，
+		则返回 NULL。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

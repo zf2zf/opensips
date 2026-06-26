@@ -1,36 +1,31 @@
 ---
-title: "cachedb_dynamodb Module"
-description: "This module is an implementation of a cachedb system designed to work with Amazon DynamoDB. It uses the AWS SDK library for C++ to connect to a DynamoDB instance. It leverages the Key-Value interface exported from the core. [https://aws.amazon.com/pm/dynamodb/](https://aws.amazon.com/pm/d..."
+title: "cachedb_dynamodb 模块"
+description: "本模块是与 Amazon DynamoDB 配合工作的缓存系统实现。它使用 AWS SDK for C++ 库连接到 DynamoDB 实例。它利用 OpenSIPS 核心导出的 Key-Value 接口。[https://aws.amazon.com/pm/dynamodb/](https://aws.amazon.com/pm/d..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of a cachedb system designed to work with 
-		Amazon DynamoDB. It uses the AWS SDK library for C++ to connect to a DynamoDB instance.
-		It leverages the Key-Value interface exported from the core. 
-		[https://aws.amazon.com/pm/dynamodb/](https://aws.amazon.com/pm/dynamodb/)
+本模块是与 Amazon DynamoDB 配合工作的缓存系统实现。它使用 AWS SDK for C++ 库连接到 DynamoDB 实例。
+它利用 OpenSIPS 核心导出的 Key-Value 接口。
+[https://aws.amazon.com/pm/dynamodb/](https://aws.amazon.com/pm/dynamodb/)
 
 
-#### Functionalities
+#### 功能
 
 
-- *set*  - sets a key in DynamoDB using the  *cachedb_store* function
-- *get*  - queries a key from DynamoDB using the  *cachedb_fetch* function
-- *remove*  - removes a key from DynamoDB using the 
-				*cachedb_remove* function
-- *get_counter*  - queries a key with a numerical value
-				 from DynamoDB using the  *cachedb_counter_fetch* function
-- *add*  - increments the value of a specific item with a given value
-				 using the *cachedb_add* function
-- *sub*  - decrements the value of a specific item with a given value
-				using the  *cachedb_sub* function
+- *set* - 使用 *cachedb_store* 函数在 DynamoDB 中设置键
+- *get* - 使用 *cachedb_fetch* 函数从 DynamoDB 查询键
+- *remove* - 使用 *cachedb_remove* 函数从 DynamoDB 删除键
+- *get_counter* - 使用 *cachedb_counter_fetch* 函数从 DynamoDB 查询具有数值的键
+- *add* - 使用 *cachedb_add* 函数将给定值递增到特定项的值
+- *sub* - 使用 *cachedb_sub* 函数将给定值递减到特定项的值
 
 
-The following are internally used by OpenSIPS:
+以下功能由 OpenSIPS 内部使用：
 
 
 - *map_get*
@@ -38,11 +33,11 @@ The following are internally used by OpenSIPS:
 - *map_remove*
 
 
-#### Table Format and TTL Option
+#### 表格式和 TTL 选项
 
 
-The tables used with DynamoDB must adhere to a specific format. 
-			Below is an example of creating a table:
+与 DynamoDB 一起使用的表必须遵循特定格式。
+以下是创建表的示例：
 
 
 ```c
@@ -59,17 +54,14 @@ aws dynamodb create-table \
 ```
 
 
-If you create the table using the above command, then you have to specify the key in the 
-			cachedb_url: *modparam("cachedb_dynamodb", "cachedb_url", 
-			"dynamodb://localhost:8000/TableName?key=KeyName;val=ValName")"*
+如果您使用上述命令创建表，则必须在 cachedb_url 中指定键：*modparam("cachedb_dynamodb", "cachedb_url", 
+"dynamodb://localhost:8000/TableName?key=KeyName;val=ValName")*
 
 
-For additional examples of how cachedb_url should be formatted, refer to the 
-		[cachedb_url (string)](#param_cachedb_url) section.
+有关 cachedb_url 格式的更多示例，请参阅 [cachedb_url (字符串)](#param_cachedb_url) 部分。
 
 
-To enable TTL (Time to Live) for the table, which can be used with operations like set,
-			add, and subtract, you can update the table with the TTL option:
+要为表启用 TTL（生存时间）选项（可用于 set、add 和 subtract 操作），您可以使用 TTL 选项更新表：
 
 
 ```c
@@ -79,135 +71,128 @@ aws dynamodb update-time-to-live --table-name TableName --time-to-live-specifica
 ```
 
 
-For additional information about the table format and TTL options, follow these links:
+有关表格式和 TTL 选项的更多信息，请访问以下链接：
 
 
-[Creating a Table](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/getting-started-step-1.html)
+[创建表](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/getting-started-step-1.html)
 
 
-[Time to Live (TTL)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/time-to-live-ttl-how-to.html)
+[生存时间 (TTL)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/time-to-live-ttl-how-to.html)
 
 
-### Advantages
+### 优势
 
 
-- *scalable and fully managed NoSQL database service provided by AWS*
-- *integrated with other AWS services, providing robust security 
-				and scalability features*
-- *high availability and durability due to data replication across 
-				multiple AWS Availability Zones*
-- *serverless architecture, reducing operational overhead*
-- *offers single-digit response times, with DynamoDB Accelerator (DAX) 
-				for even lower latencies*
+- *可扩展且完全托管的 NoSQL 数据库服务，由 AWS 提供*
+- *与其他 AWS 服务集成，提供强大的安全性和可扩展性功能*
+- *高可用性和持久性，数据跨多个 AWS 可用区复制*
+- *无服务器架构，减少运营开销*
+- *提供单位数响应时间，配备 DynamoDB Accelerator (DAX) 可实现更低的延迟*
 
 
-### Limitations
+### 限制
 
 
-- *relies heavily on indexes; without them, querying involves costly full table scans*
-- *does not support table joins, limiting complex queries involving multiple tables*
-- *item size limit:each item has a size limit of 400KB, which cannot be increased.*
+- *严重依赖索引；没有索引，查询将涉及昂贵的全表扫描*
+- *不支持表连接，限制了涉及多个表的复杂查询*
+- *项大小限制：每个项的大小限制为 400KB，无法增加。*
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-There is no need to load any module before this module.
+加载本模块之前无需加载任何模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载本模块之前，必须安装以下库或应用程序：
 
 
 - *AWS SDK for C++:*
-By following these steps, you'll have the AWS SDK for C++ installed and 
-				configured on your Linux system, allowing you to integrate with DynamoDB:
-				[AWS SDK for C++ Installation Guide](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup-linux.html)
-Additional instructions for installation can be found at:
-				[AWS SDK for C++ GitHub Repository](https://github.com/aws/aws-sdk-cpp)
+按照以下步骤，您将能够在 Linux 系统上安装和配置 AWS SDK for C++，以便与 DynamoDB 集成：
+[AWS SDK for C++ 安装指南](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup-linux.html)
+其他安装说明可在此处找到：
+[AWS SDK for C++ GitHub 仓库](https://github.com/aws/aws-sdk-cpp)
 
 
-#### Deploying DynamoDB locally on your computer
+#### 在本地计算机上部署 DynamoDB
 
 
-For testing purposes, you can run a DynamoDB locally. To achieve this, you should follow
-		[these](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html) steps in order to deploy dynamodb locally.
+出于测试目的，您可以在本地运行 DynamoDB。为此，您应该按照
+[这些](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html) 步骤在本地部署 DynamoDB。
 
 
-Don't forget to always run the server using this command:
-		
-		`java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb`
-			in the directory where you extracted *DynamoDBLocal.jar*.
+别忘了始终使用以下命令运行服务器：
+	
+`java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb`
+在您提取 *DynamoDBLocal.jar* 的目录中运行。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### cachedb_url (string)
+#### cachedb_url (字符串)
 
 
-The URLs of the server groups that OpenSIPS will connect to in order
-			to use, from script, the cache_store(), cache_fetch(), etc. operations.
-			It may be set more than once.  The prefix part of the URL will be
-			the identifier that will be used from the script.
+OpenSIPS 将连接到的服务器组 URL，以便在脚本中使用 cache_store()、cache_fetch() 等操作。
+可以多次设置。URL 的前缀部分将是脚本中使用的标识符。
 
 
-There are some default parameters that can appear in the URL:
+URL 中可以出现一些默认参数：
 
 
-- *region* - specifies the AWS region where the DynamoDB table is located
-- *key* - specifies the table's Key column; default value is *"opensipskey"*
-- *val* - specifies the table's Value column on which cache operations such as cache_store, cache_fetch, etc., will be performed;
-				default value is *"opensipsval"*
+- *region* - 指定 DynamoDB 表所在的 AWS 区域
+- *key* - 指定表的 Key 列；默认值为 *"opensipskey"*
+- *val* - 指定表的 Value 列，缓存操作（如 cache_store、cache_fetch 等）将在其上执行；
+			默认值为 *"opensipsval"*
 
 
-Syntax for *cachedb_url*
+*cachedb_url* 的语法
 
 
-- when using a previously created table (you have to specify the key and value):
+- 使用先前创建的表（必须指定 key 和 value）：
 
-  - host and port
+  - 主机和端口
 *"dynamodb://id_host:id_port/tableName?key=key1;val=val1"*
-  - region
+  - 区域
 *"dynamodb:///tableName?region=regionName;key=key2;val=val2"*
-- when using the default key and value:
+- 使用默认 key 和 value：
 
-  - host and port
+  - 主机和端口
 *"dynamodb://id_host:id_port/tableName"*
-  - region
+  - 区域
 *"dynamodb:///tableName?region=regionName"*
 
 
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 
-# single-instance URLs
+# 单实例 URL
 modparam("cachedb_dynamodb", "cachedb_url", "dynamodb://localhost:8000/table1")
 modparam("cachedb_dynamodb", "cachedb_url", "dynamodb:///table2?region=central-1")
 
 
-# multi-instance URL (will perform circular 
+# 多实例 URL（将执行循环）
 ```
 
 
-```c title="Use Dynamodb servers"
+```c title="使用 DynamoDB 服务器"
 ...
 
 cache_store("dynamodb", "call1", "10");
-cache_store("dynamodb", "call2", "25", 150) // expires = 150s -optional
+cache_store("dynamodb", "call2", "25", 150) // expires = 150s -可选
 cache_fetch("dynamodb", "call1", $var(total));
 cache_remove("dynamodb", "call1");
 
 
 cache_store("dynamodb", "counter1", "200");
-cache_sub("dynamodb", "counter1", 4, 1000); // expires = 1000s -mandatory parameter
-cache_add("dynamodb", "call2", 5, 0) // -this update will not expire  -mandatory parameter
+cache_sub("dynamodb", "counter1", 4, 1000); // expires = 1000s -必填参数
+cache_add("dynamodb", "call2", 5, 0) // -此更新不会过期 -必填参数
 cache_remove("dynamodb", "counter1");
 
 ...
@@ -215,13 +200,12 @@ cache_remove("dynamodb", "counter1");
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-The module does not export functions to be used
-		in configuration script.
+本模块不导出在配置脚本中使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享许可证 4.0 版授权

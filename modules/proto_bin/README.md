@@ -1,68 +1,61 @@
 ---
-title: "proto_bin Module"
-description: "The **proto_bin** module is a transport module which implements Binary Interface TCP-based communication. It does not handle TCP connections management, but only offers higher-level primitives to read and write BIN messages over TCP. It calls registered callback functions for every comple..."
+title: "proto_bin 模块"
+description: "**proto_bin** 模块是一个传输模块,实现了基于 TCP 的 Binary Interface 通信。它不处理 TCP 连接管理,只是提供高级原语来通过 TCP 读取和写入 BIN 消息。每收到一个完整消息时,它会调用已注册的回调函数。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The **proto_bin** module is a
-		transport module which implements Binary Interface TCP-based communication. It does
-		not handle TCP connections management, but only offers higher-level
-		primitives to read and write BIN messages over TCP. It calls registered
-		callback functions for every complete message received.
+**proto_bin** 模块是一个传输模块,实现了基于 TCP 的 Binary Interface 通信。它不处理 TCP 连接管理,只是提供高级原语来通过 TCP 读取和写入 BIN 消息。每收到一个完整消息时,它会调用已注册的回调函数。
 
 
-Once loaded, you will be able to define BIN listeners in your
-		configuration file by adding their IP and, optionally, a listening port,
-		similar to this example:
-	```c
+加载后,你可以在配置文件中定义 BIN 监听器,添加其 IP 和可选的监听端口,类似于以下示例:
+```c
 
 ...
-socket= bin:127.0.0.1 		# change the listening IP
-socket= bin:127.0.0.1:5080	# change the listening IP and port
+socket= bin:127.0.0.1 		# 更改监听 IP
+socket= bin:127.0.0.1:5080	# 更改监听 IP 和端口
 ...
 ```
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
-- *None*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前,必须安装以下库或应用程序:
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### bin_port (integer)
 
 
-The default port to be used by all TCP listeners.
+所有 TCP 监听器使用的默认端口。
 
 
-*Default value is 5555.*
+*默认值为 5555。*
 
 
-```c title="Set bin_port parameter"
+```c title="设置 bin_port 参数"
 ...
 modparam("proto_bin", "bin_port", 6666)
 ...
@@ -72,15 +65,13 @@ modparam("proto_bin", "bin_port", 6666)
 #### bin_send_timeout (integer)
 
 
-Time in milliseconds after a TCP connection will be closed if it is
-		not available for blocking writing in this interval (and OpenSIPS wants
-		to send something on it).
+TCP 连接在此时间后将被关闭(如果在此间隔内无法进行阻塞写入,并且 OpenSIPS 想在其上发送数据)。
 
 
-*Default value is 100 ms.*
+*默认值为 100 ms。*
 
 
-```c title="Set bin_send_timeout parameter"
+```c title="设置 bin_send_timeout 参数"
 ...
 modparam("proto_bin", "bin_send_timeout", 200)
 ...
@@ -90,18 +81,13 @@ modparam("proto_bin", "bin_send_timeout", 200)
 #### bin_max_msg_chunks (integer)
 
 
-The maximum number of chunks in which a BIN message is expected to
-			arrive via TCP. If a received packet is more fragmented than this,
-			the connection is dropped (either the connection is very
-			overloaded and this leads to high fragmentation - or we are the
-			victim of an ongoing attack where the attacker is sending very
-			fragmented traffic in order to decrease server performance).
+BIN 消息通过 TCP 传输时预期的最大分片数。如果接收的数据包分片程度超过此值,则连接将被断开(要么连接严重过载导致高分片,要么我们正受到攻击,攻击者发送非常碎片化的流量以降低服务器性能)。
 
 
-*Default value is 32.*
+*默认值为 32。*
 
 
-```c title="Set bin_max_msg_chunks parameter"
+```c title="设置 bin_max_msg_chunks 参数"
 ...
 modparam("proto_bin", "bin_max_msg_chunks", 8)
 ...
@@ -111,16 +97,13 @@ modparam("proto_bin", "bin_max_msg_chunks", 8)
 #### bin_async (integer)
 
 
-Specifies whether the TCP connect and write operations should be
-			done in an asynchronous mode (non-blocking connect and
-			write) or not. If disabled, OpenSIPS will block and wait for TCP
-			operations like connect and write.
+指定 TCP 连接和写入操作是否应以异步模式(非阻塞连接和写入)进行。如果禁用,OpenSIPS 将阻塞并等待 TCP 操作如连接和写入。
 
 
-*Default value is 1 (enabled).*
+*默认值为 1(启用)。*
 
 
-```c title="Set bin_async parameter"
+```c title="设置 bin_async 参数"
 ...
 modparam("proto_bin", "bin_async", 0)
 ...
@@ -130,16 +113,13 @@ modparam("proto_bin", "bin_async", 0)
 #### bin_async_max_postponed_chunks (integer)
 
 
-If *bin_async* is enabled, this specifies the
-			maximum number of BIN messages that can be stashed for later/async
-			writing. If the connection pending writes exceed this number, the
-			connection will be marked as broken and dropped.
+如果 *bin_async* 启用,此参数指定可暂存供以后/异步写入的最大 BIN 消息数。如果连接待写入超过此数量,连接将被标记为已损坏并被丢弃。
 
 
-*Default value is 1024.*
+*默认值为 1024。*
 
 
-```c title="Set bin_async_max_postponed_chunks parameter"
+```c title="设置 bin_async_max_postponed_chunks 参数"
 ...
 modparam("proto_bin", "bin_async_max_postponed_chunks", 1024)
 ...
@@ -149,23 +129,19 @@ modparam("proto_bin", "bin_async_max_postponed_chunks", 1024)
 #### bin_async_local_write_timeout (integer)
 
 
-If *bin_async* is enabled, this specifies the
-			number of milliseconds that a write op will be tried in blocking
-			mode (optimization). If the write operation lasts more than this,
-			the write will go to async mode and will be passed to bin MAIN for
-			polling.
+如果 *bin_async* 启用,此参数指定写入操作将以阻塞模式(优化)尝试的毫秒数。如果写入操作持续超过此时间,写入将进入异步模式并传递给 bin MAIN 进行轮询。
 
 
-*Default value is 10 ms.*
+*默认值为 10 ms。*
 
 
-```c title="Set bin_async_local_write_timeout parameter"
+```c title="设置 bin_async_local_write_timeout 参数"
 ...
 modparam("proto_bin", "tcp_async_local_write_timeout", 100)
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)采用 Creative Common License 4.0 授权

@@ -1,91 +1,96 @@
 ---
-title: "CGRateS Module"
-description: "[*CGRateS*](http://www.cgrates.org/) is an open-source rating engine used for carrier-grade, multi-tenant, real-time billing. It is able to do both postpaid and prepaid rating for multiple concurrent sessions with different balance units (eg: Monetary, SMS, Internet Traffic). CGRateS can ..."
+title: "CGRateS 模块"
+description: "[*CGRateS*](http://www.cgrates.org/) 是一个开源的计费引擎，用于运营商级的多租户实时计费。它能够对具有不同余额单位（如货币、短信、网络流量）的多个并发会话进行后付费和预付费计费。CGRateS 还可以..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
 [*CGRateS*](http://www.cgrates.org/)
-		is an open-source rating engine used for carrier-grade, multi-tenant,
-		real-time billing. It is able to do both postpaid and prepaid rating
-		for multiple concurrent sessions with different balance units (eg: Monetary,
-		SMS, Internet Traffic). CGRateS can also export accurate CDRs in various
-		formats.
+		是一个开源的计费引擎，用于运营商级的多租户实时计费。
+		它能够对具有不同余额单位（如货币、短信、网络流量）的
+		多个并发会话进行后付费和预付费计费。
+		CGRateS 还能以多种格式导出精确的 CDR。
 
 
-This module can be used to communicate with the CGRates engine in order to do
-		call authorization and accounting for billing purposes. The OpenSIPS module does
-		not do any billing by itself, but provides an interface to communicate with the
-		CGRateS engine using efficient [JSON-RPC](http://json-rpc.org/)
-		APIs in both synchronous and asynchronous ways. For each command the user can
-		provide a set of parameters that will be forwarded to the CGRateS engine, using
-		the *$cgr()* variable. You can find usage examples in the
-		following sections.
+此模块可用于与 CGRateS 引擎通信，
+		以进行呼叫授权和计费。OpenSIPS 模块本身不进行任何计费，
+		而是提供与 CGRateS 引擎通信的接口，
+		使用高效的 [JSON-RPC](http://json-rpc.org/)
+		API，支持同步和异步方式。
+		对于每个命令，用户可以提供一组参数，
+		这些参数将通过 *$cgr()* 伪变量转发到 CGRateS 引擎。
+		您可以在以下部分找到使用示例。
 
 
-The module also has support for multiple parallel billing sessions to CGRateS.
-		This can be useful in scenarios that involve complex billing logic, such as
-		double billing (both customer and carrier billing), or multi-leg calls
-		(serial/parallel forking). Each billing session is independent and
-		has a specific *tag* that can be use throughout the call
-		lifetime.
+该模块还支持多个并行计费会话到 CGRateS。
+		这在涉及复杂计费逻辑的场景中很有用，
+		例如双重计费（客户和运营商计费）
+		或多段呼叫（串行/并行分叉）。
+		每个计费会话都是独立的，
+		具有一个特定的 *tag*，
+		可在整个呼叫生命周期内使用。
 
 
-The module can be used to implement the following features:
+该模块可用于实现以下功能：
 
 
-### Authorization
+### 授权
 
 
-The authorization is used to check if an account is allowed to start a new call
-		and it has enough credit to call to that destination. This is done using the
-		*cgrates_auth()* command, which returns the number of seconds
-		a call is allowed to run in the *$cgr_ret* pseudo-variable.
+授权用于检查账户是否允许开始新的呼叫，
+		以及是否有足够的信用呼叫该目的地。
+		这是使用 *cgrates_auth()* 命令完成的，
+		它返回呼叫允许运行的秒数，
+		存储在 *$cgr_ret* 伪变量中。
 
 
-Usage example:
+使用示例：
 
 
 ```c
 		...
 		if (cgrates_auth("$fU", "$rU"))
-			xlog("Call is allowed to run $cgr_ret seconds\n");
+			xlog("呼叫允许运行 $cgr_ret 秒\n");
 		}
 		...
-		
+			
 ```
 
 
-### Accounting
+### 计费
 
 
-The accounting mode is used to start and stop a CGRateS session. This can be
-		used for both prepaid and postpaid billing. The *cgrates_acc()*
-		function starts the CGRateS session when the call is answered (the 200 OK message
-		is received) and ends it when the call is ended (a BYE message is received). This
-		is done automatically using the *dialog* module.
+计费模式用于启动和停止 CGRateS 会话。
+		可用于预付费和后付费计费。
+		*cgrates_acc()* 函数在呼叫被应答时
+		（收到 200 OK 消息时）启动 CGRateS 会话，
+		并在呼叫结束时（收到 BYE 消息时）结束会话。
+		这是使用 *dialog* 模块自动完成的。
 
 
-Note that it is important to first authorize the call (using the
-		*cgrates_auth()* command) before starting accounting. If you do
-		not do this and the user is not authorized to call, the dialog will be immediately
-		closed, resulting in a 0-duration call. If the call is allowed to go on, the
-		dialog lifetime will be set to the duration indicated by the CGRateS engine.
-		Therefore, the dialog will be automatically ended if the call would have been longer.
+请注意，在开始计费之前，首先授权呼叫是很重要的
+		（使用 *cgrates_auth()* 命令）。
+		如果不这样做且用户未被授权呼叫，
+		对话将立即关闭，导致持续时间为 0 的呼叫。
+		如果呼叫被允许继续，对话生命周期将被设置为
+		CGRateS 引擎指示的持续时间。
+		因此，如果呼叫本应更长，对话将自动结束。
 
 
-After the call is ended (by a BYE message), the CGRateS session is also ended.
-		At this point, you can generate a CDR. To do this, you have to set the
-		*cdr* flag to the *cgrates_acc()* command.
-		CDRs can also be generated for missed calls by using the *missed*
-		flag.
+呼叫结束后（通过 BYE 消息），
+		CGRateS 会话也会结束。
+		此时，您可以生成 CDR。
+		为此，您需要将 *cdr* 标志设置为
+		*cgrates_acc()* 命令。
+		通过使用 *missed* 标志，
+		也可以为未接呼叫生成 CDR。
 
 
-Usage example:
+使用示例：
 
 
 ```c
@@ -94,123 +99,126 @@ Usage example:
 			sl_send_reply(403, "Forbidden");
 			exit;
 		}
-		xlog("Call is allowed to run $cgr_ret seconds\n");
-		# do accounting for this call
+		xlog("呼叫允许运行 $cgr_ret 秒\n");
+		# 为此呼叫进行计费
 		cgrates_acc("cdr", "$fU", "$rU");
 		...
-		
+			
 ```
 
 
-Note that when using the *cdr* flag, CDRs are exported by
-		the CGRateS engine in various formats, not by OpenSIPS. Check the CGRateS
-		documentation for more information.
+请注意，当使用 *cdr* 标志时，
+		CDR 由 CGRateS 引擎以各种格式导出，
+		不是由 OpenSIPS 导出。
+		有关更多信息，请查阅 CGRateS 文档。
 
 
-### Other Commands
+### 其他命令
 
 
-You can use the *cgrates_cmd()* to send arbitrary
-		commands to the CGRateS engine, and use the *$cgr_ret*
-		pseudo-variable to retrieve the response.
+您可以使用 *cgrates_cmd()* 向
+		CGRateS 引擎发送任意命令，
+		并使用 *$cgr_ret* 伪变量检索响应。
 
 
-The following example simulates the *cgrates_auth()* CGRateS call:
+以下示例模拟了 *cgrates_auth()* CGRateS 调用：
 
 
 ```c
 		...
-		$cgr_opt(Tenant) = $fd; # or $cgr(Tenant) = $fd; /* in compat mode */
+		$cgr_opt(Tenant) = $fd; # 或在兼容模式下 $cgr(Tenant) = $fd;
 		$cgr(Account) = $fU;
 		$cgr(OriginID) = $ci;
 		$cgr(SetupTime) = "" + $Ts;
 		$cgr(RequestType) = "*prepaid";
 		$cgr(Destination) = $rU;
 		cgrates_cmd("SessionSv1.AuthorizeEvent");
-		xlog("Call is allowed to run $cgr_ret(MaxUsage) seconds\n");
+		xlog("呼叫允许运行 $cgr_ret(MaxUsage) 秒\n");
 		...
-		
+			
 ```
 
 
-### CGRateS Failover
+### CGRateS 故障转移
 
 
-Multiple CGRateS engines can be provisioned to use in a failover manner: in
-		case one engine is down, the next one is used. Currently there is no load
-		balancing logic between the servers, but this is a feature one of the CGRateS
-		component does starting with newer versions.
+可以配置多个 CGRateS 引擎以故障转移方式使用：
+		如果一个引擎宕机，则使用下一个引擎。
+		目前服务器之间没有负载均衡逻辑，
+		但这是 CGRateS 组件从新版本开始提供的功能。
 
 
-Each CGRateS engine has assigned up to 
-		*max_async_connections* connections, plus one
-		used for synchronous commands. If a connection fails (due to network
-		issues, or server issues), it is marked as closed and a new one is
-		tried. If all connections to that engine are down, then the entire
-		engine is marked as disabled, and a new engine is queried. After an
-		engine is down for more than *retry_timeout*
-		seconds, OpenSIPS tries to connect once again to that server. If it
-		succeeds, that server is enabled. Otherwise, the other engines are
-		used, until none is available and the command fails.
+每个 CGRateS 引擎最多分配
+		*max_async_connections* 个连接，
+		加一个用于同步命令的连接。
+		如果连接失败（由于网络问题或服务器问题），
+		它将被标记为关闭，并尝试新的连接。
+		如果到该引擎的所有连接都宕机，
+		则整个引擎被标记为禁用，并查询另一个引擎。
+		如果引擎宕机超过 *retry_timeout*
+		秒，OpenSIPS 会再次尝试连接到该服务器。
+		如果成功，该服务器将被启用。
+		否则，将使用其他引擎，直到没有可用的引擎，命令失败。
 
 
-### CGRateS Compatibility
+### CGRateS 兼容性
 
 
-The module supports two different versions of CGRateS: the
-		*compat_mode* one, which works with pre-rc8 releases, and a
-		new one which works with the post-rc8 releases. The difference between the two
-		versions consist in the way the requests and responses to and from CGRateS
-		are built. In the non-*compat_mode*/new version, a new
-		variable, *$cgr_opt()*, is available, and can be used to
-		tune the request options. This variable should not be used in
-		*compat_mode* mode to avoid abiguities, but if it is used,
-		it behaves exactly as *$cgr()*. By default
-		*compat_mode* is disabled.
+该模块支持两个不同版本的 CGRateS：
+		*compat_mode* 版本（适用于 rc8 之前的版本），
+		和新版本（适用于 rc8 之后的版本）。
+		两个版本之间的区别在于
+		向/从 CGRateS 构建请求和响应的方式。
+		在非 *compat_mode*/新版本中，
+		提供了一个新变量 *$cgr_opt()*，
+		可用于调整请求选项。
+		在 *compat_mode* 模式下不应使用此变量以避免歧义，
+		但如果使用，它的行为与 *$cgr()* 完全相同。
+		默认情况下，*compat_mode* 是禁用的。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *dialog* -- in case CGRateS
-				accounting is used.
+- *dialog* -- 如果使用 CGRateS
+				计费。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载此模块的 OpenSIPS 之前安装：
 
 
 - *libjson*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### cgrates_engine (string)
 
 
-This parameter is used to specify a CGRateS engine connection.
-			The format is *IP[:port]*. The port is optional,
-			and if missing, *2014* is used.
+此参数用于指定 CGRateS 引擎连接。
+			格式为 *IP[:port]*。端口是可选的，
+			如果缺失，则使用 *2014*。
 
 
-This parameter can have multiple values, for each server
-			used for failover. At least one server should be provisioned.
+此参数可以有多个值，
+			用于故障转移的每个服务器。
+			应至少配置一个服务器。
 
 
-*Default value is "None".*
+*默认值为 "None"。*
 
 
-```c title="Set cgrates_engine parameter"
+```c title="设置 cgrates_engine 参数"
 ...
 modparam("cgrates", "cgrates_engine", "127.0.0.1")
 modparam("cgrates", "cgrates_engine", "127.0.0.1:2013")
@@ -221,17 +229,17 @@ modparam("cgrates", "cgrates_engine", "127.0.0.1:2013")
 #### bind_ip (string)
 
 
-IP used to bind the socket that communicates with the
-			CGRateS engines. This is useful to set when the engine
-			is runing in a local, secure LAN, and you want to use
-			that network to communicate with your servers.
-			The parameter is optional.
+IP 用于绑定与 CGRateS 引擎通信的套接字。
+			当引擎在本地、安全的 LAN 中运行时，
+			使用此设置很有用，
+			您希望使用该网络与服务器通信。
+			此参数是可选的。
 
 
-*Default value is "not set - any IP is used".*
+*默认值为 "未设置 - 使用任何 IP"。*
 
 
-```c title="Set bind_ip parameter"
+```c title="设置 bind_ip 参数"
 ...
 modparam("cgrates", "bind_ip", "10.0.0.100")
 ...
@@ -241,14 +249,13 @@ modparam("cgrates", "bind_ip", "10.0.0.100")
 #### max_async_connections (integer)
 
 
-The maximum number of simultaneous asynchronous connections
-			to a CGRateS engine.
+到 CGRateS 引擎的最大异步并发连接数。
 
 
-*Default value is "10".*
+*默认值为 "10"。*
 
 
-```c title="Set max_async_connections parameter"
+```c title="设置 max_async_connections 参数"
 ...
 modparam("cgrates", "max_async_connections", 20)
 ...
@@ -258,14 +265,13 @@ modparam("cgrates", "max_async_connections", 20)
 #### retry_timeout (integer)
 
 
-The number of seconds after which a disabled connection/engine
-			is retried.
+禁用连接/引擎重试的秒数。
 
 
-*Default value is "60".*
+*默认值为 "60"。*
 
 
-```c title="Set retry_timeout parameter"
+```c title="设置 retry_timeout 参数"
 ...
 modparam("cgrates", "retry_timeout", 120)
 ...
@@ -275,89 +281,90 @@ modparam("cgrates", "retry_timeout", 120)
 #### compat_mode (integer)
 
 
-Indicates whether OpenSIPS should use the old (compat_mode)
-			CGRateS version API (pre-rc8).
+指示 OpenSIPS 是否应使用旧版本（compat_mode）
+			CGRateS API（pre-rc8）。
 
 
-*Default value is "false (0)".*
+*默认值为 "false (0)"。*
 
 
-```c title="Set compat_mode parameter"
+```c title="设置 compat_mode 参数"
 ...
 modparam("cgrates", "compat_mode", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### cgrates_acc([flags[, account[, destination[, session]]]])
 
 
-`cgrates_acc()` starts an accounting
-			session on the CGRateS engine for the current dialog. It also ends the
-			session when the dialog is ended. This function requires a dialog, so in
-			case create_dialog() was not previously used, it will internally call
-			that function.
+`cgrates_acc()` 为当前对话启动
+			CGRateS 引擎上的计费会话。
+			当对话结束时，它也会结束会话。
+			此函数需要一个对话，
+			因此如果之前未使用 create_dialog()，
+			它将在内部调用该函数。
 
 
-Note that the `cgrates_acc()` function
-			does not send any message to the CGRateS engine when it is called, but only
-			when the call is answered and the CGRateS session should be started (a 200
-			OK message is received).
+请注意，`cgrates_acc()` 函数
+			在调用时不会向 CGRateS 引擎发送任何消息，
+			而只是在呼叫被应答且应启动 CGRateS 会话时
+			（收到 200 OK 消息时）发送。
 
 
-When called in *REQUEST_ROUTE* or
-			*FAILURE_ROUTE*, accounting for this session is done
-			for all the branches created. When called in *BRANCH_ROUTE*
-			or *ONREPLY_ROUTE*, acccounting is done only if that
-			branch is successful (terminates with a 2xx reply code).
+当在 *REQUEST_ROUTE* 或
+			*FAILURE_ROUTE* 中调用时，
+			会计费所有创建的分支。
+			当在 *BRANCH_ROUTE*
+			或 *ONREPLY_ROUTE* 中调用时，
+			仅当该分支成功（以 2xx 响应码终止）时才会进行计费。
 
 
-The `cgrates_acc()` function should
-			only be called on initial INVITEs. For more infirmation check
-			[accounting](#accounting).
+`cgrates_acc()` 函数应
+			仅在初始 INVITE 上调用。
+			更多信息请查看[计费](#accounting)。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *flags* (string, optional) - indicates whether OpenSIPS
-				should generate a CDR at the end of the call. If the parameter is missing,
-				no CDR is generated - the session is only passed through CGRateS.
-				The following values can be used, separated by '|':
+- *flags*（string，可选）- 指示 OpenSIPS
+				是否应在呼叫结束时生成 CDR。
+				如果参数缺失，不会生成 CDR - 会话仅通过 CGRateS。
+				可以使用以下值，用 '|' 分隔：
 
-  - *cdr* - also generate a CDR;
-  - *missed* - generate a CDR even for missed
-						calls; this flag only makes sense if the *cdr*
-						flag is used;
-- *account* (string, optional) - the account that will be charged
-				in CGrateS. If not specified, the user in the From header is used.
-- *destination* (string, optional) - the dialled number.
-			If not present the request URI user is used.
-- *session* (string, optional) - the tag of the session that
-				will be started if the branch/call completes with success. This parameter
-				indicates what set of data from the *$cgr()* variable
-				should be considered. If missing, the default set is used.
-
-
-The function can return the following values:
+  - *cdr* - 还要生成 CDR；
+  - *missed* - 即使对于未接呼叫也生成 CDR；
+					此标志仅在使用了 *cdr* 标志时有意义；
+- *account*（string，可选）- 将在 CGRateS 中被计费的账户。
+				如果未指定，则使用 From 头中的用户。
+- *destination*（string，可选）- 被拨打的号码。
+			如果不存在，则使用请求 URI 用户。
+- *session*（string，可选）- 如果分支/呼叫成功完成，
+				将启动的会话的标签。
+				此参数指示应考虑来自 *$cgr()* 变量的哪组数据。
+				如果缺失，则使用默认集。
 
 
-- *1* - successful call - the CGRateS accouting
-				was successfully setup for the call.
-- *-1* - OpenSIPS returned an internal error
-				(i.e. the dialog cannot be created, or the server is out of memory).
-- *-2* - the SIP message is invalid: either
-				it has missing headers, or it is not an initial INVITE.
+函数可以返回以下值：
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-			BRANCH_ROUTE and LOCAL_ROUTE.
+- *1* - 成功呼叫 - CGRateS 计费
+				已成功为呼叫设置。
+- *-1* - OpenSIPS 返回内部错误
+				（即无法创建对话，或服务器内存不足）。
+- *-2* - SIP 消息无效：
+				要么缺少头部，要么不是初始 INVITE。
 
 
-```c title="cgrates_acc() usage"
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、
+			BRANCH_ROUTE 和 LOCAL_ROUTE。
+
+
+```c title="cgrates_acc() 用法"
 		...
 		if (!has_totag()) {
 			...
@@ -373,43 +380,43 @@ This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
 #### cgrates_auth([account[, destination[, session]]])
 
 
-`cgrates_auth()` does call authorization
-			through using the CGRateS engine.
+`cgrates_auth()` 通过使用
+			CGRateS 引擎进行呼叫授权。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *account* (string, optional) - the account that will be checked
-				in CGrateS. If not specified, the user in the From header is used.
-- *destination* (string, optional) - the dialled number.
-			If not present the request URI user is used.
-- *session* (string, optional) - the tag of the session that
-				will be started if the branch/call completes with success. This parameter
-				indicates what set of data from the *$cgr()* variable
-				should be considered. If missing, the default set is used.
+- *account*（string，可选）- 将在 CGRateS 中被检查的账户。
+				如果未指定，则使用 From 头中的用户。
+- *destination*（string，可选）- 被拨打的号码。
+			如果不存在，则使用请求 URI 用户。
+- *session*（string，可选）- 如果分支/呼叫成功完成，
+				将启动的会话的标签。
+				此参数指示应考虑来自 *$cgr()* 变量的哪组数据。
+				如果缺失，则使用默认集。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successful call - the CGRateS account
-				is allowed to make the call.
-- *-1* - OpenSIPS returned an internal error
-				(i.e. server is out of memory).
-- *-2* - the CGRateS engine returned error.
-- *-3* - No suitable CGRateS server found.
-				message type (not an initial INVITE).
-- *-4* - the SIP message is invalid: either
-				it has missing headers, or it is not an initial INVITE.
-- *-5* - CGRateS returned an invalid message.
+- *1* - 成功呼叫 - CGRateS 账户
+				被允许进行呼叫。
+- *-1* - OpenSIPS 返回内部错误
+				（即服务器内存不足）。
+- *-2* - CGRateS 引擎返回错误。
+- *-3* - 未找到合适的 CGRateS 服务器。
+				消息类型（不是初始 INVITE）。
+- *-4* - SIP 消息无效：
+				要么缺少头部，要么不是初始 INVITE。
+- *-5* - CGRateS 返回无效消息。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-			BRANCH_ROUTE and LOCAL_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、
+			BRANCH_ROUTE 和 LOCAL_ROUTE。
 
 
-```c title="cgrates_auth() usage"
+```c title="cgrates_auth() 用法"
 		...
 		if (!has_totag()) {
 			...
@@ -424,7 +431,7 @@ This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
 ```
 
 
-```c title="cgrates_auth() usage with attributes parsing"
+```c title="带属性解析的 cgrates_auth() 用法"
 		...
 		if (!has_totag()) {
 			...
@@ -433,7 +440,7 @@ This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
 				sl_send_reply(403, "Forbidden");
 				exit;
 			}
-			# move attributes from AttributesDigest variable to plain AVPs
+			# 将属性从 AttributesDigest 变量移动到普通 AVP
 			$var(idx) = 0;
 			while ($(cgr_ret(AttributesDigest){s.select,$var(idx),,}) != NULL) {
 				$avp($(cgr_ret(AttributesDigest){s.select,$var(idx),,}{s.select,0,:}))
@@ -450,39 +457,39 @@ This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
 #### cgrates_cmd(command[, session])
 
 
-`cgrates_cmd()` can send
-			arbitrary commands to the CGRateS engine.
+`cgrates_cmd()` 可以向
+			CGRateS 引擎发送任意命令。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *command* (string) - the command sent to the
-				CGRateS engine.
-- *session* (string, optional) - the tag of the session that
-				will be started if the branch/call completes with success. This parameter
-				indicates what set of data from the *$cgr()* variable
-				should be considered. If missing, the default set is used.
+- *command*（string）- 发送到
+				CGRateS 引擎的命令。
+- *session*（string，可选）- 如果分支/呼叫成功完成，
+				将启动的会话的标签。
+				此参数指示应考虑来自 *$cgr()* 变量的哪组数据。
+				如果缺失，则使用默认集。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successful call - the CGRateS account
-				is allowed to make the call.
-- *-1* - OpenSIPS returned an internal error
-				(i.e. server is out of memory).
-- *-2* - the CGRateS engine returned error.
-- *-3* - No suitable CGRateS server found.
-				message type (not an initial INVITE).
+- *1* - 成功呼叫 - CGRateS 账户
+				被允许进行呼叫。
+- *-1* - OpenSIPS 返回内部错误
+				（即服务器内存不足）。
+- *-2* - CGRateS 引擎返回错误。
+- *-3* - 未找到合适的 CGRateS 服务器。
+				消息类型（不是初始 INVITE）。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="cgrates_cmd() usage"
+```c title="cgrates_cmd() 用法"
 		...
-		# cgrates_auth($fU, $rU); simulation
+		# cgrates_auth($fU, $rU); 模拟
 		$cgr_opt(Tenant) = $fd;
 		$cgr(Account) = $fU;
 		$cgr(OriginID) = $ci;
@@ -490,57 +497,58 @@ This function can be used from any route.
 		$cgr(RequestType) = "*prepaid";
 		$cgr(Destination) = $rU;
 		cgrates_cmd("SessionSv1.AuthorizeEvent");
-		xlog("Call is allowed to run $cgr_ret seconds\n");
+		xlog("呼叫允许运行 $cgr_ret 秒\n");
 		...
 		
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $cgr(name) / $(cgr(name)[session])
 
 
-Pseudo-variable used to set different parameters for the
-				CGRateS command. Each name-value pair will be encoded as
-				a *string - value* attribute in the
-				JSON message sent to CGRateS.
+伪变量，用于设置 CGRateS
+				命令的不同参数。
+				每个名称-值对将被编码为
+				发送到 CGRateS 的 JSON 消息中的
+				*string - value* 属性。
 
 
-The name-values pairs are stored in the transaction (if
-				tm module is loaded). Therefore the values are accessible
-				in the reply.
+名称-值对存储在事务中（如果
+				tm 模块已加载）。
+				因此，值可以在回复中访问。
 
 
-When the *cgrates_acc()* function is
-				called, all the name-value pairs are moved in the dialog.
-				Therefore the values will be accessible along the dialog's
-				lifetime.
+当调用 *cgrates_acc()* 函数时，
+				所有名称-值对都被移动到对话中。
+				因此，这些值可以在对话的整个生命周期内访问。
 
 
-This variable consists of serveral sets of name-value pairs.
-				Each set corresponds to a session. The variable can be
-				indexed by a *session tag*. The sets
-				are completely indepdendent from one another. if the
-				*session tag* does not exist, the default
-				(no name) one is used.
+此变量由多组名称-值对组成。
+				每组对应一个会话。
+				变量可以用 *会话标签* 索引。
+				各组之间完全独立。
+				如果 *会话标签* 不存在，
+				则使用默认的（无名称）组。
 
 
-When assigned with the *:=* operator,
-				the value is treated as a JSON, rather than a string/integer.
-				However, the evaluation of the JSON is late, therefore when
-				the CGRateS request is built, if the module is unable to parse
-				the JSON, the value is sent as a string.
+当使用 *:=* 运算符赋值时，
+				值被视为 JSON，而不是字符串/整数。
+				但是，JSON 的求值是延迟的，
+				因此在构建 CGRateS 请求时，
+				如果模块无法解析 JSON，
+				则该值将作为字符串发送。
 
 
-```c title="$cgr(name) simple usage"
+```c title="$cgr(name) 简单用法"
 		...
 		if (!has_totag()) {
 			...
-			$cgr_opt(Tenant) = $fd; # set the From domain as a tenant
-			$cgr(RequestType) = "*prepaid"; # do prepaid accounting
-			$cgr(AttributeIDs) := '["+5551234"]'; # treat as array
+			$cgr_opt(Tenant) = $fd; # 将 From 域设置为租户
+			$cgr(RequestType) = "*prepaid"; # 执行预付费计费
+			$cgr(AttributeIDs) := '["+5551234"]'; # 作为数组处理
 			if (!cgrates_auth("$fU", "$rU")) {
 				sl_send_reply(403, "Forbidden");
 				exit;
@@ -551,27 +559,27 @@ When assigned with the *:=* operator,
 ```
 
 
-```c title="$cgr(name) multiple sessions usage"
+```c title="$cgr(name) 多会话用法"
 		...
 		if (!has_totag()) {
 			...
-			# first session - authorize the user
-			$cgr_opt(Tenant) = $fd; # set the From domain as a tenant
-			$cgr(RequestType) = "*prepaid"; # do prepaid accounting
+			# 第一个会话 - 授权用户
+			$cgr_opt(Tenant) = $fd; # 将 From 域设置为租户
+			$cgr(RequestType) = "*prepaid"; # 执行预付费计费
 			if (!cgrates_auth("$fU", "$rU")) {
 				sl_send_reply(403, "Forbidden");
 				exit;
 			}
 
-			# second session - authorize the carrier
+			# 第二个会话 - 授权运营商
 			$(cgr_opt(Tenant)[carrier]) = $td;
 			$(cgr(RequestType)[carrier]) = "*postpaid";
 			if (!cgrates_auth("$tU", "$fU", "carrier")) {
-				# use a different carrier
+				# 使用不同的运营商
 				return;
 			}
 
-			# if everything is successful start accounting on both
+			# 如果一切成功，在两者上开始计费
 			cgrates_acc("cdr", "$fU", "rU");
 			cgrates_acc("cdr", "$tU", "$fU", "carrier");
 		}
@@ -583,34 +591,33 @@ When assigned with the *:=* operator,
 #### $cgr_opt(name) / $(cgr_opt(name)[session])
 
 
-Used to tune the request parameter of a CGRateS request when used in
-				non-*compat_mode*.
+用于在非 *compat_mode* 模式下
+				调整 CGRateS 请求的参数。
 
 
-*Note:* for all request options integer values act as
-				boolean values: *0* disables the feature and
-				*1*(or different than 0 value) enables it. String
-				variables are passed just as they are set.
+*注意：* 对于所有请求选项，
+				整数值作为布尔值：
+				*0* 禁用功能，
+				*1*（或非零值）启用功能。
+				字符串变量按原样传递。
 
 
-Possible values at the time the documentation was written:
+撰写本文档时的可能值：
 
 
-- *Tenant* - tune CGRateS Tenant.
-- *GetAttributes* - requests the account
-						attributes from the CGRateS DB.
-- *GetMaxUsage* - request the maximum time
-						the call is allowed to run.
-- *GetSuppliers* - request an array with
-						all the suppliers for that can terminate that call.
+- *Tenant* - 调整 CGRateS 租户。
+- *GetAttributes* - 从
+						CGRateS 数据库请求账户属性。
+- *GetMaxUsage* - 请求呼叫允许运行的最长时间。
+- *GetSuppliers* - 请求可以终止该呼叫的所有供应商的数组。
 
 
-```c title="$cgr_opt(name) usage"
+```c title="$cgr_opt(name) 用法"
 		...
 		$cgr_opt(Tenant) = "cgrates.org";
-		$cgr_opt(GetMaxUsage) = 1; # also retrieve the max usage
+		$cgr_opt(GetMaxUsage) = 1; # 同时检索最大使用量
 		if (!cgrates_auth("$fU", "$rU")) {
-			# call rejected
+			# 呼叫被拒绝
 		}
 		...
 		
@@ -620,65 +627,64 @@ Possible values at the time the documentation was written:
 #### $cgr_ret(name)
 
 
-Returns the reply message of a CGRateS command in script,
-				or when used in the non-compat mode, one of the objects
-				within the reply.
+在脚本中返回 CGRateS 命令的回复消息，
+				或在非兼容模式下返回回复中的某个对象。
 
 
-```c title="$cgr_ret(name) usage"
+```c title="$cgr_ret(name) 用法"
 		...
 		cgrates_auth("$fU", "$rU");
 
-		# in compat mode
-		xlog("Call is allowed to run $cgr_ret seconds\n");
+		# 在兼容模式下
+		xlog("呼叫允许运行 $cgr_ret 秒\n");
 
-		# in non-compat mode
-		xlog("Call is allowed to run $cgr_ret(MaxUsage) seconds\n");
+		# 在非兼容模式下
+		xlog("呼叫允许运行 $cgr_ret(MaxUsage) 秒\n");
 		...
 		
 ```
 
 
-### Exported Asynchronous Functions
+### 导出的异步函数
 
 
 #### cgrates_auth([account[, destination[, session]]])
 
 
-Does the CGRateS authorization call in an asynchronous way. Script
-			execution is suspended until the CGRateS engine sends the reply back.
+以异步方式执行 CGRateS 授权调用。
+			脚本执行将暂停，直到 CGRateS 引擎发送回复。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *account* - the account that will be checked
-				in CGRateS. This parameter is optional, and if not specified,
-				the user in the From header is used.
-- *destination* - the dialled number. Optional
-				parameter, if not present the request URI user is used.
-- *session* - the tag of the session that
-				will be started if the branch/call completes with success. This parameter
-				indicates what set of data from the *$cgr()* variable
-				should be considered. If missing, the default set is used.
+- *account* - 将在 CGRateS 中被检查的账户。
+				此参数是可选的，
+				如果未指定，则使用 From 头中的用户。
+- *destination* - 被拨打的号码。
+				可选参数，如果不存在则使用请求 URI 用户。
+- *session* - 如果分支/呼叫成功完成，
+				将启动的会话的标签。
+				此参数指示应考虑来自 *$cgr()* 变量的哪组数据。
+				如果缺失，则使用默认集。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successful call - the CGRateS account
-				is allowed to make the call.
-- *-1* - OpenSIPS returned an internal error
-				(i.e. server is out of memory).
-- *-2* - the CGRateS engine returned error.
-- *-3* - No suitable CGRateS server found.
-				message type (not an initial INVITE).
-- *-4* - the SIP message is invalid: either
-				it has missing headers, or it is not an initial INVITE.
-- *-5* - CGRateS returned an invalid message.
+- *1* - 成功呼叫 - CGRateS 账户
+				被允许进行呼叫。
+- *-1* - OpenSIPS 返回内部错误
+				（即服务器内存不足）。
+- *-2* - CGRateS 引擎返回错误。
+- *-3* - 未找到合适的 CGRateS 服务器。
+				消息类型（不是初始 INVITE）。
+- *-4* - SIP 消息无效：
+				要么缺少头部，要么不是初始 INVITE。
+- *-5* - CGRateS 返回无效消息。
 
 
-```c title="async cgrates_auth usage"
+```c title="异步 cgrates_auth 用法"
 route {
 	...
 	async(cgrates_auth("$fU", "$rU"), auth_reply);
@@ -687,7 +693,7 @@ route {
 route [auth_reply]
 {
 	if ($rc < 0) {
-		xlog("Call not authorized: code=$cgr_ret!\n");
+		xlog("呼叫未授权：代码=$cgr_ret!\n");
 		send_reply(403, "Forbidden");
 		exit;
 	}
@@ -699,34 +705,35 @@ route [auth_reply]
 #### cgrates_cmd(command[, session])
 
 
-Can run an arbitrary CGRateS command in an asynchronous way. The
-			execution is suspended until the CGRateS engine sends the reply back.
+可以异步方式运行任意 CGRateS 命令。
+			执行将暂停，直到 CGRateS 引擎发送回复。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *command* - the command sent to the
-				CGRateS engine. This is a mandatory parameter.
-- *session* - the tag of the session that
-				will be started if the branch/call completes with success. This parameter
-				indicates what set of data from the *$cgr()* variable
-				should be considered. If missing, the default set is used.
+- *command* - 发送到
+				CGRateS 引擎的命令。
+				这是强制参数。
+- *session* - 如果分支/呼叫成功完成，
+				将启动的会话的标签。
+				此参数指示应考虑来自 *$cgr()* 变量的哪组数据。
+				如果缺失，则使用默认集。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successful call - the CGRateS account
-				is allowed to make the call.
-- *-1* - OpenSIPS returned an internal error
-				(i.e. server is out of memory).
-- *-2* - the CGRateS engine returned error.
-- *-3* - No suitable CGRateS server found.
-				message type (not an initial INVITE).
+- *1* - 成功呼叫 - CGRateS 账户
+				被允许进行呼叫。
+- *-1* - OpenSIPS 返回内部错误
+				（即服务器内存不足）。
+- *-2* - CGRateS 引擎返回错误。
+- *-3* - 未找到合适的 CGRateS 服务器。
+				消息类型（不是初始 INVITE）。
 
 
-```c title="async cgrates_cmd compat_mode usage"
+```c title="异步 cgrates_cmd compat_mode 用法"
 route {
 	...
 	$cgr(Tenant) = $fd;
@@ -741,7 +748,7 @@ route {
 route [auth_reply]
 {
 	if ($rc < 0) {
-		xlog("Call not authorized: code=$cgr_ret!\n");
+		xlog("呼叫未授权：代码=$cgr_ret!\n");
 		send_reply(403, "Forbidden");
 		exit;
 	}
@@ -750,7 +757,7 @@ route [auth_reply]
 ```
 
 
-```c title="async cgrates_cmd new usage"
+```c title="异步 cgrates_cmd 新用法"
 route {
 	...
 	$cgr_opt(Tenant) = $fd;
@@ -765,7 +772,7 @@ route {
 route [auth_reply]
 {
 	if ($rc < 0) {
-		xlog("Call not authorized: MaxUsage=$cgr_ret(MaxUsage)!\n");
+		xlog("呼叫未授权：MaxUsage=$cgr_ret(MaxUsage)!\n");
 		send_reply(403, "Forbidden");
 		exit;
 	}
@@ -774,6 +781,6 @@ route [auth_reply]
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可协议。

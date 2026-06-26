@@ -1,193 +1,204 @@
 ---
-title: "Call-Center Module"
-description: "The Call Center module implements an inbound call center system with call flows (for queuing the received calls) and agents (for answering the calls)."
+title: "呼叫中心模块"
+description: "呼叫中心模块实现了一个呼入呼叫中心系统，具有呼叫流程（用于对接收的呼叫进行排队）和坐席（用于接听呼叫）。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Call Center module implements an inbound call center system with call 
-	flows (for queuing the received calls) and agents (for answering the 
-	calls).
+呼叫中心模块实现了一个呼入呼叫中心系统，具有呼叫
+		流程（用于对接收的呼叫进行排队）和坐席（用于接听
+		呼叫）。
 
 
-The module implements the queuing system, the call distribution 
-	to agents, agents managements, CDRs for the calls, statistics on 
-	call distribution and agent's activity - basically everything 
-	except the media playback (for the queue). This part must be provided via 
-	a third party media server (FreeSwitch, Asterisk or others).
+该模块实现了排队系统、呼叫分配到坐席、
+		坐席管理、呼叫的 CDR、
+		呼叫分配和坐席活动的统计 -
+		基本上除了媒体播放（用于队列）之外的所有功能。
+		此部分必须由第三方媒体服务器提供
+		（FreeSwitch、Asterisk 或其他）。
 
 
-This is actually a Contact Center and it is able to handle both
-	RTP/audio calls and (multiple) MSRP/chat calls, in the same time.
+这实际上是一个联系人中心，
+		能够同时处理 RTP/音频呼叫和（多个）MSRP/聊天呼叫。
 
 
-The module provides an internal buit-in dispatching logic (for sending the
-	calls/chats to the agents), but also offers the possibility to use an
-	external logic to do the dispatching
-	(see [mi dispatch call to agent](#mi_dispatch_call_to_agent) MI command).
+该模块提供了一个内置的内部呼叫分配逻辑
+		（用于将呼叫/聊天发送到坐席），
+		但也提供使用外部逻辑进行分配的可能性
+		（参见 [MI 分配呼叫到坐席](#mi_dispatch_call_to_agent) MI 命令）。
 
 
-### How it works
+### 工作原理
 
 
-The main entities in the modules are the flows (queues) and agents.
+该模块中的主要实体是流程（队列）和坐席。
 
 
-#### DB tables
+#### 数据库表
 
 
-Each entity has a corresponding table in the database, for 
-		provisioning purposes - the *cc_flows* and 
-		*cc_agents* tables, see
-		[DB schema](https://opensips.org/Documentation/Install-DBSchema--3-3#AEN2656).
-		Data is loaded at startup and cached into memory ; runtime reload is 
-		possible via the MI commands (see the *call_center:reload* 
-		command in [exported mi functions](#exported_mi_functions)).
+每个实体在数据库中都有对应的表，
+		用于配置目的 - *cc_flows* 和
+		*cc_agents* 表，
+		请参阅 [DB schema](https://opensips.org/Documentation/Install-DBSchema--3-3#AEN2656)。
+		数据在启动时加载并缓存到内存中；
+		可以通过 MI 命令在运行时重新加载
+		（请参阅 *call_center:reload*
+		命令，参见[导出的 MI 函数](#exported_mi_functions)）。
 
 
-Additionally there is a table *cc_cdrs* for writing 
-		the CDRs - this operation is done in realtime, after the call in 
-		completed, covering all possible cases: call was dropped while in 
-		queue, call was rejected by agent, call was accepted by agent, call 
-		terminated with error - NOTE that a call may generate more than one 
-		CDR (like call rejected by agent A, and redistributed and accepted by 
-		agent B).
+此外，还有一个 *cc_cdrs* 表用于写入
+		CDR - 此操作在呼叫完成后实时进行，
+		覆盖所有可能的情况：呼叫在队列中被丢弃、
+		被坐席拒绝、被坐席接受、呼叫因错误终止
+		- 请注意，一个呼叫可能生成多个 CDR
+		（例如被坐席 A 拒绝，然后被重新分配并被坐席 B 接受）。
 
 
-The *cc_calls* table is used to store ongoing calls,
-		regardless it's state (in queue, to the agent, ended). It is populated
-		at runtime by the module and queried at startup. This table should not
-		be manually provisioned.
+*cc_calls* 表用于存储正在进行的呼叫，
+		无论其状态如何（在队列中、到坐席、已结束）。
+		此表在运行时由模块填充，
+		并在启动时查询。
+		此表不应手动配置。
 
 
-#### Call Flows
+#### 呼叫流程
 
 
-A flow is defined by a unique alphanumerical ID - the main attribute 
-		of a flow is the *skill* - the skill is a 
-		capability required by the flow for an agent to be able to answer the 
-		call ; the concept of *skills* is the link between 
-		the flows and the agents - telling what agents are serving what flows 
-		- the flows require a skill, while the agents provide a set of skills. 
-		Agents matching the required skill of a flow will automatically 
-		receive calls from that flow.
+流程由唯一的字母数字 ID 定义 - 
+		流程的主要属性是 *skill* -
+		这是流程对坐席的技能要求，
+		坐席才能接听呼叫；
+		*skills* 的概念是流程和坐席之间的联系 -
+		说明哪些坐席为哪些流程服务 -
+		流程需要技能，
+		而坐席提供一组技能。
+		与流程所需技能相匹配的坐席将自动
+		接收来自该流程的呼叫。
 
 
-Additional, the flow has a *priority* - as agents 
-		may server multiple flows in the same time (based on skills), you can
-		define priorities between the flows - if the flows has a higher 
-		priority, its calls will be pushed (in deliver to agents and queuing) in
-		front of the calls from flows with a lower priority.
+此外，流程具有 *priority* - 
+		由于坐席可能同时服务多个流程（基于技能），
+		您可以在流程之间定义优先级 -
+		如果流程具有更高的优先级，
+		其呼叫将在队列中分配给坐席和排队时）
+		被推到具有较低优先级的流程的呼叫前面。
 
 
-Configurable per flow, the module may do per-flow call dissuading; this
-		means to redirect a call to another destination, if the queue/flow 
-		is overloaded:
+可按流程配置，模块可以执行按流程呼叫劝阻；
+		这意味着如果队列/流程过载，
+		则将呼叫重定向到另一个目的地：
 
 
-- if the number of calls already in the queue exceeds the diss_qsize_th threshold
-- if the estimated time to wait of the queue exceeds the diss_ewt_th threshold
-- if the call was waiting in the queue for longer than diss_onhold_th threshold
+- 如果队列中已有的呼叫数超过 diss_qsize_th 阈值
+- 如果队列的预计等待时间超过 diss_ewt_th 阈值
+- 如果呼叫在队列中等待的时间超过 diss_onhold_th 阈值
 
 
-Optionally, the flow may define a *prependcid* - a
-		prefix to be added to the CLI (Caller ID) when the call is delivered to
-		the agents - as an agent may receive call from multiple flows, it is 
-		important for the user to see which was the queue a call was received.
+可选地，流程可以定义 *prependcid* -
+		在呼叫被分配给坐席时要添加到 CLI（呼叫者 ID）的前缀 -
+		由于坐席可能从多个流程接收呼叫，
+		因此对用户来说，看到呼叫是从哪个队列收到的是很重要的。
 
 
-In terms of media announcements, the flow defines the 
-		*message_welcome* (optional, to be played in the 
-		call, before doing anything with the call) and 
-		*message_queue* (mandatory, the looping message
-		providing infinite on hold media IMPORTANT - this message must cycle 
-		and media server must never hung up on it. Both announcements are 
-		provided as SIP URIs (where the call has to be sent in order to get
-		the playback).
+在媒体播报方面，流程定义了
+		*message_welcome*（可选，
+		在呼叫中执行任何操作之前播放）和
+		*message_queue*（必需，
+		提供无限等待音乐的循环消息
+		重要 - 此消息必须循环播放，
+		媒体服务器永远不应挂断）。
+		两种播报都以 SIP URI 形式提供
+		（需要将呼叫发送到这里以获取播放）。
 
 
-The flow also has an optional *max_wrapup time*,
-		which acts as an upper limit for the per-agent/global value (the flow 
-		forces a ceiling of the wrapup value for all its calls).
+流程还有一个可选的 *max_wrapup time*，
+		它作为每个坐席/全局值的上限
+		（流程为其所有呼叫强制设置 wrapup 值的天花板）。
 
 
-#### Agents
+#### 坐席
 
 
-An agent is defined by a unique alphanumerical ID - the main attribute 
-		of an agent is its the set of *skills*. This set of
-		skills will tell what calls to be received (from which flows, based on
-		the skill matching).
+坐席由唯一的字母数字 ID 定义 -
+		坐席的主要属性是其 *skills* 集合。
+		这组技能将决定接收哪些呼叫
+		（来自哪些流程，基于技能匹配）。
 
 
-The agent may provide support for different optional media types, like
-		RTP/audio or MSRP/chat. Each supported media type comes with the 
-		maximum supported number of sessions. Of course, for audio the `1` 
-		value is hardocded. On the SIP side, each media type comes with a
-		*locations*. The location is a SIP URI where to 
-		calls must be sent in order to be answered by the agent. At least one 
-		media type should be defined. To specify which media the agent
-		support, just define the corresponding SIP location in his profile.
+坐席可以提供不同可选媒体类型的支持，
+		如 RTP/音频或 MSRP/聊天。
+		每种支持的媒体类型都有
+		支持的最大会话数。
+		当然，对于音频，`1` 是硬编码的。
+		在 SIP 端，每种媒体类型都带有一个
+		*locations*。
+		位置是一个 SIP URI，
+		呼叫必须被发送到这里才能被坐席接听。
+		至少应定义一种媒体类型。
+		要指定坐席支持哪种媒体，
+		只需在他的配置文件中定义相应的 SIP 位置。
 
 
-So, at a certain time, an agent may handle either a single call,
-		either several chat sessions.
+因此，在某个时间，坐席可以处理单个呼叫，
+		或多个聊天会话。
 
 
-Additionally, the agent has a initial *logstate* - 
-		if he is logged in or not (being logged in is a must in order to
-		receive calls). The log state may be changed at runtime via a 
-		dedicated MI command *call_center:agent_login*, see 
-		[exported mi functions](#exported_mi_functions).
+此外，坐席有一个初始 *logstate* -
+		他是否已登录（登录是接收呼叫的必要条件）。
+		登录状态可以通过专用 MI 命令
+		*call_center:agent_login* 在运行时更改，
+		请参阅[导出的 MI 函数](#exported_mi_functions)。
 
 
-There is an optional per-agent *wrapup_time*
-		defined, saying the time interval for an agent before getting a new 
-		call from the system (after he finished a call). If no value is defined
-		for the agent, the global *wrapup_time* will be 
-		used. Note that the resulting value may be upper limited by the
-		per-flow *max_wrapup_time* if defined.
+有一个可选的每个坐席 *wrapup_time*，
+		定义坐席在完成一个呼叫后，
+		在从系统接收下一个呼叫之前的时间间隔。
+		如果没有为坐席定义值，
+		则将使用全局 *wrapup_time*。
+		请注意，如果定义了每个流程的
+		*max_wrapup_time*，
+		则结果值可能会受到其上限限制。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *b2b_logic* - B2bUA module
-- *database* - one of the SQL DB modules
+- *b2b_logic* - B2bUA 模块
+- *database* - 某个 SQL 数据库模块
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-SQL address to the DB server -- database specific. This must be
-		the Database holding the provisioning tables (cc_flows, cc_agents
-		and cc_calls tables).
+到 DB 服务器的 SQL 地址 -- 特定于数据库。
+		这必须是持有配置表的数据库
+		（cc_flows、cc_agents 和 cc_calls 表）。
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("call_center", "db_url", 
 	"mysql://opensips:opensipsrw@localhost/opensips")
@@ -198,11 +209,11 @@ modparam("call_center", "db_url",
 #### acc_db_url (string)
 
 
-SQL address to the DB server -- database specific. This must be
-		the Database where the CDRs table (cc_cdrs) is located.
+到 DB 服务器的 SQL 地址 -- 特定于数据库。
+		这必须是 CDR 表（cc_cdrs）所在的数据库。
 
 
-```c title="Set acc_db_url parameter"
+```c title="设置 acc_db_url 参数"
 ...
 modparam("call_center", "acc_db_url", 
 	"mysql://opensips:opensipsrw@localhost/opensips_cdrs")
@@ -213,14 +224,12 @@ modparam("call_center", "acc_db_url",
 #### rt_db_url (string)
 
 
-SQL address/URL of the DB server (database specific) where the
-		runtime tables (non provisioning tables) are located. The
-		runtime tables are the tables populated by OpenSIPS with data
-		learned during runtime. To be more specific, the only runtime
-		table we have so far is the "cc_calls" table.
+运行时表所在的 DB 服务器（数据库特定）的 SQL 地址/URL。
+		运行时表是 OpenSIPS 在运行时学习的数据填充的表。
+		更具体地说，我们目前唯一的运行时表是 "cc_calls" 表。
 
 
-```c title="Set rt_db_url parameter"
+```c title="设置 rt_db_url 参数"
 ...
 modparam("call_center", "rt_db_url", 
 	"mysql://opensips:opensipsrw@localhost/opensips_runtime")
@@ -231,19 +240,19 @@ modparam("call_center", "rt_db_url",
 #### wrapup_time (integer)
 
 
-Time for an agent between finishing a call and receiving the next
-		call from the system. Even if there are queued calls, the module
-		will not deliver call to agent during this wrapup interval.
+坐席完成一个呼叫和从系统接收下一个呼叫之间的时间。
+		即使有排队的呼叫，
+		模块在此 wrapup 间隔期间也不会向坐席分配呼叫。
 
 
-This value may be overwritten by the per-agent value (if defined)
-		and furher more, by the per-flow value (if defined).
+此值可以被每个坐席的值覆盖（如果已定义），
+		进一步地，可以被每个流程的值覆盖（如果已定义）。
 
 
-*Default value is "30 seconds".*
+*默认值为 "30 秒"。*
 
 
-```c title="Set wrapup_time parameter"
+```c title="设置 wrapup_time 参数"
 ...
 modparam("call_center", "wrapup_time", 45)
 ...
@@ -253,16 +262,16 @@ modparam("call_center", "wrapup_time", 45)
 #### queue_pos_param (string)
 
 
-The name of an SIP URI parameter to be used to report the position
-		in the waiting queue when sending the call to media server for
-		onwait/queue playback. The position 0 means it is the next call
-		to be delivered to an agent.
+SIP URI 参数的名称，
+		用于在将呼叫发送到媒体服务器进行等待/队列播放时，
+		报告在等待队列中的位置。
+		位置 0 表示它是下一个将被分配给坐席的呼叫。
 
 
-*Default value is "empty(none)".*
+*默认值为 "empty（无）"。*
 
 
-```c title="Set queue_pos_param parameter"
+```c title="设置 queue_pos_param 参数"
 ...
 modparam("call_center", "queue_pos_param", "cc_pos")
 ...
@@ -272,15 +281,15 @@ modparam("call_center", "queue_pos_param", "cc_pos")
 #### reject_on_no_agents (int)
 
 
-A parameter to tell if an incoming call should be rejected or
-		quueued if there are no logged in agents. Basically this allows
-		call queueing on flows with no agents yet.
+一个参数，用于指示当没有登录的坐席时，
+		是否应拒绝或排队传入呼叫。
+		基本上，这允许在尚无坐席的流程上进行呼叫排队。
 
 
-*Default value is "1 (true)".*
+*默认值为 "1（true）"。*
 
 
-```c title="Set reject_on_no_agents parameter"
+```c title="设置 reject_on_no_agents 参数"
 ...
 modparam("call_center", "reject_on_no_agents", 0)
 ...
@@ -290,32 +299,32 @@ modparam("call_center", "reject_on_no_agents", 0)
 #### chat_dispatch_policy (int)
 
 
-A parameter to tell what should be the policy on dispatching the
-		chat/MSRP sessions to the agents, considering that an agent may
-		handle multiple such sessions/chats in the same time.
+一个参数，用于指示在向坐席分配
+		聊天/MSRP 会话时应该采用什么策略，
+		考虑到坐席可能同时处理多个此类会话/聊天。
 
 
-Options are:
+选项有：
 
 
-- **balancing** - the distribution
-			will try to be even across the agents, but by doing this you may 
-			end up waisting chat sessions on agents and call starvation -
-			agents are partially used by chat sessions, so they cannot take
-			calls (of course, if you have mixed agetns with audio/chat)
-- **full-load** - the distribution
-			will try to make usage of an agent in the best possible way when
-			comes to chat sessions - once the agent take a chat, all the
-			following chats will be assigned ot him - the idea is to try to 
-			be efficient in using the resource/sessions of an agents, to leave
-			as much room as possible for calls. Of course, this may lead to an
-			un-even loading of chat agents - some will be full, others empty.
+- **balancing** - 分发将尝试在坐席之间保持均匀，
+			但这样做可能会浪费坐席上的聊天会话，
+			并导致呼叫饥饿 - 坐席被聊天会话部分占用，
+			因此无法接听电话
+			（当然，如果您有混合的音频/聊天坐席）
+- **full-load** - 分发将尝试在坐席处理聊天会话时
+			以最佳方式利用坐席 - 一旦坐席接听聊天，
+			所有后续聊天都将分配给他 -
+			其想法是尝试有效地利用坐席的资源/会话，
+			为呼叫留出尽可能多的空间。
+			当然，这可能导致聊天坐席的负载不均 -
+			一些会满，一些会空。
 
 
-*Default value is "balancing".*
+*默认值为 "balancing"。*
 
 
-```c title="Set chat_dispatch_policy parameter"
+```c title="设置 chat_dispatch_policy 参数"
 ...
 modparam("call_center", "chat_dispatch_policy", "balancing")
 ...
@@ -325,21 +334,21 @@ modparam("call_center", "chat_dispatch_policy", "balancing")
 #### internal_call_dispatching (int)
 
 
-A parameter to tell if the internal/buit-in call dispatching to agent
-		should be used or not. If enabled, the module will automatically
-		dispatch (by itself) the queued/incoming calls to the available agents.
-		If disabled, the module will not do such dispaching by itself and it
-		is expected to use the  [mi dispatch call to agent](#mi_dispatch_call_to_agent)
-		MI command to dispatch the queued calls to agents. This allows the
-		implementation of an external, custom dispatching logic. The value of
-		this setting may be changed during runtime via the 
-		[mi internal call dispatching](#mi_internal_call_dispatching) MI command.
+一个参数，用于指示是否应使用内部/内置的呼叫分配给坐席。
+		如果启用，模块将自动
+		将排队/传入的呼叫分配（由自身）给可用的坐席。
+		如果禁用，模块将不会自己进行此类分配，
+		期望使用 [MI 分配呼叫到坐席](#mi_dispatch_call_to_agent)
+		MI 命令将排队的呼叫分配给坐席。
+		这允许实现外部自定义分配逻辑。
+		此设置的值可以在运行时通过
+		[MI 内部呼叫分配](#mi_internal_call_dispatching) MI 命令更改。
 
 
-*Default value is "1" (enabled).*
+*默认值为 "1"（启用）。*
 
 
-```c title="Set internal_call_dispatching parameter"
+```c title="设置 internal_call_dispatching 参数"
 ...
 modparam("call_center", "internal_call_dispatching", 0)
 ...
@@ -349,13 +358,13 @@ modparam("call_center", "internal_call_dispatching", 0)
 #### cc_agents_table (string)
 
 
-Name to be used for the table holding the agents.
+用于保存坐席配置的表的名称。
 
 
-*Default value is "cc_agents".*
+*默认值为 "cc_agents"。*
 
 
-```c title="Set cc_agents_table parameter"
+```c title="设置 cc_agents_table 参数"
 ...
 modparam("call_center", "cc_agents_table", "my_agents")
 ...
@@ -365,14 +374,13 @@ modparam("call_center", "cc_agents_table", "my_agents")
 #### cca_agentid_column (string)
 
 
-Name to be used for the "agent id" (unique DB id) column in the
-		agents table.
+坐席表中用于 "坐席 id"（唯一 DB id）列的名称。
 
 
-*Default value is "agentid".*
+*默认值为 "agentid"。*
 
 
-```c title="Set cca_agentid_column parameter"
+```c title="设置 cca_agentid_column 参数"
 ...
 modparam("call_center", "cca_agentid_column", "cid")
 ...
@@ -382,14 +390,13 @@ modparam("call_center", "cca_agentid_column", "cid")
 #### cca_location_column (string)
 
 
-Name to be used for the calling/audio "location" (SIP URI) column in 
-		the agents table.
+坐席表中用于呼叫/音频 "位置"（SIP URI）列的名称。
 
 
-*Default value is "location".*
+*默认值为 "location"。*
 
 
-```c title="Set cca_location_column parameter"
+```c title="设置 cca_location_column 参数"
 ...
 modparam("call_center", "cca_location_column", "sip_uri")
 ...
@@ -399,14 +406,13 @@ modparam("call_center", "cca_location_column", "sip_uri")
 #### cca_msrp_location_column (string)
 
 
-Name to be used for the msrp/chat "location" (SIP URI) column in the
-		agents table.
+坐席表中用于 msrp/聊天 "位置"（SIP URI）列的名称。
 
 
-*Default value is "msrp_location".*
+*默认值为 "msrp_location"。*
 
 
-```c title="Set cca_msrp_location_column parameter"
+```c title="设置 cca_msrp_location_column 参数"
 ...
 modparam("call_center", "cca_msrp_location_column", "sip_uri")
 ...
@@ -416,14 +422,13 @@ modparam("call_center", "cca_msrp_location_column", "sip_uri")
 #### cca_msrp_max_sessions_column (string)
 
 
-Name to be used for the column (in the agents table) holding the 
-		maximum number of chat sessions that can be handled by the agent.
+坐席表中用于保存坐席可处理的最大聊天会话数的列的名称。
 
 
-*Default value is "msrp_max_sessions".*
+*默认值为 "msrp_max_sessions"。*
 
 
-```c title="Set cca_msrp_max_sessions_column parameter"
+```c title="设置 cca_msrp_max_sessions_column 参数"
 ...
 modparam("call_center", "cca_msrp_max_sessions_column", "max_chats")
 ...
@@ -433,14 +438,13 @@ modparam("call_center", "cca_msrp_max_sessions_column", "max_chats")
 #### cca_skills_column (string)
 
 
-Name to be used for the "skills" (list of skills) column in the
-		agents table.
+坐席表中用于 "skills"（技能列表）列的名称。
 
 
-*Default value is "skills".*
+*默认值为 "skills"。*
 
 
-```c title="Set cca_skills_column parameter"
+```c title="设置 cca_skills_column 参数"
 ...
 modparam("call_center", "cca_skills_column", "skills")
 ...
@@ -450,14 +454,13 @@ modparam("call_center", "cca_skills_column", "skills")
 #### cca_logstate_column (string)
 
 
-Name to be used for the "logstate" (original login state) column in the
-		agents table.
+坐席表中用于 "logstate"（原始登录状态）列的名称。
 
 
-*Default value is "logstate".*
+*默认值为 "logstate"。*
 
 
-```c title="Set cca_logstate_column parameter"
+```c title="设置 cca_logstate_column 参数"
 ...
 modparam("call_center", "cca_logstate_column", "log_state")
 ...
@@ -467,14 +470,13 @@ modparam("call_center", "cca_logstate_column", "log_state")
 #### cca_wrapuptime_column (string)
 
 
-Name to be used for the "wrapuptime" (per-agent wrapup time) column 
-		in the agents table.
+坐席表中用于 "wrapuptime"（每个坐席的 wrapup 时间）列的名称。
 
 
-*Default value is "wrapup_time".*
+*默认值为 "wrapup_time"。*
 
 
-```c title="Set cca_wrapuptime_column parameter"
+```c title="设置 cca_wrapuptime_column 参数"
 ...
 modparam("call_center", "cca_wrapuptime_column", "wtime")
 ...
@@ -484,14 +486,13 @@ modparam("call_center", "cca_wrapuptime_column", "wtime")
 #### cca_wrapupend_column (string)
 
 
-Name to be used for the "wrapupend" (timestamp when the wrapup ends) 
-		column in the agents table.
+坐席表中用于 "wrapupend"（wrapup 结束时间戳）列的名称。
 
 
-*Default value is "wrapup_end_time".*
+*默认值为 "wrapup_end_time"。*
 
 
-```c title="Set cca_wrapupend_column parameter"
+```c title="设置 cca_wrapupend_column 参数"
 ...
 modparam("call_center", "cca_wrapupend_column", "wrapup_ends")
 ...
@@ -501,14 +502,13 @@ modparam("call_center", "cca_wrapupend_column", "wrapup_ends")
 #### cc_flows_table (string)
 
 
-Name to be used for the table holding the definition of the
-		flows/queues.
+用于保存流程/队列定义的表的名称。
 
 
-*Default value is "cc_flows".*
+*默认值为 "cc_flows"。*
 
 
-```c title="Set cc_flows_table parameter"
+```c title="设置 cc_flows_table 参数"
 ...
 modparam("call_center", "cc_flows_table", "queues")
 ...
@@ -518,14 +518,13 @@ modparam("call_center", "cc_flows_table", "queues")
 #### ccf_flowid_column (string)
 
 
-Name to be used for the "flow id" (unique DB id) column in the
-		flows table.
+流程表中用于 "flow id"（唯一 DB id）列的名称。
 
 
-*Default value is "flowid".*
+*默认值为 "flowid"。*
 
 
-```c title="Set ccf_flowid_column parameter"
+```c title="设置 ccf_flowid_column 参数"
 ...
 modparam("call_center", "ccf_flowid_column", "queue_id")
 ...
@@ -535,14 +534,13 @@ modparam("call_center", "ccf_flowid_column", "queue_id")
 #### ccf_priority_column (string)
 
 
-Name to be used for the "priority" column in the
-		flows table.
+流程表中用于 "priority" 列的名称。
 
 
-*Default value is "priority".*
+*默认值为 "priority"。*
 
 
-```c title="Set ccf_priority_column parameter"
+```c title="设置 ccf_priority_column 参数"
 ...
 modparam("call_center", "ccf_priority_column", "queue_prio")
 ...
@@ -552,14 +550,13 @@ modparam("call_center", "ccf_priority_column", "queue_prio")
 #### ccf_skill_column (string)
 
 
-Name to be used for the "skill" column in the
-		flows table.
+流程表中用于 "skill" 列的名称。
 
 
-*Default value is "skill".*
+*默认值为 "skill"。*
 
 
-```c title="Set ccf_skill_column parameter"
+```c title="设置 ccf_skill_column 参数"
 ...
 modparam("call_center", "ccf_skill_column", "queue_skill")
 ...
@@ -569,14 +566,13 @@ modparam("call_center", "ccf_skill_column", "queue_skill")
 #### ccf_cid_column (string)
 
 
-Name to be used for the "caller ID prefix" column in the
-		flows table.
+流程表中用于 "caller ID prefix" 列的名称。
 
 
-*Default value is "prependcid".*
+*默认值为 "prependcid"。*
 
 
-```c title="Set ccf_cid_column parameter"
+```c title="设置 ccf_cid_column 参数"
 ...
 modparam("call_center", "ccf_cid_column", "queue_cli_prefix")
 ...
@@ -586,14 +582,13 @@ modparam("call_center", "ccf_cid_column", "queue_cli_prefix")
 #### ccf_max_wrapup_column (string)
 
 
-Name to be used for the "max limit for wrapup time" column in the
-		flows table.
+流程表中用于 "max limit for wrapup time" 列的名称。
 
 
-*Default value is "max_wrapup_time".*
+*默认值为 "max_wrapup_time"。*
 
 
-```c title="Set ccf_max_wrapup_column parameter"
+```c title="设置 ccf_max_wrapup_column 参数"
 ...
 modparam("call_center", "ccf_max_wrapup_column", "queue_wrapup")
 ...
@@ -603,14 +598,13 @@ modparam("call_center", "ccf_max_wrapup_column", "queue_wrapup")
 #### ccf_dissuading_hangup_column (string)
 
 
-Name to be used for the "hangup after dissuading" column in the
-		flows table.
+流程表中用于 "hangup after dissuading" 列的名称。
 
 
-*Default value is "dissuading_hangup".*
+*默认值为 "dissuading_hangup"。*
 
 
-```c title="Set ccf_dissuading_hangup_column parameter"
+```c title="设置 ccf_dissuading_hangup_column 参数"
 ...
 modparam("call_center", "ccf_dissuading_hangup_column", "hangup_on_dissuading")
 ...
@@ -620,14 +614,13 @@ modparam("call_center", "ccf_dissuading_hangup_column", "hangup_on_dissuading")
 #### ccf_dissuading_onhold_th_column (string)
 
 
-Name to be used for the "on-hold dissuading threshold" column in the
-		flows table.
+流程表中用于 "on-hold dissuading threshold" 列的名称。
 
 
-*Default value is "dissuading_onhold_th".*
+*默认值为 "dissuading_onhold_th"。*
 
 
-```c title="Set ccf_dissuading_onhold_th_column parameter"
+```c title="设置 ccf_dissuading_onhold_th_column 参数"
 ...
 modparam("call_center", "ccf_dissuading_onhold_th_column", "th_diss_onhold")
 ...
@@ -637,14 +630,13 @@ modparam("call_center", "ccf_dissuading_onhold_th_column", "th_diss_onhold")
 #### ccf_dissuading_ewt_th_column (string)
 
 
-Name to be used for the "EWT dissuading threshold" column in the
-		flows table.
+流程表中用于 "EWT dissuading threshold" 列的名称。
 
 
-*Default value is "dissuading_ewt_th".*
+*默认值为 "dissuading_ewt_th"。*
 
 
-```c title="Set ccf_dissuading_ewt_th_column parameter"
+```c title="设置 ccf_dissuading_ewt_th_column 参数"
 ...
 modparam("call_center", "ccf_dissuading_ewt_th_column", "th_diss_ewt")
 ...
@@ -654,14 +646,13 @@ modparam("call_center", "ccf_dissuading_ewt_th_column", "th_diss_ewt")
 #### ccf_dissuading_qsize_th_column (string)
 
 
-Name to be used for the "queue size dissuading threshold" column in the
-		flows table.
+流程表中用于 "queue size dissuading threshold" 列的名称。
 
 
-*Default value is "dissuading_qsize_th".*
+*默认值为 "dissuading_qsize_th"。*
 
 
-```c title="Set ccf_dissuading_qsize_th_column parameter"
+```c title="设置 ccf_dissuading_qsize_th_column 参数"
 ...
 modparam("call_center", "ccf_dissuading_qsize_th_column", "th_diss_qsize")
 ...
@@ -671,14 +662,13 @@ modparam("call_center", "ccf_dissuading_qsize_th_column", "th_diss_qsize")
 #### ccf_m_welcome_column (string)
 
 
-Name to be used for the "audio message on welcome" column in the
-		flows table.
+流程表中用于 "audio message on welcome" 列的名称。
 
 
-*Default value is "message_welcome".*
+*默认值为 "message_welcome"。*
 
 
-```c title="Set ccf_m_welcome_column parameter"
+```c title="设置 ccf_m_welcome_column 参数"
 ...
 modparam("call_center", "ccf_m_welcome_column", "audio_welcome")
 ...
@@ -688,14 +678,13 @@ modparam("call_center", "ccf_m_welcome_column", "audio_welcome")
 #### ccf_m_queue_column (string)
 
 
-Name to be used for the "audio message on queueing" column in the
-		flows table.
+流程表中用于 "audio message on queueing" 列的名称。
 
 
-*Default value is "message_queue".*
+*默认值为 "message_queue"。*
 
 
-```c title="Set ccf_m_queue_column parameter"
+```c title="设置 ccf_m_queue_column 参数"
 ...
 modparam("call_center", "ccf_m_queue_column", "audio_queue")
 ...
@@ -705,14 +694,13 @@ modparam("call_center", "ccf_m_queue_column", "audio_queue")
 #### ccf_m_dissuading_column (string)
 
 
-Name to be used for the "audio message on dissuading" column in the
-		flows table.
+流程表中用于 "audio message on dissuading" 列的名称。
 
 
-*Default value is "message_dissuading".*
+*默认值为 "message_dissuading"。*
 
 
-```c title="Set ccf_m_dissuading_column parameter"
+```c title="设置 ccf_m_dissuading_column 参数"
 ...
 modparam("call_center", "ccf_m_dissuading_column", "audio_dissuading")
 ...
@@ -722,14 +710,13 @@ modparam("call_center", "ccf_m_dissuading_column", "audio_dissuading")
 #### ccf_m_flow_id_column (string)
 
 
-Name to be used for the "audio message on identifying the flow" column
-		in the flows table.
+流程表中用于 "audio message on identifying the flow" 列的名称。
 
 
-*Default value is "message_flow_id".*
+*默认值为 "message_flow_id"。*
 
 
-```c title="Set ccf_m_flow_id_column parameter"
+```c title="设置 ccf_m_flow_id_column 参数"
 ...
 modparam("call_center", "ccf_m_flow_id_column", "audio_flow_id")
 ...
@@ -739,21 +726,20 @@ modparam("call_center", "ccf_m_flow_id_column", "audio_flow_id")
 #### b2b_logic_ctx_param (string)
 
 
-The name of the *$b2b_logic.ctx* variable that can be
-		used to retrieve the value of the parameter passed to
-		the [cc handle call](#func_cc_handle_call) function.
+可用于检索传递给
+		[cc handle call](#func_cc_handle_call) 函数的参数值的
+		*$b2b_logic.ctx* 变量的名称。
 
 
-This parameter will be copied throughout all the B2B scenarios started
-		by the call_center module. NOTE that you can change the value of the current
-		scenario by writing into it, but the change will not be reflected in a
-		different scenario.
+此参数将被复制到由 call_center 模块启动的所有 B2B 场景中。
+		请注意，您可以通过写入来更改当前场景的值，
+		但该更改不会反映在不同的场景中。
 
 
-*Default value is "call_center".*
+*默认值为 "call_center"。*
 
 
-```c title="Set b2b_logic_ctx_param parameter"
+```c title="设置 b2b_logic_ctx_param 参数"
 ...
 modparam("call_center", "b2b_logic_ctx_param", "b2b_callid")
 ...
@@ -765,62 +751,61 @@ route[handle_call_center] {
 ...
 route[b2b_handle_request] {
     ...
-    xlog("Initial Callid is $b2b_logic.ctx(b2b_callid)\n");
+    xlog("初始 Callid 是 $b2b_logic.ctx(b2b_callid)\n");
     ...
 }
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### cc_handle_call( flowID [,param])
 
 
-This must be used only for initial INVITE requests - the function
-		pushes the call to be handled by the call center module (via a certain
-		flow/queue).
+此函数仅用于初始 INVITE 请求 -
+		该函数推送呼叫以由呼叫中心模块处理
+		（通过某个流程/队列）。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-Parameters:
+参数：
 
 
-- *flowID (string)* - the ID of the flow to
-				handle this call (push the call to that flow).
-- *param (string, optional)* - an opaque
-				string to be passed as parameter to the "callcenter" and 
-				"agent" B2B scenarios. It is
-				intended for custom integration of the call center module and 
-				it is 100% up to the script writer about the value and purpose
-				of this parameter, OpenSIPS will not touch or interpret it.
-				You can retrieve the value of this parameter using the
-				*$b2b_logic.ctx* variable with the name
-				defined in the [b2b logic ctx param](#param_b2b_logic_ctx_param)
-				parameter.
+- *flowID (string)* - 处理此呼叫的流程 ID
+				（将呼叫推入该流程）。
+- *param (string, optional)* - 一个不透明字符串，
+				作为参数传递给 "callcenter" 和
+				"agent" B2B 场景。
+				它用于呼叫中心模块的自定义集成，
+				脚本编写者对此参数的值和目的有 100% 的决定权，
+				OpenSIPS 不会触碰或解释它。
+				您可以使用
+				*$b2b_logic.ctx* 变量
+				（使用 [b2b logic ctx param](#param_b2b_logic_ctx_param)
+				参数中定义的名称）
+				来检索此参数的值。
 
 
-The function returns TRUE back to the script if the call was 
-		successfully pushed and handled by the Call Center engine. IMPORTANT: 
-		you must not do any signaling on the call (reply, relay) after this
-		point.
+如果呼叫成功被呼叫中心引擎推送和处理，
+		函数返回 TRUE 到脚本。
+		重要提示：
+		在此点之后，您不得对呼叫进行任何信令操作（回复、转发）。
 
 
-In case of error, FALSE is returned to the script with the following 
-		return codes:
+如果出错，将返回 FALSE 到脚本，返回码如下：
 
 
-- **-1** - unable to get the flow ID
-			from the parameter;
-- **-2** - unable to parse the FROM URI;
-- **-3** - flow with FlowID not found;
-- **-4** - no agents logged in the flow;
-- **-5** - internal error;
+- **-1** - 无法从参数获取流程 ID；
+- **-2** - 无法解析 FROM URI；
+- **-3** - 未找到具有 FlowID 的流程；
+- **-4** - 流程中没有登录的坐席；
+- **-5** - 内部错误；
 
 
-```c title="cc_handle_call usage"
+```c title="cc_handle_call 用法"
 ...
 if (is_method("INVITE") and !has_totag()) {
 	if (!cc_handle_call("tech_support")) {
@@ -835,224 +820,219 @@ if (is_method("INVITE") and !has_totag()) {
 #### cc_agent_login(agentID, state)
 
 
-This function sets the login (on or off) state for an agent.
+此函数设置坐席的登录（开或关）状态。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-Parameters:
+参数：
 
 
-- *agentID (string)* - the ID of the agent
-- *state (int)* - an integer value giving
-				the new state - 0 means logged off, anything else means logged in.
+- *agentID (string)* - 坐席的 ID
+- *state (int)* - 一个整数值，
+				给出新状态 - 0 表示登出，
+				其他任何值表示登录。
 
 
-```c title="cc_agent_login usage"
+```c title="cc_agent_login 用法"
 ...
-# log off the 'agentX' agent
+# 登出 'agentX' 坐席
 cc_agent_login("agentX",0);
 ...
 ```
 
 
-### Exported Statistics
+### 导出的统计信息
 
 
-#### Global statistics
+#### 全局统计信息
 
 
 ##### ccg_incalls
 
 
-Total number of received calls. (counter type)
+接收的呼叫总数。（计数器类型）
 
 
 ##### ccg_awt
 
 
-Global avg. waiting time for calls. (realtime type)
+呼叫的平均等待时间。（实时类型）
 
 
 ##### ccg_load
 
 
-Global load (across all flows). (realtime type)
+全局负载（跨所有流程）。（实时类型）
 
 
 ##### ccg_distributed_incalls
 
 
-Total number of distributed calls. (counter type)
+分配的呼叫总数。（计数器类型）
 
 
 ##### ccg_answered_incalls
 
 
-Total number of calls (audio/RTP and chat/MSRP) answered by agents. (counter type)
+坐席应答的呼叫（音频/RTP 和聊天/MSRP）总数。（计数器类型）
 
 
 ##### ccg_answered_inchats
 
 
-Total number of chat/MSRP only calls answered by agents. (counter type)
+坐席仅应答的聊天/MSRP 呼叫总数。（计数器类型）
 
 
 ##### ccg_abandonned_incalls
 
 
-Total number of calls terminated by caller before being
-			answered by agents. (counter type)
+在坐席应答之前被呼叫者终止的呼叫总数。（计数器类型）
 
 
 ##### ccg_onhold_calls
 
 
-Total number of calls (audio/RTP and chat/MSRP) in the queues (onhold). (realtime type)
+队列中（等待中）的呼叫（音频/RTP 和聊天/MSRP）总数。（实时类型）
 
 
 ##### ccg_onhold_chats
 
 
-Total number of chat/MSRP only calls in the queues (onhold). (realtime type)
+队列中（等待中）仅聊天/MSRP 呼叫的总数。（实时类型）
 
 
 ##### ccg_free_agents
 
 
-Total number of free agents (across all flows). (realtime type)
+空闲坐席总数（跨所有流程）。（实时类型）
 
 
-#### Per-flow statistics (one set for each flow)
+#### 按流程统计信息（每个流程一组）
 
 
 ##### ccf_incalls_flowID
 
 
-Number of received calls for the flow. (counter type)
+该流程接收的呼叫数。（计数器类型）
 
 
 ##### ccf_dist_incalls_flowID
 
 
-Number of distributed calls in this flow. (counter type)
+该流程中分配的呼叫数。（计数器类型）
 
 
 ##### ccf_answ_incalls_flowID
 
 
-Nnumber of calls (audio/RTP and chat/MSRP) from the flow answered by agents. (counter type)
+坐席应答的来自该流程的呼叫（音频/RTP 和聊天/MSRP）数。（计数器类型）
 
 
 ##### ccf_answ_incalls_flowID
 
 
-Nnumber of chat/MSRP only calls from the flow answered by agents. (counter type)
+坐席仅应答的来自该流程的聊天/MSRP 呼叫数。（计数器类型）
 
 
 ##### ccf_aban_incalls_flowID
 
 
-Number of calls (from the flow) terminated by caller before being
-			answered by agents. (counter type)
+在坐席应答之前被呼叫者终止的来自该流程的呼叫数。（计数器类型）
 
 
 ##### ccf_onhold_incalls_flowID
 
 
-Number of calls (audio/RTP and chat/MSRP) -from the flow- which are onhold.
-			 (realtime type)
+来自该流程处于等待状态的呼叫（音频/RTP 和聊天/MSRP）数。（实时类型）
 
 
 ##### ccf_onhold_inchats_flowID
 
 
-Number of chat/MSRP only calls -from the flow- which are onhold.
-			 (realtime type)
+来自该流程处于等待状态仅聊天/MSRP 呼叫数。（实时类型）
 
 
 ##### ccf_queued_calls_flowID
 
 
-Number of calls which are queued for this flow. (realtime type)
+该流程排队的呼叫数。（实时类型）
 
 
 ##### ccf_free_agents_flowID
 
 
-Number of free agents serving this flow. (realtime type)
+该流程服务的空闲坐席数。（实时类型）
 
 
 ##### ccf_etw_flowID
 
 
-Estimated Time to Wait for this flow. (realtime type)
+该流程的预计等待时间。（实时类型）
 
 
 ##### ccf_awt_flowID
 
 
-Avg. Wating Time for this flow. (realtime type)
+该流程的平均等待时间。（实时类型）
 
 
 ##### ccg_load_flowID
 
 
-The load on the flow (number of queued calls versus number of
-			logged agents). (realtime type)
+该流程的负载（排队呼叫数与登录坐席数之比）。（实时类型）
 
 
-#### Per-agent statistics (one set for each agent)
+#### 按坐席统计信息（每个坐席一组）
 
 
 ##### cca_dist_incalls_agnetID
 
 
-Number of distributed calls to this agent. (counter type)
+分配给此坐席的呼叫数。（计数器类型）
 
 
 ##### cca_answ_incalls_agentID
 
 
-Number of calls (audio/RTP and chat/MSRP) answered by the agent. (counter type)
+坐席应答的呼叫（音频/RTP 和聊天/MSRP）数。（计数器类型）
 
 
 ##### cca_answ_inchats_agentID
 
 
-Number of chat/MSRP only calls answered by the agent. (counter type)
+坐席仅应答的聊天/MSRP 呼叫数。（计数器类型）
 
 
 ##### cca_aban_incalls_agentID
 
 
-Number of calls (sent to this agent) terminated by caller before 
-			being answered by agents. (counter type)
+在被坐席应答之前被呼叫者终止的（发送到此坐席的）呼叫数。（计数器类型）
 
 
 ##### cca_att_agentID
 
 
-Avg. Talk Time for this agent (realtime type)
+此坐席的平均通话时间（实时类型）
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### call_center:reload
 
 
-Replaces obsolete MI command: *cc_reload*.
+替换过时的 MI 命令：*cc_reload*。
 
 
-Command to reload flows and agents definition from database.
+重新加载数据库中的流程和坐席定义。
 
 
-It takes no parameter.
+此命令不带参数。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1063,20 +1043,20 @@ opensips-cli -x mi call_center:reload
 #### call_center:agent_login
 
 
-Replaces obsolete MI command: *cc_agent_login*.
+替换过时的 MI 命令：*cc_agent_login*。
 
 
-Command to login an agent into the Call Center engine.
+将坐席登录到呼叫中心引擎。
 
 
-Parameters:
+参数：
 
 
-- *agent_id* - ID of the agent
-- *state* - the new login state (0 - log off, 1 - log in)
+- *agent_id* - 坐席的 ID
+- *state* - 新的登录状态（0 - 登出，1 - 登录）
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1087,20 +1067,20 @@ opensips-cli -x mi call_center:agent_login agentX 0
 #### call_center:list_queue
 
 
-Replaces obsolete MI command: *cc_list_queue*.
+替换过时的 MI 命令：*cc_list_queue*。
 
 
-Command to list all the calls in queuing - for each call, the 
-		following attributes will be printed: the call id, the calling
-		user info, the flow of the call, for how
-		long the call is in the queue, the ETW for the call, call priority 
-		and the call skill (inherited from the flow).
+列出所有排队的呼叫 -
+		对于每个呼叫，将打印以下属性：
+		呼叫 ID、呼叫用户信息、呼叫的流程、
+		呼叫在队列中等待的时间、呼叫的 ETW、
+		呼叫优先级和呼叫技能（从流程继承）。
 
 
-It takes no parameter.
+此命令不带参数。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1111,19 +1091,20 @@ opensips-cli -x mi call_center:list_queue
 #### call_center:list_flows
 
 
-Replaces obsolete MI command: *cc_list_flows*.
+替换过时的 MI 命令：*cc_list_flows*。
 
 
-Command to list all the flows - for each flow, the 
-		following attributes will be printed: the flow ID, the avg. call 
-		duration, how many calls were processed, how many agents are logged, 
-		and how many onging calls are.
+列出所有流程 -
+		对于每个流程，将打印以下属性：
+		流程 ID、平均呼叫持续时间、
+		已处理的呼叫数、已登录的坐席数、
+		以及正在进行的呼叫数。
 
 
-It takes no parameter.
+此命令不带参数。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1134,18 +1115,19 @@ opensips-cli -x mi call_center:list_flows
 #### call_center:list_agents
 
 
-Replaces obsolete MI command: *cc_list_agents*.
+替换过时的 MI 命令：*cc_list_agents*。
 
 
-Command to list all the agents - for each agent, the 
-		following attributes will be printed: agent ID, agent login state,
-		agent state (free, wrapup, incall) and info on ongoing sessions.
+列出所有坐席 -
+		对于每个坐席，将打印以下属性：
+		坐席 ID、坐席登录状态、
+		坐席状态（空闲、wrapup、接听中）以及正在进行的会话信息。
 
 
-It takes no parameter.
+此命令不带参数。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1156,19 +1138,20 @@ opensips-cli -x mi call_center:list_agents
 #### call_center:list_calls
 
 
-Replaces obsolete MI command: *cc_list_calls*.
+替换过时的 MI 命令：*cc_list_calls*。
 
 
-Command to list all the ongoing calls - for each call, the 
-		following attributes will be printed: call ID, call state 
-		(welcome, queued, toagent, ended), call duration, flow it belongs to,
-		agent serving the call (if any).
+列出所有正在进行的呼叫 -
+		对于每个呼叫，将打印以下属性：
+		呼叫 ID、呼叫状态
+		（welcome、queued、toagent、ended）、呼叫持续时间、
+		所属流程、服务此呼叫的坐席（如果有）。
 
 
-It takes no parameter.
+此命令不带参数。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1179,36 +1162,36 @@ opensips-cli -x mi call_center:list_agents
 #### call_center:dispatch_call_to_agent
 
 
-Replaces obsolete MI command: *cc_dispatch_call_to_agent*.
+替换过时的 MI 命令：*cc_dispatch_call_to_agent*。
 
 
-This function sends a given call (from the queue) to a given agent. For
-		the operation to succeed, several conditions must be met:
+此函数将给定呼叫（从队列中）发送到给定坐席。
+		要使操作成功，必须满足多个条件：
 
 
-- the call must be in the queue
-- the agent must be logged in
-- the agent must support the skill required by the call
-- the agent must support the media (RTP/MSRP) requiref by the call
-- the agent must have available sessions for the requested media
+- 呼叫必须在队列中
+- 坐席必须已登录
+- 坐席必须支持呼叫所需的技能
+- 坐席必须支持呼叫所需的媒体（RTP/MSRP）
+- 坐席必须有请求媒体的可用会话
 
 
-It takes two parameters.
+此命令带有两个参数。
 
 
-- *call_id* - the ID of the call, as provided by
-			the queue listing MI command [mi list queue](#mi_list_queue)
-- *agent_id* - the ID of the call, as provided by
-			the agents listing MI command [mi list agents](#mi_list_agents)
+- *call_id* - 呼叫的 ID，
+			由 [MI list queue](#mi_list_queue) MI 命令提供
+- *agent_id* - 呼叫的 ID，
+			由 [MI list agents](#mi_list_agents) MI 命令提供
 
 
-IMPORTANT: in order to be used, you need to be sure that the internal
-		call dispatching is DISABLED via the
-		[internal call dispatching](#param_internal_call_dispatching) module parameter
-		or the [mi internal call dispatching](#mi_internal_call_dispatching) MI command.
+重要提示：为了使用此功能，您需要确保内部
+		呼叫分配是禁用的，
+		通过 [internal call dispatching](#param_internal_call_dispatching) 模块参数
+		或 [MI internal call dispatching](#mi_internal_call_dispatching) MI 命令。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1219,19 +1202,19 @@ opensips-cli -x mi call_center:dispatch_call_to_agent B2B452.dee2.33 agentX
 #### call_center:internal_call_dispatching
 
 
-Replaces obsolete MI command: *cc_internal_call_dispatching*.
+替换过时的 MI 命令：*cc_internal_call_dispatching*。
 
 
-Command to inspect and/or change the 
-		[internal call dispatching](#param_internal_call_dispatching) setting
+检查和/或更改
+		[internal call dispatching](#param_internal_call_dispatching) 设置的命令
 
 
-It takes one optional parameter `dispatching` if the
-		value of the setting should be changed. A 0 value means disabling
-		the internal dispatching, a non zero means to enable it.
+如果应更改设置的值，它需要一个可选参数 `dispatching`。
+		值为 0 表示禁用内部分配，
+		非零表示启用。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1242,16 +1225,16 @@ opensips-cli -x mi call_center:internal_call_dispatching 0
 #### call_center:reset_stats
 
 
-Replaces obsolete MI command: *cc_reset_stats*.
+替换过时的 MI 命令：*cc_reset_stats*。
 
 
-Command to reset all counter-like statistics.
+重置所有计数器类型的统计信息。
 
 
-It takes no parameter.
+此命令不带参数。
 
 
-MI FIFO Command usage:
+MI FIFO 命令用法：
 
 
 ```c
@@ -1259,100 +1242,99 @@ opensips-cli -x mi call_center:reset_stats
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_CALLCENTER_AGENT_REPORT
 
 
-This event is raised when the status of an agent changes.
+当坐席状态发生变化时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *agent_id* - the id of the agent.
-- *state* - the status of the agent:
-				
+- *agent_id* - 坐席的 ID。
+- *state* - 坐席的状态：
+					
 					offline
 					free
 					incall
 					wrapup
-- *wrapup_ends* - the timestamp when the 
-				wrapup state will end; published only if the state is 
-				"wrapup"
-- *flow_id* - the flow ID that delivered the
-				call for this agent; published only if the state is "incall"
+- *wrapup_ends* - wrapup 状态结束的时间戳；
+				仅在状态为 "wrapup" 时发布
+- *flow_id* - 为此坐席分配呼叫的流程 ID；
+				仅在状态为 "incall" 时发布
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 `$cc_state`
-			Returns the state of a call.
-			Possible values returned are:
-				*welcome* - the welcome message is played.
-					*dissuading1* - the first dissuading message is played.
-					*dissuading2* - the second dissuading message is played.
-					*queue* - the call is in queue.
-					*preagent* - the agent is being called.
-					*toagent* - the agent is in call.
+			返回呼叫的状态。
+			可能的返回值包括：
+				*welcome* - 正在播放欢迎消息。
+					*dissuading1* - 正在播放第一个劝阻消息。
+					*dissuading2* - 正在播放第二个劝阻消息。
+					*queue* - 呼叫在队列中。
+					*preagent* - 正在呼叫坐席。
+					*toagent* - 坐席在通话中。
 
 		
-		$rtpquery Usage
+		$rtpquery 用法
 		
 ```c
 
 ...
 	$json(reply) := $rtpquery;
-	xlog("Total RTP Stats: $json(reply/totals)\n");
+	xlog("RTP 统计总数：$json(reply/totals)\n");
 ...
 ```
 
 		
 		
-	NONE
+		无
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Available Functions
+### 可用函数
 
 
-NONE
+无
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Where can I find more about OpenSIPS?**
+**问：我在哪里可以找到更多关于 OpenSIPS 的信息？**
 
 
-Take a look at [https://opensips.org/](https://opensips.org/).
+请查看 [https://opensips.org/](https://opensips.org/)。
 
 
-**Q: Where can I post a question about this module?**
+**问：我可以在哪里发布关于此模块的问题？**
 
 
-First at all check if your question was already answered on one of
-			our mailing lists:
+首先检查您的问题是否已在我们的邮件列表中解答：
 
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
+与任何稳定 OpenSIPS 版本相关的电子邮件应发送至
+			users@lists.opensips.org，
+			与开发版本相关的电子邮件应发送至
+			devel@lists.opensips.org。
 
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
+如果您想保持邮件私密，请发送至
+			users@lists.opensips.org。
 
 
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+**问：如何报告错误？**
+
+
+请按照以下指南操作：
+			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可协议。

@@ -1,116 +1,103 @@
 ---
-title: "RabbitMQ Consumer Module"
-description: "*RabbitMQ Consumer* ([http://www.rabbitmq.com/](http://www.rabbitmq.com/)) is an open source messaging server. It's purpose is to manage received messages in queues, taking advantage of the flexible AMQP protocol."
+title: "RabbitMQ Consumer 模块"
+description: "*RabbitMQ Consumer* ([http://www.rabbitmq.com/](http://www.rabbitmq.com/)) 是一个开源消息服务器。其目的是管理队列中接收到的消息，利用灵活的 AMQP 协议。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
 *RabbitMQ Consumer*
 		([http://www.rabbitmq.com/](http://www.rabbitmq.com/)) 
-		is an open source messaging server. It's purpose is to
-		manage received messages in queues, taking advantage of
-		the flexible AMQP protocol.
+	是一个开源消息服务器。其目的是管理队列中接收到的消息，利用灵活的
+		AMQP 协议。
 
 
-Using this module you can subscribe consumers to a RabbitMQ broker in order
-		to receive AMQP messages for specified queues. The messages will be delivered
-		by triggering events through the OpenSIPS Event Interface.
+使用此模块，您可以向 RabbitMQ broker 订阅消费者，以接收指定队列的 AMQP 消息。消息将通过 OpenSIPS 事件接口触发事件来传递。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *tls_mgm* if [use tls](#param_use_tls) is enabled.
+- *tls_mgm*（如果启用了 [use tls](#param_use_tls)）。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
 - *librabbitmq-dev*
 
 
-NOte that the module is not compatible with versions 0.4 or below of
-			the librabbitmq-dev library.
+请注意，该模块与 librabbitmq-dev 库 0.4 或更低版本不兼容。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### connection_id (string)
 
 
-Specify the configuration for a RabbitMQ connection. It contains a set
-			of parameters used to customize the connection to the server as well as
-			the consumer subscription. The format of the parameter is
-			*param1=value1; param2=value2;*.
-			The *uri*, *queue* and
-			*event* parameters are mandatory.
+指定 RabbitMQ 连接的配置。它包含一组用于自定义到服务器的连接以及消费者订阅的参数。参数格式为
+			*param1=value1; param2=value2;*。
+			*uri*、*queue* 和
+			*event* 参数是必需的。
 
 
-This parameter can be set multiple times, for each RabbitMQ
-			connection.
+可以为每个 RabbitMQ 连接多次设置此参数。
 
 
-The following parameters can be used:
+可使用以下参数：
 
 
-- *uri* - Mandatory parameter - a full
-				*amqp* URI as described
-				[here](https://www.rabbitmq.com/uri-spec.html).
-				Missing fields in the URI will receive default values,
-				such as: *user: guest*,
-				*password: guest*,
-				*host: localhost*,
-				*vhost: /*,
-				*port: 5672*. TLS connections are specified
-				using an *amqps* URI.
-- *queue* - Mandatory parameter - the name of the
-				RabbitMQ queue to subscribe a consumer to. This parameter is mandatory.
-- *event* - Mandatory parameter - the name of the OpenSIPS
-				event that will be triggered for each AMQP message received.
-- *ack* - flag that indicates to the broker
-				that messages will be acknowledged upon receival. If you do not
-				set this flag, the server will not expect ACKs and OpenSIPS will not
-				send them.
-- *exclusive* - flag that indicates to the broker
-				that exclusive consumer access is requested, meaning only this consumer
-				can access the queue.
-- *frame_max* - the maximum size of an AMQP
-				frame. Default size is 131072.
-- *heartbeat* - interval in seconds used
-				to send heartbeat messages. Default is disabled.
-- *tls_domain* - indicates which TLS domain (as
-				defined using the *tls_mgm* module) to use for
-				this connection. This must be an *amqps* URI and
-				the [use tls](#param_use_tls) module parameter must be enabled.
+- *uri* - 必需参数 - 一个完整的
+				*amqp* URI（如
+				[此处](https://www.rabbitmq.com/uri-spec.html) 所述）。
+				URI 中缺失的字段将接收默认值，
+				例如：*user: guest*、
+				*password: guest*、
+				*host: localhost*、
+				*vhost: /*、
+				*port: 5672*。TLS 连接使用 *amqps* URI 指定。
+- *queue* - 必需参数 - 订阅消费者的
+				RabbitMQ 队列名称。此参数是必需的。
+- *event* - 必需参数 - 为每个接收到的 AMQP 消息触发的 OpenSIPS
+				事件的名称。
+- *ack* - 指示 broker
+				消息将在收到后被确认的标志。如果不设置此标志，服务器将不会期望 ACK，OpenSIPS 也不会发送它们。
+- *exclusive* - 指示 broker
+				请求独占消费者访问的标志，这意味着只有此消费者可以访问该队列。
+- *frame_max* - AMQP
+				帧的最大大小。默认大小为 131072。
+- *heartbeat* - 发送
+				心跳消息的间隔（以秒为单位）。默认禁用。
+- *tls_domain* - 指示此连接使用哪个 TLS 域（使用
+				*tls_mgm* 模块定义）的参数。这必须是 *amqps* URI，并且必须启用
+				[use tls](#param_use_tls) 模块参数。
 
 
-```c title="Set connection_id parameter"
+```c title="设置 connection_id 参数"
 ...
-# connection to a RabbitMQ server on localhost, default port
-# with a 5 seconds interval for heartbeat messages
+# 连接到本地主机上默认端口的 RabbitMQ 服务器
+# 心跳消息间隔为 5 秒
 modparam("rabbitmq_consumer", "connection_id",
     "uri = amqp://127.0.0.1; queue = myqueue1; event = E_Q1_MSG; heartbeat = 5;")
 ...
-# consumer that acknowledges messages
+# 确认消息的消费者
 modparam("rabbitmq_consumer", "connection_id",
     "uri = amqp://127.0.0.1; queue = myqueue2; event = E_Q2_MSG; ack;")
 ...
-# TLS connection
+# TLS 连接
 modparam("rabbitmq_consumer", "connection_id",
     "uri = amqps://127.0.0.1; queue = myqueue3; event = E_Q3_MSG; tls_domain=rmq;")
 ...
@@ -121,14 +108,13 @@ modparam("rabbitmq_consumer", "connection_id",
 #### connect_timeout (integer)
 
 
-The maximally allowed duration (in milliseconds) for the establishment
-		of a TCP connection with a RabbitMQ server.
+与 RabbitMQ 服务器建立 TCP 连接的最大允许持续时间（以毫秒为单位）。
 
 
-*Default value is "500" (milliseconds).*
+*默认值为 "500"（毫秒）。*
 
 
-```c title="Setting the connect_timeout parameter"
+```c title="设置 connect_timeout 参数"
 ...
 modparam("rabbitmq_consumer", "connect_timeout", 1000)
 ...
@@ -138,14 +124,13 @@ modparam("rabbitmq_consumer", "connect_timeout", 1000)
 #### retry_timeout (integer)
 
 
-The interval (in milliseconds) after which OpenSIPS will try to
-		re-establish a failed AMQP connection to a RabbitMQ server.
+OpenSIPS 尝试重新建立到 RabbitMQ 服务器的失败 AMQP 连接的间隔（以毫秒为单位）。
 
 
-*Default value is "5000" (milliseconds).*
+*默认值为 "5000"（毫秒）。*
 
 
-```c title="Setting the retry_timeout parameter"
+```c title="设置 retry_timeout 参数"
 ...
 modparam("rabbitmq_consumer", "retry_timeout", 10000)
 ...
@@ -155,21 +140,17 @@ modparam("rabbitmq_consumer", "retry_timeout", 10000)
 #### use_tls (integer)
 
 
-Setting this parameter will allow you to use TLS for broker connections.
-		In order to enable TLS for a specific connection, you can use the
-		"tls_domain=*dom_name*" parameter in the configuration
-		specified through the [connection id](#param_connection_id) module parameter.
+设置此参数将允许您对 broker 连接使用 TLS。要为特定连接启用 TLS，可以使用 [connection id](#param_connection_id) 模块参数中指定的配置中的
+			"tls_domain=*dom_name*" 参数。
 
 
-When using this parameter, you must also ensure that
-		*tls_mgm* is loaded and properly configured. Refer to
-		the the module for additional info regarding TLS client domains.
+使用此参数时，还必须确保 *tls_mgm* 已加载并正确配置。请参阅模块以获取关于 TLS 客户端域的更多信息。
 
 
-*Default value is **0** (not enabled)*
+*默认值为 **0**（未启用）*
 
 
-```c title="Set the use_tls parameter"
+```c title="设置 use_tls 参数"
 ...
 modparam("tls_mgm", "client_domain", "rmq")
 modparam("tls_mgm", "certificate", "[rmq]/etc/pki/tls/certs/rmq.pem")
@@ -181,26 +162,25 @@ modparam("rabbitmq_consumer", "use_tls", 1)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-The module does not export any script functions.
+该模块不导出任何脚本函数。
 
 
-### Exported Events
+### 导出的事件
 
 
-An event with a custom name, as set in the *event*
-		field of the [connection id](#param_connection_id) parameter,
-		will be raised for each AMQP message received.
+对于每个接收到的 AMQP 消息，将引发一个具有自定义名称的事件，该名称在 [connection id](#param_connection_id) 参数的 *event*
+		字段中设置。
 
 
-Parameters:
+参数：
 
 
-- *body* - the AMQP message body.
+- *body* - AMQP 消息正文。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0（Creative Common License 4.0）授权。

@@ -1,130 +1,83 @@
 ---
-title: "oracle Module"
-description: "This is a module which provides Oracle connectivity for OpenSIPS. It implements the DB API defined in OpenSIPS. If you want to use the nathelper module, or any other modules that calls the get_all_ucontacts API export from usrloc, then you need to set the *DORACLE_USRLOC* define in the Ma..."
+title: "Oracle 模块"
+description: "这是一个为 OpenSIPS 提供 Oracle 连接功能的模块。它实现了 OpenSIPS 中定义的 DB API。如果您想使用 nathelper 模块，或任何其他调用 usrloc 中 get_all_ucontacts API 的模块，则需要在编译前在 Makefile.defs 文件中设置 *DORACLE_USRLOC* 定义。"
 ---
 
-## User's Guide
+## 管理指南
 
+### 概述
 
-### Overview
+这是一个为 OpenSIPS 提供 Oracle 连接功能的模块。它实现了 OpenSIPS 中定义的 DB API。如果您想使用 nathelper 模块，或任何其他调用 usrloc 中 get_all_ucontacts API 的模块，则需要在编译前在 Makefile.defs 文件中设置 *DORACLE_USRLOC* 定义。
 
+### 依赖
 
-This is a module which provides Oracle connectivity for OpenSIPS.
-		It implements the DB API defined in OpenSIPS. If you want to use
-		the nathelper module, or any other modules that calls the
-		get_all_ucontacts API export from usrloc, then you need to set
-		the *DORACLE_USRLOC* define in the Makefile.defs
-		file before compilation.
+#### OpenSIPS 模块
 
+以下模块需要在此模块之前加载：
 
-### Dependencies
+- *不依赖其他 OpenSIPS 模块*。
 
+#### 外部库或应用程序
 
-#### OpenSIPS Modules
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
+- *instantclient-sdk-10.2.0.3* - OCI 的开发头文件和库。
 
-The following modules must be loaded before this module:
-
-
-- *No dependencies on other OpenSIPS modules*.
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
-
-
-- *instantclient-sdk-10.2.0.3* - the development headers and libraries of OCI.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### timeout (fixedpoint)
 
+任何数据库操作的超时值。
 
-Timeout value for any operation with BD.
+可能的值范围为 0.1 到 10.0 秒。
 
+*默认值为 3.0（3 秒）。*
 
-Possible values is from 0.1 to 10.0 seconds.
+如果 timeout 参数设置为 0，模块使用同步模式（无超时）。
 
-
-*Default value is 3.0 (3 second).*
-
-
-If value of timeout parameter set to 0, module use synchronous
-		mode (without timeout).
-
-
-```c title="Set timeout parameter"
+```c title="设置 timeout 参数"
 ...
 modparam("db_oracle", "timeout", 1.5)
 ...
 ```
 
-
-```c title="Disable asynchronous mode"
+```c title="禁用异步模式"
 ...
 modparam("db_oracle", "timeout", 0)
 ...
 ```
 
-
 #### reconnect (fixedpoint)
 
+连接（创建会话）操作的超时值。
 
-Timeout value for connect (create session) operation.
+可能的值范围为 0.1 到 10.0 秒。
 
+*默认值为 0.2（200 毫秒）。*
 
-Possible values is from 0.1 to 10.0 seconds.
-
-
-*Default value is 0.2 (200 milliseconds).*
-
-
-```c title="Set reconnect parameter"
+```c title="设置 reconnect 参数"
 ...
 modparam("db_oracle", "reconnect", 0.5)
 ...
 ```
 
+### 导出的函数
 
-### Exported Functions
+配置文件中没有导出可使用的函数。
 
+### 安装
 
-No function exported to be used from configuration file.
+由于依赖外部库，oracle 模块默认不会被编译和安装。您可以使用以下选项之一：
 
+- 编辑 "Makefile" 并从 "excluded_modules" 列表中删除 "db_oracle"。然后按照标准程序安装 OpenSIPS："make all; make install"。
+- 从命令行使用：'make all include_modules="db_oracle"; make install include_modules="db_oracle"'。
 
-### Installation
+### 工具 opensips_orasel
 
+为了让 opensips-cli 工具能够以用户可读的形式将 'query' 结果打印到终端。标准的命令行 Oracle 客户端（sqlplus）不太适合此用途，因为它无法将列宽与实际（接收到的）数据对齐（它总是按照数据库方案中描述的列宽打印）。这个问题通过包含工具 opensips_orasel 得到了解决，它格式化输出的方式与 'mysql' 客户端工具大致相同。此外，此工具了解 OpenSIPS 中用于 Oracle 工作的数据库"协议和类型"，并在格式化输出时考虑这些因素。
 
-Because it dependes on an external library, the oracle module is not
-		compiled and installed by default. You can use one of the next options.
+<!-- 贡献者 -->
 
+### 许可证
 
-- - edit the "Makefile" and remove "db_oracle" from "excluded_modules"
-			list. Then follow the standard procedure to install OpenSIPS:
-			"make all; make install".
-- - from command line use: 'make all include_modules="db_oracle";
-			make install include_modules="db_oracle"'.
-
-
-### Utility opensips_orasel
-
-
-For working with opensips-cli tool, should be able to print the 'query' 
-		results to the terminal in a user-readable form. The standard command-line 
-		Oracle client (sqlplus) is not quite suitable for this, as it cannot align 
-		row width to real (received) data's (it always prints a cell width as 
-		described in the db scheme). This problem has been solved by inclusion the 
-		utility opensips_orasel, which formats printing approximately in the same 
-		way as the 'mysql' client utility. In addition, this utility known about 
-		the "agreements and types" in DB that are used in OpenSIPS for the work 
-		with Oracle and formats printing taking these into account.
-<!-- CONTRIBUTORS -->
-
-### License
-
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权。

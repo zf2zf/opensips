@@ -1,285 +1,249 @@
 ---
-title: "SIPREC Module"
-description: "This module provides the means to do calls recording using an external recorder - the entity that records the call is not in the media path between the caller and callee, but it is completely separate, thus it can not affect by any means the quality of the conversation. This is done in a ..."
+title: "SIPREC 模块"
+description: "该模块提供了使用外部录音设备进行通话录音的手段——录音实体不在通话双方之间的媒体路径中，而是完全独立的，因此不会以任何方式影响通话质量。这是以一种标准化的方式完成的，使用 SIPREC 协议。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides the means to do calls recording using an
-		external recorder - the entity that records the call is not in
-		the media path between the caller and callee, but it is completely
-		separate, thus it can not affect by any means the quality of the
-		conversation. This is done in a standardized manner, using
-		the [SIPREC
-			Protocol](https://tools.ietf.org/html/rfc7866), thus it can be used by any recorder that
-		implements this protocol.
+该模块提供了使用外部录音设备进行通话录音的手段。
+录音实体不在通话双方之间的媒体路径中，而是完全独立的，
+因此不会以任何方式影响通话质量。
+这是以一种标准化的方式完成的，使用
+[ SIPREC 协议](https://tools.ietf.org/html/rfc7866)，
+因此可以被任何实现此协议的录音设备使用。
 
 
-Since an external server is used to record calls, there are no
-		constraints regarding the location of the recorder, thus it can be
-		placed arbitrary. This offers huge flexibility to your architecture
-		configuration and various means for scaling.
+由于使用外部服务器进行通话录音，因此录音设备的位置没有限制，
+可以任意放置。这为您的架构配置和各种扩展方式提供了极大的灵活性。
 
 
-The work for this module has been sponsored by the [OrecX Company](http://www.orecx.com/). This module is
-		fully integrated with the OrecX Call Recording products.
+该模块的工作由 [OrecX 公司](http://www.orecx.com/) 赞助。
+该模块与 OrecX 通话录音产品完全集成。
 
 
-### How it works
+### 工作原理
 
 
-The full architecture of a SIP Media Recording platform is
-		documented in [RFC 7245](https://tools.ietf.org/html/rfc7245). According to this architecture, this OpenSIPS
-		module implements a SRC (Session Recording Client) that instructs a SRS
-		(Session Recording Server) when new calls are started, the
-		participants of the calls and their profiles. Based on this data, the
-		SRS can decide whether the call should be recorded or not.
+SIP 媒体录制平台的完整架构记录在 [RFC 7245](https://tools.ietf.org/html/rfc7245) 中。
+根据此架构，该 OpenSIPS 模块实现了一个 SRC（会话录制客户端），
+用于指示 SRS（会话录制服务器）何时开始新通话、
+参与者及其配置文件。根据这些数据，SRS 可以决定是否应录制通话。
 
 
-From SIP signalling perspective, the module does not change the call
-		flow between the caller and callee. The call is established just as
-		any other calls that are not recorded. But for each call that has
-		*SIPREC* engaged, a completely separate SIP session
-		is started by the SRC (OpenSIPS) towards the SRS, using the [OpenSIPS Back-2-Back module](../b2b_entities). The
-		*INVITE* message sent to the SRS contains a
-		multi-part body consisting of two parts:
+从 SIP 信令的角度来看，该模块不会改变通话双方之间的通话流程。
+通话的建立与任何其他未录制的通话完全相同。
+但是对于每个启用了 *SIPREC* 的通话，
+SRC（OpenSIPS）会向 SRS 发起一个完全独立的 SIP 会话，
+使用 [OpenSIPS Back-2-Back 模块](../b2b_entities)。
+发送到 SRS 的 *INVITE* 消息包含一个由两部分组成的多部分内容：
 
 
-- *Recording SDP* - the SDP of the Media Server
-			that will *fork* the RTP to the recorder.
-- *Participants Metadata* - an XML-formatted
-			document that contains information about the participants. The
-			structure of the document is detailed in [RFC 7865](https://tools.ietf.org/html/rfc7865).
+- *录制 SDP* - 媒体服务器的 SDP，
+			它将把 RTP 分叉到录音设备。
+- *参与者元数据* - 一个 XML 格式的文档，
+			包含有关参与者的信息。文档结构详见 [RFC 7865](https://tools.ietf.org/html/rfc7865)。
 
 
-The SRS can respond with negative reply, indicating that the session
-		does not need to be recorded, or with a positive reply (200 OK),
-		indicating in the SDP body where the media RTP should be
-		*sent/forked*. When the call ends, the SRC must
-		send a *BYE* message to the SRS, indicating that
-		the recording should be completed.
+SRS 可以回复负面回复，表示不需要录制会话，
+或回复正面回复（200 OK），在 SDP 正文中指示媒体 RTP 应被发送/分叉到哪里。
+当通话结束时，SRC 必须向 SRS 发送 *BYE* 消息，
+表示录音应完成。
 
 
-Full examples of call flows can be found in [RFC 8068](https://tools.ietf.org/html/rfc8068).
+完整的通话流程示例可在 [RFC 8068](https://tools.ietf.org/html/rfc8068) 中找到。
 
 
-### Media Handling
+### 媒体处理
 
 
-Since OpenSIPS is a SIP Proxy, it does not have any Media Capabilities
-		by itself. Thus we need to rely on a different Media Server to capture
-		the RTP traffic and fork it to the SRS. The current implementation
-		supports both the [RTPProxy](http://www.rtpproxy.org/)
-		(through the [RTPProxy module](../rtpproxy)) and
-		[RTPEngine](https://github.com/sipwise/rtpengine)
-		(through the [RTEngine module](../rtpengine)) Media
-		Servers.
+由于 OpenSIPS 是一个 SIP 代理，它本身没有任何媒体能力。
+因此我们需要依赖不同的媒体服务器来捕获 RTP 流量并将其分叉到 SRS。
+当前实现支持 [RTPProxy](http://www.rtpproxy.org/)
+（通过 [RTPProxy 模块](../rtpproxy)）和
+[RTPEngine](https://github.com/sipwise/rtpengine)
+（通过 [RTEngine 模块](../rtpengine)）媒体服务器。
 
 
-### SRS Failover
+### SRS 故障转移
 
 
-The *siprec* module supports failover between
-		multiple SRS servers - when calling the *[siprec start recording](#func_siprec_start_recording)* function, one
-		can provision multiple SRS URIs, separated by comma. In this case, OpenSIPS
-		will try to use them in the same order specified, one by one, until
-		either one of them responds with a positive reply (200 OK), or the
-		response code is one of the codes matched by the *[skip failover codes](#param_skip_failover_codes)* regular expression.
-		In the latter case the call is not recorded at all.
+*siprec* 模块支持多个 SRS 服务器之间的故障转移——
+当调用 *[siprec start recording](#func_siprec_start_recording)* 函数时，
+可以配置多个 SRS URI，用逗号分隔。
+在这种情况下，OpenSIPS 将按指定的顺序尝试使用它们，一个接一个，
+直到其中一个以正面回复（200 OK）响应，
+或者响应代码是由 *[skip failover codes](#param_skip_failover_codes)* 正则表达式匹配代码之一。
+在后一种情况下，通话根本不会被录制。
 
 
-### Limitations
+### 限制
 
 
-This module only implements the SRC
-	specifications of the [SIPREC RFC](https://tools.ietf.org/html/rfc7866). In
-	order to have a full recording solution, you will also need a SRS solution
-	such as [Oreka](http://oreka.sourceforge.net/) - an
-	open-source project provided by [OrecX](http://www.orecx.com/).
+该模块仅实现了 [SIPREC RFC](https://tools.ietf.org/html/rfc7866) 的 SRC 规范。
+为了获得完整的录音解决方案，您还需要一个 SRS 解决方案，
+如 [Oreka](http://oreka.sourceforge.net/) —— 一个由 [OrecX](http://www.orecx.com/) 提供的开源项目。
 
 
-Although this module provides all the necessary tools to do calls
-		recording, it does not fully implement the entire
-		*SIPREC* SRC specifications. This list contains
-		some of the module's limitations:
+虽然该模块提供了进行通话录音的所有必要工具，
+但它并未完全实现整个 *SIPREC* SRC 规范。
+此列表包含该模块的一些限制：
 
 
-- *There is no Recording Indicator played to the
-				callee* - since OpenSIPS continues to act as a proxy,
-			there is no way for us to postpone the media between the caller
-			and callee to play a Recording Indicator message.
-- *Cannot handle Recording Sessions initiated by
-				SRS* - we do not support the scenario when an SRS
-			suddenly decides to record a call in the middle of the dialog.
-- *OpenSIPS cannot be "queried" for ongoing
-				recording sessions* - this is scheduled to be
-			implemented in further releases.
+- *不会向被叫方播放录制指示器* -
+				由于 OpenSIPS 继续充当代理，
+			我们无法在通话双方之间插入媒体来播放录制指示器消息。
+- *无法处理由 SRS 发起的录制会话* -
+				我们不支持 SRS 突然决定在对话中间录制通话的场景。
+- *OpenSIPS 不能被"查询"正在进行的
+				录制会话* - 这计划在后续版本中实现。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *TM* - Transaction module.
-- *Dialog* - Dialog module for keeping track of the call.
-- *RTP_Relay* - RTP Relay module used for controlling the
-				Media Servers that will fork the media.
-- *B2B_ENTITIES* - Back-2-Back module used for communicating with the SRS.
+- *TM* - 事务模块。
+- *Dialog* - 用于跟踪通话的对话框模块。
+- *RTP_Relay* - 用于控制将分叉媒体的
+				媒体服务器的 RTP 中继模块。
+- *B2B_ENTITIES* - 用于与 SRS 通信的 Back-2-Back 模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载此模块之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### skip_failover_codes (string)
 
 
-A regular expression used to specify the codes that should prevent
-			the module from failing over to a new SRS server.
+一个正则表达式，用于指定应防止模块故障转移到新 SRS 服务器的代码。
 
 
-*By default any negative reply generates a failover.*
+*默认情况下，任何负面回复都会生成故障转移。*
 
 
-```c title="Set skip_failover_codes parameter"
+```c title="设置 skip_failover_codes 参数"
 ...
-# do not failover on 408 reply codes
+# 不要在 408 回复代码上故障转移
 modparam("siprec", "skip_failover_codes", "408")
 
-# do not failover on 408 or 487 reply codes
+# 不要在 408 或 487 回复代码上故障转移
 modparam("siprec", "skip_failover_codes", "408|487")
 
-# do not failover on any 3xx or 4xx reply code
+# 不要在任何 3xx 或 4xx 回复代码上故障转移
 modparam("siprec", "skip_failover_codes", "[34][0-9][0-9]")
 ...
-		
+
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_SIPREC_START
 
 
-This event is raised when a SIPREC call is established and a call
-				starts to be recorded.
+当 SIPREC 通话建立并开始录制时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *dlg_id* - dialog id ("did")
-					of the call being recorded;
-- *dlg_callid* - Call-Id of the call being
-					recorded;
-- *callid* - Call-Id (B2B id) of the
-					SIPREC call;
-- *session_id* - SIPREC UUID of the recording call;
-- *server* - the SIPREC server handing this call;
-- *instance* - the SIPREC instance this event is triggered for;
+- *dlg_id* - 正在录制的通话的对话框 ID ("did")
+- *dlg_callid* - 正在录制的通话的 Call-Id
+- *callid* - SIPREC 通话的 Call-Id (B2B id)
+- *session_id* - 录制通话的 SIPREC UUID
+- *server* - 处理此通话的 SIPREC 服务器
+- *instance* - 触发此事件的 SIPREC 实例
 
 
 #### E_SIPREC_STOP
 
 
-This event is raised when a SIPREC call is terminated.
+当 SIPREC 通话终止时触发此事件。
 
 
-This event exposes the same parameters as the
-			[E SIPREC START](#event_e_siprec_start) event.
+此事件公开与 [E SIPREC START](#event_e_siprec_start) 事件相同的参数。
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### siprec_start_recording(srs[, instance])
 
 
-Calling this function on an initial
-				*INVITE* engages call recording to SRS(s) for
-				that call. Note that it does not necessary mean that the call
-				will be recorded - it just means that OpenSIPS will query
-				instruct the SRS that a new call has started, but the SRS
-				might decide that the recording is disabled for those
-				participants.
+在初始 *INVITE* 上调用此函数会为该通话启用到 SRS 的通话录制。
+请注意，这不一定意味着通话会被录制——这只是意味着 OpenSIPS 会查询
+指示 SRS 有新通话已开始，但 SRS 可能决定对这些参与者禁用了录制。
 
 
-*Note* that the call recording is not
-				started right away, but only when the callee provides an
-				SDP as well (usually in a 200 OK, or possibly a 183 Ringing).
+*请注意，通话录制不会立即开始，
+				而是要等到被叫方也提供 SDP 时（通常是 200 OK，或可能是 183 Ringing）。
 
 
-*Note* if you only want to start recording
-				when the call is established (200 OK is received), then you
-				should call this function in the onreply route processing that
-				200 OK.
+*请注意，如果您只想在通话建立后开始录制（收到 200 OK），
+				您应该在处理 200 OK 的 onreply 路由中调用此函数。
 
 
-Parameters:
+参数：
 
 
-- *srs* (string) - a comma-separated list of SRS
-					URIs. These URIs are used in the order specified. See
-					[siprec srs failover](#srs_failover) for more
-					information.
-- *instance* (string, optional) - used to
-					start a particular SIPREC *instance*.
-					When missing, the *default* instance
-					is started.
+- *srs* (string) - 以逗号分隔的 SRS URI 列表。
+				这些 URI 按指定顺序使用。
+				详见 [siprec srs failover](#srs_failover)。
+- *instance* (string, 可选) - 用于启动特定 SIPREC *实例*。
+				如果缺失，将启动 *默认* 实例。
 
 
-The function returns false when an internal error is triggered
-				and the call recording setup fails. Otherwise, if all the
-				internal mechanisms are activated, it returns true.
+当触发内部错误且通话录制设置失败时，函数返回 false。
+否则，如果所有内部机制都被激活，它返回 true。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="Use siprec_start_recording() function with a single SRS"
+```c title="使用单个 SRS 的 siprec_start_recording() 函数"
 	...
 	if (!has_totag() && is_method("INVITE")) {
 		$var(srs) = "sip:127.0.0.1";
-		xlog("Engage SIPREC call recording to $var(srs) for $ci\n");
+		xlog("为 $ci 启用到 $var(srs) 的 SIPREC 通话录制\n");
 		siprec_start_recording($var(srs));
 	}
 	...
-	
+
 ```
 
 
-```c title="Use siprec_start_recording() function with multiple SRS servers"
+```c title="使用多个 SRS 服务器的 siprec_start_recording() 函数"
 	...
 	if (!has_totag() && is_method("INVITE")) {
 		$var(srs) = "sip:127.0.0.1, sip:127.0.0.1;transport=TCP";
-		xlog("Engage SIPREC call recording to servers $var(srs) for $ci in inbound group\n");
+		xlog("为 $ci 在入站组中启用到服务器 $var(srs) 的 SIPREC 通话录制\n");
 		siprec_start_recording($var(srs), "inbound");
 	}
 	...
-	
+
 ```
 
 
-```c title="Use siprec_start_recording() function with custom XML values for participants"
+```c title="使用自定义 XML 值参与者的 siprec_start_recording() 函数"
 	...
 	$xml(caller_xml) = "<nameID></nameID>";
 	$xml(caller_xml/nameID.attr/aor) = "sip:6024151234@10.0.0.11:5090";
@@ -287,20 +251,20 @@ This function can be used from REQUEST_ROUTE.
 	$siprec(caller) = $xml(caller_xml/nameID);
 	siprec_start_recording($var(srs));
 	...
-	
+
 ```
 
 
-```c title="Use siprec_start_recording() function with custom headers"
+```c title="使用自定义头部的 siprec_start_recording() 函数"
 	...
 	$siprec(headers) = "X-MY-CUSTOM_HDR: 1\r\n";
 	siprec_start_recording($var(srs));
 	...
-	
+
 ```
 
 
-```c title="Use siprec_start_recording() function with custom group and session extensions"
+```c title="使用自定义组和会话扩展的 siprec_start_recording() 函数"
 	...
 	$var(temp) = "
 ```
@@ -309,191 +273,164 @@ This function can be used from REQUEST_ROUTE.
 #### siprec_pause_recording([instance])
 
 
-Pauses the recording for the ongoing call. Should be called after
-				the dialog has matched.
+暂停正在进行的通话的录制。应在对话框匹配后调用。
 
 
-Parameters:
+参数：
 
 
-- *instance* (string, optional) - used to
-					pause a particular SIPREC *instance*.
-					When missing, the *default* instance
-					is paused.
+- *instance* (string, 可选) - 用于暂停特定 SIPREC *实例*。
+				如果缺失，将暂停 *默认* 实例。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="Use siprec_pause_recording()"
+```c title="使用 siprec_pause_recording()"
 	...
 	if (has_totag() && is_method("INVITE")) {
 		if (is_audio_on_hold())
 			siprec_pause_recording();
 	}
 	...
-	
+
 ```
 
 
 #### siprec_resume_recording([instance])
 
 
-Resumes the recording for the ongoing call. Should be called after
-				the dialog has matched.
+恢复正在进行的通话的录制。应在对话框匹配后调用。
 
 
-Parameters:
+参数：
 
 
-- *instance* (string, optional) - used to
-					resume a particular SIPREC *instance*.
-					When missing, the *default* instance
-					is resumed.
+- *instance* (string, 可选) - 用于恢复特定 SIPREC *实例*。
+				如果缺失，将恢复 *默认* 实例。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="Use siprec_resume_recording()"
+```c title="使用 siprec_resume_recording()"
 	...
 	if (has_totag() && is_method("INVITE")) {
 		if (!is_audio_on_hold())
 			siprec_resume_recording();
 	}
 	...
-	
+
 ```
 
 
 #### siprec_stop_recording([instance])
 
 
-Stops the recording for the ongoing call. Should be called for SIPREC
-				sessions that have been previously started.
+停止正在进行的通话的录制。应为由之前启动的 SIPREC 会话调用。
 
 
-Parameters:
+参数：
 
 
-- *instance* (string, optional) - used to
-					stop a particular SIPREC *instance*.
-					When missing, the *default* instance
-					is stopped.
+- *instance* (string, 可选) - 用于停止特定 SIPREC *实例*。
+				如果缺失，将停止 *默认* 实例。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="Use siprec_stop_recording()"
+```c title="使用 siprec_stop_recording()"
 	...
 	if (has_totag() && is_method("INVITE")) {
 		if (is_audio_on_hold())
 			siprec_stop_recording();
 	}
 	...
-	
+
 ```
 
 
 #### siprec_send_indialog([hdrs[, body]])
 
 
-Sends an arbitrary in-dialog request to the SRS.
+向 SRS 发送一个任意的会话内请求。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-Parameters:
+参数：
 
 
-- *headers* (string, optional) - a set of headers
-					that will be added to the generated request.
-- *body* (string, optional) - the body that
-					will be added to the generated request.
-- *instance* (string, optional) - used to
-					send a request within a particular SIPREC *instance*.
-					When missing, the request is sent in to the *default*
-					instance.
+- *headers* (string, 可选) - 将添加到生成请求的头部集合。
+- *body* (string, 可选) - 将添加到生成请求的内容。
+- *instance* (string, 可选) - 用于在特定 SIPREC *实例*内发送请求。
+				如果缺失，请求将在 *默认* 实例中发送。
 
 
-```c title="Use siprec_send_indialog()"
+```c title="使用 siprec_send_indialog()"
 	...
 	if (has_totag() && is_method("INFO")) {
 		siprec_send_indialog("Content-Type: $hdr(Content-Type)\r\n", $rb);
 	}
 	...
-	
+
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $siprec
 
 
-Used to modify/describe different siprec sessions
-				parameters that should be taken into account by the
-				[siprec start recording](#func_siprec_start_recording) function.
+用于修改/描述应被
+				[siprec start recording](#func_siprec_start_recording) 函数考虑的
+				不同 siprec 会话参数。
 
 
-The variable can be indexed with the *instance*
-				the user wants to tune the variable for. If missing, the
-				the *default* instance is being altered.
+该变量可以用 *instance* 索引，
+				用户要调整的变量。如果缺失，
+				*默认* 实例将被更改。
 
 
-The context of this variable is only limited to the current
-				message processed - it is not available at the transaction
-				or dialog level.
+此变量的上下文仅限于当前处理的消息——它在事务或对话框级别不可用。
 
 
-Any of this setting is optional.
+所有这些设置都是可选的。
 
 
-Settings that can be provisioned:
+可以配置以下设置：
 
 
-- *group* - an opaque value that will be inserted
-					in the SIPREC body and represents the name of the group that can be
-					used to classify calls in certain profiles. If missing, no group is added.
-- *caller* - an XML block containing information
-					about the caller. If absent, the *From* header
-					of the initial dialog is used to build the value.
-- *callee* - an XML block containing information
-					about the callee. If absent, the *To* header
-					of the initial dialog is used to build the value.
-- *media* - the IP that
-					RTPProxy will be streaming media from. If absent
-					*127.0.0.1* will be used.
-					*NOTE:**media_ip* has been dropped.
-- *headers* - extra headers
-					that are to be added in the initial request towards the SRS.
-					*NOTE:* headers must be separated by
-					*\r\n* and must end with *\r\n*.
-- *socket* - listening socket that the outgoing
-					request towards SRS should be used.
-- *from_uri* - the URI to appear in the
-					*From* header of the dialog. Default value is the
-					request URI. Note that this does not influence the
-					*caller* information in the XML block,
-					which is taken from the initial dialog.
-- *to_uri* - the URI to appear in the
-					*To* header of the dialog. Default value is the
-					request URI. Note that this does not influence the
-					*callee* information in the XML block,
-					which is taken from the initial dialog.
-- *group_custom_extension* - an optional XML block
-					containing custom information to be added under the
-					*group* tag.
-					*NOTE:* if the *group* is absent this
-					value will be ignored and not used anywhere.
-- *session_custom_extension* - an optional XML block
-					containing custom information to be added under the
-					*session* tag.
+- *group* - 一个不透明值，将插入到 SIPREC 正文中，
+					表示可用于将通话分类到特定配置文件的组名称。如果缺失，不添加任何组。
+- *caller* - 包含有关主叫方信息的 XML 块。
+					如果缺失，初始对话框的 *From* 头部用于构建该值。
+- *callee* - 包含有关被叫方信息的 XML 块。
+					如果缺失，初始对话框的 *To* 头部用于构建该值。
+- *media* - RTPProxy 将从中流式传输媒体的 IP。
+					如果缺失，将使用 *127.0.0.1*。
+					*注意：**media_ip* 已被删除。
+- *headers* - 要添加到到 SRS 初始请求中的额外头部。
+					*注意：*头部必须用 *\r\n* 分隔，
+					必须以 *\r\n* 结尾。
+- *socket* - 传出请求应使用的监听套接字
+					到 SRS。
+- *from_uri* - 对话框的 *From* 头部中显示的 URI。
+					默认值为请求 URI。请注意，这不影响 XML 块中的
+					*caller* 信息，它取自初始对话框。
+- *to_uri* - 对话框的 *To* 头部中显示的 URI。
+					默认值为请求 URI。请注意，这不影响 XML 块中的
+					*callee* 信息，它取自初始对话框。
+- *group_custom_extension* - 可选的 XML 块，
+					包含要添加到 *group* 标签下的自定义信息。
+					*注意：*如果 *group* 不存在，此值将被忽略且不会在任何地方使用。
+- *session_custom_extension* - 可选的 XML 块，
+					包含要添加到 *session* 标签下的自定义信息。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0 版授权

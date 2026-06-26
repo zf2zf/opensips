@@ -1,78 +1,70 @@
 ---
-title: "Script Helper Module"
-description: "The purpose of the **Script Helper module** is to simplify the scripting process in OpenSIPS when doing basic scenarios. At the same time, it is useful to script writers as it contains basic SIP routing logic, and thus it allows them to focus more on the particular aspects of their OpenSIPS r..."
+title: "脚本助手模块"
+description: "**脚本助手模块**的目的是简化在 OpenSIPS 中进行基本场景时的脚本编写过程。同时，它对脚本编写者很有用，因为它包含基本的 SIP 路由逻辑，使他们能够更多地关注其 OpenSIPS 路由代码的特定方面。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The purpose of the **Script Helper module**
-	is to simplify the scripting process in OpenSIPS when doing basic scenarios.
-	At the same time, it is useful to script writers as it contains basic SIP
-	routing logic, and thus it allows them to focus more on the particular aspects
-	of their OpenSIPS routing code.
+**脚本助手模块**的目的是简化在 OpenSIPS 中进行基本场景时的脚本编写过程。
+	同时，它对脚本编写者很有用，因为它包含基本的 SIP
+	路由逻辑，使他们能够更多地关注其 OpenSIPS 路由代码的特定方面。
 
 
-### How it works
+### 工作原理
 
 
-By simply loading the module, the following
-	**default logic** will be embedded:
+只需加载模块，以下**默认逻辑**将被嵌入：
 
 
-- for initial SIP requests, the module will perform *record routing*
-	before running the main *request* route
-- sequential SIP requests will be transparently handled - the module will perform
-	*loose routing*, and the request route will not be run at all
+- 对于初始 SIP 请求，模块将在运行主*请求*路由之前执行*记录路由*
+- 顺序 SIP 请求将被透明处理 - 模块将执行*松散路由*，请求路由根本不会运行
 
 
-Currently, the module may be further configured to embed the following
-	**optional logic**:
+目前，可以进一步配置模块以嵌入以下**可选逻辑**：
 
 
-- *dialog* support (dialog module dependency - must be loaded before this module)
-- an additional route to be run before relaying sequential requests
+- *dialog* 支持（dialog 模块依赖 - 必须在加载此模块之前加载）
+- 在转发顺序请求之前运行的额外路由
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following  modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *dialog* (only if **[use dialog](#param_use_dialog)** is enabled).
+- *dialog*（仅在启用 **[使用 dialog](#param_use_dialog)** 时）。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### use_dialog (integer)
 
 
-Enables dialog support. Note that the dialog module must be loaded before
-		this module when setting this parameter.
+启用 dialog 支持。请注意，在设置此参数时，dialog 模块必须在此模块之前加载。
 
 
-Default value is 0 (disabled)
+默认值为 0（禁用）
 
 
-```c title="Setting use_dialog"
+```c title="设置 use_dialog"
 ...
 modparam("script_helper", "use_dialog", 1)
 ...
@@ -82,14 +74,13 @@ modparam("script_helper", "use_dialog", 1)
 #### create_dialog_flags (string)
 
 
-Flags used when creating dialogs. For details on these flags, please refer
-		to the *create_dialog()* function of the dialog module.
+创建对话时使用的标志。有关这些标志的详细信息，请参阅 dialog 模块的 *create_dialog()* 函数。
 
 
-Default value is "" (no flags are set)
+默认值为 ""（未设置标志）
 
 
-```c title="Setting create_dialog_flags"
+```c title="设置 create_dialog_flags"
 ...
 modparam("script_helper", "create_dialog_flags", "options-ping-caller,options-ping-callee,bye-on-timeout")
 ...
@@ -99,15 +90,15 @@ modparam("script_helper", "create_dialog_flags", "options-ping-caller,options-pi
 #### sequential_route (string)
 
 
-Optional route to be run just before sequential requests are relayed.
-		If the *exit* script statement is used inside this route,
-		the module assumes that the relaying logic has been handled.
+在转发顺序请求之前运行的路由。
+		如果在路由内使用了 *exit* 脚本语句，
+		模块假定转发逻辑已被处理。
 
 
-By default, this parameter is not set
+默认情况下，未设置此参数
 
 
-```c title="Setting sequential_route"
+```c title="设置 sequential_route"
 ...
 modparam("script_helper", "sequential_route", "sequential_handling")
 ...
@@ -119,12 +110,12 @@ route [sequential_handling]
 ```
 
 
-### Known Issues
+### 已知问题
 
 
-The Max-Forwards header is currently not handled at all.
+Max-Forwards 头目前完全未被处理。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

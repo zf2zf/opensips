@@ -1,53 +1,51 @@
 ---
-title: "freeswitch Module"
-description: "The *\"freeswitch\"* module is a C driver for the FreeSWITCH Event Socket Layer interface. It can interact with one or more FreeSWITCH servers either by issuing commands to them, or by receiving events from them."
+title: "freeswitch 模块"
+description: "*\"freeswitch\"* 模块是 FreeSWITCH Event Socket Layer 接口的 C 驱动程序。它可以通过向 FreeSWITCH 服务器发送命令或从其接收事件来与一个或多个 FreeSWITCH 服务器交互。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The *"freeswitch"* module is a C driver for the
-	FreeSWITCH Event Socket Layer interface. It can interact with one or more
-	FreeSWITCH servers either by issuing commands to them, or by receiving
-	events from them.
+*"freeswitch"* 模块是 FreeSWITCH Event Socket Layer 接口的
+		C 驱动程序。它可以通过向 FreeSWITCH 服务器发送命令或从其接收事件
+		来与一个或多个 FreeSWITCH 服务器交互。
 
 
-This driver can be seen as a centralized FreeSWITCH ESL connection manager.
-	OpenSIPS modules may use its API in order to easily establish, reference
-	and reuse ESL connections.
+此驱动程序可以看作是一个集中式的 FreeSWITCH ESL 连接管理器。
+		OpenSIPS 模块可以使用其 API 来轻松建立、引用和重用 ESL 连接。
 
 
-A FreeSWITCH ESL URL is of the form:
-	**fs://[username]:password@host[:port]**.
-	The default ESL port is 8021.
+FreeSWITCH ESL URL 格式为：
+	**fs://[username]:password@host[:port]**。
+	默认 ESL 端口为 8021。
 
 
-### External Libraries or Applications
+### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+		加载本模块的 OpenSIPS 之前安装：
 
 
-- *None*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### event_heartbeat_interval (integer)
 
 
-The expected interval between FreeSWITCH HEARTBEAT event arrivals.
+FreeSWITCH HEARTBEAT 事件到达之间的预期间隔。
 
 
-*Default value is "1" (second).*
+*默认值为 "1"（秒）。*
 
 
-```c title="Setting the event_heartbeat_interval parameter"
+```c title="设置 event_heartbeat_interval 参数"
 ...
 modparam("freeswitch", "event_heartbeat_interval", 20)
 ...
@@ -57,13 +55,13 @@ modparam("freeswitch", "event_heartbeat_interval", 20)
 #### esl_connect_timeout (integer)
 
 
-The maximally allowed duration for the establishment of an ESL connection.
+建立 ESL 连接的最大允许时长。
 
 
-*Default value is "5000" (milliseconds).*
+*默认值为 "5000"（毫秒）。*
 
 
-```c title="Setting the esl_connect_timeout parameter"
+```c title="设置 esl_connect_timeout 参数"
 ...
 modparam("freeswitch", "esl_connect_timeout", 3000)
 ...
@@ -73,14 +71,14 @@ modparam("freeswitch", "esl_connect_timeout", 3000)
 #### esl_cmd_timeout (integer)
 
 
-The maximally allowed duration for the execution of an ESL command.
-		This interval does not include the connect duration.
+执行 ESL 命令的最大允许时长。
+		此间隔不包括连接时长。
 
 
-*Default value is "5000" (milliseconds).*
+*默认值为 "5000"（毫秒）。*
 
 
-```c title="Setting the esl_cmd_timeout parameter"
+```c title="设置 esl_cmd_timeout 参数"
 ...
 modparam("freeswitch", "esl_cmd_timeout", 3000)
 ...
@@ -90,25 +88,25 @@ modparam("freeswitch", "esl_cmd_timeout", 3000)
 #### esl_cmd_polling_itv (integer)
 
 
-The sleep interval used when polling for an ESL command response. Since the
-		value of this parameter imposes a minimal duration for any ESL command,
-		you should run OpenSIPS in debug mode in order to first determine an expected
-		response time for an arbitrary ESL command, then tune this parameter accordingly.
+轮询 ESL 命令响应时使用的睡眠间隔。
+		由于此参数的值对任何 ESL 命令施加了最小持续时间,
+		您应该首先在调试模式下运行 OpenSIPS 以确定任意 ESL 命令的预期响应时间,
+		然后相应地调整此参数。
 
 
-*Default value is "1000" (microseconds).*
+*默认值为 "1000"（微秒）。*
 
 
-```c title="Setting the esl_cmd_polling_itv parameter"
+```c title="设置 esl_cmd_polling_itv 参数"
 ...
 modparam("freeswitch", "esl_cmd_polling_itv", 3000)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权

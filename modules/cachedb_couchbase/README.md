@@ -1,96 +1,85 @@
 ---
-title: "cachedb_couchbase Module"
-description: "This module is an implementation of a cache system designed to work with a Couchbase server. It uses the libcouchbase client library to connect to the server instance, It uses the Key-Value interface exported from the core."
+title: "cachedb_couchbase 模块"
+description: "本模块是缓存系统的实现，旨在与 Couchbase 服务器配合工作。它使用 libcouchbase 客户端库连接到服务器实例。它使用了 OpenSIPS 核心导出的 Key-Value 接口。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of a cache system designed to work with a 
-		Couchbase server. It uses the libcouchbase client library to connect to the
-		server instance,
-		It uses the Key-Value interface exported from the core.
+本模块是缓存系统的实现，旨在与 Couchbase 服务器配合工作。它使用 libcouchbase 客户端库连接到服务器实例。
+它使用了 OpenSIPS 核心导出的 Key-Value 接口。
 
 
-### Advantages
+### 优势
 
 
-- *memory costs are no longer on the server*
-- *many servers can be used inside a cluster, so the memory
-				is virtually unlimited*
-- *the cache is 100% persistent. A restart
-					of OpenSIPS server will not affect the DB. The CouchBase DB is also
-				persistent so it can also be restarted without loss of information.*
-- *CouchBase is an open-source project so
-				it can be used to exchange data
-				 with various other applications*
-- *By creating a CouchBase Cluster, multiple OpenSIPS
-				instances can easily share key-value information*
+- *内存成本不再由服务器承担*
+- *可以在集群内使用多台服务器，因此内存实际上是无限的*
+- *缓存是 100% 持久化的。OpenSIPS 服务器的重启不会影响 DB。CouchBase DB 也是持久化的，因此也可以在不失数据的情况下重启。*
+- *CouchBase 是开源项目，因此可用于与各种其他应用程序交换数据*
+- *通过创建 CouchBase 集群，多个 OpenSIPS 实例可以轻松共享键值信息*
 
 
-### Limitations
+### 限制
 
 
-- *keys (in key:value pairs) may not contain spaces or control characters*
+- *键（键值对中的键）不能包含空格或控制字符*
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None.
+无。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载本模块之前，必须安装以下库或应用程序：
 
 
 - *libcouchbase >= 3.0:*
-libcoucbase can be downloaded from http://www.couchbase.com/develop/c/current
+libcouchbase 可从 http://www.couchbase.com/develop/c/current 下载
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### cachedb_url (string)
+#### cachedb_url (字符串)
 
 
-The urls of the server groups that OpenSIPS will connect to in order
-			to use the from script cache_store,cache_fetch, etc operations.
-			It can be set more than one time.
-			The prefix part of the URL will be the identifier that will be used
-			from the script.
-			The format of the URL is
-			couchbase[:identifier]://[username:password@]IP:Port/bucket_name
+OpenSIPS 将连接到的服务器组 URL，以便在脚本中使用 cache_store、cache_fetch 等操作。
+可以多次设置此参数。
+URL 的前缀部分将是脚本中使用的标识符。
+URL 格式为：
+couchbase[:identifier]://[username:password@]IP:Port/bucket_name
 
 
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 modparam("cachedb_couchbase", "cachedb_url","couchbase:group1://localhost:6379/default")
 modparam("cachedb_couchbase", "cachedb_url","couchbase:cluster1://random_url:8888/my_bucket")
-# Multiple hosts
+# 多个主机
 modparam("cachedb_couchbase", "cachedb_url","couchbase:cluster1://random_url1:8888,random_url2:8888,random_url3:8888/my_bucket")
 ...
 	
 ```
 
 
-#### timeout (int)
+#### timeout (整数)
 
 
-The max duration in microseconds that a couchbase op is expected to last.
-			Default is 3000000 ( 3 seconds )
+Couchbase 操作预期的最大持续时间（微秒）。
+默认值为 3000000（3 秒）。
 
 
-```c title="Set timeout parameter"
+```c title="设置 timeout 参数"
 ...
 modparam("cachedb_couchbase", "timeout",5000000);
 ...
@@ -98,17 +87,17 @@ modparam("cachedb_couchbase", "timeout",5000000);
 ```
 
 
-#### exec_threshold (int)
+#### exec_threshold (整数)
 
 
-The maximum number of microseconds that a couchbase query can last.
-			Anything above the threshold will trigger a warning message to the log
+Couchbase 查询可以持续的最大微秒数。
+超过此阈值将触发日志中的警告消息。
 
 
-*Default value is "0 ( unlimited - no warnings )".*
+*默认值为 "0（无限制 - 无警告）"。*
 
 
-```c title="Set exec_threshold parameter"
+```c title="设置 exec_threshold 参数"
 ...
 modparam("cachedb_couchbase", "exec_threshold", 100000)
 ...
@@ -116,19 +105,17 @@ modparam("cachedb_couchbase", "exec_threshold", 100000)
 ```
 
 
-#### lazy_connect (int)
+#### lazy_connect (整数)
 
 
-Delay connecting to a bucket until the first time it is used.
-			Connecting to many buckets at startup can be time consuming. This option allows for
-			faster startup by delaying connections until they are needed.
-			This option can be dangerous for untested bucket configurations/settings. Always test
-			first without lazy_connect.
-			This option will show errors in the log during the first access made to a bucket.
-			Default is 0 ( Connect to all buckets on startup )
+延迟连接到存储桶，直到第一次使用它。
+启动时连接多个存储桶可能非常耗时。此选项允许通过延迟连接直到需要时来实现更快的启动。
+对于未测试的存储桶配置/设置，此选项可能很危险。请始终先不使用 lazy_connect 进行测试。
+此选项将在首次访问存储桶时在日志中显示错误。
+默认值为 0（启动时连接所有存储桶）。
 
 
-```c title="Set lazy_connect parameter"
+```c title="设置 lazy_connect 参数"
 ...
 modparam("cachedb_couchbase", "lazy_connect", 1);
 ...
@@ -136,7 +123,7 @@ modparam("cachedb_couchbase", "lazy_connect", 1);
 ```
 
 
-```c title="Use CouchBase servers"
+```c title="使用 CouchBase 服务器"
 ...
 cache_store("couchbase:group1","key","$ru value");
 cache_fetch("couchbase:cluster1","key",$avp(10));
@@ -146,13 +133,12 @@ cache_remove("couchbase:cluster1","key");
 ```
 
 
-#### Exported Functions
+#### 导出的函数
 
 
-The module does not export functions to be used
-		in configuration script.
+本模块不导出在配置脚本中使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享许可证 4.0 版授权

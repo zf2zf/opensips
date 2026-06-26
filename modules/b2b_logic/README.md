@@ -1,159 +1,93 @@
 ---
 title: "B2B_LOGIC"
-description: "The B2BUA implementation in OpenSIPS is separated in two layers: a lower one (implemented in the b2b_entities module) - the basic functions of a UAS and UAC an upper one (implemented in b2b_logic module) - which represents the logic engine of B2BUA, responsible of actually implementing ..."
+description: "OpenSIPS 中的 B2BUA 实现分为两层：下层（在 b2b_entities 模块中实现）- UAS 和 UAC 的基本功能；上层（在 b2b_logic 模块中实现）- 代表 B2BUA 的逻辑引擎，负责使用下层提供的功能实际实现 B2BUA 服务。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+OpenSIPS 中的 B2BUA 实现分为两层：
 
+- **下层**（在 b2b_entities 模块中实现）- UAS 和 UAC 的基本功能
+- **上层**（在 b2b_logic 模块中实现）- 代表 B2BUA 的逻辑引擎，负责使用下层提供的功能实际实现 B2BUA 服务
 
-The B2BUA implementation in OpenSIPS is separated in two layers:
+此模块是 B2BUA 的上层实现，可与 b2b_entities 模块配合使用以提供各种 B2BUA 服务（例如 PBX 功能）。B2BUA 场景的实际逻辑可以在专用脚本路由中实现。
 
+B2B 会话可以通过两种方式触发：
 
-- a lower one (implemented in the b2b_entities module) - the basic functions
-		of a UAS and UAC
-- an upper one (implemented in b2b_logic module) - which represents the logic
-		engine of B2BUA, responsible of actually implementing the B2BUA services
-		using the functions offered by the low level.
+- **从脚本** - 收到初始 INVITE 消息时
+- **通过外部命令（MI）** - 服务器将把两个端点连接到一个会话中（第三方呼叫控制）
 
+可以通过启用下层 *b2b_entities* 模块提供的集群支持来实现 B2B 会话的高可用性（通过设置 *b2b_entities* 的 [cluster_id](../b2b_entities#param_cluster_id) modparam）。
 
-This module is a B2BUA upper level implementation that can be used along with the
-	b2b_entities module in order to provide various B2BUA services (eg. PBX features).
-	The actual logic of the B2BUA scenarios can be implemented in dedicated script routes.
+### 场景逻辑
 
+初始化 B2B 会话后，呼叫分支将由 b2b_logic 模块处理，第一步是将两个初始实体连接起来。属于这些会话的请求和回复不会通过标准 OpenSIPS 路由进入脚本，而是将由 b2b_logic 专用路由处理（通过 [script req route](#param_script_req_route) 和 [script reply route](#param_script_reply_route) modparams 定义，或通过 [b2b init request](#func_b2b_init_request) 参数提供的自定义路由）。场景的进一步步骤可以在这些路由中实现，通过调用专用的 b2b_logic 脚本函数来执行各种操作。不应在 b2b_logic 路由中执行普通的"代理式"OpenSIPS 函数。
 
-A B2B session can be triggered in two ways:
+某些消息将由模块自动处理，根本不会进入 b2b_logic 路由（当正在桥接两个实体时收到的 BYE 请求、已断开实体的 ACK/BYE/回复）。此外，如果未定义专用的 b2b_logic 回复路由，回复将由模块内部处理，其效果与从这样的路由调用 [b2b handle reply](#func_b2b_handle_reply) 相同（如果定义了的话）。
 
+### 依赖
 
-- from the script - at the receipt of an initial INVITE message
-- with an extern command (MI) command - the server will connect two
-			end points in a session(Third Party Call Control).
+#### OpenSIPS 模块
 
+- **b2b_entities, db 模块**
 
-High Availability for B2B sessions can be achieved by enabling the clustering support
-	offered by the the lower *b2b_entities* module (by setting the
-	[cluster_id](../b2b_entities#param_cluster_id) modparam from *b2b_entities*).
+#### 外部库或应用程序
 
+运行 OpenSIPS 加载此模块前不需要任何库或应用程序。
 
-### Scenario Logic
-
-
-After initializing a B2B session, the call legs will be handled by the b2b_logic
-		module and the first step will be to put the two initial entities in contact.
-		Requests and replies belonging to these dialogs will not enter the script through
-		the standard OpenSIPS routes but instead will be handled in b2b_logic dedicated routes
-		(defined through the [script req route](#param_script_req_route) and
-		[script reply route](#param_script_reply_route) modparams or, the custom routes given as
-		parameters to [b2b init request](#func_b2b_init_request)).
-		The further steps of the scenario can be implemented in these routes, by calling
-		dedicated b2b_logic script functions in order to perform various actions. Normal
-		"proxy-like" OpenSIPS functions should not be executed in the b2b_logic routes.
-
-
-Some messages will be handled automatically by the module and will not enter the
-		b2b_logic routes at all (BYE requests received while in the process of bridging two
-		entities, ACKs/BYEs/replies for disconnected entities). Also, if no dedicated b2b_logic
-		reply route is defined, replies will be handled internally by the module, with the
-		same effects as calling [b2b handle reply](#func_b2b_handle_reply) from such a route if it were defined.
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-- *b2b_entities, a db module*
-
-
-#### External Libraries or Applications
-
-
-No libraries or applications required before running OpenSIPS with this module.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### hash_size (int)
 
+存储会话实体的哈希表大小。
 
-The size of the hash table that stores the session entities.
+**默认值为 "9"**（512 条记录）。
 
-
-*Default value is "9"*
-		 (512 records).
-
-
-```c title="Set server_hsize parameter"
+```c title="设置 server_hsize 参数"
 ...
 modparam("b2b_logic", "hash_size", 10)
 ...
-	
 ```
-
 
 #### script_req_route (str)
 
+当收到属于 ongoing B2B 会话的请求时调用的脚本路由名称。
 
-The name of the script route to be called when requests belonging to
-			an ongoing B2B session are received.
-
-
-```c title="Set script_req_route parameter"
+```c title="设置 script_req_route 参数"
 ...
 modparam("b2b_logic", "script_req_route", "b2b_request")
 ...
-	
 ```
-
 
 #### script_reply_route (str)
 
+当收到属于 ongoing B2B 会话的回复时调用的脚本路由名称。
 
-The name of the script route to be called when replies belonging to
-			an ongoing B2B session are received.
-
-
-```c title="Set script_repl_route parameter"
+```c title="设置 script_repl_route 参数"
 ...
 modparam("b2b_logic", "script_reply_route", "b2b_reply")
 ...
-	
 ```
-
 
 #### cleanup_period (int)
 
+搜索挂起的 b2b 上下文的时间间隔。如果会话持续时间超过其定义的生存期，则认为会话已过期。此时，将向该上下文中的所有会话发送 BYE，并删除上下文。
 
-The time interval at which to search for an hanged b2b context.
-			A session is considered expired if the duration of a session exceeds its
-			defined lifetime. At that moment, BYE is sent in all the dialogs from that
-			context and the context is deleted.
+**默认值为 "100"。**
 
-
-*Default value is "100".*
-
-
-```c title="Set cleanup_period parameter"
+```c title="设置 cleanup_period 参数"
 ...
 modparam("b2b_logic", "cleanup_period", 60)
 ...
-	
 ```
-
 
 #### custom_headers_regexp (str)
 
+用于按名称搜索 SIP header 的正则表达式，这些 header 应该从一侧的会话传递到另一侧。默认情况下会传递许多 header，它们是：
 
-Regexp to search SIP header by names that should be passed
-		from the dialog of one side to the other side. There are a number
-		of headers that are passed by default. They are:
-
-
-- Max-Forwards (it is decreased by 1)
+- Max-Forwards（递减 1）
 - Content-Type
 - Supported
 - Allow
@@ -163,41 +97,28 @@ Regexp to search SIP header by names that should be passed
 - Require
 - RSeq
 
+如果您希望传递其他 header，应该通过设置此参数来定义它们。
 
-If you wish some other headers to be passed also you should define them
-		by setting this parameter.
+格式可以是 "regexp"、"/regexp/" 和 "/regexp/flags"。
 
+标志的含义如下：
 
-It can be in forms like "regexp", "/regexp/" and "/regexp/flags".
+- **i** - 不区分大小写搜索
+- **e** - 使用扩展正则表达式
 
+**默认值为 "NULL"。**
 
-Meaning of the flags is as follows:
-
-
-- *i* - Case insensitive search.
-- *e* - Use extended regexp.
-
-
-*Default value is "NULL".*
-
-
-```c title="Set parameter"
+```c title="设置参数"
 ...
 modparam("b2b_logic", "custom_headers_regexp", "/^x-/i")
 ...
-	
 ```
-
 
 #### custom_headers (str)
 
+用 ';' 分隔的 SIP header 名称列表，这些 header 应该从一侧的会话传递到另一侧。默认情况下会传递许多 header，它们是：
 
-A list of SIP header names delimited by ';' that should be passed
-		from the dialog of one side to the other side. There are a number
-		of headers that are passed by default. They are:
-
-
-- Max-Forwards (it is decreased by 1)
+- Max-Forwards（递减 1）
 - Content-Type
 - Supported
 - Allow
@@ -207,522 +128,316 @@ A list of SIP header names delimited by ';' that should be passed
 - Require
 - RSeq
 
+如果您希望传递其他 header，应该通过设置此参数来定义它们。
 
-If you wish some other headers to be passed also you should define them
-		by setting this parameter.
+**默认值为 "NULL"。**
 
-
-*Default value is "NULL".*
-
-
-```c title="Set parameter"
+```c title="设置参数"
 ...
 modparam("b2b_logic", "custom_headers", "User-Agent;Date")
 ...
-	
 ```
-
 
 #### custom_contact_header_params (str)
 
+用 ';' 分隔的 Contact header 参数列表，这些参数应该从一侧的会话传递到另一侧。
 
-A list of Contact header parameters, delimited by ';', that should
-			be passed from the dialog of one side to the other side.
+在整个会话中，每个参数的值都附加到实体 - 这意味着当实体被桥接时，相应实体的 header 参数将发送到新实体。
 
+**默认值为 ""（无参数）。**
 
-Throughout a dialog, the value of each parameter is being
-			attached to the entity - this means that when an entity is being bridged,
-			the corresponding entity's headers params are being sent towards the new
-			entity.
-
-
-*Default value is "" (no parameter).*
-
-
-```c title="Set custom_contact_header_params parameter"
+```c title="设置 custom_contact_header_params 参数"
 ...
 modparam("b2b_logic", "custom_contact_header_params", "audio;video")
 ...
-	
 ```
-
 
 #### db_url (str)
 
+数据库 URL。
 
-Database URL.
-
-
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("b2b_logic", "db_url", "mysql://opensips:opensipsrw@127.0.0.1/opensips")
 ...
-	
 ```
-
 
 #### cachedb_url (str)
 
+要使用的 NoSQL 数据库的 URL。目前仅支持 Redis。
 
-URL of a NoSQL database to be used. Only Redis is supported
-				at the moment.
-
-
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 modparam("b2b_logic", "cachedb_url", "redis://localhost:6379/")
 ...
-		
 ```
-
 
 #### cachedb_key_prefix (string)
 
+在 NoSQL 数据库中设置的每个键的前缀。
 
-Prefix to use for every key set in the NoSQL database.
+**默认值为 "b2bl$"。**
 
-
-*Default value is "b2bl$".*
-
-
-```c title="Set cachedb_key_prefix parameter"
+```c title="设置 cachedb_key_prefix 参数"
 ...
 modparam("b2b_logic", "cachedb_key_prefix", "b2b")
 ...
-	
 ```
-
 
 #### update_period (int)
 
+更新数据库中信息的时间间隔。
 
-The time interval at which to update the info in database.
+**默认值为 "100"。**
 
-
-*Default value is "100".*
-
-
-```c title="Set update_period parameter"
+```c title="设置 update_period 参数"
 ...
 modparam("b2b_logic", "update_period", 60)
 ...
-	
 ```
-
 
 #### max_duration (int)
 
+呼叫的最大持续时间。此值作为所有 B2B 会话的默认生存期应用。可以通过使用 [b2b bridge](#func_b2b_bridge) 函数的 *max_duration* 标志在每个桥接的基础上覆盖。
 
-The maximum duration of a call. This value is applied as the default
-			lifetime for all B2B sessions. It can be overridden on a per-bridge
-			basis by using the *max_duration* flag of the
-			[b2b bridge](#func_b2b_bridge) function.
+**默认值为 "12 * 3600（12 小时）"。**
 
+如果设置为 0，则没有限制。
 
-*Default value is "12 * 3600 (12 hours)".*
-
-
-If you set it to 0, there will be no limitation.
-
-
-```c title="Set max_duration parameter"
+```c title="设置 max_duration 参数"
 ...
 modparam("b2b_logic", "max_duration", 7200)
 ...
-	
 ```
-
 
 #### contact_user (int)
 
+如果设置为 1，则将从 From: header 添加用户到生成的 Contact:。
 
-If set to 1, adds user from From: header to generated Contact:
+**默认值为 "0"。**
 
-
-*Default value is "0".*
-
-
-```c title="Set contact_user parameter"
+```c title="设置 contact_user 参数"
 ...
 modparam("b2b_logic", "contact_user", 1)
 ...
-	
 ```
-
 
 #### b2bl_from_spec_param (string)
 
+用于存储新 "From" header 的伪变量名称。必须在调用 "b2b_init_request" 之前设置 PV。
 
-The name of the pseudo variable for storing the new
-			"From" header.
-			The PV must be set before calling "b2b_init_request".
+**默认值为 "NULL"（禁用）。**
 
-
-*Default value is "NULL" (disabled).*
-
-
-```c title="Set b2bl_from_spec_param parameter"
+```c title="设置 b2bl_from_spec_param 参数"
 ...
 modparam("b2b_logic", "b2bl_from_spec_param", "$var(b2bl_from)")
 ...
 route{
 	...
-	# setting the From header
+	# 设置 From header
 	$var(b2bl_from) = "\"Call ID\" <sip:user@opensips.org>";
 	...
 	b2b_init_request("top hiding");
 	...
 }
-	
 ```
-
 
 #### server_address (str)
 
+将用作生成消息中 Contact 的机器 IP 地址。这仅在 OpenSIPS 从中间开始呼叫时才是必选的。对于由收到的呼叫触发的场景，如果未设置，则从接收发起请求的 socket 动态构造。此 socket 将用于发送该会话的所有请求和回复。此参数支持伪变量。
 
-The IP address of the machine that will be used as Contact in
-			the generated messages. This is compulsory only when OpenSIPS
-			starts a call from the middle. For scenarios triggered by received
-			calls, if it is not set, it is constructed dynamically from the
-			socket where the initiating request was received.
-			This socket will be used to send all the requests, replies for that
-			session.
-			This parameter support Pseudo-Variables.
-
-
-```c title="Set server_address parameter"
+```c title="设置 server_address 参数"
 ...
 modparam("b2b_logic", "server_address", "sip:sa@10.10.10.10:5060")
 ...
-	
 ```
 
-
-```c title="Set server_address parameter using Pseudo-Variables"
+```c title="使用伪变量设置 server_address 参数"
 ...
 modparam("b2b_logic", "server_address", "sip:$socket_in(advertised_ip):$socket_in(advertised_port)")
 ...
-	
 ```
-
 
 #### init_callid_hdr (str)
 
+模块提供在生成的 Invite 中将原始 callid 插入到 header 中的可能性。如果您希望这样做，请将此参数设置为要插入原始 callid 的 header 名称。
 
-The module offers the possibility to insert the original callid in a header
-			in the generated Invites. If you want this, set this parameter to the name
-			of the header in which to insert the original callid.
-
-
-```c title="Set init_callid_hdr parameter"
+```c title="设置 init_callid_hdr 参数"
 ...
 modparam("b2b_logic", "init_callid_hdr", "Init-CallID")
 ...
-	
 ```
-
 
 #### db_mode (int)
 
+B2B 模块支持 3 种类型的数据库存储：
 
-The B2B modules have support for the 3 type of database storage
+- **NO DB STORAGE** - 将此参数设置为 0
+- **WRITE THROUGH**（同步写入数据库）- 将此参数设置为 1
+- **WRITE BACK**（定期更新到数据库）- 将此参数设置为 2
 
+**默认值为 "2"（WRITE BACK）。**
 
-- NO DB STORAGE - set this parameter to 0
-- WRITE THROUGH (synchronous write in database) - set this parameter to 1
-- WRITE BACK (update in db from time to time) - set this parameter to 2
-
-
-*Default value is "2" (WRITE BACK).*
-
-
-```c title="Set db_mode parameter"
+```c title="设置 db_mode 参数"
 ...
 modparam("b2b_logic", "db_mode", 1)
 ...
-	
 ```
-
 
 #### db_table (str)
 
+要使用的数据库表名。
 
-Name of the database table to be used
+**默认值为 "b2b_logic"**
 
-
-*Default value is "b2b_logic"*
-
-
-```c title="Set db_table parameter"
+```c title="设置 db_table 参数"
 ...
 modparam("b2b_logic", "db_table", "some_table_name")
 ...
-	
 ```
-
 
 #### b2bl_th_init_timeout (int)
 
+拓扑隐藏场景的呼叫建立超时。
 
-Call setup timeout for topology hiding scenario.
+**默认值为 "60"**
 
-
-*Default value is "60"*
-
-
-```c title="Set b2bl_th_init_timeout parameter"
+```c title="设置 b2bl_th_init_timeout 参数"
 ...
 modparam("b2b_logic", "b2bl_th_init_timeout", 60)
 ...
-	
 ```
-
 
 #### b2bl_early_update (int)
 
+允许通过发送 "UPDATE" 请求在早期阶段桥接呼叫。
 
-Allow bridging of calls in early stage by issuing a "UPDATE" request
+- **0** - 不要在早期阶段桥接会话
+- **1** - 尝试通过发送 UPDATE 在早期阶段更新会话
 
+**默认值为 "0" 不要在早期阶段桥接会话**
 
-- 0 - Do not bridge dialogs in early stage
-- 1 - Try to update an session in early stage by sending an UPDATE
-
-
-*Default value is "0" Do not bridge dialogs in early stage*
-
-
-```c title="Set b2bl_early_update parameter"
+```c title="设置 b2bl_early_update 参数"
 ...
 modparam("b2b_logic", "b2bl_early_update", 1)
 ...
-	
 ```
-
 
 #### old_entity_term_delay (int)
 
+当使用 *b2b_bridge_request* 与 *late_bye* 标志时，此参数可以延迟向终止实体发送 BYE 的时刻。因此，不是当新实体建立时就终止它，而是延迟发送 BYE，延迟时间为此参数的值（以秒为单位）。
 
-When the *b2b_bridge_request* is being used with the
-			*late_bye* flag, this parameter can delay the moment
-			when the BYE is being sent to the terminating entity. Thus, instead of
-			terminating it when the new entity is established, the BYE is delayed
-			with the value of this param, expressed in seconds.
+**默认值为 "0" - 立即发送 BYE**
 
-
-*Default value is "0" - send BYE on the spot*
-
-
-```c title="Set old_entity_term_delay parameter"
+```c title="设置 old_entity_term_delay 参数"
 ...
-modparam("b2b_logic", "old_entity_term_delay", 2) # delay the BYE with 2 seconds
+modparam("b2b_logic", "old_entity_term_delay", 2) # 延迟 2 秒发送 BYE
 ...
-	
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### b2b_init_request(id, [flags], [req_route], [reply_route])
 
+此函数基于初始 INVITE 初始化新的 B2B 会话。在运行此函数之前，必须先使用 [b2b server new](#func_b2b_server_new) 和 [b2b client new](#func_b2b_client_new) 分别创建新的服务器实体和新的客户端实体。这些是要连接初始实体，可以在 b2b_logic 专用路由中实现进一步的场景逻辑。
 
-This function initializes a new B2B session based on an initial INVITE.
-			A new server entity and a new client entity must be created before running
-			this function, with [b2b server new](#func_b2b_server_new) and
-			[b2b client new](#func_b2b_client_new), respectively. These are the initial
-			entities to be connected and further scenario logic can be implemented in
-			the b2b_logic dedicated routes.
+参数：
 
+- **scenario_id (string)** - 此 B2B 会话的场景标识符。特殊值 *top hiding* 初始化内部拓扑隐藏场景。此场景将简单地在消息从一侧传递到另一侧，不需要额外的脚本或专用路由。
+- **flags (string, optional)** - CSV 格式的以下标志列表：
+  - **setup-timeout=[nn]** - 呼叫建立超时。0 将超时设置为 max_duration 值。例如："setup-timeout=300"
+  - **transparent-auth** - 透明认证。在此模式下 b2b 将您的 401 或 407 认证请求传递到目标服务器
+  - **preserve-to** - 保留 To: header
+  - **pass-legs-upstream** - 在将预建立回复上游转发时重用下游回复分支索引
+- **req_route (string, optional)** - 当收到属于此 B2B 会话的请求时调用的脚本路由名称。此参数将覆盖此特定 B2B 会话的全局 [script req route](#param_script_req_route) modparam
+- **reply_route (string, optional)** - 当收到属于此 B2B 会话的回复时调用的脚本路由名称。此参数将覆盖此特定 B2B 会话的全局 [script reply route](#param_script_reply_route) modparam
 
-Parameters:
-
-
-- *scenario_id (string)* - identifier for
-				the scenario of this B2B session. The special value *top hiding*
-				initializes an internal topology hiding scenario. This scenario will do
-				a simple pass-through of messages from one side to another, and no additional
-				scripting or dedicated routes are required.
-- *flags (string, optional)* - CSV list of the following flags:
-				
-					*setup-timeout=[nn]* - Call setup timeout. 0 sets
-					timeout to max_duration value. Example: "setup-timeout=300".
-					*transparent-auth* - Transparent authentication.
-					In this mode b2b passes your 401 or 407 authentication request to
-					destination server.
-					*preserve-to* - Preserve To: header.
-					*pass-legs-upstream* - Reuse the downstream
-					reply leg index when forwarding pre-establishment replies upstream.
-- *req_route (string, optional)* - name of the script route
-				to be called when requests belonging to this B2B session are received. This
-				parameter will override the global [script req route](#param_script_req_route)
-				modparam for this particular B2B session.
-- *reply_route (string, optional)* - name of the script route
-				to be called when replies belonging to this B2B session are received. This
-				parameter will override the global [script reply route](#param_script_reply_route)
-				modparam for this particular B2B session.
-
-
-This function can be used from REQUEST_ROUTE.
-
+此函数可用于 REQUEST_ROUTE。
 
 > [!NOTE]
-> If you have a multi interface setup and want to change the outbound interface,
-		it is mandatory to use the "force_send_socket()" core function before passing
-		control to b2b function. If you do not do it, the requests may be correctly routed,
-		but the SIP pacakge may be invalid (as Contact, Via, etc).
+> 如果您有多接口设置并想更改出站接口，在将控制权传递给 b2b 函数之前必须使用 "force_send_socket()" 核心函数。如果不这样做，请求可能被正确路由，但 SIP 数据包可能无效（因为 Contact、Via 等）。
 
-
-```c title="b2b_init_request usage"
+```c title="b2b_init_request 使用示例"
 ...
 if(is_method("INVITE") && !has_totag() && prepaid_user()) {
    ...
-   # create initial entities
+   # 创建初始实体
    b2b_server_new("server1");
    b2b_client_new("client1", $var(media_uri));
 
-   # initialize B2B session
+   # 初始化 B2B 会话
    b2b_init_request("prepaid");
    exit;
 }
 ...
-	
 ```
-
 
 #### b2b_server_new(id, [adv_contact], [extra_hdrs], [extra_hdr_bodies])
 
+此函数创建新的服务器实体（OpenSIPS 作为 UAS 的会话），用于初始化新的 B2B 会话。它只应用于初始 INVITE，在调用 [b2b init request](#func_b2b_init_request) 之前。
 
-This function creates a new server entity (dialog where OpenSIPS acts as a UAS)
-			to be used for initializing a new B2B session. It should only be
-			used for initial INVITES, before calling [b2b init request](#func_b2b_init_request).
+参数：
 
+- **id (string)** - 用于在进一步的 B2B 操作中引用此实体的 ID
+- **adv_contact (string, optional)** - 在生成的消息中公布的 Contact header
+- **extra_hdrs (var, optional)** - 包含额外 headers 列表（header 名称）的 AVP 变量，将添加到发送到此实体的任何请求中
+- **extra_hdr_bodies (var, optional)** - 包含额外 header bodies 列表（对应于 *extra_hdrs* 参数中给出的 headers）的 AVP 变量，将添加到发送到此实体的任何请求中
 
-Parameters:
+此函数可用于 REQUEST_ROUTE。
 
-
-- *id (string)* - ID used to reference this entity
-				in further B2B actions.
-- *adv_contact (string, optional)* - Contact header to
-				advertise in generated messages.
-- *extra_hdrs (var, optional)* - AVP variable holding a list
-				of extra headers (the header names) to be added for any request sent
-				to this entity.
-- *extra_hdr_bodies (var, optional)* - AVP variable holding a
-				list of extra header bodies (corresponding to the headers given in the
-				*extra_hdrs* parameter) to be added for any request
-				sent to this entity.
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="b2b_server_new usage"
+```c title="b2b_server_new 使用示例"
 ...
 if(is_method("INVITE") && !has_totag()) {
    b2b_server_new("server1", $avp(b2b_hdrs), $avp(b2b_hdr_bodies));
    ...
 }
 ...
-		
 ```
-
 
 #### b2b_client_new(id, dest_uri, [proxy], [from_dname], [adv_contact], [extra_hdrs], [extra_hdr_bodies], [flags])
 
+此函数创建新的客户端实体（OpenSIPS 作为 UAC 的会话），用于初始化新的 B2B 会话或用于桥接操作。此函数可以在调用 [b2b init request](#func_b2b_init_request) 或 [b2b bridge](#func_b2b_bridge) 之前使用。
 
-This function creates a new client entity (dialog where OpenSIPS acts as a UAC)
-			to be used for initializing a new B2B session or for a bridge action. The function
-			can be used before calling [b2b init request](#func_b2b_init_request) or
-			[b2b bridge](#func_b2b_bridge).
+参数：
 
+- **id (string)** - 用于在进一步的 B2B 操作中引用此实体的 ID
+- **dest_uri (string)** - 新目标 URI
+- **proxy (string, optional)** - 发送 INVITE 的出站代理 URI
+- **from_dname (string, optional)** - 在 From header 中使用的 Display name
+- **adv_contact (string, optional)** - 在生成的消息中公布的 Contact header
+- **extra_hdrs (var, optional)** - 包含额外 headers 列表（header 名称）的 AVP 变量，将添加到发送到此实体的任何请求中
+- **extra_hdr_bodies (var, optional)** - 包含额外 header bodies 列表（对应于 *extra_hdrs* 参数中给出的 headers）的 AVP 变量，将添加到发送到此实体的任何请求中
+- **flags (string, optional)** - CSV 格式的每实体标志列表。支持的值有：
+  - **pass-legs-upstream** - 仅为此客户端实体向上游传递下游分支索引
 
-Parameters:
+此函数可用于 REQUEST_ROUTE 和 b2b_logic 请求路由。
 
-
-- *id (string)* - ID used to reference this entity
-				in further B2B actions.
-- *dest_uri (string)* - URI of the new destination.
-- *proxy (string, optional)* - URI of the outbound proxy
-				to send the INVITE to.
-- *from_dname (string, optional)* - Display name to
-				use in the From header.
-- *adv_contact (string, optional)* - Contact header to
-				advertise in generated messages.
-- *extra_hdrs (var, optional)* - AVP variable holding a list
-				of extra headers (the header names) to be added for any request sent
-				to this entity.
-- *extra_hdr_bodies (var, optional)* - AVP variable holding a
-				list of extra header bodies (corresponding to the headers given in the
-				*extra_hdrs* parameter) to be added for any request
-				sent to this entity.
-- *flags (string, optional)* - CSV list of per-entity
-				flags. Supported values are:
-				
-					*pass-legs-upstream* - Pass the downstream leg
-					index upstream for this client entity only.
-
-
-This function can be used from REQUEST_ROUTE and the b2b_logic request routes.
-
-
-```c title="b2b_client_new usage"
+```c title="b2b_client_new 使用示例"
 ...
 b2b_client_new("client1", "sip:alice@opensips.org");
 ...
-		
 ```
-
 
 #### b2b_bridge(entity1, entity2, [provmedia_uri], [flags])
 
+此函数在现有 B2B 会话的上下文中桥接两个实体（初始实体已连接）。两个实体中至少有一个必须是新的客户端实体。
 
-This function bridges two entities, in the context of an existing B2B session
-			(the initial entities are already connected). At least one of the two entities
-			has to be a new client entity.
+参数：
 
+- **entity1 (string)** - 要桥接的第一个实体的 ID；也可以使用特殊值：*peer* 和 *this* 来引用现有实体
+- **entity2 (string)** - 要桥接的第二个实体的 ID；也可以使用特殊值：*peer* 和 *this* 来引用现有实体
+- **provmedia_uri (string, optional)** - 临时媒体服务器的 URI，在被叫应答时与主叫连接
+- **flags (string, optional)** - CSV 格式的以下标志列表：
+  - **max_duration=[nn]** - B2B 会话的最大持续时间。如果生存期到期，B2BUA 将向两端发送 BYE 消息并删除记录。此每桥接值优先于全局 [max duration](#param_max_duration) 模块参数。例如："max_duration=300"
+  - **notify** - 启用 rfc3515 NOTIFY 以通知发送 REFER 的代理引用的状态
+  - **rollback-failed** - 如果转移失败则回滚呼叫到桥接前的状态，不挂断呼叫（默认行为）
+  - **hold** - 在将旧实体桥接到新实体之前将其置于保持状态
+  - **no-late-sdp** - 不尝试与新实体进行延迟 SDP 协商。首先使用从旧实体收到的初始 SDP 联系新实体。在新实体应答后，向旧实体发送不带 body 的 reINVITE。使用从旧实体收到的新应答中的当前 SDP 触发与新实体的重新协商
+  - **propagate-avps** - 桥接呼叫时使用此标志将 AVPs 从初始元组复制到新元组。当进行需要存储 AVPs（用户名和密码）进行会话中认证时，这可能很有帮助，但也可用于存储跨桥接的其他信息
 
-Parameters:
+此函数可用于 b2b_logic 请求路由。
 
-
-- *entity1 (string)* - ID of the first entity to bridge;
-				the special values: *peer* and *this*
-				can also be used to refer to existing entities.
-- *entity2 (string)* - ID of the second entity to bridge;
-				the special values: *peer* and *this*
-				can also be used to refer to existing entities.
-- *provmedia_uri (string, optional)* - URI of the provisional
-				media server to be connected with the caller while the callee answers.
-- *flags (string, optional)* - CSV list of the following flags:
-				
-					*max_duration=[nn]* - Maximum duration of the B2B
-					session. If the lifetime expires, the B2BUA will send BYE messages to both
-					ends and delete the record. This per-bridge value takes precedence over the
-					global [max duration](#param_max_duration) module parameter.
-					Example: "max_duration=300".
-					*notify* - Enable rfc3515 NOTIFY to inform the agent
-					sending the REFER of the status of the reference.
-					*rollback-failed* - Rollback call to state before
-					bridging in case of transfer failed, don't hangup the call
-					(default behaviour).
-					*hold* - Put the old entity on hold before bridging
-					it to the new entity.
-					*no-late-sdp* - Do not attempt late SDP negotiation
-					with the new entity. Start the bridging by first contacting the new entity
-					using the initial SDP received from the old entity. After the new entity
-					answers, send a reINVITE without body to the old entity. Use the current
-					SDP received in this new answer from the old entity to trigger a
-					renegotiation with the new entity.
-					*propagate-avps* - When bridging a call, use this flag
-					to copy the AVPs from the initial tuple to the new one. This may be
-					helpful when doing in-dialog authentication that requires the stored
-					AVPs for username and password, but can also be useful to store other
-					information across the bridge.
-
-
-This function can be used from the b2b_logic request routes.
-
-
-```c title="b2b_bridge usage"
+```c title="b2b_bridge 使用示例"
 ...
 route[b2b_logic_request] {
    ...
@@ -731,28 +446,19 @@ route[b2b_logic_request] {
    b2b_bridge("peer", "client2");
 }
 ...
-		
 ```
-
 
 #### b2b_bridge_retry(new_entity)
 
+此函数可用于通过联系新目标重试失败的桥接操作。在运行此函数之前必须使用 [b2b client new](#func_b2b_client_new) 创建新的客户端实体。
 
-This function can be used to retry a failed bridging action by contacting
-			a new destination. A new client entity must be created before running this
-			function with [b2b client new](#func_b2b_client_new).
+参数：
 
+- **entity1 (string)** - 要桥接的新实体的 ID
 
-Parameters:
+此函数可用于 b2b_logic 回复路由。
 
-
-- *entity1 (string)* - ID of the new entity to bridge.
-
-
-This function can be used from the b2b_logic reply route.
-
-
-```c title="b2b_bridge usage"
+```c title="b2b_bridge 使用示例"
 ...
 route[b2b_logic_reply] {
    ...
@@ -766,92 +472,60 @@ route[b2b_logic_reply] {
    ...
 }
 ...
-		
 ```
-
 
 #### b2b_pass_request()
 
+此函数将属于现有 B2B 会话的请求传递到对等实体。除非需要不同的操作来实现场景逻辑（例如桥接操作），否则应该为所有请求调用此函数。
 
-This function passes a request belonging to an existing B2B session
-			to the peer entity. The function should be called for all requests unless
-			a different action is required to implement the scenario logic (eg. a
-			bridge action).
+此函数可用于 b2b_logic 请求路由。
 
-
-This function can be used from the b2b_logic request routes.
-
-
-```c title="b2b_pass_request usage"
+```c title="b2b_pass_request 使用示例"
 ...
 route[b2b_logic_request] {
    if ($rm != "BYE") {
       b2b_pass_request();
       exit;
    } else {
-      # delete the current entity and bridge the peer to a new one
+      # 删除当前实体并将 peer 桥接到新实体
    }
 ...
-		
 ```
-
 
 #### b2b_handle_reply([flags])
 
+此函数通过为 ongoing B2B 会话的当前状态采取适当的操作来处理收到的回复（将回复传递给对等、完成 ongoing 桥接操作等）。如果定义了 b2b_logic 回复路由，应该为所有回复调用此函数。
 
-This function processes the received reply by taking the appropriate actions
-			for the current state of the ongoing B2B session (pass reply to peer,
-			send INVITE or ACK to comeplete an ongoing bridge action etc.).
-			The function should be called for all replies, if a b2b_logic reply
-			route is defined.
+此函数可用于 b2b_logic 回复路由。
 
+参数：
 
-This function can be used from the b2b_logic reply routes.
+- **flags (string, optional)** - 逗号分隔的标志列表，用于更改回复处理的行为。支持的值有：
+  - **pass-3xx-contact** - 当收到重定向回复（3xx）消息时，按原样将对端传递给其他 peer，不进行修改
 
-
-Parameters:
-
-
-- *flags (string, optional)* - a list of comma
-				separated flags that changes the behavior of the reply processing.
-				Supported values are:
-				
-					*pass-3xx-contact* - When a redirect reply
-					(3xx) message is received, pass the contact to the other peer
-					just as it is, without modifying it.
-
-
-```c title="b2b_handle_reply usage"
+```c title="b2b_handle_reply 使用示例"
 ...
 route[b2b_logic_reply] {
     xlog("B2B REPLY: [$rs $rm] from entity: $b2b_logic.entity(id)\n");
     b2b_handle_reply();
 }
 ...
-		
 ```
-
 
 #### b2b_send_reply(code, reason[, headers[, body]])
 
+此函数向发送当前请求的实体发送回复。
 
-This function sends a reply to the entity that sent the current
-			request.
+参数：
 
+- **code (int)** - 回复代码
+- **reason (string)** - 回复原因字符串
+- **headers (string, optional)** - 额外 headers
+- **body (string, optional)** - 消息 body
 
-Parameters:
+此函数可用于 b2b_logic 请求路由。
 
-
-- *code (int)* - reply code
-- *reason (string)* - reply reason string
-- *headers (string, optional)* - additional headers
-- *body (string, optional)* - message body
-
-
-This function can be used from the b2b_logic request routes.
-
-
-```c title="b2b_send_reply usage"
+```c title="b2b_send_reply 使用示例"
 ...
 route[b2b_logic_request] {
    if ($rm == "REFER") {
@@ -860,20 +534,15 @@ route[b2b_logic_request] {
    }
 }
 ...
-		
 ```
-
 
 #### b2b_delete_entity()
 
+此函数删除发送当前请求的实体。
 
-This function deletes the entity that sent the current request.
+此函数可用于 b2b_logic 请求路由。
 
-
-This function can be used from the b2b_logic request routes.
-
-
-```c title="b2b_delete_entity usage"
+```c title="b2b_delete_entity 使用示例"
 ...
 route[b2b_logic_request] {
    if ($rm == "BYE") {
@@ -883,23 +552,15 @@ route[b2b_logic_request] {
    }
 }
 ...
-		
 ```
-
 
 #### b2b_end_dlg_leg()
 
+此函数向发送当前请求的实体发送 BYE 请求。不需要同时调用 [b2b delete entity](#func_b2b_delete_entity) 来删除当前实体。
 
-This function sends a BYE request to the entity that sent
-			the current request. It is not required to also call
-			[b2b delete entity](#func_b2b_delete_entity) in order to delete
-			the current entity.
+此函数可用于 b2b_logic 请求或回复路由。
 
-
-This function can be used from the b2b_logic request or reply routes.
-
-
-```c title="b2b_end_dlg_leg usage"
+```c title="b2b_end_dlg_leg 使用示例"
 ...
 route[b2b_logic_request] {
    if ($rm == "REFER") {
@@ -908,38 +569,24 @@ route[b2b_logic_request] {
    }
 }
 ...
-		
 ```
-
 
 #### b2b_bridge_request(b2bl_key,entity_no, [adv_contact], [flags])
 
+此函数将初始 INVITE 与现有 b2b 会话中的一个参与者桥接。
 
-This function will bridge an initial INVITE with one of the
-			particapnts from an existing b2b session.
+参数：
 
+- **b2bl_key (string)** - 包含 b2b_logic 键的字符串。键也可以采用 *callid;from-tag;to-tag* 形式
+- **entity_no (int)** - 包含要桥接的实体/参与者编号的整数
+- **adv_contact (string, optional)** - 在生成的消息中公布的 Contact header
+- **flags (string, optional)** - 可修改函数行为的标志。可用标志有：
+  - **late_bye** - 在停止时不终止被替换的实体，而是将其保持悬停直到新实体完全建立
 
-Parameters:
-
-
-- *b2bl_key (string)* - a string that
-				contains the b2b_logic key. The key can also be in the form
-				of *callid;from-tag;to-tag*.
-- *entity_no (int)* - an integer that
-				holds the entity of the entity/participant to bridge.
-- *adv_contact (string, optional)* - Contact header to
-				advertise in generated messages.
-- *flags (string, optional)* - Flags that can modify the
-				behavior of the function. Available flags are:
-				
-				*late_bye* - instead of terminating the replaced entity
-					on the stop, leave it pending until the new enity fully establishes.
-
-
-```c title="b2b_bridge_request usage"
+```c title="b2b_bridge_request 使用示例"
 ...
 if ($rU == "pickup") {
-    # get the b2b logic key of the parked call for this user
+    # 获取此用户停放的呼叫的 b2b logic 键
     cache_fetch("local", "$fU", $var(b2bl_key));
     cache_remove("local", "$fU");
 
@@ -951,55 +598,33 @@ if ($rU == "pickup") {
     exit;
 }
 ...
-		
 ```
-
 
 #### b2b_trigger_scenario(scenario, [params], peer1, [extra_headers_peer1], [extra_headers_contents_peer1], peer2 [extra_headers_peer2], [extra_headers_contents_peer2])
 
+此函数从路由脚本触发特定场景，例如 out-of-dialog REFER。
 
-This function triggers a certain scenario from routing script, e.g.
-			out-of-dialog REFERs.
+参数：
 
+- **scenario (string)** - 要触发场景的名称
+- **params (string, optional)** - 此场景使用的参数（可选择作为 CSV 格式）
+  - **n** - 启用 rfc3515 NOTIFY 以通知发送 REFER 的代理引用的状态
+  - **session key (string, optional)** - 内部会话键，如果 NOTIFY 应该在此 B2B-UA 上的不同会话中发送（例如，用于接收 out-of-dialog REFER）
+  - **party of remote session (int, optional)** - 如果 NOTIFY 应该发送到不同会话，则哪一侧应该收到会话的 NOTIFY（0 = 会话的 A 方，1 = 会话的 B 方）
+- **peer1 (string)** - 定义被触发场景的 A 方的参数
+  - **entitiy_name (string)** - 实体名称
+  - **RURI (string)** - 要联系实体的 R-URI
+  - **Proxy (string, optional)** - 用于此实体的出站代理
+  - **Display-Name (string, optional)** - 用于此实体的 Display Name
+- **extra_headers_peer1 (var, optional)** - 包含额外 headers 列表（header 名称）的 AVP 变量，将添加到为第一个实体发送的任何请求中
+- **extra_headers_contents_peer1 (var, optional)** - 包含额外 header bodies 列表（对应于 *extra_headers_peer1* 参数中给出的 headers）的 AVP 变量，将添加到为第一个实体发送的任何请求中
+- **peer2 (string)** - 定义被触发场景的 B 方的参数。格式与 *peer1* 的定义相同
+- **extra_headers_peer2 (var, optional)** - 包含额外 headers 列表（header 名称）的 AVP 变量，将添加到为第二个实体发送的任何请求中
+- **extra_headers_contents_peer2 (var, optional)** - 包含额外 header bodies 列表（对应于 *extra_headers_peer2* 参数中给出的 headers）的 AVP 变量，将添加到为第二个实体发送的任何请求中
 
-Parameters:
+此函数可用于 REQUEST_ROUTE。
 
-
-- *scenario (string)* - Name of the scenario to be triggered.
-- *params (string, optional)* - Parameters to be used in this scenario (optionally as CSV)
-
-  - *n* - Enable rfc3515 NOTIFY to inform the agent sending the
-						REFER of the status of the reference.
-  - *session key (string, optional)* - Internal session key, if the NOTIFY should be sent
-						in a different session on this B2B-UA (e.g. useful for receiving out-of-dialog REFERs)
-  - *party of remote session (int, optional)* - If the NOTIFY should be sent to a different session, which
-						side should receive the NOTIFY of the session (0 = A-Party of the session, 1 = B-Party of the session)
-- *peer1 (string)* - Parameters to define the A-Party of the triggered scenario
-
-  - *entitiy_name (string)* - Name of the entity
-  - *RURI (string)* - R-URI of the entity to contact
-  - *Proxy (string, optional)* - Outbound Proxy to be used for this entity
-  - *Display-Name (string, optional)* - Display Name to be used for this entity
-- *extra_headers_peer1 (var, optional)* - AVP variable holding a list
-				of extra headers (the header names) to be added for any request sent for the first entity.
-- *extra_headers_contents_peer1 (var, optional)* - AVP variable holding a
-				list of extra header bodies (corresponding to the headers given in the
-				*extra_headers_peer1* parameter) to be added for any request
-				sent for the first entity.
-- *peer2 (string)* - Parameters to define the B-Party of the
-				triggered scenario. The format is identitical to the definition of *peer1*.
-- *extra_headers_peer2 (var, optional)* - AVP variable holding a list
-				of extra headers (the header names) to be added for any request sent for the second entity.
-- *extra_headers_contents_peer2 (var, optional)* - AVP variable holding a
-				list of extra header bodies (corresponding to the headers given in the
-				*extra_headers_peer2* parameter) to be added for any request
-				sent for the second entity.
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="b2b_trigger_scenario usage"
+```c title="b2b_trigger_scenario 使用示例"
 ...
 if(is_method("REFER") && !has_totag()) {
    $avp(header) = "Replaces";
@@ -1008,173 +633,104 @@ if(is_method("REFER") && !has_totag()) {
    ...
 }
 ...
-		
 ```
 
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### b2b_logic:trigger_scenario
 
+替换已废弃的 MI 命令：*b2b_trigger_scenario*。
 
-Replaces obsolete MI command: *b2b_trigger_scenario*.
+此命令初始化新的 B2B 会话，其中 OpenSIPS 将从中间开始呼叫。要连接的初始实体通过命令的参数指定，进一步的场景逻辑可以在 b2b_logic 专用路由中实现。
 
+名称：*b2b_logic:trigger_scenario*
 
-This command initializes a new B2B session where OpenSIPS will start
-		a call from the middle. The initial entities to be connected are
-		specified through the command's parameters and further scenario logic
-		can be implemented in the b2b_logic dedicated routes.
+参数：
 
+- **senario_id**：此 B2B 会话的场景 ID
+- **entity1** - 要连接的第一个实体；按以下格式指定：*id,dest_uri[,from_dname]*，其中：
+  - **id** - 用于在进一步的 B2B 操作中引用此实体的 ID
+  - **dest_uri** - 新目标 URI
+  - **from_dname (optional)** - 在 From header 中使用的 Display name
+- **entity2** - 要连接的第二个实体；格式与 *entity1* 相同
+- **context (array, optional)** - B2B 上下文值数组，格式为：*key=value*
 
-Name: *b2b_logic:trigger_scenario*
-
-
-Parameters:
-
-
-- *senario_id* : ID for the scenario of this B2B session.
-- *entity1* - first entity to be connected; specified
-				in the following format: *id,dest_uri[,from_dname]* where:
-
-  - *id* - ID used to reference this entity
-					in further B2B actions
-  - *dest_uri* - URI of the new destination
-  - *from_dname (optional)* - Display name to
-					use in the From header.
-- *entity2* - second entity to be connected;
-				specified in the same format as *entity1*
-- *context (array, optional)* - array of B2B
-				context values, in the format: *key=value*
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
 	opensips-cli -x mi b2b_logic:trigger_scenario marketing client1,sip:bob@opensips.org client2,sip:322@opensips.org:5070 agent_uri=sip:alice@opensips.org
-		
 ```
-
 
 #### b2b_logic:bridge
 
+替换已废弃的 MI 命令：*b2b_bridge*。
 
-Replaces obsolete MI command: *b2b_bridge*.
+此命令可由外部应用程序使用，告诉 B2BUA 将 ongoing 会话中的一方桥接到另一个目标。默认情况下，主叫被桥接到新 URI，并向被叫发送 BYE。如果发送 1 作为第三个参数，则可以桥接被叫。
 
+名称：*b2b_logic:bridge*
 
-This command can be used by an external application to tell B2BUA to bridge a
-			call party from an on going dialog to another destination. By default the caller
-			is bridged to the new uri and BYE is set to the callee. You can instead bridge
-			the callee if you send 1 as the third parameter.
+参数：
 
+- **dialog_id**：*b2b_logic key*，或 ongoing 会话的 *callid;from-tag;to-tag*
+- **new_uri** - 新目标的 URI
+- **flag (optional)** - 用于指定必须将被叫桥接到新目标。如果不存在，则桥接主叫。可能的值为 '0' 或 '1'
+- **prov_media_uri (optional)** - 能够从桥接场景开始到最后向其播放临时媒体的媒体服务器 URI。这是可选的。如果不存在，则不会有其他实体参与桥接场景
 
-Name: *b2b_logic:bridge*
-
-
-Parameters:
-
-
-- *dialog_id* : the *b2b_logic key*, or the
-				*callid;from-tag;to-tag* of the ongoing dialog.
-- *new_uri* - the uri of the new destination
-- *flag* (optional) - used to specify that the callee must be bridged to the new destination. If not present the caller will be bridged. Possible values are
-				'0' or '1'.
-b2b_logic key
-callid;from-tag;to-tag
-- *prov_media_uri* (optional) - the uri of a media server able to play 
-					provisional media starting from the beginning of the bridging scenario
-					to the end of it. It is optional. If not present, no other entity will be
-					envolved in the bridging scenario
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
 	opensips-cli -x mi b2b_logic:bridge 1020.30 sip:alice@opensips.org
-	
 ```
 
-
-opensips-cli Command Format:
-
+opensips-cli 命令格式：
 
 ```c
 	opensips-cli -x mi b2b_logic:bridge 1020.30 sip:alice@opensips.org
-	
 ```
-
 
 #### b2b_logic:list
 
+替换已废弃的 MI 命令：*b2b_list*。
 
-Replaces obsolete MI command: *b2b_list*.
+此命令可用于列出 b2b_logic 实体的内部信息。
 
+名称：*b2b_logic:list*
 
-This command can be used to list the internals of b2b_logic entities.
+参数：*无*
 
-
-Name: *b2b_logic:list*
-
-
-Parameters: *none*
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
 	opensips-cli -x mi b2b_logic:list
-	
 ```
-
 
 #### b2b_logic:terminate_call
 
+替换已废弃的 MI 命令：*b2b_terminate_call*。
 
-Replaces obsolete MI command: *b2b_terminate_call*.
+终止 ongoing B2B 会话。
 
+名称：*b2b_logic:terminate_call*
 
-Terminates an ongoing B2B session.
+参数：
 
+- **key**：*b2b_logic key*，或 ongoing 会话的一个呼叫分支的 *callid;from-tag;to-tag*
 
-Name: *b2b_logic:terminate_call*
-
-
-Parameters:
-
-
-- *key* : the *b2b_logic key*
-				or the *callid;from-tag;to-tag* of
-				one of call legs of the ongoing session.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
 	opensips-cli -x mi b2b_logic:terminate_call 159.0
-	
 ```
 
-
-### Exported Pseudo-Variables
-
+### 导出的伪变量
 
 #### $b2b_logic.key
 
+这是只读变量，返回 ongoing B2B 会话的 b2b_logic 键。
 
-This is a read-only variable that returns the b2b_logic key of the
-		ongoing B2B session.
+此变量可用于请求路由、local_route 以及通过 *b2b_entities* 和 *b2b_logic* 模块定义的专用路由。
 
-
-The variable can be used in request route, local_route and the dedicated
-		routes defined through the *b2b_entities* and
-		*b2b_logic* modules.
-
-
-```c title="$b2b_logic.key usage"
+```c title="$b2b_logic.key 使用示例"
 ...
 local_route {
    ...
@@ -1185,51 +741,27 @@ local_route {
    ...
 }
 ...
-	
 ```
-
 
 #### $b2b_logic.entity(field)[idx]
 
+这是只读变量，返回与 ongoing B2B 会话涉及的实体（会话）相关的信息。
 
-This is a read-only variable that returns information about the
-		entities(dialogs) involved in the ongoing B2B session.
+可用的实体信息有：
 
+- 会话的 Call-ID，可通过使用 *callid* 子名称访问
+- 实体键，可通过使用 *key* 子名称或不使用任何子名称访问
+- 实体 ID，可通过使用 *id* 子名称访问
+- 会话的 From-Tag，可通过使用 *fromtag* 子名称访问
+- 会话的 To-Tag，可通过使用 *totag* 子名称访问
 
-The available entity information is:
+索引用于选择要引用的 B2B 会话中的实体。唯一可能的值是 *0* 或 *1*，对应于场景中实体的位置。最初，这取决于创建实体的顺序。在内部拓扑隐藏场景的情况下，*0* 是主叫，*1* 是被叫。当发生进一步的桥接操作时，被桥接的实体总是放在 *0* 索引，新实体放在 *1*。
 
+如果未提供索引，变量将引用当前 SIP 消息所属的实体（会话）。
 
-- the Call-ID of the dialog, accessible by using the
-				*callid* subname;
-- the entity key, accessible by using the
-				*key* subname or no subname at all.
-- the entity ID, accessible by using the
-				*id* subname.
-- the From-Tag of the dialog, accessible by using the
-				*fromtag* subname.
-- the To-Tag of the dialog, accessible by using the
-				*totag* subname.
+此变量可用于请求路由、local_route 以及通过 *b2b_entities* 和 *b2b_logic* 模块定义的专用路由。
 
-
-The index is used to select which entity from the B2B session to refer
-		to. The only possible values are *0* or *1* and correspond to the positions of the entities
-		in the scenario. Initially, this depends on the order in which the entities
-		are created. In the case of the internal topology hiding scenario,
-		*0* is the caller and *1* is the callee.
-		When a further bridge action happens, the bridged entity is always placed on the
-		*0* index and the new entity on *1*.
-
-
-If no index is provided, the variable will refer to the entity(dialog)
-		which the current SIP message belongs to.
-
-
-The variable can be used in request route, local_route and the dedicated
-		routes defined through the *b2b_entities* and
-		*b2b_logic* modules.
-
-
-```c title="$b2b_logic.entity usage"
+```c title="$b2b_logic.entity 使用示例"
 ...
 modparam("b2b_entities", "script_request_route", "b2b_request")
 ...
@@ -1242,30 +774,17 @@ route[b2b_request] {
    ...
 }
 ...
-	
 ```
-
 
 #### $b2b_logic.ctx(key)
 
+这是读写变量，提供对 ongoing B2B 会话上下文中自定义键值存储（字符串值）的访问。
 
-This is a read-write variable that provides access to a custom
-		Key-Value storage(of string values) in the context of the ongoing
-		B2B session.
+此变量可用于请求路由、local_route 以及通过 *b2b_entities* 和 *b2b_logic* 模块定义的专用路由。在主请求路由中，甚至在实例化 *b2b_init_request()* 之前的场景之前，此变量可用于存储新的上下文值。
 
+将变量设置为 *NULL* 将删除给定键的值。
 
-The variable can be used in request route, local_route and the dedicated
-		routes defined through the *b2b_entities* and
-		*b2b_logic* modules. In the main request route
-		the variable can be used for storing a new context value even before
-		instantiating the scenario with *b2b_init_request()*.
-
-
-Setting the variable to *NULL* will delete the value
-		at the given key.
-
-
-```c title="$b2b_logic.ctx usage"
+```c title="$b2b_logic.ctx 使用示例"
 ...
 modparam("b2b_entities", "script_reply_route", "b2b_reply")
 ...
@@ -1276,30 +795,21 @@ route {
    $b2b_logic.ctx(my_extra_info) = "my_value";
    ...
 }
-...
 route[b2b_reply] {
    ...
    xlog("my info: $b2b_logic.ctx(my_extra_info)\n");
    ...
 }
 ...
-	
 ```
-
 
 #### $b2b_logic.scenario(key)
 
+这是只读变量，返回 ongoing B2B 会话的场景 ID。
 
-This is a read-only variable that returns the scenario ID of the ongoing
-		B2B session
+此变量可用于请求路由、local_route 以及通过 *b2b_entities* 和 *b2b_logic* 模块定义的专用路由。
 
-
-The variable can be used in request route, local_route and the dedicated
-		routes defined through the *b2b_entities* and
-		*b2b_logic* modules.
-
-
-```c title="$b2b_logic.scenario usage"
+```c title="$b2b_logic.scenario 使用示例"
 ...
 route[b2b_logic_request] {
    if ($b2b_logic.scenario == "prepaid") {
@@ -1309,49 +819,28 @@ route[b2b_logic_request] {
    }
 }
 ...
-	
 ```
-
 
 #### $b2b_logic.peer(b2b_key)
 
+这是只读变量，返回与提供的 *callid;from-tag;to-tag* 格式的 associated b2b_key 通信的对等方。
 
-This is a read-only variable that returns the peer discussing with
-		the associated b2b_key, provided in the
-		*callid;from-tag;to-tag* format.
-
-
-```c title="$b2b_logic.peer usage"
+```c title="$b2b_logic.peer 使用示例"
 ...
 	$var(b2b_key) = $ci + ';' + $ft + ';' + $tt;
 	xlog("$var(b2b_key) is talking to $b2b_logic.peer($var(b2b_key))\n");
 ...
-	
 ```
 
+## 开发者指南
 
-## Developer Guide
-
-
-The module provides an API that can be used from other OpenSIPS
-   modules. The API offers the functions for instantiating b2b
-   scenarios from other modules (this comes as an addition to the
-   other two means of instantiating b2b scenarios - from script
-   and with an MI command). Also the instantiations can be
-   dynamically controlled, by commanding the bridging of an entity
-   involved in a call to another entity or the termination of the
-   call or even bridging two existing calls.
-
+此模块提供了一个 API，可供其他 OpenSIPS 模块使用。该 API 提供了从其他模块实例化 b2b 场景的函数（这是实例化 b2b 场景的另外两种方式 - 从脚本和通过 MI 命令 - 的补充）。此外，实例化可以动态控制，通过命令将参与呼叫的实体桥接到另一个实体或终止呼叫，甚至桥接两个现有呼叫。
 
 ### b2b_logic_bind(b2bl_api_t* api)
 
+此函数绑定 b2b_entities 模块并填充导出函数结构，这些函数将在后面详细描述。
 
-This function binds the b2b_entities modules and fills the
-   structure the exported functions that will be described in
-   detail.
-
-
-```c title="b2bl_api_t structure"
+```c title="b2bl_api_t 结构"
 ...
 typedef struct b2bl_api
 {
@@ -1366,12 +855,9 @@ typedef struct b2bl_api
 ...
 ```
 
-
 ### init
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1380,12 +866,7 @@ typedef str* (*b2bl_init_f)(struct sip_msg* msg, str* name, str* args[5],
 ...
 ```
 
-
-Initializing a b2b scenario. The last two parameters are the
-   callback function and the parameter to be called in 3
-   situations that will be listed below. The callback function has
-   the following definition:
-
+初始化 b2b 场景。最后两个参数是在下面列出的 3 种情况下调用的回调函数和参数。回调函数具有以下定义：
 
 ```c
 ...
@@ -1393,48 +874,28 @@ typedef int (*b2b_notify_t)(struct sip_msg* msg, str* id, int type, void* param)
 ...
 ```
 
+第一个参数是 init 函数中给出的回调。
 
-The first argument is the callback given in the init function.
+第二个参数是包含呼叫统计信息（开始时间、建立时间、呼叫时间）的结构。
 
+第三个参数是场景实例化的当前状态。
 
-The second argument is a structure with some statistics about
-   the call -start time, setup time, call time.
+最后一个参数是触发回调的事件。有 3 种事件会调用回调：
 
+- **当从任一方收到 BYE 时** - 事件参数也将显示从哪一方收到 BYE，因此可以是 B2B_BYE_E1 或 B2B_BYE_E2
+- **如果在桥接过程中从第二个实体收到否定回复** - 事件是 B2B_REJECT_E2
+- **当 b2b logic 实体被删除时** - 事件是 B2B_DESTROY
 
-The third argument is the current state of the scenario
-   instantiation.
+返回码控制将如何处理导致事件（最后一个事件除外，此时返回码无关紧要）的请求/回复：
 
-
-The last argument is the event that triggered the callback.
-   There are 3 events when the callback is called:
-
-
-- *when a BYE is received from either side- event parameter
-	will also show from which side the BYE is received, so it
-	can be B2B_BYE_E1 or B2B_BYE_E2*
-- *If while bridging, a negative reply is received from the
-     second entity - the event is B2B_REJECT_E2.*
-- *When the b2b logic entity is deleted- the evnet is
-     B2B_DESTROY*
-
-
-The return code controls what will happen with the
-   request/reply that caused the event (except for the last event,
-   when the return code does not matter)
-
-
-- *-1 - error*
-- *0 - drop the BYE or reply*
-- *1 - send the BYE or reply on the other side*
-- *2 - do what the scenario tells, if no rule defined send the
-       BYE or reply on the other side*
-
+- **-1** - 错误
+- **0** - 丢弃 BYE 或回复
+- **1** - 在另一侧发送 BYE 或回复
+- **2** - 按场景指示的做，如果没有定义规则则在另一侧发送 BYE 或回复
 
 ### bridge
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1442,16 +903,11 @@ typedef int (*b2bl_bridge_f)(str* key, str* new_uri, str* new_from_dname,int ent
 ...
 ```
 
-
-This function allows bridging an entity that is in a call
-   handled by b2b_logic to another entity.
-
+此函数允许将正在由 b2b_logic 处理的呼叫中的实体桥接到另一个实体。
 
 ### bridge_extern
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1460,16 +916,11 @@ typedef str* (*b2bl_bridge_extern_f)(str* scenario_name, str* args[5],
 ...
 ```
 
-
-This function allows initiating an extern scenario, when the
-   B2BUA starts a call from the middle.
-
+此函数允许启动外部场景，此时 B2BUA 从中间开始呼叫。
 
 ### bridge_2calls
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1477,17 +928,11 @@ typedef int (*b2bl_bridge_2calls_t)(str* key1, str* key2);
 ...
 ```
 
-
-With this function it is possible to bridge two existing calls.
-   The first entity from the two calls will be connected and BYE
-   will be sent to their peers.
-
+使用此函数可以将两个现有呼叫桥接在一起。两个呼叫的第一个实体将连接，并向它们的对等方发送 BYE。
 
 ### terminate_call
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1495,15 +940,11 @@ typedef int (*b2bl_terminate_call_t)(str* key);
 ...
 ```
 
-
-Terminate a call.
-
+终止呼叫。
 
 ### set_state
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1511,15 +952,11 @@ typedef int (*b2bl_set_state_f)(str* key, int state);
 ...
 ```
 
-
-Set the scenario state.
-
+设置场景状态。
 
 ### bridge_msg
 
-
-Field type:
-
+字段类型：
 
 ```c
 ...
@@ -1527,20 +964,15 @@ typedef int (*b2bl_bridge_msg_t)(struct sip_msg* msg, str* key, int entity_no);
 ...
 ```
 
+此函数允许将呼入呼叫桥接到现有呼叫中的实体。
 
-This function allows bridging an incoming call to an entity from an
-   existing call.
+第一个参数是当前呼入呼叫的 INVITE 消息。
 
+第二个参数是现有呼叫的 b2bl_key。
 
-The first argument is the INVITE message of the current incoming call.
-
-
-The second argument is the b2bl_key of an existing call.
-
-
-The third argument is the entity identifier.
+第三个参数是实体标识符。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可证。

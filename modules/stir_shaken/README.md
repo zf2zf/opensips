@@ -1,58 +1,55 @@
 ---
-title: "STIR/SHAKEN Module"
-description: "This module adds support for implementing STIR/SHAKEN (RFC 8224, RFC 8588) Authentication and Verification services in OpenSIPS."
+title: "STIR/SHAKEN 模块"
+description: "此模块为 OpenSIPS 添加了实现 STIR/SHAKEN（RFC 8224、RFC 8588）认证和验证服务的支持。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module adds support for implementing STIR/SHAKEN (RFC 8224, RFC 8588)
-	Authentication and Verification services in OpenSIPS.
+此模块为 OpenSIPS 添加了实现 STIR/SHAKEN（RFC 8224、RFC 8588）
+		认证和验证服务的支持。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *wolfssl (libwolfssl)*.
+- *wolfssl (libwolfssl)*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### auth_date_freshness (integer)
 
 
-The maximum number of seconds that the value in the Date header field
-		can be older than the current time.
+Date 头字段中的值可以比当前时间更旧的最大秒数。
 
 
-This parameter is only relevant
-		for the [stir shaken auth](#func_stir_shaken_auth) function.
+此参数仅与 [stir shaken auth](#func_stir_shaken_auth) 函数相关。
 
 
-The default value is *60*.
+默认值为 *60*。
 
 
-```c title="Set auth_date_freshness parameter"
+```c title="设置 auth_date_freshness 参数"
 ...
 modparam("stir_shaken", "auth_date_freshness", 300)
 ...
@@ -62,26 +59,23 @@ modparam("stir_shaken", "auth_date_freshness", 300)
 #### verify_date_freshness (integer)
 
 
-The maximum number of seconds that the value in the Date header field can be
-		older than the current time. Also, if the *iat* value in
-		the PASSporT is different than the Date value, but remains within the
-		permitted interval, it will be used in the verification process (for the
-		reconstructed PASSporT) instead of the Date value.
+Date 头字段中的值可以比当前时间更旧的最大秒数。
+		此外，如果 PASSporT 中的 *iat* 值与 Date 值不同，
+		但在允许的间隔内，它将在验证过程中使用（用于重建的 PASSporT），
+		而不是 Date 值。
 
 
-If the [require date hdr](#param_require_date_hdr) parameter is set to not
-		required and the Date header is missing, the *iat* value
-		will be used for this check instead.
+如果 [require date hdr](#param_require_date_hdr) 参数设置为非必需，
+		且 Date 头缺失，则 *iat* 值将用于此检查。
 
 
-This parameter is only relevant for the
-		[stir shaken verify](#func_stir_shaken_verify) function.
+此参数仅与 [stir shaken verify](#func_stir_shaken_verify) 函数相关。
 
 
-The default value is *60*.
+默认值为 *60*。
 
 
-```c title="Set verify_date_freshness parameter"
+```c title="设置 verify_date_freshness 参数"
 ...
 modparam("stir_shaken", "verify_date_freshness", 300)
 ...
@@ -91,11 +85,11 @@ modparam("stir_shaken", "verify_date_freshness", 300)
 #### ca_list (string)
 
 
-Path to a file containing trusted CA certificates for the verifier.
-		The certificates must be in PEM format, one after another.
+包含验证者可信 CA 证书的文件路径。
+		证书必须为 PEM 格式，依次排列。
 
 
-```c title="Set ca_list parameter"
+```c title="设置 ca_list 参数"
 ...
 modparam("stir_shaken", "ca_list", "/stir_certs/ca_list.pem")
 ...
@@ -105,13 +99,13 @@ modparam("stir_shaken", "ca_list", "/stir_certs/ca_list.pem")
 #### ca_dir (string)
 
 
-Path to a directory containing trusted CA certificates for the verifier.
-		The certificates in the directory must be in hashed form, as described
-		in the [openssl documentation](https://www.openssl.org/docs/manmaster/man3/X509_LOOKUP_hash_dir.html) for the
-		*Hashed Directory Method*.
+包含验证者可信 CA 证书的目录路径。
+		目录中的证书必须采用哈希形式，
+		如 [openssl 文档](https://www.openssl.org/docs/manmaster/man3/X509_LOOKUP_hash_dir.html) 中
+		*哈希目录方法* 所述。
 
 
-```c title="Set ca_dir parameter"
+```c title="设置 ca_dir 参数"
 ...
 modparam("stir_shaken", "ca_dir", "/stir_certs/cas")
 ...
@@ -121,10 +115,10 @@ modparam("stir_shaken", "ca_dir", "/stir_certs/cas")
 #### crl_list (string)
 
 
-Path to a file containing certificate revocation lists (CRLs) for the verifier.
+包含验证者证书吊销列表（CRL）的文件路径。
 
 
-```c title="Set crl_list parameter"
+```c title="设置 crl_list 参数"
 ...
 modparam("stir_shaken", "crl_list", "/stir_certs/crl_list.pem")
 ...
@@ -134,13 +128,13 @@ modparam("stir_shaken", "crl_list", "/stir_certs/crl_list.pem")
 #### crl_dir (string)
 
 
-Path to a directory containing certificate revocation lists (CRLs) for
-		the verifier. The CRLs in the directory must be in hashed form, as described
-		in the [openssl documentation](https://www.openssl.org/docs/manmaster/man3/X509_LOOKUP_hash_dir.html) for the
-		*Hashed Directory Method*.
+包含验证者证书吊销列表（CRL）的目录路径。
+		目录中的 CRL 必须采用哈希形式，
+		如 [openssl 文档](https://www.openssl.org/docs/manmaster/man3/X509_LOOKUP_hash_dir.html) 中
+		*哈希目录方法* 所述。
 
 
-```c title="Set crl_dir parameter"
+```c title="设置 crl_dir 参数"
 ...
 modparam("stir_shaken", "crl_dir", "/stir_certs/crls")
 ...
@@ -150,18 +144,16 @@ modparam("stir_shaken", "crl_dir", "/stir_certs/crls")
 #### e164_strict_mode (integer)
 
 
-Require a leading *"+"* to be present in
-		the originating/destination SHAKEN identity, on top of mandating an E.164
-		telephone number by default.  Additionally, require the URI to be either
-		a *tel* URI or a *sip* /
-		*sips* URI with the *user=phone*
-		parameter.
+要求在发起/目标 SHAKEN 身份中存在前导 *"+"*，
+		此外还要求默认使用 E.164 电话号码。
+		另外，要求 URI 必须是 *tel* URI 或带有 *user=phone*
+		参数的 *sip*/*sips* URI。
 
 
-The default value is *0* (disabled).
+默认值为 *0*（禁用）。
 
 
-```c title="Set e164_strict_mode parameter"
+```c title="设置 e164_strict_mode 参数"
 ...
 modparam("stir_shaken", "e164_strict_mode", 1)
 ...
@@ -171,16 +163,14 @@ modparam("stir_shaken", "e164_strict_mode", 1)
 #### e164_max_length (integer)
 
 
-This parameter allows the 15-digit number length restriction of the E.164
-		format to be bypassed.  Especially useful in scenarios where various
-		telephony number prefixes are in use, causing some numbers to exceed
-		the standard maximum length.
+此参数允许绕过 E.164 格式的 15 位数字长度限制。
+		在某些电话号码前缀正在使用导致一些数字超过标准最大长度的情况下特别有用。
 
 
-The default value is *15*.
+默认值为 *15*。
 
 
-```c title="Set e164_max_length parameter"
+```c title="设置 e164_max_length 参数"
 ...
 modparam("stir_shaken", "e164_max_length", 16)
 ...
@@ -190,105 +180,98 @@ modparam("stir_shaken", "e164_max_length", 16)
 #### require_date_hdr (integer)
 
 
-Specifies whether the Date header is mandatory when doing verification
-	    with the [stir shaken verify](#func_stir_shaken_verify) function.
+指定在使用 [stir shaken verify](#func_stir_shaken_verify) 函数进行验证时，
+		    Date 头是否是强制的。
 
 
-A value of *1* means required and *0*
-	    not required.
+值为 *1* 表示必需，*0*
+		    表示非必需。
 
 
-If the parameter is set to "not required" but the Date header is present in the
-	    message, the header value will be used as normally to check the freshness (as
-	    configured in the [verify date freshness](#param_verify_date_freshness)
-	    parameter). If the Date header is indeed missing, the value of the
-	    *iat* claim in the PASSporT will be used instead.
+如果参数设置为"非必需"但消息中存在 Date 头，
+		    该头值将照常用于检查新鲜度（如
+		    [verify date freshness](#param_verify_date_freshness)
+		    参数中所配置）。
+		如果 Date 头确实缺失，则使用 PASSporT 中 *iat* 声明的值。
 
 
-The default value is *1* (required).
+默认值为 *1*（必需）。
 
 
-```c title="Set require_date_hdr parameter"
+```c title="设置 require_date_hdr 参数"
 ...
 modparam("stir_shaken", "require_date_hdr", 0)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### stir_shaken_auth(attest, origid, cert, pkey, x5u, [orig], [dest], [out])
 
 
-This function performs the steps of an authentication service. Before
-		calling this function though, you must ensure:
+此函数执行认证服务的步骤。但是在调用此函数之前，
+		您必须确保：
 
 
-- authority - the server is authoritative for the identity in question;
-- authentication - the originator is authorized to claim the given identity.
+- authority - 服务器对相关身份具有权威性；
+- authentication - 发起者被授权声明给定身份。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *attest (string)* - value of the 'attest' claim
-			to be included in the PASSporT. The following values can be used:
-			
+- *attest (string)* - 要包含在 PASSporT 中的 'attest' 声明的值。
+			可以使用以下值：
 				
-				*A* or *full*
+					
+				*A* 或 *full*
+					
+					
+				*B* 或 *partial*
+					
+					
+				*C* 或 *gateway*
+- *origid (string)* - 要包含在 PASSporT 中的 'origid' 声明的值。
+			模块将其视为不透明字符串。
+- *cert (string)* - 用于计算签名的 X.509 证书，
+			PEM 格式。
+- *pkey (string)* - 用于计算签名的私钥，
+			PEM 格式。
+- *x5u (string)* - 要包含在 PASSporT 中的 'x5u' 声明的值。
+			模块将其视为不透明字符串。
+- *orig (string, 可选)* - 要在 PASSporT 中用作发起身份的的电话号码。
+			如果缺失，此值将从 SIP 消息派生。
+- *dest (string, 可选)* - 要在 PASSporT 中用作目标身份的 电话号码。
+			如果缺失，此值将从 SIP 消息派生。
+- *out (string, 不展开, 可选)* - 输出变量的名称，
+			用于存储 Identity 头或以下标志：
 				
 				
-				*B* or *partial*
+				*req* - Identity 头将附加到当前请求消息；
 				
 				
-				*C* or *gateway*
-- *origid (string)* - value of the 'origid' claim
-			to be included in the PASSporT. Treated by the module as an opaque string.
-- *cert (string)* - the X.509 certificate used to
-			compute the signature, in PEM format.
-- *pkey (string)* - the private key used to
-			compute the signature, in PEM format.
-- *x5u (string)* - value of the 'x5u' claim to be
-			included in the PASSporT. Treated by the module as an opaque string.
-- *orig (string, optional)* - telephone number to
-			be used as the originating identity in the PASSporT. If missing, this value
-			will be derived from the SIP message.
-- *dest (string, optional)* - telephone number to
-			be used as the destination identity in the PASSporT. If missing, this value
-			will be derived from the SIP message.
-- *out (string, no expand, optional)* - name of an
-			output variable to store the Identity header or the following flags:
-			
-			
-				*req* - the Identity header will be appended
-				to the current request message;
-			
-			
-				*rpl* - the Identity header will be appended
-				to all replies that will be generated by OpenSIPS for this request.
-If this parameter is missing, the Identity header will be appended
-			to the current request message.
-If an output variable is provided, it should be given as a quoted string,
-			eg. *"$var(identity_hdr)"*.
+				*rpl* - Identity 头将附加到 OpenSIPS 将为此请求生成的所有回复。
+如果缺少此参数，Identity 头将附加到当前请求消息。
+如果提供了输出变量，应将其作为带引号的字符串给出，
+			例如 *"$var(identity_hdr)"*。
 
 
-The function returns the following values:
+函数返回以下值：
 
 
-- 1: Success
-- -1: Internal error
-- -3: Failed to derive identity from SIP message because the
-		    URI is not a telephone number
-- -4: Date header value is older than local policy for freshness
-- -5: The current time or Date header value does not fall within
-		    the certificate validity
+- 1: 成功
+- -1: 内部错误
+- -3: 无法从 SIP 消息派生身份，因为 URI 不是电话号码
+- -4: Date 头值比本地策略更新鲜度要求更旧
+- -5: 当前时间或 Date 头值不在证书有效期内
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="stir_shaken_auth() usage"
+```c title="stir_shaken_auth() 使用示例"
 ...
 stir_shaken_auth("A", "4437c7eb-8f7a-4f0e-a863-f53a0e60251a",
 	$var(cert), $var(privKey), "https://certs.example.org/cert.pem");
@@ -299,48 +282,41 @@ stir_shaken_auth("A", "4437c7eb-8f7a-4f0e-a863-f53a0e60251a",
 #### stir_shaken_verify(cert, err_code, err_reason, [orig], [dest])
 
 
-This function performs the steps of an verification service.
+此函数执行验证服务的步骤。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *cert (string)* - the X.509 certificate used to
-			verify the signature, in PEM format.
-- *err_code (var)* - output variable that will
-			store the SIP response code associated with an eventual error of the
-			verification process.
-- *err_reason (var)* - output variable that will
-			store the SIP response reason phrase associated with an eventual error of the
-			verification process.
-- *orig (string, optional)* - telephone number to
-			be used as the originating identity in the verification prcess. If missing,
-			this value will be derived from the SIP message.
-- *dest (string, optional)* - telephone number to
-			be used as the destination identity in the verification process. If missing,
-			this value will be derived from the SIP message.
+- *cert (string)* - 用于验证签名的 X.509 证书，
+			PEM 格式。
+- *err_code (var)* - 输出变量，用于存储与验证过程最终错误关联的 SIP 响应码。
+- *err_reason (var)* - 输出变量，用于存储与验证过程最终错误关联的 SIP 响应原因短语。
+- *orig (string, 可选)* - 要在验证过程中用作发起身份的电话号码。
+			如果缺失，此值将从 SIP 消息派生。
+- *dest (string, 可选)* - 要在验证过程中用作目标身份的电话号码。
+			如果缺失，此值将从 SIP 消息派生。
 
 
-The function returns the following values:
+函数返回以下值：
 
 
-- 1: Success
-- -1: Internal error
-- -2: No Identity or Date header found
-- -3: Failed to derive identity from SIP message because the
-		    URI is not a telephone number
-- -4: Invalid identity header
-- -5: Unsupported 'ppt' or 'alg' Identity header parameter
-- -6: Date header value is older than local policy for freshness
-- -7: The Date header value does not fall within the certificate validity
-- -8: Invalid certificate
-- -9: Signature does not verify successfully
+- 1: 成功
+- -1: 内部错误
+- -2: 未找到 Identity 或 Date 头
+- -3: 无法从 SIP 消息派生身份，因为 URI 不是电话号码
+- -4: 无效的 identity 头
+- -5: 不支持的 'ppt' 或 'alg' Identity 头参数
+- -6: Date 头值比本地策略更新鲜度要求更旧
+- -7: Date 头值不在证书有效期内
+- -8: 无效证书
+- -9: 签名验证不成功
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="stir_shaken_verify() usage"
+```c title="stir_shaken_verify() 使用示例"
 ...
 $var(rc) = stir_shaken_verify($var(cert), $var(err_code), $var(err_reason));
 if ($var(rc) < -1) {
@@ -354,28 +330,27 @@ if ($var(rc) < -1) {
 #### stir_shaken_check()
 
 
-This function checks the Identity header in order to validate the
-		STIR/SHAKEN information in terms of format. It detects issues such as:
-		missing or badly formated PASSporT claims, unsupported extensions etc.
+此函数检查 Identity 头以验证 STIR/SHAKEN 信息的格式正确性。
+		它检测诸如缺失或格式错误的 PASSporT 声明、不支持的扩展等问题。
 
 
-The function returns the following values:
+函数返回以下值：
 
 
-- 1: Success
-- -1: Internal error
-- -2: No Identity header found
-- -3: Invalid identity header
-- -4: Unsupported 'ppt' or 'alg' Identity header parameter
+- 1: 成功
+- -1: 内部错误
+- -2: 未找到 Identity 头
+- -3: 无效的 identity 头
+- -4: 不支持的 'ppt' 或 'alg' Identity 头参数
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="stir_shaken_check() usage"
+```c title="stir_shaken_check() 使用示例"
 ...
 if (stir_shaken_check()) {
-	xlog("forwarding call to stir/shaken verification service\n");
+	xlog("将呼叫转发到 stir/shaken 验证服务\n");
 	...
 }
 ...
@@ -385,24 +360,23 @@ if (stir_shaken_check()) {
 #### stir_shaken_check_cert()
 
 
-This function checks if the current time falls within the given
-		certificate's validity period.
+此函数检查当前时间是否在给定证书的有效期内。
 
 
-The function returns the following values:
+函数返回以下值：
 
 
-- 1: Success
-- -1: Internal error
-- -2: Certificate is not valid
+- 1: 成功
+- -1: 内部错误
+- -2: 证书无效
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="stir_shaken_check_cert() usage"
+```c title="stir_shaken_check_cert() 使用示例"
 ...
-# update expired cached certificates
+# 更新过期的缓存证书
 cache_fetch("local", $identity(x5u), $var(cert));
 if (!stir_shaken_check_cert($var(cert))) {
 	rest_get($identity(x5u), $var(cert));
@@ -415,93 +389,90 @@ if (!stir_shaken_check_cert($var(cert))) {
 #### stir_shaken_disengagement(token)
 
 
-This function add P-Identity-Bypass header with token value at the end of SIP headers.
+此函数在 SIP 头末尾添加带有令牌值的 P-Identity-Bypass 头。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *token (string)* - The token provided by the authority during outage.
+- *token (string)* - 宕机期间由授权机构提供的令牌。
 
 
-The function returns the following values:
+函数返回以下值：
 
 
-- 1: Success
-- 0: Failed to add P-Identity-Bypass header
+- 1: 成功
+- 0: 添加 P-Identity-Bypass 头失败
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="stir_shaken_disengagement() usage"
+```c title="stir_shaken_disengagement() 使用示例"
 ...
 if ( is_method("INVITE") && !has_totag()) {
-	# equivalent to sipmsgops module: append_hf("P-Identity-Bypass: OSIP99-1234567890ABCDEF\r\n");
+	# 等同于 sipmsgops 模块：append_hf("P-Identity-Bypass: OSIP99-1234567890ABCDEF\r\n");
 	stir_shaken_disengagement("OSIP99-1234567890ABCDEF");
 }
 ...
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $identity(field)
 
 
-This is a read-only pseudo-variable that provides access to the
-	parsed information from the Identity header, through the following
-	subnames:
+这是一个只读伪变量，通过以下子名称提供对
+		Identity 头解析信息的访问：
 
 
-- *header* - the entire PASSporT header;
-- *x5u* - the value of the 'x5u' PASSporT claim;
-- *payload* - the entire PASSporT payload;
-- *attest* - the value of the 'attest' PASSporT claim;
-- *dest* - the value of the 'tn' member of the 'dest'
-		PASSporT claim;
-- *iat* - the value of the 'iat' PASSporT claim;
-- *orig* - the value of the 'tn' member of the 'orig'
-		PASSporT claim;
-- *origid* - the value of the 'origid' PASSporT claim;
+- *header* - 整个 PASSporT 头；
+- *x5u* - 'x5u' PASSporT 声明的值；
+- *payload* - 整个 PASSporT 载荷；
+- *attest* - 'attest' PASSporT 声明的值；
+- *dest* - 'dest' PASSporT 声明的 'tn' 成员的值；
+- *iat* - 'iat' PASSporT 声明的值；
+- *orig* - 'orig' PASSporT 声明的 'tn' 成员的值；
+- *origid* - 'origid' PASSporT 声明的值。
 
 
-```c title="identity usage"
+```c title="identity 使用示例"
 ...
-	# acquire the certificate to use for the verification process
+	# 获取用于验证过程的证书
 	$var(rc) = rest_get($identity(x5u), $var(cert));
 	if ($var(rc) < 0) {
 		send_reply(436, "Bad Identity Info");
 		exit;
 	}
 	...
-	xlog("Verified caller:$identity(orig), attestation level: $identity(attest)\n");
+	xlog("已验证呼叫者：$identity(orig)，认证级别：$identity(attest)\n");
 ...
-	
+
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### stir_shaken:ca_reload
 
 
-Replaces obsolete MI command: *stir_shaken_ca_reload*.
+替换已弃用的 MI 命令：*stir_shaken_ca_reload*。
 
 
-Reload the file containing trusted CA certificates for the verifier
-				and the directory containing trusted CA certificates for the verifier.
+重新加载包含验证者可信 CA 证书的文件
+			以及包含验证者可信 CA 证书的目录。
 
 
-Name: *stir_shaken:ca_reload*
+名称：*stir_shaken:ca_reload*
 
 
-Parameters: *none*
+参数：*无*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -515,20 +486,20 @@ opensips-cli -x mi stir_shaken:ca_reload
 #### stir_shaken:crl_reload
 
 
-Replaces obsolete MI command: *stir_shaken_crl_reload*.
+替换已弃用的 MI 命令：*stir_shaken_crl_reload*。
 
 
-Reload the file containing certificate revocation lists (CRLs) for the verifier
-				and the directory containing certificate revocation lists for the verifier.
+重新加载包含验证者证书吊销列表（CRL）的文件
+			以及包含验证者证书吊销列表的目录。
 
 
-Name: *stir_shaken:crl_reload*
+名称：*stir_shaken:crl_reload*
 
 
-Parameters: *none*
+参数：*无*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -539,6 +510,6 @@ opensips-cli -x mi stir_shaken:crl_reload
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

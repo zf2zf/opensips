@@ -1,271 +1,253 @@
 ---
-title: "UAC_REDIRECT Module"
-description: "UAC REDIRECT - User Agent Client redirection - module enhance OpenSIPS with the functionality of being able to handle (interpret, filter, log and follow) redirect responses ( 3xx replies class)."
+title: "UAC_REDIRECT 模块"
+description: "UAC REDIRECT - 用户代理客户端重定向 - 模块增强了 OpenSIPS 处理（解释、过滤、记录和跟随）重定向响应（3xx 回复类）的功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-UAC REDIRECT - User Agent Client redirection - module enhance OpenSIPS
-		with the functionality of being able to handle (interpret, filter,
-		log and follow) redirect responses ( 3xx replies class).
+UAC REDIRECT - 用户代理客户端重定向 - 模块增强了 OpenSIPS
+		处理（解释、过滤、记录和跟随）重定向响应（3xx 回复类）的功能。
 
 
-UAC REDIRECT module offer stateful processing, gathering the
-		contacts from all 3xx branches of a call.
+UAC REDIRECT 模块提供有状态处理，
+		从呼叫的所有 3xx 分支收集联系人。
 
 
-The module provide a powerful mechanism for selecting and filtering 
-		the contacts to be used for the new redirect:
+该模块提供了强大机制来选择和过滤
+		用于新重定向的联系人：
 
 
-- *number based* - limits like the 
-			number of total contacts to be used or the maximum number of 
-			contacts per branch to be selected.
-- *Regular Expression based* - combinations
-			of deny and accept filters allow a strict control of the 
-			contacts to be used for redirection.
+- *基于数量* - 限制如
+			要使用的联系人总数或
+			每个分支选择的最大联系人数。
+- *基于正则表达式* - 拒绝和接受
+			过滤器的组合允许对用于重定向的联系人进行严格控制。
 
 
-When selecting from a 3xx branch the contacts to be used, the contacts
-		will be ordered and prioritized based on the "q" value.
+从 3xx 分支选择要使用的联系人时，
+		联系人将根据 "q" 值排序和优先级排序。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *TM* - Transaction Module, for accessing
-				replies.
-- *ACC* - Accounting Module, but only if the
-				logging feature is used.
+- *TM* - 事务模块，用于访问
+				回复。
+- *ACC* - 计费模块，但仅在使用
+				日志功能时。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed 
-				before running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### default_filter (string)
 
 
-The default behavior in filtering contacts. It may be 
-			"accept" or "deny".
+过滤联系人的默认行为。可以是
+			"accept" 或 "deny"。
 
 
-*The default value is "accept".*
+*默认值为 "accept"。*
 
 
-```c title="Set default_filter module parameter"
+```c title="设置 default_filter 模块参数"
 ...
 modparam("uac_redirect","default_filter","deny")
 ...
-				
+
 ```
 
 
 #### deny_filter (string)
 
 
-The regular expression for default deny filtering. It make sens
-			to be defined on only if the `default_filter`
-			parameter is set to "accept". All contacts matching
-			the `deny_filter` will be rejected; the rest 
-			of them will be accepted for redirection.
+默认拒绝过滤的正则表达式。只有在
+			`default_filter` 参数设置为 "accept" 时才有意义。
+			所有匹配 `deny_filter` 的联系人将被拒绝；
+			其余的将被接受用于重定向。
 
 
-The parameter may be defined only one - multiple definition will
-			overwrite the previous definitions. If more regular expression 
-			need to be defined, use the 
-			`set_deny_filter()` scripting
-			function.
+此参数只能定义一次 - 多个定义将
+			覆盖之前的定义。如果需要定义更多正则表达式，
+			请使用 
+			`set_deny_filter()` 脚本
+			函数。
 
 
-*This parameter is optional, it's default 
-					value being NULL.*
+*此参数是可选的，其默认值为 NULL。*
 
 
-```c title="Set deny_filter module parameter"
+```c title="设置 deny_filter 模块参数"
 ...
 modparam("uac_redirect","deny_filter",".*@siphub\.net")
 ...
-				
+
 ```
 
 
 #### accept_filter (string)
 
 
-The regular expression for default accept filtering. It make sens
-			to be defined on only if the `default_filter`
-			parameter is set to "deny". All contacts matching
-			the `accept_filter` will be accepted; the rest 
-			of them will be rejected for redirection.
+默认接受过滤的正则表达式。只有在
+			`default_filter` 参数设置为 "deny" 时才有意义。
+			所有匹配 `accept_filter` 的联系人将被接受；
+			其余的将被拒绝用于重定向。
 
 
-The parameter may be defined only one - multiple definition will
-			overwrite the previous definitions. If more regular expression 
-			need to be defined, use the 
-			`set_accept_filter()` scripting
-			function.
+此参数只能定义一次 - 多个定义将
+			覆盖之前的定义。如果需要定义更多正则表达式，
+			请使用 
+			`set_accept_filter()` 脚本
+			函数。
 
 
-*This parameter is optional, it's default 
-					value being NULL.*
+*此参数是可选的，其默认值为 NULL。*
 
 
-```c title="Set accept_filter module parameter"
+```c title="设置 accept_filter 模块参数"
 ...
 modparam("uac_redirect","accept_filter",".*@siphub\.net")
 ...
-				
+
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### set_deny_filter(filter,flags)
 
 
-Sets additional deny filters. Maximum 6 may be combined. This
-			additional filter will apply only to the current message - it
-			will not have a global effect.
+设置额外的拒绝过滤器。最多可组合 6 个。
+			此附加过滤器仅适用于当前消息 -
+			它不会产生全局效果。
 
 
-Parameters:
+参数：
 
 
-- *filter* (string) - regular expression
+- *filter* (string) - 正则表达式
 - *flags* (string)
-Default or previous added deny filter may be reset depending of
-					the parameter value:
+根据参数值，可能会重置默认或之前添加的拒绝过滤器：
 
-  - *reset_all* - reset both default
-						and previous added deny filters;
-  - *reset_default* - reset only the
-						default deny filter;
-  - *reset_added* - reset only the 
-						previous added deny filters;
-  - *empty* - no reset, just add the
-						filter.
+  - *reset_all* - 重置默认和之前添加的所有拒绝过滤器；
+  - *reset_default* - 仅重置默认拒绝过滤器；
+  - *reset_added* - 仅重置之前添加的拒绝过滤器；
+  - *empty* - 不重置，仅添加过滤器。
 
 
-This function can be used from FAILURE_ROUTE.
+此函数可用于 FAILURE_ROUTE。
 
 
-```c title="set_deny_filter usage"
+```c title="set_deny_filter 使用示例"
 ...
 set_deny_filter(".*@domain2.net","reset_all");
 set_deny_filter(".*@domain1.net","");
 ...
-				
+
 ```
 
 
 #### set_accept_filter(filter,flags)
 
 
-Sets additional accept filters. Maximum 6 may be combined. This
-			additional filter will apply only to the current message - it
-			will not have a global effect.
+设置额外的接受过滤器。最多可组合 6 个。
+			此附加过滤器仅适用于当前消息 -
+			它不会产生全局效果。
 
 
-Parameters:
+参数：
 
 
-- *filter* (string) - regular expression
+- *filter* (string) - 正则表达式
 - *flags* (string)
-Default or previous added deny filter may be reset depending of
-					the parameter value:
+根据参数值，可能会重置默认或之前添加的拒绝过滤器：
 
-  - *reset_all* - reset both default
-						and previous added accept filters;
-  - *reset_default* - reset only the
-						default accept filter;
-  - *reset_added* - reset only the 
-						previous added accept filters;
-  - *empty* - no reset, just add
-						the filter.
+  - *reset_all* - 重置默认和之前添加的所有接受过滤器；
+  - *reset_default* - 仅重置默认接受过滤器；
+  - *reset_added* - 仅重置之前添加的接受过滤器；
+  - *empty* - 不重置，仅添加过滤器。
 
 
-This function can be used from FAILURE_ROUTE.
+此函数可用于 FAILURE_ROUTE。
 
 
-```c title="set_accept_filter usage"
+```c title="set_accept_filter 使用示例"
 ...
 set_accept_filter(".*@domain2.net","reset_added");
 set_accept_filter(".*@domain1.net","");
 ...
-				
+
 ```
 
 
 #### get_redirects([max_total], [max_branch])
 
 
-The function may be called only from failure routes. It will
-				extract the contacts from all 3xx branches and append them
-				as new branches. Note that the function will not forward the
-				new branches, this must be done explicitly from script.
+此函数只能从 failure 路由调用。
+			它将从所有 3xx 分支提取联系人并将其作为新分支附加。
+			请注意，函数不会转发新分支，
+			这必须从脚本中明确完成。
 
 
-How many contacts (in total and per branch) are selected 
-				depends on the *max_total* and
-				*max_branch* parameters:
+选择多少联系人（总数和每个分支）
+				取决于 *max_total* 和
+				*max_branch* 参数：
 
 
-- max_total (int, optional) - max overall number of contacts to be selected
-- max_branch (int, optional) - max number of contacts per branch to be selected
+- max_total (int, 可选) - 要选择的最大联系人总数
+- max_branch (int, 可选) - 每个分支要选择的最大联系人数
 
 
-Both "max_total" and "max_branch"
-				default to 0 (unlimited).
+"max_total" 和 "max_branch"
+				都默认为 0（无限制）。
 
 
-NOTE that during the selection process, each set of contacts 
-				from a specific branch are ordered based on "q" 
-				value.
+请注意，在选择过程中，
+				每个分支的联系人集根据 "q" 值排序。
 
 
-This function can be used from FAILURE_ROUTE.
+此函数可用于 FAILURE_ROUTE。
 
 
-```c title="get_redirects usage"
+```c title="get_redirects 使用示例"
 ...
-# no restrictions
+# 无限制
 get_redirects();
 ...
-# no limits per branch, but not more than 6 overall contacts
+# 每个分支无限制，但总共不超过 6 个联系人
 get_redirects(6);
 ...
-# max 2 contacts per branch, but no overall limit
+# 每个分支最多 2 个联系人，但总数无限制
 get_redirects(, 2);
 ...
-				
+
 ```
 
 
-### Script Example
+### 脚本示例
 
 
-```c title="Redirection script example"
+```c title="重定向脚本示例"
 loadmodule "modules/sl/sl.so"
 loadmodule "modules/usrloc/usrloc.so"
 loadmodule "modules/registrar/registrar.so"
@@ -301,10 +283,10 @@ failure_route[do_redirect] {
 		t_relay();
 }
 
-				
+			
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

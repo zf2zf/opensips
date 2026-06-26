@@ -1,101 +1,93 @@
 ---
-title: "signaling Module"
-description: "The SIGNALING module comes as a wrapper over tm and sl modules and offers one function to be called by the modules that want to send a reply."
+title: "信令模块"
+description: "SIGNALING 模块作为 tm 和 sl 模块的包装器，提供一个由想要发送回复的模块调用的函数。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The SIGNALING module comes as a wrapper over 
-		tm and sl modules and offers one function to be called by the modules
-		that want to send a reply.
+SIGNALING 模块作为 tm 和 sl 模块的包装器，
+		提供一个由想要发送回复的模块调用的函数。
 
 
-The logic behind the module is to first search if a transaction is
-		created and if so, send a state full reply, using tm module, otherwise
-		send a stateless reply with the function exported by sl.
-		In this way, the script writer still has the call on how the transaction 
-		should be handled, state full or stateless and the reply is send 
-		accordingly to his choice.
+该模块背后的逻辑是首先搜索是否创建了事务，
+		如果创建了，则使用 tm 模块发送有状态的回复，
+		否则使用 sl 模块导出的函数发送无状态回复。
+		这样，脚本编写者仍然可以控制事务的处理方式（有状态或无状态），
+		回复根据他的选择发送。
 
 
-For example, if you do a t_newtran() in the script before doing save() 
-		(for registration), the function will automatically send the reply in 
-		stateful mode as a transaction is available. If no transaction is done, 
-		the reply will be sent in stateless way (as now).
+例如，如果您在 save()（用于注册）之前在脚本中执行 t_newtran()，
+		该函数将自动以有状态模式发送回复，因为事务可用。
+		如果没有执行事务，回复将以无状态方式发送（与现在相同）。
 
 
-By doing this, we have the possibility to have same module sending 
-		either stateful either stateless replies, by just controlling this from 
-		the script (if we create or not a transaction).
-		So, the signalling will be more coherent as the replies will be sent 
-		according to the transaction presence (or not).
+通过这样做，我们有可能让同一模块发送有状态或无状态的回复，
+		只需从脚本中控制（我们是否创建事务）。
+		因此，信令将更加一致，因为回复将根据事务的存在（或不存在）发送。
 
 
-Moreover, this module offers the possibility of loading only one 
-	of the module, sl or tm, and send reply using only the module that is 
-	loaded. This is useful as not in all cases a user desires to send 
-	stateful or stateless replies and he should not be forced to load the 
-	module only because the send reply interface requires it.
+此外，此模块提供了仅加载其中一个模块 sl 或 tm 的可能性，
+	并使用仅加载的模块发送回复。
+	这很有用，因为并非在所有情况下用户都希望发送有状态或无状态的回复，
+	而且他不应该仅仅因为发送回复接口需要它就被迫加载该模块。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-At least one of the following modules must be loaded before this module:
+以下至少一个模块必须在此模块之前加载：
 
 
-- *sl*.
-- *tm*.
+- *sl*。
+- *tm*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-- *None*.
+- *无*。
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### send_reply(code, reason)
 
 
-For the current request, a reply is sent back having the given code 
-		and text reason. The reply is sent stateless or statefull depending 
-		on which module is loaded and if a transaction was created, as 
-		explained above.
+对于当前请求，发送具有给定代码和文本原因的回复。
+		回复根据加载的模块和是否创建了事务发送有状态或无状态，
+		如上所述。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *code (int)* - Return code.
-- *reason (string)* - Reason phrase.
+- *code (int)* - 返回码。
+- *reason (string)* - 原因短语。
 
 
-This function can be used from REQUEST_ROUTE, ERROR_ROUTE.
+此函数可用于 REQUEST_ROUTE、ERROR_ROUTE。
 
 
-```c title="sl_send_reply usage"
+```c title="sl_send_reply 用法"
 ...
-send_reply(404, "Not found");
+send_reply(404, "未找到");
 ...
 send_reply($err.rcode, $err.rreason);
 ...
@@ -103,43 +95,39 @@ send_reply($err.rcode, $err.rreason);
 ```
 
 
-### Exported Variables
+### 导出的变量
 
 
 #### $sig_local_totag
 
 
-This variable returns the local To-tag that will be used
-		by OpenSIPS for locally sending replies to the current SIP request.
-		Yes, this variable should be used only in the context of a SIP
-		request and it should be used only in conjunction with the 
-		using [send reply](#func_send_reply).
+此变量返回将用于本地发送当前 SIP 请求回复的本地 To-tag。
+		是的，此变量应仅在 SIP 请求的上下文中使用，
+		并且应仅与使用 [send reply](#func_send_reply) 结合使用。
 
 
-Whenever you use it, be sure that the function is used in the same
-		stateful / stateless SIP mode as the following replying function.
-		Otherwise you may get different values for the To-tag!!
+每当您使用它时，请确保该函数与以下回复函数使用相同的有状态/无状态 SIP 模式。
+		否则您可能会得到不同的 To-tag 值！
 
 
-NOTE: the variable returns the To-Tag that will be used by OpenSIPS
-		in the locally generated reply. This may be completly different from
-		the To-tag in the replies received and forwarded by OpenSIPS.
+注意：变量返回 OpenSIPS 将在本地生成的回复中使用的 To-Tag。
+		这可能与 OpenSIPS 收到并转发的回复中的 To-tag完全不同。
 
 
-```c title="Usage of $sig_local_totag variable"
+```c title="$sig_local_totag 变量用法"
 ...
-# stateful handling
+# 有状态处理
 t_newtran();
-xlog("the To-tag to be used is $sig_local_totag \n");
-send_reply();  # or t_reply();
+xlog("将使用的 To-tag 是 $sig_local_totag \n");
+send_reply();  # 或 t_reply();
 ...
-# stateless handling
-xlog("the To-tag to be used is $sig_local_totag \n");
-send_reply(); # or sl_send_reply();
+# 无状态处理
+xlog("将使用的 To-tag 是 $sig_local_totag \n");
+send_reply(); # 或 sl_send_reply();
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

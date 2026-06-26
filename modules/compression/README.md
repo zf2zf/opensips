@@ -1,163 +1,158 @@
 ---
-title: "compression Module"
-description: "This module implements message compression/decompression and base64 encoding for sip messages using deflate and gzip algorithm/headers. Another feature of this module is reducing headers to compact for as specified in SIP RFC's, sdp body codec unnecessary description removal (for codecs 0-97),..."
+title: "compression 模块"
+description: "该模块使用 deflate 和 gzip 算法/头实现 SIP 消息的压缩/解压缩和 base64 编码。该模块的另一个功能是根据 SIP RFC 规范将头压缩为紧凑形式，移除 SDP body codec 中不必要的描述（对于 0-97 编解码器），以及用于不被移除的头部的白名单..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements message compression/decompression and base64 encoding
-	for sip messages using deflate and gzip algorithm/headers. Another feature of
-	this module is reducing headers to compact for as specified in SIP RFC's,
-	sdp body codec unnecessary description removal (for codecs 0-97), whitelist
-	for headers not be removed (excepting necessary headers).
+该模块使用 deflate 和 gzip 算法/头实现 SIP 消息的压缩/解压缩和 base64 编码。
+	另一个功能是根据 SIP RFC 规范将头压缩为紧凑形式，
+	移除 SDP body codec 中不必要的描述（对于 0-97 编解码器），
+	以及用于不被移除的头部的白名单。
 
 
-### How it works
+### 工作原理
 
 
-The module is using zlib library to implement compression and base64 encoding
-	for converting the message to human readable characters. It also uses
-	callbacks to do the compression/compaction of the message in order for this
-	operations to be done after all the other script functions have been applied
-	to the message.
+该模块使用 zlib 库来实现压缩和 base64 编码，
+	以便将消息转换为人类可读的字符。它还使用回调函数
+	在所有其他脚本函数应用于消息后执行消息的压缩/紧凑操作。
 
 
-### Usage cases
+### 使用场景
 
 
-As we know, udp fragmentation is a big problem these days, so this module
-	comes to try making the message smaller by any means. The module can be
-	used to compress the body or some headers found in the message or it can
-	decompress compressed messages. There are more possibilities to do this:
-	the body can be compressed along with the specified headers or the
-	headers can be compressed isolated from the body in a specific header.
+众所周知，UDP 分片是当今的一个大问题，
+	所以这个模块试图通过任何方式使消息变小。
+	该模块可用于压缩消息中的 body 或某些头，
+	也可用于解压缩已压缩的消息。有多种方式可以实现这一点：
+	body 可以与指定的头一起压缩，
+	或者头可以与 body 分离地压缩在特定的头中。
 
 
-Also the module does message compaction: reduction of sip header names
-	to short form (for example "Via" becomes 'v' and so on), sdp body
-	codec attributes unnecesary description ("a=rtpmap:0 PCMU/8000" becomes
-	"a=rtpmap:0"), unwanted headers removal by specfing the ones you want
-	to keep in a whitelist.
+此外，该模块还执行消息紧凑操作：将 sip 头名称缩减为短形式
+	（例如 "Via" 变为 'v'，依此类推），
+	SDP body codec 属性中不必要的描述
+	（"a=rtpmap:0 PCMU/8000" 变为 "a=rtpmap:0"），
+	通过在白名单中指定要保留的头来移除不需要的头。
 
 
-The module also does message decompresion and base64 decoding. It can
-	detect the algorithm used for compression from the Content-Encoding
-	header. At this moment only gzip and deflate algorithms are supported.
+该模块还执行消息解压缩和 base64 解码。
+	它可以从 Content-Encoding 头检测压缩使用的算法。
+	目前仅支持 gzip 和 deflate 算法。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *None*
+- *无*
 
 
-### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载此模块的 OpenSIPS 之前安装：
 
 
-- *zlib-dev - the development libraries of [zlib](http://www.zlib.net/)*.
+- *zlib-dev - [zlib](http://www.zlib.net/) 的开发库*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### mc_level (int)
 
 
-This parameter ranges from 1 to 9 and it specifies the level of compression you want to do.
-		Default is 6. 9 is the best, but the longest time consuming algorithm and 1 is the worst.
-		If, by mistake, you set a lower or a higher level, the default, 6, will be used, but you will
-		receive a warning.
+此参数的取值范围是 1 到 9，指定要执行的压缩级别。
+		默认值为 6。9 是最佳的，但也是最耗时的算法，1 是最差的。
+		如果错误地设置了较低或较高的级别，将使用默认值 6，
+		但您会收到警告。
 
 
-```c title="Set mc_level parameter"
+```c title="设置 mc_level 参数"
 ...
 modparam("mc", "mc_level", "3")
 ...
-		
+			
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### mc_compress([algo], flags, [whitelist])
 
 
-This function will compress the current message as specified in the parameters. Keep in mind
-		that the compression is done just before the message is sent, so that all your lumps can be
-		applied.
+此函数将按参数指定压缩当前消息。
+		请注意，压缩是在消息发送之前才进行的，
+		以便您的所有 lumps 都可以被应用。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *algo* (int, optional) - The algorithm used for compression. Currently
-			implemented are deflate ('0') and gzip ('1').
-- *flags* (string) - Specifies on what to apply the compression and where
-			to put the result of the compression.
-The *flags* parameter can have the following values:
+- *algo*（int，可选）- 压缩使用的算法。
+			目前实现的有 deflate（'0'）和 gzip（'1'）。
+- *flags*（string）- 指定对什么应用压缩以及
+			将压缩结果放在哪里。
+*flags* 参数可以有以下值：
 
-  - "b" - specifies that the body of the message shall be
-					compressed. Notice that if the message has no body, the flag will have
-					no effect.
-  - "h" - specifies that all the headers, except the mandatory
-					ones (which will be specified in "whitelist" parameter section) and the
-					ones in the whitelist shall be compressed.
-  - "s" - the headers and the body shall be compressed Separately,
-					meaning that a new header named "Comp-Hdrs" will be created, and this
-					header will keep the content of the compressed headers. Also, "Headers-Encoding"
-					header will be created in order to keep the algorithm used to compress the
-					headers. If this flag is not specified, the headers and the body (if 'b' and 'h'
-					flags are specified) will be compressed alltogether in the new body of the
-					message.
-  - "e" - specify that you want base64 Encoding. If you do not specify
-					this flag, by default the module will send the raw compressed message in
-					deflate/gzip format.
-- *whitelist* (string, optional) - header names list, separated by '|' which will specify
-			which headers shall not be compressed, along with the mandatory ones, which can never be
-			compressed. The mandatory headers are the following: VIA, FROM, TO, CSEQ, ROUTE, RECORD_ROUTE,
-			CALLID. Also, CONTENT_TYPE is mandatory only if CONTENT-LENGTH > 0.
-			Also, in case you do not want to use body compression, the Content-Length header will
-			become a mandatory header, which can not be compressed. In case you do want body
-			compression, the old Content-Length Header will be compressed, and a new content length
-			will be calculated. When you will want to do decompression, the compressed length will
-			be removed, and the content length header will be the same as the one before the
-			compression.
-
-
-This function can be used from REQUEST_ROUTE, LOCAL_ROUTE, FAILURE_ROUTE.
+  - "b" - 指定消息的 body 应被压缩。
+					请注意，如果消息没有 body，此标志将不起作用。
+  - "h" - 指定除强制头部（将在 "whitelist" 参数部分指定）
+					和白名单中的头部外，所有头部都应被压缩。
+  - "s" - 头部和 body 应分开压缩，
+					这意味着将创建一个名为 "Comp-Hdrs" 的新头部，
+					该头部将保存压缩头的内容。同时，
+					将创建 "Headers-Encoding" 头以保存用于压缩头部的算法。
+					如果未指定此标志，则头部和 body（如果指定了 'b' 和 'h' 标志）
+					将在消息的新 body 中一起压缩。
+  - "e" - 指定您想要 base64 编码。
+					如果不指定此标志，默认情况下模块将以 deflate/gzip 格式
+					发送原始压缩消息。
+- *whitelist*（string，可选）- 头部名称列表，
+			用 '|' 分隔，用于指定除了强制头部（永不压缩）之外，
+			哪些头部不应被压缩。强制头部包括：
+			VIA、FROM、TO、CSEQ、ROUTE、RECORD_ROUTE、CALLID。
+			另外，只有在 CONTENT-LENGTH > 0 时，CONTENT_TYPE 才是强制的。
+			此外，如果您不想使用 body 压缩，
+			Content-Length 头将成为强制头部，不能被压缩。
+			如果您确实想要 body 压缩，
+			旧的 Content-Length 头将被压缩，
+			并计算一个新的 content length。
+			当您想要解压缩时，压缩长度将被移除，
+			content length 头将与压缩前的相同。
 
 
-```c title="mc_compress usage"
+此函数可用于 REQUEST_ROUTE、LOCAL_ROUTE、FAILURE_ROUTE。
+
+
+```c title="mc_compress 用法"
 ...
 if (!mc_compress(0, "bhs", "Max-Forwards|Subject|P-Asserted-Identity"))
-	xlog("compression failed\n");
+	xlog("压缩失败\n");
 ...
 	
 ```
 
 
-```c title="mc_compress usage"
+```c title="mc_compress 用法"
 ...
 $avp(algo) = 1;
 $var(flags) = "bs";
 $var(list) = "Max-Forwards | Contact";
 mc_compres($avp(algo), $var(flags), $var(list);
-xlog("compression registered\n");
+xlog("压缩已注册\n");
 ...
 	
 ```
@@ -166,15 +161,15 @@ xlog("compression registered\n");
 #### mc_compact([whitelist], flags)
 
 
-This function will realise four different things: headers which are not mandatory
-		and are not in the whitelist will be removed, headers of same type will be merged
-		together, separated by ',', header names which have a short form
-		will be reduced to that short form (unless the *n* flag has been set)
-		and SDP rtpmap attribute headers which contain a value lower than 96 will be removed, 
-		because they are not mandatory. Lumps are not affected by this function, because it is 
-		applied after all messages changes are processed.
-		done.
-		The *mc_compact* supported short forms are:
+此函数将执行四个不同的操作：
+		移除非强制的且不在白名单中的头部，
+		将同类型的头部合并在一起，用 ',' 分隔，
+		将具有短形式的头部名称缩减为该短形式
+		（除非设置了 *n* 标志），
+		以及移除包含值低于 96 的 SDP rtpmap 属性头部，
+		因为它们不是强制的。
+		Lumps 不受此函数影响，因为它是在所有消息更改处理之后应用的。
+		*mc_compact* 支持的短形式如下：
 
 
 - "c" - Content-Type (RFC 3261)
@@ -189,24 +184,23 @@ This function will realise four different things: headers which are not mandator
 - "x" - Session-Expires (RFC 4028)
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *whitelist* (string, optional) - Whitelist of headers not to be
-			removed, except from the mandatory ones. The whitelist header names
-			must pe separated by '|'.
-- *flags* (string) - Controls the behavior of the function. Possible flags are:
+- *whitelist*（string，可选）- 不被移除的头部白名单，
+			强制头部除外。白名单头部名称必须用 '|' 分隔。
+- *flags*（string）- 控制函数的行为。可能的标志有：
 
-  - "n" - Do not use short form of headers.
-
-
-This function can be used from REQUEST_ROUTE, LOCAL_ROUTE, FAILURE_ROUTE.
+  - "n" - 不使用头部的短形式。
 
 
-```c title="mc_compress usage"
+此函数可用于 REQUEST_ROUTE、LOCAL_ROUTE、FAILURE_ROUTE。
+
+
+```c title="mc_compress 用法"
 ...
 if (!mc_compact("Max-Forwards|P-Asserted-Identity"))
-	xlog("compaction failed\n");
+	xlog("紧凑化失败\n");
 ...
 	
 ```
@@ -215,66 +209,67 @@ if (!mc_compact("Max-Forwards|P-Asserted-Identity"))
 #### mc_decompress()
 
 
-This function does the reverse of mc_compress, meaning that it does base64
-		decoding and gzip/deflate decompression. Keep in mind that gzip decompression
-		is a little bit more efficient because it is being known the size of the
-		compressed buffer as against deflate which does not hold the size of the buffer,
-		so the decompression will be made in a static buffer.
+此函数执行与 mc_compress 相反的操作，
+		即执行 base64 解码和 gzip/deflate 解压缩。
+		请注意，gzip 解压缩效率更高，
+		因为压缩缓冲区的大小是已知的，
+		而 deflate 不保存缓冲区的大小，
+		所以解压缩将在静态缓冲区中进行。
 
 
-This function requests no parameters.
+此函数不需要任何参数。
 
 
-WARNING: This function replaces the original buffer of the message with the
-		decompressed buffer, so any processing you do to the message will not be taken
-		into consideration. Try applying the decompression function, before you do
-		any other processing to the message.
+警告：此函数将消息的原始缓冲区替换为解压缩后的缓冲区，
+		因此您对消息执行的任何处理都不会被考虑。
+		请在对该消息执行任何其他处理之前应用解压缩函数。
 
 
-This function can be used from REQUEST_ROUTE, LOCAL_ROUTE, FAILURE_ROUTE.
+此函数可用于 REQUEST_ROUTE、LOCAL_ROUTE、FAILURE_ROUTE。
 
 
-```c title="mc_decompress usage"
+```c title="mc_decompress 用法"
 ...
 if (!mc_decompress())
-	xlog("decompression failed\n");
+	xlog("解压缩失败\n");
 ...
 	
 ```
 
 
-### Compression performance test for sip messages
+### SIP 消息压缩性能测试
 
 
-The following results have been obtained using the compression function
-		included in the module. Using this results, you can improve the usage of
-		this module, in order to compress only when you think it is favorable
-		enough for you. The algorithm used is deflate for all cases because
-		gzip is always 16 bytes higher than deflate, which represents the
-		uncompressed size modulo 4GB. For the subtests in the same test, the
-		same SIP message have been used.
+以下结果使用模块中包含的压缩功能获得。
+		使用这些结果，您可以改进此模块的使用，
+		以便仅在您认为有利的情况下进行压缩。
+		所有情况下使用的算法都是 deflate，
+		因为 gzip 总是比 deflate 多 16 个字节，
+		这表示未压缩大小对 4GB 的模。
+		对于同一测试中的子测试，
+		使用了相同的 SIP 消息。
 
 
-**mc_compress performance test results**
+**mc_compress 性能测试结果**
 
 
 |  |  |  |  |  |  |  |  |  |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `Test Number` | `Subtest Number` | `Body Size` | `Headers to Compress Size` | `Compressed Content` | `Compressed Content Size` | `Compression level` | `Compressed size` | `Compression ratio` |
-| `1` | `1` | `179` | `82` | `Body + Headers` | `261` | `1` | `284` | `0.91` |
-| `1` | `2` | `179` | `82` | `Body + Headers` | `261` | `9` | `284` | `0.91` |
+| `测试编号` | `子测试编号` | `Body 大小` | `要压缩的头部大小` | `压缩内容` | `压缩内容大小` | `压缩级别` | `压缩后大小` | `压缩比` |
+| `1` | `1` | `179` | `82` | `Body + 头部` | `261` | `1` | `284` | `0.91` |
+| `1` | `2` | `179` | `82` | `Body + 头部` | `261` | `9` | `284` | `0.91` |
 | `1` | `3` | `179` | `82` | `Body` | `179` | `1` | `196` | `0.91` |
 | `1` | `4` | `179` | `82` | `Body` | `179` | `9` | `196` | `0.91` |
-| `2` | `1` | `838` | `392` | `Body + Headers` | `1230` | `1` | `898` | `1.36` |
-| `2` | `2` | `838` | `392` | `Body + Headers` | `1230` | `9` | `872` | `1.41` |
+| `2` | `1` | `838` | `392` | `Body + 头部` | `1230` | `1` | `898` | `1.36` |
+| `2` | `2` | `838` | `392` | `Body + 头部` | `1230` | `9` | `872` | `1.41` |
 | `2` | `3` | `838` | `392` | `Body` | `838` | `1` | `568` | `1.47` |
 | `2` | `4` | `838` | `392` | `Body` | `838` | `1` | `540` | `1.55` |
-| `3` | `1` | `1329` | `607` | `Body + Headers` | `1936` | `1` | `1396` | `1.38` |
-| `3` | `2` | `1329` | `607` | `Body + Headers` | `1936` | `9` | `1352` | `1.43` |
+| `3` | `1` | `1329` | `607` | `Body + 头部` | `1936` | `1` | `1396` | `1.38` |
+| `3` | `2` | `1329` | `607` | `Body + 头部` | `1936` | `9` | `1352` | `1.43` |
 | `3` | `3` | `1329` | `607` | `Body` | `1329` | `1` | `840` | `1.58` |
-| `3` | `4` | `1329` | `607` | `Body + Headers` | `1329` | `9` | `804` | `1.65` |
+| `3` | `4` | `1329` | `607` | `Body + 头部` | `1329` | `9` | `804` | `1.65` |
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可协议。

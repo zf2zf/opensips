@@ -1,170 +1,152 @@
 ---
-title: "proto_smpp module"
-description: "This module offers interoperability between SIP and SMPP (Short Message Peer-to-Peer) protocols. It provides the means to build a messaging gateway/bridge between the two protocols, being able to convert messages from both directions."
+title: "proto_smpp 模块"
+description: "该模块提供 SIP 和 SMPP(Short Message Peer-to-Peer)协议之间的互操作性。它提供了在这两个协议之间构建消息网关/桥接的方法,能够双向转换消息。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module offers interoperability between SIP and SMPP
-			(Short Message Peer-to-Peer) protocols. It provides the
-			means to build a messaging gateway/bridge between the two
-			protocols, being able to convert messages from both directions.
+该模块提供 SIP 和 SMPP
+			(Short Message Peer-to-Peer)协议之间的互操作性。它提供了在这两个协议之间构建消息网关/桥接的方法,能够双向转换消息。
 
 
-- SIP to SMPP - messages coming from SIP can be converted to a
-			SMPP PDU (Protocol Data Unit) message and sent further to a
-			SMSC (Short Message Service Center).
-- SMPP to SIP - the module can act as an ESME (External Short
-			Messaging Entity), receiving messages from a SMSC and converting
-			them to a SIP Message that is sent further to a SIP proxy.
+- SIP 到 SMPP - 来自 SIP 的消息可以转换为
+			SMPP PDU(Protocol Data Unit)消息并进一步发送到
+			SMSC(Short Message Service Center)。
+- SMPP 到 SIP - 该模块可以充当 ESME(External Short
+			Messaging Entity),从 SMSC 接收消息并将其转换为 SIP 消息,进一步发送到 SIP 代理。
 
 
-The module is compatible with the
-			[SMPP v3.4](http://opensmpp.org/specs/SMPP_v3_4_Issue1_2.pdf) specifications.
+该模块兼容 [SMPP v3.4](http://opensmpp.org/specs/SMPP_v3_4_Issue1_2.pdf) 规范。
 
 
-### SIP to SMPP bridging
+### SIP 到 SMPP 桥接
 
 
-In order to convert a SIP message to a SMPP all you need to do
-			is to call the [send smpp message](#func_send_smpp_message) function,
-			indicating the SMSc you want to send the message to. The module
-			will build the PDU according to the parameters provisioned
-			in the database.
+为了将 SIP 消息转换为 SMPP,你需要做的只是调用 [send smpp message](#func_send_smpp_message) 函数,
+			指明你要向哪个 SMSc 发送消息。该模块将根据数据库中提供的参数构建 PDU。
 
 
-### SMPP to SIP bridging
+### SMPP 到 SIP 桥接
 
 
-When bridging a message received over the SMPP interface,
-			OpenSIPS builds a SIP Message and sends it to the outbound
-			proxy identified by the [smpp outbound uri](#param_outbound_uri)
-			module's parameter.
+当桥接通过 SMPP 接口收到的消息时,
+			OpenSIPS 构建一个 SIP 消息并将其发送到由 [smpp outbound uri](#param_outbound_uri)
+			模块参数标识的出站代理。
 
 
-### SMSC binding
+### SMSC 绑定
 
 
-In order to be able to deliver messages to SMSc, an ESME needs to
-			first bind to the SMSc. This is done at OpenSIPS startup by sending
-			a SMPP *bind_transciever* command to connect
-			to the SMSc, or an *outbind* command to inform
-			an SMSc it can now bind to our gateway.
+为了能够向 SMSc 传递消息,ESME 首先需要绑定到 SMSc。这在 OpenSIPS 启动时完成,发送 SMPP *bind_transciever* 命令连接到 SMSc,或发送 *outbind* 命令通知 SMSc 我们的网关现在可以绑定了。
 
 
-The description of all SMSc servers is provisioned in the database.
-			For each server, one can cofigure the following information:
+所有 SMSc 服务器的描述在数据库中提供。对于每个服务器,可以配置以下信息:
 
 
-- *Name* - an unique name given to
-			the SMSc that is used to reference this SMSc in the OpenSIPS script.
-- *IP* - The IP the SMSc is listening
-			on for new bindings/connections.
-- *Port* - The TCP port that the SMSc
-			is listening on for new bindings/connections.
-- *System ID* - Also known as the
-			User name that is used to authenticate to the SMSc.
-- *Password* - A password used to
-			authenticate to the SMSc.
-- *System Type* - Usually
-			"SMPP", this field is required by some SMPP providers.
-- *Source Type of Number (TON)* - Specifies
-			the format of the number used to send messages from. Some comon values are:
-			
-				*0* - Unknown
-				*1* - International
-				*2* - National
-				*3* - Network Specific
-				*4* - Subscriber Number
-				*5* - Alphanumeric
-				*6* - Abbreviated
-			
-			Default value is *0 - Unknown*.
-- *Source Number Plan Indicator (NPI)* - Specifies
-			the numbering scheme of the number used to send messages from. Some comon values are:
-			
-				*0* - Unknown
-				*1* - ISDN/telephone numbering plan (E163/E164)
-				*3* - Data numbering plan (X.121)
-				*4* - Telex numbering plan (F.69)
-				*6* - Land Mobile (E.212)
-				*8* - National numbering plan
-				*9* - Private numbering plan
-				*10* - ERMES numbering plan (ETSI DE/PS 3 01-3)
-				*13* - Internet (IP)
-				*18* - WAP Client Id (to be defined by WAP Forum)
-			
-			Default value is *0 - Unknown*.
-- *Destination Type of Number (TON)* - Specifies
-			the format of the number used to send messages to. Can have the same values as
-			*Source Type of Number (TON)* and default value is *0 -
-			Unknown*.
-- *Destination Number Plan Indicator (NPI)* -
-			Specifies the numbering scheme of the number used to send messages to. Can have
-			the same values as *Source Number Plan Indicator (NPI)*
-			and default value is *0 - Unknown*.
-- *Session Type* - Specifies what type of session
-			should be used to connecto th the SMSc. Possible values are:
-			
-				*1* - Transciever
-				*2* - Transmitter
-				*3* - Receiver
-				*4* - Outbind
-			
-			Default value is *1 - Transciever*.
+- *名称* - 给予 SMSc 的唯一名称,
+			用于在 OpenSIPS 脚本中引用此 SMSc。
+- *IP* - SMSc 监听
+			新绑定/连接的 IP。
+- *端口* - SMSc
+			监听新绑定/连接的 TCP 端口。
+- *系统 ID* - 也称为
+			用于向 SMSc 认证的用户名。
+- *密码* - 用于
+			向 SMSc 认证的密码。
+- *系统类型* - 通常
+			是"SMPP",某些 SMPP 提供商需要此字段。
+- *源号码类型(TON)* - 指定
+			发送消息所用号码的格式。常见值为:
+				
+				*0* - 未知
+				*1* - 国际
+				*2* - 国内
+				*3* - 网络特定
+				*4* - 用户号码
+				*5* - 字母数字
+				*6* - 缩写
+				
+			默认值为 *0 - 未知*。
+- *源号码计划指示符(NPI)* - 指定
+			发送消息所用号码的编号方案。常见值为:
+				
+				*0* - 未知
+				*1* - ISDN/电话编号计划(E163/E164)
+				*3* - 数据编号计划(X.121)
+				*4* - 电传编号计划(F.69)
+				*6* - 陆地移动(E.212)
+				*8* - 国内编号计划
+				*9* - 专用编号计划
+				*10* - ERMES 编号计划(ETSI DE/PS 3 01-3)
+				*13* - 互联网(IP)
+				*18* - WAP 客户端 ID(由 WAP 论坛定义)
+				
+			默认值为 *0 - 未知*。
+- *目标号码类型(TON)* - 指定
+			发送消息到哪个号码的格式。具有与
+			*源号码类型(TON)* 相同的值,默认值为 *0 -
+			未知*。
+- *目标号码计划指示符(NPI)* -
+			指定发送消息到哪个号码的编号方案。具有与 *源号码计划指示符(NPI)* 相同的值,
+			默认值为 *0 - 未知*。
+- *会话类型* - 指定应使用什么类型的会话
+			连接到 SMSc。可能的值为:
+				
+				*1* - 收发器
+				*2* - 发射器
+				*3* - 接收器
+				*4* - 出站绑定
+				
+			默认值为 *1 - 收发器*。
 
 
-When OpenSIPS starts up, it reads all SMSc specifications from the
-			database and triggers a binding with them. *Note:*
-			reloading the SMSc database is not yet supported, but it is a work in
-			progress.
+当 OpenSIPS 启动时,它从数据库读取所有 SMSc 规范并触发与它们的绑定。*注意:*
+			重新加载 SMSc 数据库尚不支持,但正在开发中。
 
 
-Each SMPP connection is periodically pinged (currently every 5 seconds)
-			using *enquire_link* SMPP commands to keep the
-			connection active.
+每个 SMPP 连接定期(目前每 5 秒)使用 *enquire_link* SMPP 命令进行 ping,
+			以保持连接活跃。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
-- *database* -- Any database module
+- *database* -- 任何数据库模块
 
 
-#### Dependencies of external libraries
+#### 外部库的依赖
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-All these parameters can be used from the opensips.cfg file,
-		to configure the behavior of OpenSIPS-SMPP gateway.
+所有这些参数都可以从 opensips.cfg 文件使用,
+		来配置 OpenSIPS-SMPP 网关的行为。
 
 
 #### db_url (string)
 
 
-The database handler where the SMPP connection will be
-			stored. This parameter is mandatory.
+存储 SMPP 连接的数据库处理程序。此参数是必需的。
 
 
-*Default value is *unset*.*
+*默认值为 *未设置*。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("proto_smpp", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
@@ -174,36 +156,30 @@ modparam("proto_smpp", "db_url", "dbdriver://username:password@dbhost/dbname")
 #### smpp_port (integer)
 
 
-Used to change the default value of the SMPP port used to
-			listen for new connections.
+用于更改监听新连接的 SMPP 端口的默认值。
 
 
-*Default value is 2775.*
+*默认值为 2775。*
 
 
-```c title="Set smpp_port variable"
+```c title="设置 smpp_port 变量"
 ...
 modparam("proto_smpp", "smpp_port", 27775)
 ...
-		
+			
 ```
 
 
 #### smpp_max_msg_chunks (integer)
 
 
-The maximum number of chunks in which a SMPP message is expected to
-			arrive via TCP. If a received packet is more fragmented than this,
-			the connection is dropped (either the connection is very
-			overloaded and this leads to high fragmentation - or we are the
-			victim of an ongoing attack where the attacker is sending very
-			fragmented traffic in order to decrease server performance).
+SMPP 消息通过 TCP 传输时预期的最大分片数。如果收到的数据包分片程度超过此值,则连接将被断开(要么连接严重过载导致高分片,要么我们正受到攻击,攻击者发送非常碎片化的流量以降低服务器性能)。
 
 
-*Default value is 8.*
+*默认值为 8。*
 
 
-```c title="Set smpp_max_msg_chunks parameter"
+```c title="设置 smpp_max_msg_chunks 参数"
 ...
 modparam("proto_smpp", "smpp_max_msg_chunks", 32)
 ...
@@ -213,15 +189,13 @@ modparam("proto_smpp", "smpp_max_msg_chunks", 32)
 #### smpp_send_timeout (integer)
 
 
-Time in milliseconds after a TCP connection will be closed if it is
-		not available for blocking writing in this interval (and OpenSIPS wants
-		to send something on it).
+TCP 连接在此时间后将被关闭(如果在此间隔内无法进行阻塞写入,并且 OpenSIPS 想在其上发送数据)。
 
 
-*Default value is 100 ms.*
+*默认值为 100 ms。*
 
 
-```c title="Set smpp_send_timeout parameter"
+```c title="设置 smpp_send_timeout 参数"
 ...
 modparam("proto_smpp", "smpp_send_timeout", 200)
 ...
@@ -231,14 +205,13 @@ modparam("proto_smpp", "smpp_send_timeout", 200)
 #### outbound_uri (string)
 
 
-This parameter represents the URI of the outbound proxy used to send
-		a message converted from SMPP to SIP.
+此参数表示用于发送从 SMPP 转换而来的 SIP 消息的出站代理的 URI。
 
 
-*Default value is *None*.*
+*默认值为 *无*。*
 
 
-```c title="Set outbound_uri parameter"
+```c title="设置 outbound_uri 参数"
 ...
 modparam("proto_smpp", "outbound_uri", "sip:127.0.0.1:5060")
 ...
@@ -248,14 +221,13 @@ modparam("proto_smpp", "outbound_uri", "sip:127.0.0.1:5060")
 #### smpp_table (string)
 
 
-The name of the database table containing definitions
-			of the SMSc servers used to connect to.
+包含要连接到的 SMSc 服务器定义的数据库表名。
 
 
-*Default value is "smpp".*
+*默认值为 "smpp"。*
 
 
-```c title="Set smpp_table parameter"
+```c title="设置 smpp_table 参数"
 ...
 modparam("proto_smpp", "smpp_table", "smsc")
 ...
@@ -265,14 +237,13 @@ modparam("proto_smpp", "smpp_table", "smsc")
 #### name_col (string)
 
 
-The name of the column that holds the SMSc identifier used by
-			the *send_smpp_message()* function.
+保存 SMSc 标识符的列名,供 *send_smpp_message()* 函数引用。
 
 
-*Default value is "name".*
+*默认值为 "name"。*
 
 
-```c title="Set name_col parameter"
+```c title="设置 name_col 参数"
 ...
 modparam("proto_smpp", "name_col", "smsc_name")
 ...
@@ -282,13 +253,13 @@ modparam("proto_smpp", "name_col", "smsc_name")
 #### ip_col (string)
 
 
-The name of the column that holds the IP of the SMSc.
+保存 SMSc IP 的列名。
 
 
-*Default value is "ip".*
+*默认值为 "ip"。*
 
 
-```c title="Set ip_col parameter"
+```c title="设置 ip_col 参数"
 ...
 modparam("proto_smpp", "ip_col", "smsc_ip")
 ...
@@ -298,13 +269,13 @@ modparam("proto_smpp", "ip_col", "smsc_ip")
 #### port_col (string)
 
 
-The name of the column that holds the SMSc port.
+保存 SMSc 端口的列名。
 
 
-*Default value is "port".*
+*默认值为 "port"。*
 
 
-```c title="Set port_col parameter"
+```c title="设置 port_col 参数"
 ...
 modparam("proto_smpp", "port_col", "smsc_port")
 ...
@@ -314,13 +285,13 @@ modparam("proto_smpp", "port_col", "smsc_port")
 #### system_id_col (string)
 
 
-The name of the column that holds the SMSc System ID.
+保存 SMSc 系统 ID 的列名。
 
 
-*Default value is "system_id".*
+*默认值为 "system_id"。*
 
 
-```c title="Set system_id_col parameter"
+```c title="设置 system_id_col 参数"
 ...
 modparam("proto_smpp", "system_id_col", "smsc_system_id")
 ...
@@ -330,13 +301,13 @@ modparam("proto_smpp", "system_id_col", "smsc_system_id")
 #### password_col (string)
 
 
-The name of the password column used to authenticate the SMSc.
+保存用于认证 SMSc 的密码列名。
 
 
-*Default value is "password".*
+*默认值为 "password"。*
 
 
-```c title="Set password_col parameter"
+```c title="设置 password_col 参数"
 ...
 modparam("proto_smpp", "password_col", "smsc_password")
 ...
@@ -346,13 +317,13 @@ modparam("proto_smpp", "password_col", "smsc_password")
 #### system_type_col (string)
 
 
-The name of the System Type column used to bind the SMSc.
+用于绑定 SMSc 的系统类型列名。
 
 
-*Default value is "system_type".*
+*默认值为 "system_type"。*
 
 
-```c title="Set system_type_col parameter"
+```c title="设置 system_type_col 参数"
 ...
 modparam("proto_smpp", "system_type_col", "smsc_system_type")
 ...
@@ -362,13 +333,13 @@ modparam("proto_smpp", "system_type_col", "smsc_system_type")
 #### src_ton_col (string)
 
 
-The name of the column that holds the Source TON values.
+保存源 TON 值的列名。
 
 
-*Default value is "src_ton".*
+*默认值为 "src_ton"。*
 
 
-```c title="Set src_ton_col parameter"
+```c title="设置 src_ton_col 参数"
 ...
 modparam("proto_smpp", "src_ton_col", "smsc_src_ton")
 ...
@@ -378,13 +349,13 @@ modparam("proto_smpp", "src_ton_col", "smsc_src_ton")
 #### src_npi_col (string)
 
 
-The name of the column that holds the Source NPI values.
+保存源 NPI 值的列名。
 
 
-*Default value is "src_npi".*
+*默认值为 "src_npi"。*
 
 
-```c title="Set src_npi_col parameter"
+```c title="设置 src_npi_col 参数"
 ...
 modparam("proto_smpp", "src_npi_col", "smsc_src_npi")
 ...
@@ -394,13 +365,13 @@ modparam("proto_smpp", "src_npi_col", "smsc_src_npi")
 #### dst_ton_col (string)
 
 
-The name of the column that holds the Destination TON values.
+保存目标 TON 值的列名。
 
 
-*Default value is "dst_ton".*
+*默认值为 "dst_ton"。*
 
 
-```c title="Set dst_ton_col parameter"
+```c title="设置 dst_ton_col 参数"
 ...
 modparam("proto_smpp", "dst_ton_col", "smsc_dst_ton")
 ...
@@ -410,13 +381,13 @@ modparam("proto_smpp", "dst_ton_col", "smsc_dst_ton")
 #### dst_npi_col (string)
 
 
-The name of the column that holds the Destination NPI values.
+保存目标 NPI 值的列名。
 
 
-*Default value is "dst_npi".*
+*默认值为 "dst_npi"。*
 
 
-```c title="Set dst_npi_col parameter"
+```c title="设置 dst_npi_col 参数"
 ...
 modparam("proto_smpp", "dst_npi_col", "smsc_dst_npi")
 ...
@@ -426,63 +397,57 @@ modparam("proto_smpp", "dst_npi_col", "smsc_dst_npi")
 #### session_type_col (string)
 
 
-The name of the column that holds the Session Type of the SMSc.
+保存 SMSc 会话类型的列名。
 
 
-*Default value is "session_type".*
+*默认值为 "session_type"。*
 
 
-```c title="Set session_type_col parameter"
+```c title="设置 session_type_col 参数"
 ...
 modparam("proto_smpp", "session_type_col", "smsc_session_type")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### send_smpp_message(smsc_name, [from],[to],[body],[utf-16],[delivery_receipt])
 
 
-This function is used to convert a SIP message received in the
-			OpenSIPS script to a SMPP PDU and send it to the
-			*smsc_name (string)* received as parameter.
-			The SMPP parameters used to construct the PDU are provisione
-			in the database, and the command sent is either
-			*submit_sm* or *deliver_sm*,
-			depending on the type of the SMSc.
+此函数用于将在 OpenSIPS 脚本中收到的 SIP 消息转换为 SMPP PDU 并发送到作为参数收到的 *smsc_name (string)*。
+			用于构建 PDU 的 SMPP 参数在数据库中提供,发送的命令是
+			*submit_sm* 或 *deliver_sm*,
+			取决于 SMSc 的类型。
 
 
-The function returns *-2* if the SMSc
-			the message should be sent does not exist in the database,
-			*-1* if there was an internal error,
-			or positive value in case of success.
+如果数据库中不存在应发送消息的 SMSc,函数返回 *-2*,
+			如果存在内部错误返回 *-1*,
+			成功时返回正值。
 
 
-Meaning of the parameters is as follows:
+参数含义如下:
 
 
-- *sms_name (string)* - name of the SMS
-					to be used for sending the SMPP traffic.
-- *from (string, optional)* - the source number.
-				If missing, the SIP message from username is used.
-- *to (string, optional)* - the destination number.
-				If missing, the SIP request URI username is used.
-- *body (string, optional)* - the body of the SMS.
-				If missing, the SIP message body is used.
-- *UTF-16 (int, optional)* - set to
-				*1* if the body of the message is in UTF-16.
-				format. If missing or *0*, UTF-8 is used.
-- *delivery_receipt (int, optional)* - Whether
-				the SMSC should confirm delivery for this SMS or not
+- *sms_name (string)* - SMS 的名称,
+					用于发送 SMPP 流量。
+- *from (string, 可选)* - 源号码。
+				如果缺失,使用 SIP 消息的 from 用户名。
+- *to (string, 可选)* - 目标号码。
+				如果缺失,使用 SIP 请求 URI 用户名。
+- *body (string, 可选)* - SMS 的正文。
+				如果缺失,使用 SIP 消息正文。
+- *UTF-16 (int, 可选)* - 设置为
+				*1* 如果消息正文是 UTF-16 格式。如果缺失或 *0*,则使用 UTF-8。
+- *delivery_receipt (int, 可选)* - SMSC 是否应确认此 SMS 的送达
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE
-			or BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE
+			或 BRANCH_ROUTE。
 
 
-```c title="send_smpp_message() usage"
+```c title="send_smpp_message() 使用示例"
 ...
     if (is_method("MESSAGE"))
 			send_smpp_message("MY_SMSC");
@@ -490,6 +455,6 @@ This function can be used from REQUEST_ROUTE, FAILURE_ROUTE
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)采用 Creative Common License 4.0 授权

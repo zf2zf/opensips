@@ -1,55 +1,53 @@
 ---
-title: "Berkeley DB Module"
-description: "This is a module which integrates the Berkeley DB into OpenSIPS. It implements the DB API defined in OpenSIPS."
+title: "Berkeley DB 模块"
+description: "这是一个将 Berkeley DB 集成到 OpenSIPS 的模块。它实现了 OpenSIPS 中定义的 DB API。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is a module which integrates the Berkeley DB into OpenSIPS.
-		It implements the DB API defined in OpenSIPS.
+这是一个将 Berkeley DB 集成到 OpenSIPS 的模块。
+它实现了 OpenSIPS 中定义的 DB API。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块需要在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *Berkeley Berkeley DB 4.6* - an embedded database.
+- *Berkeley Berkeley DB 4.6* - 一个嵌入式数据库。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### auto_reload (integer)
 
 
-The auto-reload will close and reopen a Berkeley DB when the
-		files inode has changed. The operation occurs only duing a query. 
-		Other operations such as insert or delete, do not invoke auto_reload.
+当文件 inode 发生变化时，自动重新加载将关闭并重新打开 Berkeley DB。
+该操作仅在查询期间发生。其他操作（如插入或删除）不会触发自动重新加载。
 
 
-*Default value is 0 (1 - on / 0 - off).*
+*默认值为 0（1 - 开启 / 0 - 关闭）。*
 
 
-```c title="Set auto_reload parameter"
+```c title="设置 auto_reload 参数"
 ...
 modparam("db_berkeley", "auto_reload", 1)
 ...
@@ -60,22 +58,20 @@ modparam("db_berkeley", "auto_reload", 1)
 #### log_enable (integer)
 
 
-The log_enable boolean controls when to create journal files.
-		The following operations can be journaled: 
-		INSERT, UPDATE, DELETE. Other operations such as SELECT, do not. 
-		This journaling are required if you need to recover from a corrupt 
-		DB file. That is, bdb_recover requires these to rebuild 
-		the db file. If you find this log feature useful, you may 
-		also be interested in the METADATA_LOGFLAGS bitfield that each 
-		table has. It will allow you to control which operations to 
-		journal, and the destination (like syslog, stdout, local-file). 
-		Refer to bdblib_log()  and documentation on METADATA.
+log_enable 布尔值控制何时创建日志文件。
+以下操作可以被记录：
+INSERT、UPDATE、DELETE。其他操作（如 SELECT）则不会。
+如果您需要从损坏的 DB 文件中恢复，则需要此日志记录功能。
+也就是说，bdb_recover 需要这些日志来重建 db 文件。
+如果您觉得此日志功能有用，您可能还对每个表拥有的 METADATA_LOGFLAGS 位字段感兴趣。
+它允许您控制哪些操作被记录，以及日志的目标位置（如 syslog、stdout、本地文件）。
+请参阅 bdblib_log() 和 METADATA 文档。
 
 
-*Default value is 0 (1 - on / 0 - off).*
+*默认值为 0（1 - 开启 / 0 - 关闭）。*
 
 
-```c title="Set log_enable parameter"
+```c title="设置 log_enable 参数"
 ...
 modparam("db_berkeley", "log_enable", 1)
 ...
@@ -83,18 +79,18 @@ modparam("db_berkeley", "log_enable", 1)
 ```
 
 
-#### journal_roll_interval (integer seconds)
+#### journal_roll_interval (integer 秒)
 
 
-The journal_roll_interval will close and open a new log file. 
-		The roll operation occurs only at the end of writing a log, 
-		so it is not guaranteed to to roll 'on time'.
+journal_roll_interval 将关闭并打开一个新的日志文件。
+滚动操作仅在写入日志结束时发生，
+因此不能保证"准时"滚动。
 
 
-*Default value is 0 (off).*
+*默认值为 0（关闭）。*
 
 
-```c title="Set journal_roll_interval parameter"
+```c title="设置 journal_roll_interval 参数"
 ...
 modparam("db_berkeley", "journal_roll_interval", 3600)
 ...
@@ -102,41 +98,40 @@ modparam("db_berkeley", "journal_roll_interval", 3600)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+配置文件中没有导出可使用的函数。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### db_berkeley:reload
 
 
-Replaces obsolete MI command: *bdb_reload*.
+替换过时的 MI 命令：*bdb_reload*。
 
 
-Causes db_berkeley module to re-read the contents of specified table (or dbenv).
-		The db_berkeley DB actually loads each table on demand, as opposed to loading all
-		at mod_init time. The db_berkeley:reload operation is implemented as a close followed by a reopen.
-		Note- db_berkeley:reload will fail if a table has not been accessed before (because the close 
-		will fail).
+使 db_berkeley 模块重新读取指定表（或 dbenv）的内容。
+db_berkeley DB 实际上是在需要时加载每个表，而不是在 mod_init 时全部加载。
+db_berkeley:reload 操作实现为关闭后重新打开。
+注意 - 如果表之前未被访问过，则 db_berkeley:reload 将失败（因为关闭会失败）。
 
 
-Name: *db_berkeley:reload*
+名称：*db_berkeley:reload*
 
 
-Parameters:
+参数：
 
 
-- *table_path* - to reload a particular table
-				provide the tablename as the arguement; to reload
-				all tables provide the db_path to the db files. The path can be found
-				in opensipsc-cli config variable.
+- *table_path* - 要重新加载特定表
+提供表名作为参数；要重新加载
+所有表，请提供 db_path 到 db 文件。路径可以在
+opensipsc-cli 配置变量中找到。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -145,123 +140,119 @@ MI FIFO Command Format:
 ```
 
 
-### Installation and Running
+### 安装和运行
 
 
-First download, compile and install the Berkeley DB. This is 
-		outside the scope of this document. Documentation for this 
-		procedure is available on the Internet.
+首先下载、编译和安装 Berkeley DB。
+这超出了本文档的范围。此
+过程的文档可在互联网上找到。
 
 
-Next, prepare to compile OpenSIPS with the db_berkeley module. 
-		In the directory /modules/db_berkeley, modify the Makefile to point 
-		to your distribution of Berkeley DB. You may also define 'BDB_EXTRA_DEBUG' 
-		to compile in extra debug logs. However, it is not a recommended 
-		deployment to production servers.
+接下来，准备使用 db_berkeley 模块编译 OpenSIPS。
+在 /modules/db_berkeley 目录中，修改 Makefile 以指向
+您的 Berkeley DB 发行版。您也可以定义 'BDB_EXTRA_DEBUG'
+来编译额外的调试日志。但是，不建议将其用于
+生产服务器部署。
 
 
-Because the module dependes on an external library, the db_berkeley module is not
-		compiled and installed by default. You can use one of the next options.
+由于该模块依赖于外部库，db_berkeley 模块默认不会
+被编译和安装。您可以使用以下选项之一：
 
 
-- edit the "Makefile" and remove "db_berkeley" from "excluded_modules"
-			list. Then follow the standard procedure to install OpenSIPS:
-			"make all; make install".
-- from command line use: 'make all include_modules="db_berkeley";
-			make install include_modules="db_berkeley"'.
+- 编辑 "Makefile" 并从 "excluded_modules"
+列表中删除 "db_berkeley"。然后按照标准程序安装 OpenSIPS：
+"make all; make install"。
+- 从命令行使用：'make all include_modules="db_berkeley";
+make install include_modules="db_berkeley"'。
 
 
-Installation of OpenSIPS is performed by simply running make install
-		as root user of the main directory. This will install the binaries 
-		in /usr/local/sbin/.
-		If this was successful, OpenSIPS control engine files should now 
-		be installed as /usr/local/sbin/opensipsdbctl.
+OpenSIPS 的安装只需以 root 用户身份运行主目录中的 make install
+即可。这会将二进制文件安装到 /usr/local/sbin/。
+如果成功，OpenSIPS 控制引擎文件现在应该已安装为 /usr/local/sbin/opensipsdbctl。
 
 
-Decide where (on the filesystem) you want to install the Berkeley DB files.
-		For instance, '/usr/local/etc/opensips/db_berkeley' directory.
-		Make note of this directory as we need to add this path to the opensips-cli config file.
-		Note: OpenSIPS will not startup without these DB files.
+决定在文件系统上要将 Berkeley DB 文件安装到哪里。
+例如，'/usr/local/etc/opensips/db_berkeley' 目录。
+请记下此目录，因为我们需要将此路径添加到 opensips-cli 配置文件中。
+注意：OpenSIPS 没有这些 DB 文件将无法启动。
 
 
-(Optional) Pre creation step- Customize your meta-data.
-		The DB files are initially seeded with necessary meta-data. 
-		This is a good time to review the meta-data section details,
-		before making modifications to your tables dbschema.
-		By default, the files are installed in '/usr/local/share/opensips/db_berkeley/opensips'
-		By default these tables are created Read/Write and without any journalling as 
-		shown. These settings can be modified on a per table basis.
-		Note: If you plan to use bdb_recover, you must change the LOGFLAGS.
-
-
-```c
-		METADATA_READONLY
-		0
-		METADATA_LOGFLAGS
-		0
-		
-```
-
-
-Execute opensipsdbctl - There are three (3) groups of tables you may need depending
-		on your situation.
+（可选）预创建步骤 - 自定义您的元数据。
+DB 文件最初使用必要的元数据进行填充。
+这是查看元数据部分详细信息的好时机，
+在修改表 dbschema 之前。
+默认情况下，文件安装在 '/usr/local/share/opensips/db_berkeley/opensips'
+默认情况下，这些表创建为读写模式且没有任何日志，如
+所示。这些设置可以按表进行修改。
+注意：如果您计划使用 bdb_recover，必须更改 LOGFLAGS。
 
 
 ```c
-		opensipsdbctl create   		(required)
-		opensipsdbctl presence 		(optional)
-		opensipsdbctl extra    		(optional)
-		
+	METADATA_READONLY
+	0
+	METADATA_LOGFLAGS
+	0
+	
 ```
 
 
-Modify the OpenSIPS configuration file to use db_berkeley module. 
-		The database URL for modules must be the path to the directory where 
-		the Berkeley DB table-files are located, prefixed by "berkeley://", 
-		e.g., "berkeley:///usr/local/etc/opensips/db_berkeley".
+执行 opensipsdbctl - 根据您的实际情况，您可能需要三（3）组表。
 
 
-A couple other IMPORTANT things to consider are the 'db_mode' and the 'use_domain' 
-		modparams. The description of these parameters are found in usrloc documentation.
+```c
+	opensipsdbctl create   		（必需）
+	opensipsdbctl presence 		（可选）
+	opensipsdbctl extra    		（可选）
+	
+```
 
 
-Note on db_mode- 
-		The db_berkeley module will only journal the moment usrloc writes back
-		to the DB. The safest mode is mode 3 , since the db_berkeley journal files will always
-		be up-to-date. The main point is the db_mode vs. recovery by journal file interaction.
-		
-		Writing journal entries is 'best effort'. So if the hard drive becomes full, the
-		attempt to write a journal entry may fail.
+修改 OpenSIPS 配置文件以使用 db_berkeley 模块。
+模块的数据库 URL 必须是 Berkeley DB 表文件所在目录的路径，
+前面加上 "berkeley://"，例如 "berkeley:///usr/local/etc/opensips/db_berkeley"。
 
 
-Note on use_domain-
-		The db_berkeley module will attempt natural joins when performing a query.
-		This is basically a lexigraphical string compare using the keys provided.
-		In most places in the db_berkeley dbschema (unless you customize), the domainname 
-		is identified as a natural key. 
-		Consider an example where use_domain = 0. In table subscriber, the db will be keying on 
-		'username|NULL' because the default value will be used when that key column is not provided.
-		This effectivly means that later queries must consistently use the username (w.o domain)
-		in order to find a result to that particular subscriber query.
-		The main point is 'use_domain' can not be changed once the db_berkeley is setup.
+还需要考虑其他两个重要事项：'db_mode' 和 'use_domain'
+modparams。这些参数的说明在 usrloc 文档中。
 
 
-### Database Schema and Metadata
+关于 db_mode 的注意事项 -
+db_berkeley 模块只会在 usrloc 写回 DB 时记录日志。
+最安全的模式是模式 3，因为 db_berkeley 日志文件将始终
+是最新的。关键是 db_mode 与日志文件恢复之间的交互。
+
+写入日志条目是"尽力而为"的。因此，如果硬盘驱动器已满，
+写入日志条目的尝试可能会失败。
 
 
-All Berkeley DB tables are created via the opensipsdbctl script. 
-	This section provides details as to the content and 
-	format of the DB file upon creation.
+关于 use_domain 的注意事项 -
+db_berkeley 模块在执行查询时将尝试自然连接。
+这本质上是使用提供的键进行词法字符串比较。
+在大多数 db_berkeley dbschema 位置（除非您自定义），domainname
+被识别为自然键。
+考虑一个 use_domain = 0 的示例。在 subscriber 表中，数据库将使用
+'username|NULL' 作为键，因为当未提供该键列时将使用默认值。
+这实际上意味着后续查询必须一致地使用用户名（不含域）
+才能找到对该特定订阅者查询的结果。
+关键是，一旦 db_berkeley 设置完成，'use_domain' 就无法更改。
 
 
-Since the Berkeley DB stores key value pairs, the database is seeded 
-	with a few meta-data rows . The keys to these rows must begin with 'METADATA'. 
-	Here is an example of table meta-data, taken from the table 'version'.
+### 数据库架构和元数据
 
 
-Note on reserved character- 
-	The '|' pipe character is used as a record delimiter within the 
-	Berkeley DB implementation and must not be present in any DB field.
+所有 Berkeley DB 表都通过 opensipsdbctl 脚本创建。
+本节提供有关 DB 文件创建时的内容和
+格式的详细信息。
+
+
+由于 Berkeley DB 存储键值对，数据库使用几个元数据行进行填充。
+这些行的键必须以 'METADATA' 开头。
+以下是一个表示表元数据的示例，取自 'version' 表。
+
+
+关于保留字符的注意事项 -
+'|' 管道字符在 Berkeley DB 实现中用作记录分隔符，
+不得出现在任何 DB 字段中。
 
 
 ```c title="METADATA_COLUMNS"
@@ -273,23 +264,23 @@ METADATA_KEY
 ```
 
 
-In the above example, the row METADATA_COLUMNS defines the column names 
-	and type, and the row METADATA_KEY defines which column(s) form the key. 
-	Here the value of 0 indicates that column 0 is the key(ie table_name). 
-	With respect to column types, the db_berkeley modules only has the following 
-	types: string, str, int, double, and datetime. The default type is string, 
-	and is used when one of the others is not specified. The columns of the 
-	meta-data are delimited by whitespace.
+在上面的示例中，行 METADATA_COLUMNS 定义列名
+和类型，行 METADATA_KEY 定义哪些列构成键。
+这里的值 0 表示第 0 列是键（即 table_name）。
+关于列类型，db_berkeley 模块只有以下
+类型：string、str、int、double 和 datetime。默认类型是 string，
+当未指定其他类型时使用。列的
+元数据用空格分隔。
 
 
-The actual column data is stored as a string value, and delimited by 
-	the '|' pipe character. Since the code tokenizes on this delimiter, 
-	it is important that this character not appear in any valid data field. 
-	The following is the output of the 'db_berkeley.sh dump version' command. 
-	It shows contents of table 'version' in plain text.
+实际的列数据存储为字符串值，并用
+'|' 管道字符分隔。由于代码在此分隔符上进行标记化，
+重要的是此字符不应出现在任何有效数据字段中。
+以下是 'db_berkeley.sh dump version' 命令的输出。
+它以纯文本形式显示 'version' 表的内容。
 
 
-```c title="contents of version table"
+```c title="version 表的内容"
 VERSION=3
 format=print
 type=hash
@@ -337,11 +328,11 @@ DATA=END
 ```
 
 
-### METADATA_COLUMNS (required)
+### METADATA_COLUMNS（必需）
 
 
-The METADATA_COLUMNS row contains the column names and types. 
-	Each is space delimited. Here is an example of the data taken from table subscriber :
+METADATA_COLUMNS 行包含列名和类型。
+每个条目用空格分隔。以下是从 subscriber 表中获取的数据示例：
 
 
 ```c title="METADATA_COLUMNS"
@@ -351,23 +342,23 @@ username(str) domain(str) password(str) ha1(str) ha1b(str) first_name(str) last_
 ```
 
 
-Related (hardcoded) limitations:
+相关的（硬编码的）限制：
 
 
-- maximum of 32 columns per table.
-- maximum tablename size is 64.
-- maximum data length is 2048
+- 每个表最多 32 列。
+- 表名最大大小为 64。
+- 最大数据长度为 2048。
 
 
-Currently supporting these five types: str, datetime, int, double, string.
+目前支持这五种类型：str、datetime、int、double、string。
 
 
-### METADATA_KEYS (required)
+### METADATA_KEYS（必需）
 
 
-The METADATA_KEYS row indicates the indexes of the key columns, 
-	with respect to the order specified in METADATA_COLUMNS. 
-	Here is an example taken from table subscriber that brings up a good point:
+METADATA_KEYS 行表示键列的索引，
+相对于 METADATA_COLUMNS 中指定的顺序。
+以下是从 subscriber 表中获取的一个示例，它提出了一个要点：
 
 
 ```c title="METADATA_KEYS"
@@ -377,28 +368,28 @@ The METADATA_KEYS row indicates the indexes of the key columns,
 ```
 
 
-The point is that both the username and domain name are require 
-	as the key to this record. Thus, usrloc modparam 
-	use_domain = 1 must be set for this to work.
+要点是用户名和域名都需要
+作为这条记录的键。因此，必须设置 usrloc modparam
+use_domain = 1 才能使其工作。
 
 
-### METADATA_READONLY (optional)
+### METADATA_READONLY（可选）
 
 
-The METADATA_READONLY row contains a boolean 0 or 1. 
-	By default, its value is 0. On startup the DB will 
-	open initially as read-write (loads metadata) and then if this 
-	is set=1, it will close and reopen as read only (ro). 
-	I found this useful because readonly has impacts on the 
-	internal db locking etc.
+METADATA_READONLY 行包含布尔值 0 或 1。
+默认情况下，其值为 0。在启动时，DB 将
+最初以读写模式打开（加载元数据），然后如果此
+设置为 1，它将关闭并以只读模式重新打开（ro）。
+我发现这很有用，因为只读模式对内部
+db 锁定等有影响。
 
 
-### METADATA_LOGFLAGS (optional)
+### METADATA_LOGFLAGS（可选）
 
 
-The METADATA_LOGFLAGS row contains a bitfield that customizes the 
-	journaling on a per table basis. If not present the default value 
-	is taken as 0. Here are the masks so far (taken from bdb_lib.h):
+METADATA_LOGFLAGS 行包含一个位字段，用于自定义
+每个表的日志记录。如果不存在，默认值
+为 0。以下是目前已有的掩码（取自 bdb_lib.h）：
 
 
 ```c title="METADATA_LOGFLAGS"
@@ -412,69 +403,69 @@ The METADATA_LOGFLAGS row contains a bitfield that customizes the
 ```
 
 
-This means that if you want to journal INSERTS to local file and syslog the value 
-	should be set to 1+16=17. Or if you do not want to journal at all, set this to 0.
+这意味着如果您想将 INSERT 记录到本地文件和 syslog，值
+应设置为 1+16=17。或者如果您根本不想记录日志，请将此设置为 0。
 
 
-### DB Recovery : bdb_recover
+### DB 恢复：bdb_recover
 
 
-The db_berkeley module uses the Concurrent Data Store (CDS) architecture. 
-	As such, no transaction or journaling is provided by the DB natively. 
-	The application bdb_recover is specifically written to recover data from 
-	journal files that OpenSIPS creates.  
-	The bdb_recover application requires an additional text file that contains 
-	the table schema.
+db_berkeley 模块使用并发数据存储（CDS）架构。
+因此，DB 原生不提供事务或日志记录。
+应用程序 bdb_recover 是专门为从
+OpenSIPS 创建的日志文件中恢复数据而编写的。
+bdb_recover 应用程序需要一个额外的文本文件，其中包含
+表模式。
 
 
-The schema is loaded with the '-s' option and is required for all operations.
-	Provide the path to the db_berkeley plain-text schema files. By default, these
-	install to '/usr/local/share/opensips/db_berkeley/opensips/'.
+模式使用 '-s' 选项加载，是所有操作必需的。
+提供 db_berkeley 纯文本模式文件的路径。默认情况下，这些
+安装到 '/usr/local/share/opensips/db_berkeley/opensips/'。
 
 
-The '-h' home option is the DB_PATH path. Unlike the Berkeley utilities, 
-	this application does not look for the DB_PATH environment variable, 
-	so you have to specify it. If not specified, it will assume the current 
-	working directory. The last argument is the operation. 
-	There are fundamentally only two operations- create and recover.
+'-h' home 选项是 DB_PATH 路径。与 Berkeley 实用程序不同，
+此应用程序不会查找 DB_PATH 环境变量，
+因此您必须指定它。如果未指定，它将假定当前
+工作目录。最后一个参数是操作。
+从根本上说，只有两个操作 - create 和 recover。
 
 
-The following illustrates the four operations available to the administrator.
+以下说明了管理员可用的四个操作。
 
 
-```c title="bdb_recover usage"
+```c title="bdb_recover 用法"
 usage: ./bdb_recover -s schemadir [-h home] [-c tablename]
-	This will create a brand new DB file with metadata.
+	这将创建一个全新的 DB 文件及其元数据。
 
 usage: ./bdb_recover -s schemadir [-h home] [-C all]
-	This will create all the core tables, each with metadata.
+	这将创建所有核心表，每个表都带有元数据。
 
 usage: ./bdb_recover -s schemadir [-h home] [-r journal-file]
-	This will rebuild a DB and populate it with operation from journal-file. 
-	The table name is embedded in the journal-file name by convention.
+	这将重建一个 DB 并用 journal-file 中的操作填充它。
+	表名按惯例嵌入在 journal-file 名称中。
 
 usage: ./bdb_recover -s schemadir [-h home] [-R lastN]
-	This will iterate over all core tables enumerated. If journal files exist in 'home', 
-	a new DB file will be created and populated with the data found in the last N files. 
-	The files are 'replayed' in chronological order (oldest to newest). This 
-	allows the administrator to rebuild the db with a subset of all possible 
-	operations if needed. For example, you may only be interested in 
-	the last hours data in table location.
+	这将遍历所有枚举的核心表。如果 'home' 中存在日志文件，
+	将创建一个新的 DB 文件，并用最后 N 个文件中找到的数据填充。
+	文件按时间顺序"重放"（从最旧到最新）。这
+	允许管理员在需要时使用所有可能
+	操作的子集重建数据库。例如，您可能只对
+	table location 中最近一小时的数据感兴趣。
 	
 ```
 
 
-Important note- A corrupted DB file must be moved out of the way before bdb_recover is executed.
+重要注意事项 - 在执行 bdb_recover 之前，必须将损坏的 DB 文件移出。
 
 
-### Known Limitations
+### 已知限制
 
 
-The Berkeley DB does not nativly support an autoincrement (or sequence) mechanism.
-	Consequently, this version does not support surragate keys in dbschema. These
-	are the id columns in the tables.
+Berkeley DB 原生不支持自动递增（或序列）机制。
+因此，此版本不支持 dbschema 中的代理键。这些
+是表中的 id 列。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

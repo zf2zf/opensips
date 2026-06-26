@@ -1,76 +1,62 @@
 ---
-title: "Benchmark Module"
-description: "This module helps developers to benchmark their module functions. By adding this module's functions via the configuration file or through its API, OpenSIPS can log profiling information for every function."
+title: "基准测试模块"
+description: "此模块帮助开发人员对模块函数进行基准测试。通过通过配置文件或其 API 添加此模块的函数，OpenSIPS 可以为每个函数记录性能分析信息。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module helps developers to benchmark their module functions. By adding
-		this module's functions via the configuration file or through its API, OpenSIPS
-		can log profiling information for every function.
+此模块帮助开发人员对模块函数进行基准测试。通过通过配置文件或其 API 添加此模块的函数，OpenSIPS 可以为每个函数记录性能分析信息。
 
 
-The duration between calls to start_timer and log_timer is stored and logged
-		via OpenSIPS's logging facility. Please note that all durations are given as
-		microseconds (don't confuse with milliseconds!).
+start_timer 和 log_timer 调用之间的持续时间通过 OpenSIPS 的日志工具存储和记录。请注意，所有持续时间均以微秒为单位（不要与毫秒混淆！）。
 
 
-Important note: as this benchmarking is intended to measure the time
-		spent in executing different parts/blocks of the script (and not for 
-		measuring the time induced by the SIP signaling), the benchmark module
-		is to be used within the SAME top route (request route, failure route, 
-		branch route, onreply rout, etc). It is not design to be used across 
-		different types of top routes (like started in request route and ended in 
-		failure route)!!
+重要提示：由于此基准测试旨在测量执行脚本不同部分/块所花费的时间（而不是测量 SIP 信令所导致的时间），基准测试模块应在同一顶级路由（请求路由、失败路由、分支路由、回复路由等）内使用。它不设计用于跨不同类型的顶级路由使用（例如在请求路由中启动并在失败路由中结束）！
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *无其他 OpenSIPS 模块的依赖*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### enable (int)
 
 
-Even when the module is loaded, benchmarking is not enabled
-			per default. This variable may have three different values:
+即使加载了模块，默认也不启用基准测试。此变量可以有三个不同的值：
 
 
-- -1 - Globally disable benchmarking
-- 0 - Enable per-timer enabling. Single timers are inactive by default
-				and can be activated through the MI interface as soon as that feature is
-				implemented.
-- 1 - Globally enable benchmarking
+- -1 - 全局禁用基准测试
+- 0 - 启用按计时器启用。单个计时器默认处于非活动状态，一旦实现该功能，可以通过 MI 接口激活。
+- 1 - 全局启用基准测试
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set enable parameter"
+```c title="设置 enable 参数"
 ...
 modparam("benchmark", "enable", 1)
 ...
@@ -80,18 +66,16 @@ modparam("benchmark", "enable", 1)
 #### granularity (int)
 
 
-Logging normally is not done for every reference to the log_timer()
-			function, but only every n'th call. n is defined through this variable.
-			A sensible granularity seems to be 100.
+日志记录通常不是每次调用 log_timer() 函数时都进行，而是每 n 次调用进行一次。n 通过此变量定义。合理的粒度似乎是 100。
 
 
-If granularity is set to 0, then nothing will be logged automatically. Instead benchmark:poll_results MI command can be used to retrieve the results and clean the local values.
+如果粒度设置为 0，则不会自动记录任何内容。相反，可以使用 benchmark:poll_results MI 命令来检索结果并清除本地值。
 
 
-*Default value is "100".*
+*默认值为 "100"。*
 
 
-```c title="Set granularity parameter"
+```c title="设置 granularity 参数"
 ...
 modparam("benchmark", "granularity", 500)
 ...
@@ -101,7 +85,7 @@ modparam("benchmark", "granularity", 500)
 #### loglevel (int)
 
 
-Set the log level for the benchmark logs. These levels should be used:
+设置基准测试日志的日志级别。应使用以下级别：
 
 
 - -3 - L_ALERT
@@ -113,30 +97,29 @@ Set the log level for the benchmark logs. These levels should be used:
 - 4 - L_DBG
 
 
-*Default value is "3" (L_INFO).*
+*默认值为 "3"（L_INFO）。*
 
 
-```c title="Set loglevel parameter"
+```c title="设置 loglevel 参数"
 ...
 modparam("benchmark", "loglevel", 4)
 ...
 ```
 
 
-This will set the logging level to L_DBG.
+这将把日志级别设置为 L_DBG。
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### bm_start_timer(name)
 
 
-Start timer "name". A later call to
-		"bm_log_timer()" logs this timer..
+启动计时器 "name"。随后调用 "bm_log_timer()" 记录此计时器。
 
 
-```c title="bm_start_timer usage"
+```c title="bm_start_timer 使用示例"
 ...
 bm_start_timer("test");
 ...
@@ -146,83 +129,77 @@ bm_start_timer("test");
 #### bm_log_timer(name)
 
 
-This function logs the timer with the given ID. The following data are
-			logged:
+记录具有给定 ID 的计时器。记录以下数据：
 
 
-- *Last msgs* is the number of calls in the last logging interval. This equals the granularity variable.
+- *Last msgs* 是上次日志记录间隔内的调用次数。这等于 granularity 变量。
 
 
-- *Last sum* is the accumulated duration in the current logging interval (i.e. for the last "granularity" calls).
+- *Last sum* 是当前日志记录间隔内的累积持续时间（即最近 "granularity" 次调用）。
 
 
-- *Last min* is the minimum duration between start/log_timer calls during the last interval.
+- *Last min* 是上次间隔内 start/log_timer 调用之间的最小持续时间。
 
 
-- *Last max* - maximum duration.
+- *Last max* - 最大持续时间。
 
 
-- *Last average* is the average duration between
-					bm_start_timer() and bm_log_timer() since the last logging.
+- *Last average* 是自上次记录以来 bm_start_timer() 和 bm_log_timer() 之间的平均持续时间。
 
 
-- *Global msgs* number of calls to log_timer.
+- *Global msgs* 调用 log_timer 的次数。
 
 
-- *Global sum* total duration in microseconds.
+- *Global sum* 微秒为单位的总持续时间。
 
 
-- *Global min*... You get the point. :)
+- *Global min*... 你懂的。 :)
 
 
-- *Global max* also obvious.
+- *Global max* 同样显而易见。
 
 
-- *Global avg* possibly the most interesting value.
+- *Global avg* 可能是最有趣的值。
 
 
-```c title="bm_log_timer usage"
+```c title="bm_log_timer 使用示例"
 ...
 bm_log_timer("test");
 ...
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
-Exported pseudo-variables are listed in the next sections.
+导出的伪变量在下一节中列出。
 
 
 #### $BM_time_diff
 
 
-*$BM_time_diff* - the time difference
-			elapsed between calls of bm_start_timer(name) and
-			bm_log_timer(name). The value is 0 if no bm_log_timer()
-			was called.
+*$BM_time_diff* - bm_start_timer(name) 和 bm_log_timer(name) 调用之间经过的时间差。如果未调用 bm_log_timer()，则值为 0。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### benchmark:enable_global
 
 
-Replaces obsolete MI command: *bm_enable_global*.
+替换已弃用的 MI 命令：*bm_enable_global*。
 
 
-Enables/disables the module.
+启用/禁用模块。
 
 
-Parameters:
+参数：
 
 
-- *enable* - value may be -1, 0 or 1. See
-					discription of "enable" parameter.
+- *enable* - 值可以为 -1、0 或 1。请参阅 "enable" 参数的描述。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -234,23 +211,23 @@ MI FIFO Command Format:
 #### benchmark:enable_timer
 
 
-Replaces obsolete MI command: *bm_enable_timer*.
+替换已弃用的 MI 命令：*bm_enable_timer*。
 
 
-Enable or disable a single timer.
+启用或禁用单个计时器。
 
 
-Parameters:
+参数：
 
 
-- *timer* - timer name
-- *enable* - enable (1) or disable (0) timer
+- *timer* - 计时器名称
+- *enable* - 启用 (1) 或禁用 (0) 计时器
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
-```c title="Enabling a timer"
+```c title="启用计时器"
 ...
 opensips-cli -x mi benchmark:enable_timer test 1
 ...
@@ -260,20 +237,19 @@ opensips-cli -x mi benchmark:enable_timer test 1
 #### benchmark:granularity
 
 
-Replaces obsolete MI command: *bm_granularity*.
+替换已弃用的 MI 命令：*bm_granularity*。
 
 
-Modifies the benchmarking granularity.
+修改基准测试粒度。
 
 
-Parameters:
+参数：
 
 
-- *benchmark:granularity* - See
-					discription of "granularity" parameter.
+- *benchmark:granularity* - 请参阅 "granularity" 参数的描述。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -285,20 +261,19 @@ MI FIFO Command Format:
 #### benchmark:loglevel
 
 
-Replaces obsolete MI command: *bm_loglevel*.
+替换已弃用的 MI 命令：*bm_loglevel*。
 
 
-Modifies the module log level.
+修改模块日志级别。
 
 
-Parameters:
+参数：
 
 
-- *log_level* - See
-					discription of "loglevel" parameter.
+- *log_level* - 请参阅 "loglevel" 参数的描述。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -310,16 +285,16 @@ MI FIFO Command Format:
 #### benchmark:poll_results
 
 
-Replaces obsolete MI command: *bm_poll_results*.
+替换已弃用的 MI 命令：*bm_poll_results*。
 
 
-Returns the current and global results for each timer. This command is only available if the "granularity" variable is set to 0. It can be used to get results in stable time intervals instead of every N messages. Each timer will have 2 nodes - the local and the global values. Format of the values is the same as the one normally used in logfile. This way of getting the results allows to interface with external graphing applications like Munin.
+返回每个计时器的当前和全局结果。此命令仅在 "granularity" 变量设置为 0 时可用。它可用于以稳定的时间间隔获取结果，而不是每 N 条消息获取一次。每个计时器将有 2 个节点 - 本地和全局值。值的格式与日志文件中通常使用的格式相同。这种获取结果的方式允许与外部图形应用程序（如 Munin）接口。
 
 
-If there were no new calls to *bm_log_timer* since last check, then all current values of a timer will be equal 0. Each call to *benchmark:poll_results* will reset current values (but not global ones).
+如果自上次检查以来没有对 *bm_log_timer* 的新调用，则计时器的所有当前值都将等于 0。每次调用 *benchmark:poll_results* 将重置当前值（但不会重置全局值）。
 
 
-```c title="Getting the results via FIFO interface"
+```c title="通过 FIFO 接口获取结果"
 ...
 opensips-cli -x mi benchmark:poll_results
 register_timer
@@ -332,13 +307,13 @@ security_check_timer
 ```
 
 
-### Example of usage
+### 使用示例
 
 
-Measure the duration of user location lookup.
+测量用户位置查找的持续时间。
 
 
-```c title="benchmark usage"
+```c title="基准测试使用示例"
 ...
 bm_start_timer("usrloc-lookup");
 lookup("location");
@@ -347,61 +322,54 @@ bm_log_timer("usrloc-lookup");
 ```
 
 
-## Developer Guide
+## 开发者指南
 
 
-The benchmark module provides an internal API to be used by 
-	other OpenSIPS modules. The available functions are identical to the user exported
-	functions.
+基准测试模块提供供其他 OpenSIPS 模块使用的内部 API。可用的函数与用户导出的函数相同。
 
 
-Please note that this module is intended mainly for developers. It should
-	be used with caution in production environments.
+请注意，此模块主要用于开发人员。在生产环境中应谨慎使用。
 
 
-### Available Functions
+### 可用函数
 
 
 #### bm_register(name, mode, id)
 
 
-This function register a new timer and/or returns the internal ID
-		associated with the timer. mode controls the creation of new timer
-		if not found. id is to be used by start and log timer functions.
+此函数注册一个新的计时器和/或返回与该计时器关联的内部 ID。mode 控制如果未找到新计时器时是否创建。id 将由启动和记录计时器函数使用。
 
 
 #### bm_start(id)
 
 
-This function equals the user-exported function bm_start_timer. The
-		id is passed as an integer, though.
+此函数等同于用户导出的函数 bm_start_timer。不过，id 作为整数传递。
 
 
 #### bm_log(id)
 
 
-This function equals the user-exported function bm_log_timer. The id
-		is passed as an integer, though.
+此函数等同于用户导出的函数 bm_log_timer。不过，id 作为整数传递。
 
 
-### Benchmark API Example
+### 基准测试 API 示例
 
 
-```c title="Using the benchmark module's API from another module"
+```c title="从另一个模块使用基准测试模块的 API"
 ...
 #include "../benchmark/benchmark.h"
 ...
 struct bm_binds bmb;
 ...
 ...
-/* load the benchmarking API */
+/* 加载基准测试 API */
 if (load_bm_api( &bmb )!=0) {
     LM_ERR("can't load benchmark API\n");
     goto error;
 }
 ...
 ...
-/* Start/log timers during a (usually user-exported) module function */
+/* 在（通常是用户导出的）模块函数期间启动/记录计时器 */
 bmb.bm_register("test", 1, &id)
 bmb.bm_start(id);
 do_something();
@@ -410,6 +378,6 @@ bmb.bm_log(id);
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

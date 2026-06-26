@@ -1,54 +1,53 @@
 ---
-title: "tls_openssl Module"
-description: "This module implements TLS operations using the [openSSL](https://www.openssl.org/) libarary. It provides the primitives required by the *tls_mgm* module in order to expose a higher-level API used by TLS-based protocol modules like *proto_tls* or *proto_wss* etc."
+title: "tls_openssl 模块"
+description: "此模块使用 [openSSL](https://www.openssl.org/) 库实现 TLS 操作。它提供 *tls_mgm* 模块所需的原语，以暴露由 *proto_tls* 或 *proto_wss* 等基于 TLS 的协议模块使用的高级 API。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements TLS operations using the
-		[openSSL](https://www.openssl.org/) libarary. It provides the primitives
-		required by the *tls_mgm* module in order to expose a
-		higher-level API used by TLS-based protocol modules like
-		*proto_tls* or *proto_wss* etc.
+此模块使用
+		[openSSL](https://www.openssl.org/) 库实现 TLS 操作。
+		它提供 *tls_mgm* 模块所需的原语，
+		以暴露由 *proto_tls* 或 *proto_wss* 等基于 TLS 的协议模块使用的高级 API。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *None*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-OpenSIPS TLS v1.0 support requires the following packages:
+OpenSIPS TLS v1.0 支持需要以下软件包：
 
 
-- *openssl* or
+- *openssl* 或
 				*libssl* >= 0.9.6
-- *openssl-dev* or
+- *openssl-dev* 或
 				*libssl-dev*
 
 
-OpenSIPS TLS v1.1/1.2 support requires the following packages:
+OpenSIPS TLS v1.1/1.2 支持需要以下软件包：
 
 
-- *openssl* or
+- *openssl* 或
 				*libssl* >= 1.0.1e
-- *openssl-dev* or
+- *openssl-dev* 或
 				*libssl-dev*
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

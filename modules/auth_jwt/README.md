@@ -1,232 +1,235 @@
 ---
-title: "AUTH_JWT Module"
-description: "The module implements authentication over JSON Web Tokens. In some cases ( ie. WebRTC ) the user authenticates on another layer ( other than SIP ), so it makes no sense to double-authenticate it on the SIP layer. Thus, the SIP client will simply present the JWT auth token it received from the..."
+title: "AUTH_JWT 模块"
+description: "该模块实现基于 JSON Web Tokens 的认证。在某些情况下（即 WebRTC），用户在另一层（而不是 SIP）进行认证，因此在 SIP 层重复认证没有意义。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module implements authentication over JSON Web Tokens.
-		In some cases ( ie. WebRTC ) the user authenticates on another layer ( other than SIP ), so it makes no sense to double-authenticate it on the SIP layer.
-		Thus, the SIP client will simply present the JWT auth token it received from the server, and pass it on to OpenSIPS which will use that for authentication purposes.
+该模块实现基于 JSON Web Tokens 的认证。
+		在某些情况下（即 WebRTC），用户在另一层（而不是 SIP）进行认证，
+        因此在 SIP 层重复认证没有意义。
+        因此，SIP 客户端将简单地向 OpenSIPS 呈现其从服务器收到的 JWT 认证令牌，
+        OpenSIPS 将使用它进行认证目的。
 
-		It relies on two DB tables, one containing JWT profiles ( a profile name and it's SIP username associated to it ) and one containing JWT secrets. Each secret has a corresponding profile, the KEY used for signing the JWT and two timestamps describing a validation interval. Multiple JWT secrets can point to the same JWT profile.
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-The module depends on the following modules (in the other words
-			the listed modules must be loaded before this module):
+		它依赖于两个数据库表：一个包含 JWT 配置文件（配置文件名及其关联的 SIP 用户名），
+        另一个包含 JWT 密钥。每个密钥都有对应的配置文件，
+        用于签名 JWT 的密钥以及两个描述验证间隔的时间戳。
+        多个 JWT 密钥可以指向同一个 JWT 配置文件。
 
 
-- *database* -- Any database module
-				(currently mysql, postgres, dbtext) , in case the db_url parameter is set
+### 依赖
 
 
-#### External Libraries or Applications
+#### OpenSIPS 模块
 
 
-The following libraries or applications must be installed
-			before running OpenSIPS with this module loaded:
+该模块依赖以下模块（换句话说，
+			列出的模块必须在此模块之前加载）：
+
+
+- *database* -- 任何数据库模块
+				（当前为 mysql、postgres、dbtext），如果设置了 db_url 参数
+
+
+#### 外部库或应用程序
+
+
+运行加载了此模块的 OpenSIPS 之前必须安装
+			以下库或应用程序：
 
 
 - *libjwt-dev*
-- *openssl-dev* or
+- *openssl-dev* 或
 					*libssl-dev*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### db_mode (int)
+#### db_mode (整数)
 
 
-If set to 0, the module won't connect to the Database for reading the Keys for decoding JWTs - only jwt_script_authorize will be usable from the script.
+如果设置为 0，模块将不会连接到数据库来读取用于解码 JWT 的密钥——
+		此时只有 jwt_script_authorize 可从脚本使用。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="db_mode parameter usage"
+```c title="db_mode 参数使用"
 modparam("auth_jwt", "db_mode", 0)
 ```
 
 
-#### db_url (string)
+#### db_url (字符串)
 
 
-This is URL of the database to be used. Value of the parameter depends
-		on the database module used. For example for mysql and postgres modules
-		this is something like mysql://username:password@host:port/database.
-		For dbtext module (which stores data in plaintext files) it is
-		directory in which the database resides.
+这是要使用的数据库的 URL。参数的值取决于所使用的数据库模块。
+		例如，对于 mysql 和 postgres 模块，这类似于 mysql://username:password@host:port/database。
+		对于 dbtext 模块（以纯文本文件存储数据），这是数据库所在的目录。
 
 
-*Default value is "mysql://opensipsro:opensipsro@localhost/opensips".*
+*默认值为 "mysql://opensipsro:opensipsro@localhost/opensips"。*
 
 
-```c title="db_url parameter usage"
+```c title="db_url 参数使用"
 modparam("auth_jwt", "db_url", "dbdriver://username:password@dbhost/dbname")
 ```
 
 
-#### profiles_table (string)
+#### profiles_table (字符串)
 
 
-Name of the DB table containing the jwt profiles
+包含 jwt 配置文件的数据库表名
 
 
-Default value of this parameter is jwt_profiles.
+此参数的默认值为 jwt_profiles。
 
 
-```c title="profiles_table parameter usage"
+```c title="profiles_table 参数使用"
 modparam("auth_jwt", "profiles_table", "my_profiles")
 ```
 
 
-#### secrets_table (string)
+#### secrets_table (字符串)
 
 
-Name of the DB table containing the jwt secrets
+包含 jwt 密钥的数据库表名
 
 
-Default value of this parameter is jwt_secrets.
+此参数的默认值为 jwt_secrets。
 
 
-```c title="secrets_table parameter usage"
+```c title="secrets_table 参数使用"
 modparam("auth_jwt", "secrets_table", "my_secrets")
 ```
 
 
-#### tag_column (string)
+#### tag_column (字符串)
 
 
-Column holding the JWT profile tag.
+保存 JWT 配置文件标签的列。
 
 
-*Default value is "tag".*
+*默认值为 "tag"。*
 
 
-```c title="Set tag_column parameter"
+```c title="设置 tag_column 参数"
 ...
 modparam("auth_jwt", "tag_column", "my_tag_column")
 ...
 ```
 
 
-#### username_column (string)
+#### username_column (字符串)
 
 
-Column holding the JWT profile associated SIP username.
+保存 JWT 配置文件关联的 SIP 用户名的列。
 
 
-*Default value is "sip_username".*
+*默认值为 "sip_username"。*
 
 
-```c title="Set username_column parameter"
+```c title="设置 username_column 参数"
 ...
 modparam("auth_jwt", "username_column", "my_username_column")
 ...
 ```
 
 
-#### secret_tag_column (string)
+#### secret_tag_column (字符串)
 
 
-Column holding the JWT secret associated tag.
+保存 JWT 密钥关联标签的列。
 
 
-*Default value is "corresponding_tag".*
+*默认值为 "corresponding_tag"。*
 
 
-```c title="Set secret_tag_column parameter"
+```c title="设置 secret_tag_column 参数"
 ...
 modparam("auth_jwt", "secret_tag_column", "my_secret_tag_column")
 ...
 ```
 
 
-#### secret_column (string)
+#### secret_column (字符串)
 
 
-Column holding the actual jwt signing secret.
+保存实际 jwt 签名密钥的列。
 
 
-*default value is "secret".*
+*默认值为 "secret"。*
 
 
-```c title="set secret_column parameter"
+```c title="设置 secret_column 参数"
 ...
 modparam("auth_jwt", "secret_column", "my_secret_column")
 ...
 ```
 
 
-#### start_ts_column (string)
+#### start_ts_column (字符串)
 
 
-Column holding the JWT secret start UNIX timestamp.
+保存 JWT 密钥开始 UNIX 时间戳的列。
 
 
-*default value is "start_ts".*
+*默认值为 "start_ts"。*
 
 
-```c title="set start_ts parameter"
+```c title="设置 start_ts 参数"
 ...
 modparam("auth_jwt", "start_ts", "my_start_ts_column")
 ...
 ```
 
 
-#### end_ts_column (string)
+#### end_ts_column (字符串)
 
 
-column holding the jwt secret end unix timestamp.
+保存 jwt 密钥结束 unix 时间戳的列。
 
 
-*default value is "end_ts".*
+*默认值为 "end_ts"。*
 
 
-```c title="set end_ts parameter"
+```c title="设置 end_ts 参数"
 ...
 modparam("auth_jwt", "end_ts", "my_end_ts_column")
 ...
 ```
 
 
-#### tag_claim (string)
+#### tag_claim (字符串)
 
 
-The JWT claim which will be used to identify the JWT profile
+用于识别 JWT 配置文件的 JWT 声明
 
 
-*default value is "tag".*
+*默认值为 "tag"。*
 
 
-```c title="set tag_claim parameter"
+```c title="设置 tag_claim 参数"
 ...
 modparam("auth_jwt", "tag_claim", "my_tag_claim")
 ...
 ```
 
 
-#### load_credentials (string)
+#### load_credentials (字符串)
 
 
-This parameter specifies credentials to be fetched from the JWT profiles table when
-		the authentication is performed. The loaded credentials will be stored
-		in AVPs. If the AVP name is not specificaly given, it will be used a
-		NAME AVP with the same name as the column name.
+此参数指定执行认证时要从 JWT 配置文件表获取的凭据。
+		加载的凭据将存储在 AVP 中。
+        如果未特别给出 AVP 名称，将使用与列名相同的名称 AVP。
 
 
-Parameter syntax:
+参数语法：
 
 
 - *load_credentials = credential (';' credential)**
@@ -235,49 +238,53 @@ Parameter syntax:
 - *avp_specification = '$avp(' + NAME + ')'*
 
 
-Default value of this parameter is "none ( empty )".
+此参数的默认值为 "none（空）"。
 
 
-```c title="load_credentials parameter usage"
-# load my_extra_column into $avp(extra_jwt_info)
+```c title="load_credentials 参数使用"
+# 将 my_extra_column 加载到 $avp(extra_jwt_info)
 modparam("auth_jwt", "load_credentials", "$avp(extra_jwt_info)=my_extra_column")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### jwt_db_authorize(jwt_token,out_decoded_token,out_sip_username)
 
 
-The function will read the first param ( jwt_token ), extract the tag claim and then try to authenticate it against the DB secrets for the respective profile tag. In case of success, it populates the out_decoded_token pvar with the decoded JWT ( in plaintext format header_json.payload_json ) and the out_sip_username with the SIP username corresponding to that JWT profile.
+此函数将读取第一个参数（jwt_token），
+		提取标签声明，然后尝试针对相应配置文件标签的数据库密钥对其进行认证。
+        成功时，它会用解码后的 JWT（纯文本格式 header_json.payload_json）
+        填充 out_decoded_token pvar，
+        并用与该 JWT 配置文件对应的 SIP 用户名填充 out_sip_username。
 
 
-Negative codes may be interpreted as follows:
+负返回码的解释如下：
 
 
-- *-1 ( error)* - JWT authentication failed
+- *-1（错误）* - JWT 认证失败
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *jwt_token (string)* - The JWT token to perform auth on
-The string may contain pseudo variables.
-- *out_decoded_token (pvar)* - PVAR used to store the decoded JWT upon succesful auth
-- *out_sip_username (pvar)* - PVAR used to store the SIP username corresponding to the JWT profile, upon succesful auth
+- *jwt_token (字符串)* - 要进行认证的 JWT 令牌
+该字符串可以包含伪变量。
+- *out_decoded_token (pvar)* - 用于在成功认证后存储解码 JWT 的 PVAR
+- *out_sip_username (pvar)* - 用于在成功认证后存储与 JWT 配置文件对应的 SIP 用户名的 PVAR
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jwt_db_authorize usage"
+```c title="jwt_db_authorize 使用"
 ...
 if (!jwt_db_authorize("$avp(my_jwt_token)", $avp(decoded_token), $avp(sip_username) )) {
 	send_reply(401,"Unauthorized");
 	exit;
 } else {
-	xlog("Succesful JWT auth - $avp(decoded_token) \n");
+	xlog("JWT 认证成功 - $avp(decoded_token) \n");
 	if ($fU != $avp(sip_username)) {
 		send_reply(403,"Forbidden AUTH ID");
 		exit;
@@ -290,34 +297,36 @@ if (!jwt_db_authorize("$avp(my_jwt_token)", $avp(decoded_token), $avp(sip_userna
 #### jwt_script_authorize(jwt_token,key, out_decoded_token)
 
 
-The function will read the first param ( jwt_token ), decode it and then try to validate it against the provided key. If the JWT decoding is succesful, the out_decoded_token pvar will be populated.
-			Return codes are :
+此函数将读取第一个参数（jwt_token），解码它，
+		然后尝试使用提供的密钥对其进行验证。
+        如果 JWT 解码成功，out_decoded_token pvar 将被填充。
+			返回码如下：
 
 
-- -2 : Failure in decoding the JWT ( out_decoded_token will not be populated )
-- -1 : Failure in validating the JWT ( out_decoded_token will be populated )
-- 1 : JWT succesfully validated with the key ( out_decoded_token will be populated )
+- -2：解码 JWT 失败（out_decoded_token 将不会被填充）
+- -1：验证 JWT 失败（out_decoded_token 将被填充）
+- 1：使用密钥成功验证 JWT（out_decoded_token 将被填充）
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *jwt_token (string)* - The JWT token to perform auth on
-The string may contain pseudo variables.
-- *key (string)* - The key to be used for validating the JWT.
-- *out_decoded_token (pvar)* - PVAR used to store the decoded JWT
+- *jwt_token (字符串)* - 要进行认证的 JWT 令牌
+该字符串可以包含伪变量。
+- *key (字符串)* - 用于验证 JWT 的密钥。
+- *out_decoded_token (pvar)* - 用于存储解码 JWT 的 PVAR
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jwt_script_authorize usage"
+```c title="jwt_script_authorize 使用"
 ...
 if (!jwt_script_authorize("$avp(my_jwt_token)",$avp(pub_key), $avp(decoded_token))) {
 	send_reply(401,"Unauthorized");
 	exit;
 } else {
-	xlog("Succesful JWT auth - $avp(decoded_token) \n");
+	xlog("JWT 认证成功 - $avp(decoded_token) \n");
 }
 ...
 ```
@@ -326,29 +335,33 @@ if (!jwt_script_authorize("$avp(my_jwt_token)",$avp(pub_key), $avp(decoded_token
 #### extract_pub_key_from_cert(certificate,out_public_key)
 
 
-The function will read the first param ( certificate ), decode it and then try to extract the public key with the certificate. If the extraction is succesful, the out_public_key will be populated. Useful to be used in conjuction with the jwt_script_authorize function, since most providers make their certificates public, but the JWTs are signed with the actual public key embeded in the certificate.
-			Return codes are :
+此函数将读取第一个参数（certificate），解码它，
+		然后尝试从证书中提取公钥。
+        如果提取成功，out_public_key 将被填充。
+        可与 jwt_script_authorize 函数结合使用，
+        因为大多数提供商公开他们的证书，但 JWT 使用嵌入在证书中的实际公钥进行签名。
+			返回码如下：
 
 
-- -1 : Failure in extracting the pub key
-- 1 : out_public_key succesfully populated
+- -1：提取公钥失败
+- 1：out_public_key 成功填充
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *certificate (string)* - The certificate to read and from which to extract the public key
-The string may contain pseudo variables.
-- *out_public_key (pvar)* - PVAR used to store the extracted public key
+- *certificate (字符串)* - 要读取并从中提取公钥的证书
+该字符串可以包含伪变量。
+- *out_public_key (pvar)* - 用于存储提取的公钥的 PVAR
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="extract_pub_key_from_cert usage"
+```c title="extract_pub_key_from_cert 使用"
 ...
 if (extract_pub_key_from_cert("$avp(my_certificate)",$avp(my_pub_key))) {
-    xlog("Succesfully extracted public key - $avp(my_pub_key) \n");
+    xlog("成功提取公钥 - $avp(my_pub_key) \n");
 }
 ...
 ```
@@ -357,36 +370,37 @@ if (extract_pub_key_from_cert("$avp(my_certificate)",$avp(my_pub_key))) {
 #### extract_pub_key_from_exp_mod(e,n,out_public_key)
 
 
-The function reads a base64url-encoded RSA exponent (*e*) and modulus (*n*), then builds a PEM public key and stores it into *out_public_key*.
-			Return codes are :
+此函数读取 base64url 编码的 RSA 指数（*e*）和模数（*n*），
+		然后构建 PEM 公钥并将其存储到 *out_public_key*。
+			返回码如下：
 
 
-- -1 : Failure in extracting the pub key
-- 1 : out_public_key succesfully populated
+- -1：提取公钥失败
+- 1：out_public_key 成功填充
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *e (string)* - Base64url-encoded RSA exponent
-The string may contain pseudo variables.
-- *n (string)* - Base64url-encoded RSA modulus
-The string may contain pseudo variables.
-- *out_public_key (pvar)* - PVAR used to store the extracted public key
+- *e (字符串)* - Base64url 编码的 RSA 指数
+该字符串可以包含伪变量。
+- *n (字符串)* - Base64url 编码的 RSA 模数
+该字符串可以包含伪变量。
+- *out_public_key (pvar)* - 用于存储提取的公钥的 PVAR
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="extract_pub_key_from_exp_mod usage"
+```c title="extract_pub_key_from_exp_mod 使用"
 ...
 if (extract_pub_key_from_exp_mod("$avp(my_exp)", "$avp(my_mod)", $avp(my_pub_key))) {
-    xlog("Succesfully extracted public key - $avp(my_pub_key) \n");
+    xlog("成功提取公钥 - $avp(my_pub_key) \n");
 }
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

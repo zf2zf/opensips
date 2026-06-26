@@ -1,85 +1,70 @@
 ---
-title: "CLUSTERER Module"
-description: "The *clusterer* module is used to organize multiple OpenSIPS instances into groups(clusters) in which the nodes can communicate with each other in order to replicate, share information or perform distributed tasks. The distributed logic is performed either by different modules that use the *clust..."
+title: "CLUSTERER 模块"
+description: "*clusterer* 模块用于将多个 OpenSIPS 实例组织成组（集群），集群中的节点可以相互通信以复制、共享信息或执行分布式任务。分布式逻辑由使用 *clusterer* 接口的不同模块执行（即 *dialog* 模块可以复制对话框/概要，*ratelimit* 模块可以跨多个实例共享管道等），或在脚本级别执行。*clusterer* 模块本身仅提供发送/接收 BIN 数据包的接口以及获取节点可用性通知。它通过内部学习集群拓扑和节点状态来实现这一点。通过数据库或配置脚本配置集群中的节点。可以通过 MI 接口发送命令来检查和触发重新加载节点相关信息。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The *clusterer* module is used to organize multiple OpenSIPS instances into groups(clusters) in which the nodes can communicate with each other in order to replicate, share information or perform distributed tasks. The distributed logic is performed either by different modules that use the *clusterer* interface (i.e. the *dialog* module can replicate dialogs/profiles, the *ratelimit* module can share pipes across multiple 
-		instances etc.) or at the script level. The *clusterer* module itself only provides an interface to send/receive BIN packets and get notifications about node availability. It achieves this by internally learning the cluster topology and state of the nodes. Provisioning the nodes within a cluster is done over the database or through the configuration script. The node-related information can be checked and triggered to be reloaded by sending commands over the MI interface.
+*clusterer* 模块用于将多个 OpenSIPS 实例组织成组（集群），集群中的节点可以相互通信以复制、共享信息或执行分布式任务。分布式逻辑由使用 *clusterer* 接口的不同模块执行（即 *dialog* 模块可以复制对话框/概要，*ratelimit* 模块可以跨多个实例共享管道等），或在脚本级别执行。*clusterer* 模块本身仅提供发送/接收 BIN 数据包的接口以及获取节点可用性通知。它通过内部学习集群拓扑和节点状态来实现这一点。通过数据库或配置脚本配置集群中的节点。可以通过 MI 接口发送命令来检查和触发重新加载节点相关信息。
 
 
-The topology established by the *clusterer* module is an overlay of nodes where the "links" represent communication availability at BIN interface level. For this purpose, a probing mechanism is used, consisting of regular pings to all nodes in a cluster for which replies must be received within a given interval. All nodes in the cluster exchange information about the state of their links with other nodes and compute a "routing table" which gives a next hop for each destination. The metric for the shortest path is the number of hops. When there is no direct link to a destination, the BIN packet sent by a module is transparently routed through the cluster.
+*clusterer* 模块建立的拓扑是一个节点叠加层，其中"链接"表示 BIN 接口级别的通信可用性。为此，使用了一种探测机制，包括定期 ping 集群中的所有节点，必须在给定间隔内收到回复。集群中的所有节点交换关于其与其他节点的链路状态的信息，并计算一个"路由表"，该表为每个目的地提供下一跳。最短路径的度量是跳数。当没有到目的地的直接链路时，模块发送的 BIN 数据包会通过集群透明地路由。
 
 
-Note that an OpenSIPS instance can belong to multiple clusters, communicating and establishing the topology separately for each one. In order to provision this in the database or the script, each node has an unique ID at global level, which can be referenced in each cluster.
+请注意，一个 OpenSIPS 实例可以属于多个集群，分别通信并为每个集群建立拓扑。为了在数据库或脚本中配置，每个节点在全球级别有一个唯一的 ID，可以在每个集群中引用。
 
 
-An OpenSIPS instance can dynamically learn all the nodes in the cluster if database provisioning is not desired. It is enough to define at least one neigbour in the script in order to discover all the cluster components.
+如果不需要数据库配置，OpenSIPS 实例可以动态学习集群中的所有节点。只需在脚本中定义至少一个邻居即可发现所有集群组件。
 
 
-### Capabilities layer
+### 能力层
 
 
-The clusterer module also keeps track of the state of the nodes in terms of data synchronization for the functionalities (or "capabilities") implemented on top by other modules. Some capabilities require a full data sync(at OpenSIPS startup or at runtime via MI) from a valid "donor" node in the cluster that has the full data set. Furthermore, a capability can query the clusterer module in order to partition some distributed logic only over the synchronized nodes in the cluster.
+clusterer 模块还跟踪节点在数据同步方面的状态，用于其他模块在顶部实现的功能（或"能力"）。某些能力需要从集群中具有完整数据集的有效"供体"节点进行完整数据同步（在 OpenSIPS 启动时或通过 MI 在运行时）。此外，能力可以查询 clusterer 模块，以便仅将某些分布式逻辑划分到集群中已同步的节点上。
 
 
-Each node in the cluster starts with an empty dataset and tries to find
-		a suitable node to pull data from. In order to help "bootstrap" the
-		cluster, a "seed" node should be defined. This is done by setting the value
-		*seed* for the **flags**
-		column in the clusterer table(or the property with the same name in the
-		*my_node_info* parameter). The seed node will simply
-		fall back to a "synced" state after a configurable interval(
-		[seed fallback interval](#param_seed_fallback_interval) parameter). Note that
-		this mechanism is required only for capabilities that synchronize data
-		at startup, so check the corresponding modules documentation.
+集群中的每个节点以空数据集启动，并尝试找一个合适的节点从中拉取数据。为了帮助"引导"集群，应定义一个"种子"节点。这是通过将 **flags** 列在 clusterer 表中的值设置为 *seed* 来完成的（或在 *my_node_info* 参数中具有相同名称的属性）。种子节点将在可配置间隔后简单地回退到"同步"状态（[seed fallback interval](#param_seed_fallback_interval) 参数）。请注意，此机制仅在启动时同步数据的能力需要，因此请查看相应模块的文档。
 
 
-The clusterer module transparently exposes the *sip_addr* column from the clusterer table(or the property with the same name in the *my_node_info* parameter) to the modules on top so check the corresponding modules documentation for the use of this node related information.
+clusterer 模块透明地将 clusterer 表中的 *sip_addr* 列（或 *my_node_info* 参数中相同名称的属性）暴露给上面的模块，因此请查看相应模块的文档以了解此节点相关信息的使用。
 
 
-### Cluster-Bridge Replication
+### 集群桥接复制
 
 
-*(added in OpenSIPS 4.0)*
+*（在 OpenSIPS 4.0 中添加）*
 
 
-Cluster-Bridge Replication (or "bridge replication") allows modules to
-		exchange data across *different* clusters.  This
-		is meant to serve as a topology/data flow optimization feature, and it
-		could be useful in some OpenSIPS cluster setups with multiple data
-		centers.  In such cases, it might be desirable to minimize the amount
-		of inter-DC replication channels, for example:
+集群桥接复制（或"桥接复制"）允许模块跨*不同*集群交换数据。这意味着是一个拓扑/数据流优化功能，在某些具有多个数据中心的 OpenSIPS 集群设置中可能有用。在这种情况下，可能需要最小化 DC 间复制通道的数量，例如：
 
 
 ```c
-      Before (standard, full-mesh replication):
+      之前（标准，全网状复制）：
 
                     DC #1         DC #2
                           WAN link
                       A <─────────> C
                       ^ \        /  ^
-                      │   \   /     │         4 x OpenSIPS nodes, 1 x cluster
-                      │      X      │       (8 inter-DC replication channels)
+                      │   \   /     │         4 个 OpenSIPS 节点，1 个集群
+                      │      X      │       （8 个 DC 间复制通道）
                       │    /   \    │         AC, AD, BC, BD, CA, CB, DA, DB
                       v  /       \  v
                       B <─────────> D
                           WAN link
                        cluster_id: 1
 
-      After (cluster-bridged replication):
+      之后（集群桥接复制）：
 
                     DC #1         DC #2
                           WAN link
                       A ──────────> C
                       ^             ^
-                      │             │          4 x OpenSIPS nodes, 2 x clusters
-                      │             │       (2 inter-DC replication channels)
+                      │             │          4 个 OpenSIPS 节点，2 个集群
+                      │             │       （2 个 DC 间复制通道）
                       │             │                   AC, DB
                       v             v
                       B <────────── D
@@ -89,9 +74,7 @@ Cluster-Bridge Replication (or "bridge replication") allows modules to
 ```
 
 
-A *new table* has been added to represent the
-		inter-cluster replication bridges, named
-		[clusterer_bridge](#param_db_bridge_table):
+*添加了一个新表* 来表示集群间复制桥接，名为 [clusterer_bridge](#param_db_bridge_table)：
 
 
 ```c
@@ -103,170 +86,152 @@ A *new table* has been added to represent the
     |  2 |         2 |         1 | wan1       | bin:10.0.0.210,bin:10.0.0.212 |
     +----+-----------+-----------+------------+-------------------------------+
     2 rows in set (0,00 sec)
-		
+			
 ```
 
 
-*Example of a bi-directional bridge between clusters "1" and "2".*
+*集群"1"和"2"之间双向桥接的示例。*
 
 
-The "send_shtag" controls the originator node for each cluster bridge defined in the table.
-		Only the node with the "active" tag will actually send data over the network.
-		Sharing tags can be defined using the [sharing tag](#param_sharing_tag) module parameter.
+"send_shtag" 控制表中定义的每个集群桥接的发起节点。只有具有"active"标签的节点才会实际通过网络发送数据。可以使用 [sharing tag](#param_sharing_tag) 模块参数定义共享标签。
 
 
-The "dst_node_csv" functions as a list of remote cluster nodes to try.
-		The module will attempt a single TCP send per node, in failover fashion (always same order).
+"dst_node_csv" 充当要尝试的远程集群节点列表。该模块将为每个节点尝试一次 TCP 发送，按故障转移方式（始终相同顺序）。
 
 
-At the time of writing, the only module using the new bridge replication
-		feature is [ratelimit](../ratelimit#bridge_replication),
-		in order to optimize its "CPS pipes broadcasting" replication mechanism.
+在撰写本文时，使用新桥接复制功能的唯一模块是 [ratelimit](../ratelimit#bridge_replication)，以优化其"CPS 管道广播"复制机制。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *a database module* - if [db mode](#param_db_mode)
-				is *1*.
-- *proto_bin module*.
+- *数据库模块* - 如果 [db mode](#param_db_mode) 为 *1*。
+- *proto_bin 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### my_node_id
 
 
-The id of the local instance. This parameter must be equal to one of the
-				*node_id* fields in the database.
+本地实例的 ID。此参数必须等于数据库中 *node_id* 字段之一。
 
 
-*No default value. This parameter must be explicitly set to a value greater than zero.*
+*没有默认值。此参数必须明确设置为大于零的值。*
 
 
-```c title="Set my_node_id parameter"
+```c title="设置 my_node_id 参数"
 ...
 modparam("clusterer", "my_node_id", 1)
 ...
-		
+			
 ```
 
 
 #### db_mode
 
 
-Specifies whether the node information for the local instance,
-				as well as other instances in the cluster, should be loaded from
-				the database or configured in the script(see [my node info](#param_my_node_info)
-				and [neighbor node info](#param_neighbor_node_info)). A value of "0"
-				means that DB is not used and the cluster topology in terms of node
-				information will be discovered dynamically at runtime.
+指定是否应从数据库加载本地实例的节点信息以及集群中其他实例的信息，或者在脚本中配置（见 [my node info](#param_my_node_info) 和 [neighbor node info](#param_neighbor_node_info)）。值为 "0" 表示不使用 DB，节点信息方面的集群拓扑将在运行时动态发现。
 
 
-If DB mode is enabled, only the nodes defined in the database will be
-				accepted by this instance.
+如果启用了 DB 模式，则此实例仅接受数据库中定义的节点。
 
 
-*Default value is "1"*
+*默认值为 "1"*
 
 
-```c title="Set db_mode parameter"
+```c title="设置 db_mode 参数"
 ...
 modparam("clusterer", "db_mode", 0)
 ...
-		
+			
 ```
 
 
 #### db_url
 
 
-The database url.
+数据库 URL。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("clusterer", "db_url",
 	"mysql://opensips:opensipsrw@localhost/opensips")
 ...
-		
+			
 ```
 
 
 #### db_table
 
 
-The name of the table storing the clustering information.
+存储集群信息的表名。
 
 
-*Default value is "clusterer".*
+*默认值为 "clusterer"。*
 
 
-```c title="Set db_table parameter"
+```c title="设置 db_table 参数"
 ...
 modparam("clusterer", "db_table", "clusterer")
 ...
-		
+			
 ```
 
 
 #### db_bridge_table
 
 
-The name of the table storing the inter-cluster bridge definitions.
+存储集群间桥接定义的表名。
 
 
-*Default value is "clusterer_bridge".*
+*默认值为 "clusterer_bridge"。*
 
 
-```c title="Set db_bridge_table parameter"
+```c title="设置 db_bridge_table 参数"
 ...
 modparam("clusterer", "db_bridge_table", "clusterer_bridge")
 ...
-		
+			
 ```
 
 
 #### sharing_tag
 
 
-The definition of a sharing tag. The sharing tag is 
-			managed by the clusterer module, but can be used (in terms
-			of reading its state) by any module build on top of 
-			clusterer engine, like dialog or presence.
+共享标签的定义。共享标签由 clusterer 模块管理，但可以被构建在 clusterer 引擎之上的任何模块（如 dialog 或 presence）使用（就读取其状态而言）。
 
 
-Note that other tags may be dynamically learned during runtime via 
-			clustering communication with other nodes.
+请注意，其他标签可能在运行时通过与集群中其他节点的集群通信动态学习。
 
 
-The format for this value is "tag_name / cluster_id = active/backup".
+此值的格式为 "tag_name / cluster_id = active/backup"。
 
 
-Multiple definitions of this parameter are allowed. The default value is "none".
+允许多次定义此参数。默认值为 "none"。
 
 
-```c title="Set sharing_tag parameter"
+```c title="设置 sharing_tag 参数"
 ...
 modparam("clusterer", "sharing_tag", "vip1/2=active")
 modparam("clusterer", "sharing_tag", "node/10=backup")
@@ -277,579 +242,543 @@ modparam("clusterer", "sharing_tag", "node/10=backup")
 #### my_node_info
 
 
-Node specification similar to the information provided by a row in
-				the clusterer DB table corresponding to the local instance. This
-				parameter can be set multiple times in order to include the local
-				node in multiple clusters.
+与 clusterer DB 表中对应于本地实例的行类似节点规范。此参数可以设置多次以将本地节点包含在多个集群中。
 
 
-Parameter format: multiple "*prop=value*" property
-				definitions separated by '*,*' where the name of the
-				properties is the same as the DB column names. At least the
-				*cluster_id* and *url*
-				properties must be defined.
+参数格式：多个 "*prop=value*" 属性定义用 ',' 分隔，属性名称与 DB 列名相同。至少必须定义 *cluster_id* 和 *url* 属性。
 
 
-This parameter is required if [db mode](#param_db_mode) is set
-			to "0" in order to properly advertise information about
-			the local instance in the dynamic node learning process.
+如果 [db mode](#param_db_mode) 设置为 "0"，则需要此参数以便在动态节点学习过程中正确通告关于本地实例的信息。
 
 
-```c title="Set my_node_info parameter"
+```c title="设置 my_node_info 参数"
 ...
 modparam("clusterer", "my_node_info", "cluster_id=1, url=bin:192.168.0.5:5566")
 ...
-		
+			
 ```
 
 
 #### neighbor_node_info
 
 
-Node specification similar to the information provided by a row in
-				the clusterer DB table corresponding to another instance in the
-				cluster. This node will be the entry point in the cluster for the
-				local instance in the dynamic node learning process. This parameter
-				can be set multiple times to define multiple neigbors to connect to (or
-				the same neighbor but in different clusters).
+与 clusterer DB 表中对应于集群中另一个实例的行类似的节点规范。此节点将是本地实例在动态节点学习过程中进入集群的入口点。此参数可以设置多次以定义多个要连接的邻居（或同一邻居但在不同集群中）。
 
 
-Parameter format: multiple "*prop=value*" property
-				definitions separated by '*,*' where the name of
-				the properties is the same as the DB column names. At least the
-				*cluster_id*, *node_id*
-				and *url* properties must be defined.
+参数格式：多个 "*prop=value*" 属性定义用 ',' 分隔，属性名称与 DB 列名相同。至少必须定义 *cluster_id*、*node_id* 和 *url* 属性。
 
 
-This parameter should be set at least once if
-			[db mode](#param_db_mode) is set to *0* in order
-			to properly learn the cluster topology. If not set, the only way to learn
-			the node topology is by other nodes connecting to the local instance.
+如果 [db mode](#param_db_mode) 设置为 *0*，则应至少设置一次此参数以便正确学习集群拓扑。如果未设置，唯一学习节点拓扑的方式是通过其他节点连接到本地实例。
 
 
-```c title="Set neighbor_node_info parameter"
+```c title="设置 neighbor_node_info 参数"
 ...
 modparam("clusterer", "neighbor_node_info", "cluster_id=1,node_id=2,url=bin:192.168.0.6:5566")
 ...
-		
+			
 ```
 
 
 #### ping_interval
 
 
-The interval in seconds between regular pings sent to a neighbour node.
+向邻居节点发送定期 ping 之间的间隔（秒）。
 
 
-*Default value is "4"*
+*默认值为 "4"*
 
 
-```c title="Set ping_interval parameter"
+```c title="设置 ping_interval 参数"
 ...
 modparam("clusterer", "ping_interval", 1)
 ...
-		
+			
 ```
 
 
 #### ping_timeout
 
 
-The time in milliseconds to wait for a reply to a previously sent ping before retrying or considering the link with the neighbour node down. This is also the interval between successive retries if the send fails.
+在重试或认为与邻居节点的链路中断之前等待先前发送的 ping 回复的时间（毫秒）。这也是发送失败时连续重试之间的间隔。
 
 
-*Default value is "1000"*
+*默认值为 "1000"*
 
 
-```c title="Set ping_timeout parameter"
+```c title="设置 ping_timeout 参数"
 ...
 modparam("clusterer", "ping_timeout", 500)
 ...
-		
+			
 ```
 
 
 #### node_timeout
 
 
-The time in seconds to wait before pinging is restarted for a failed node.
+在重启失败节点的 ping 之前等待的时间（秒）。
 
 
-*Default value is "60"*
+*默认值为 "60"*
 
 
-```c title="Set node_timeout parameter"
+```c title="设置 node_timeout 参数"
 ...
 modparam("clusterer", "node_timeout", 10)
 ...
-		
+			
 ```
 
 
 #### seed_fallback_interval
 
 
-Only relevant for "seed" nodes.  The time, in seconds, to wait
-                for a suitable donor node before falling back to a "synced"
-                state, following a node restart or an MI cluster sync command.
+仅与"种子"节点相关。在节点重启或 MI 集群同步命令后，在回退到"同步"状态之前等待合适供体节点的时间（秒）。
 
 
-*Default value is "5".*
+*默认值为 "5"。*
 
 
-```c title="Set seed_fallback_interval parameter"
+```c title="设置 seed_fallback_interval 参数"
 ...
 modparam("clusterer", "seed_fallback_interval", 10)
 ...
-		
+			
 ```
 
 
 #### sync_timeout
 
 
-The inteval, in seconds, since the last sync data packet received
-                after which to consider the sync process as failed and revert the
-                node to the not synced state.
+自上次收到同步数据包以来经过的秒数，超过此时间将认为同步过程失败并将节点恢复到未同步状态。
 
 
-*Default value is "15".*
+*默认值为 "15"。*
 
 
-```c title="Set sync_timeout parameter"
+```c title="设置 sync_timeout 参数"
 ...
 modparam("clusterer", "sync_timeout", 5)
 ...
-		
+			
 ```
 
 
 #### sync_packet_size
 
 
-The maximum size of the BIN packets sent while doing data synchronization. This is only a suggested value as the actual size of the packets may be slightly larger.
+执行数据同步时发送的 BIN 数据包的最大大小。这只是一个建议值，因为数据包的实际大小可能略大。
 
 
-*Default value is "65535".*
+*默认值为 "65535"。*
 
 
-```c title="Set sync_packet_size parameter"
+```c title="设置 sync_packet_size 参数"
 ...
 modparam("clusterer", "sync_packet_size", 32765)
 ...
-		
+			
 ```
 
 
 #### dispatch_jobs
 
 
-Enables the dispatching of jobs(processing replicated data packets)
-            from the receiving TCP worker process to free opensips workers
-            (including UDP, timer processes etc.).
+启用将作业（处理复制的数据包）从接收 TCP 工作进程分派到空闲 opensips 工作进程（包括 UDP、定时器进程等）。
 
 
-This generally improves the performance of handling replication packets
-            in high traffic scenarios and should not be disabled.
+这通常会提高在高流量场景中处理复制包的性能，不应禁用。
 
 
-Nevertheless there are cases where the "thundering herd" problem occurs
-            which causes abnormaly high CPU loads. Disabling this dispatching
-            mechanism solves such issues.
+尽管如此，在某些情况下会出现"雷鸣般的群体"问题，导致 CPU 负载异常高。禁用此分派机制可以解决此类问题。
 
 
-*Default value is "1" (enabled).*
+*默认值为 "1"（启用）。*
 
 
-```c title="Set dispatch_jobs parameter"
+```c title="设置 dispatch_jobs 参数"
 ...
 modparam("clusterer", "dispatch_jobs", 0)
 ...
-		
+			
 ```
 
 
 #### id_col
 
 
-The name of the column storing an id for the table rows.
+存储表行 ID 的列名。
 
 
-*Default value is "id".*
+*默认值为 "id"。*
 
 
-```c title="Set id_col parameter"
+```c title="设置 id_col 参数"
 ...
 modparam("clusterer", "id_col", "id")
 ...
-		
+			
 ```
 
 
 #### cluster_id_col
 
 
-The name of the column to store the id of a cluster.
+存储集群 ID 的列名。
 
 
-*Default value is "cluster_id".*
+*默认值为 "cluster_id"。*
 
 
-```c title="Set cluster_id_col parameter"
+```c title="设置 cluster_id_col 参数"
 ...
 modparam("clusterer", "cluster_id_col", "cluster_id")
 ...
-		
+			
 ```
 
 
 #### node_id_col
 
 
-The name of the column to store the id of an instance. The values must be greater than 0.
+存储实例 ID 的列名。值必须大于 0。
 
 
-*Default value is "node_id".*
+*默认值为 "node_id"。*
 
 
-```c title="Set node_id_col parameter"
+```c title="设置 node_id_col 参数"
 ...
 modparam("clusterer", "node_id_col", "node_id")
 ...
-		
+			
 ```
 
 
 #### url_col
 
 
-The name of the column containing the instance url. The values must be greater than 0.
+包含实例 URL 的列名。值必须大于 0。
 
 
-*Default value is "url".*
+*默认值为 "url"。*
 
 
-```c title="Set url_col parameter"
+```c title="设置 url_col 参数"
 ...
 modparam("clusterer", "url_col", "url")
 ...
-		
+			
 ```
 
 
 #### state_col
 
 
-The name of the column storing the state of the node(enabled/disabled).
+存储节点状态（启用/禁用）的列名。
 
 
-*Default value is "state".*
+*默认值为 "state"。*
 
 
-```c title="Set state_col parameter"
+```c title="设置 state_col 参数"
 ...
 modparam("clusterer", "state_col", "state")
 ...
-		
+			
 ```
 
 
 #### no_ping_retries_col
 
 
-The name of the column containing the maximum number of ping retries before the link with the neighbour node is considered down.
+包含在认为与邻居节点的链路中断之前最大 ping 重试次数的列名。
 
 
-*Default value is "no_ping_retries".*
+*默认值为 "no_ping_retries"。*
 
 
-```c title="Set no_ping_retries_col parameter"
+```c title="设置 no_ping_retries_col 参数"
 ...
 modparam("clusterer", "no_ping_retries_col", "no_ping_retries")
 ...
-		
+			
 ```
 
 
 #### priority_col
 
 
-The name of the column storing the node priority to be chosen as next hop in case of same length(number of hops) paths when rerouting messages.
+存储节点优先级的列名，在重新路由消息时，当相同长度（跳数）的路径时选择下一跳。
 
 
-*Default value is "priority".*
+*默认值为 "priority"。*
 
 
-```c title="Set priority_col parameter"
+```c title="设置 priority_col 参数"
 ...
 modparam("clusterer", "priority_col", "priority")
 ...
-		
+			
 ```
 
 
 #### sip_addr_col
 
 
-The name of the column containing a SIP address for the node.
+包含节点 SIP 地址的列名。
 
 
-*Default value is "sip_addr".*
+*默认值为 "sip_addr"。*
 
 
-```c title="Set sip_addr_col parameter"
+```c title="设置 sip_addr_col 参数"
 ...
 modparam("clusterer", "sip_addr_col", "sip_addr")
 ...
-		
+			
 ```
 
 
 #### flags_col
 
 
-The name of the column containing the node flags.
+包含节点标志的列名。
 
 
-*Default value is "flags".*
+*默认值为 "flags"。*
 
 
-```c title="Set flags_col parameter"
+```c title="设置 flags_col 参数"
 ...
 modparam("clusterer", "flags_col", "flags")
 ...
-		
+			
 ```
 
 
 #### description_col
 
 
-The name of the column containing a node description.
+包含节点描述的列名。
 
 
-*Default value is "description".*
+*默认值为 "description"。*
 
 
-```c title="Set description_col parameter"
+```c title="设置 description_col 参数"
 ...
 modparam("clusterer", "description_col", "description")
 ...
-		
+			
 ```
 
 
 #### enable_stats (integer)
 
 
-If the statistics support should be enabled or not. Via statistic
-				variables, the module provide information about the cluster nodes.
-				Set it to zero to disable or to non-zero to enable it.
+是否应启用统计支持。通过统计变量，模块提供有关集群节点的信息。将其设置为零以禁用，非零以启用。
 
 
-*Default value is "1 (enabled)".*
+*默认值为 "1（启用）"。*
 
 
-```c title="Set enable_stats parameter"
+```c title="设置 enable_stats 参数"
 ...
 modparam("clusterer", "enable_stats", 0)
 ...
-				
+					
 ```
 
 
 #### enable_rerouting (integer)
 
 
-If packets should be rerouted via another node if a direct route
-				to destination is unavailible. Disabling may improve stability in
-				two-node topologies.
-				Set it to zero to disable or to non-zero to enable it.
+如果到目的地的直接路由不可用，数据包是否应通过另一个节点重新路由。在双节点拓扑中禁用可以提高稳定性。
+将其设置为零以禁用，非零以启用。
 
 
-*Default value is "1 (enabled)".*
+*默认值为 "1（启用）"。*
 
 
-```c title="Set enable_rerouting parameter"
+```c title="设置 enable_rerouting 参数"
 ...
 modparam("clusterer", "enable_rerouting", 0)
 ...
-				
+					
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### cluster_send_req(cluster_id, dst_id, msg, [tag])
 
 
-This function is used to send a generic, request-like message, containing custom data, to a specific node in a cluster, directly from the script. The message is not a "request" per se but according to the logic on the receiving side, that node can send back a reply. In order to correlate a received reply with the request sent out, the function returns, through the *tag* parameter, a randomly generated communication tag, which is sent along in the the original message, that can be checked against the tag received in a reply.
+此函数用于从脚本向集群中的特定节点发送包含自定义数据的通用请求类消息。该消息本身不是"请求"，但根据接收端的逻辑，该节点可以发送回复。为了将收到的回复与发出的请求相关联，该函数通过 *tag* 参数返回一个随机生成的通信标签，该标签随原始消息一起发送，可以与收到回复中的标签进行对照检查。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *cluster_id* (int) - the cluster ID of the destination node;
-- *dst_id* (int) - the ID of the destiantion node;
-- *msg* (string) - actual message payload;
-- *tag* (var, optional) - randomly generated communication tag.
+- *cluster_id* (int) - 目标节点的集群 ID；
+- *dst_id* (int) - 目标节点的 ID；
+- *msg* (string) - 实际消息负载；
+- *tag* (var, optional) - 随机生成的通信标签。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successfully sent message to destination node or a valid next hop
-- *-1* - local node is disabled so sending is impossbile
-- *-2* - destination node is not reachable through any path according to the discovered topology
-- *-3* - destination node or valid next hop appear to be reachable but send failed or other OpenSIPS internal error
+- *1* - 成功发送消息到目标节点或有效下一跳
+- *-1* - 本地节点已禁用，无法发送
+- *-2* - 根据发现的拓扑，目标节点无法通过任何路径到达
+- *-3* - 目标节点或有效下一跳似乎可以到达但发送失败或其他 OpenSIPS 内部错误
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, LOCAL_ROUTE and EVENT_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、LOCAL_ROUTE 和 EVENT_ROUTE。
 
 
-```c title="cluster_send_req() usage"
+```c title="cluster_send_req() 使用"
 ...
-# send a request
+# 发送请求
 cluster_send_req(1, 1, "Check USER: $fU", $var(req_tag));
-# wait for reply
+# 等待回复
 $avp(filter) = "tag=" + $var(req_tag);
 async(wait_for_event("E_CLUSTERER_RPL_RECEIVED", $avp(filter), 5), rpl_resume);
-# done
+# 完成
 ...
 route[rpl_resume] {
   xlog("Received reply: $avp(msg)\n");
 }
 ...
-				
+					
 ```
 
 
 #### cluster_send_rpl(cluster_id, dst_id, msg, tag)
 
 
-This function is used to send a generic, reply-like message, containing custom data, to a specific node in a cluster, directly from the script. The message is marked as a "reply" so this function should ony be used for replying to a previously request-like message received. In order for the other node, which initially sent a request, to be able to correlate it with this reply, a communication tag, received along with the request, should be passed to the function.
+此函数用于从脚本向集群中的特定节点发送包含自定义数据的通用回复类消息。该消息被标记为"回复"，因此此函数应仅用于回复先前收到的请求类消息。为了让最初发送请求的其他节点能够将其与此回复相关联，应将与请求一起收到的通信标签传递给函数。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *cluster_id* (int) - the cluster ID of the destination node;
-- *dst_id* (int) - the ID of the destiantion node;
-- *msg* (string) - actual message payload;
-- *tag* (var) - communication tag.
+- *cluster_id* (int) - 目标节点的集群 ID；
+- *dst_id* (int) - 目标节点的 ID；
+- *msg* (string) - 实际消息负载；
+- *tag* (var) - 通信标签。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successfully sent message to destination node or a valid next hop
-- *-1* - local node is disabled so sending is impossbile
-- *-2* - destination node is not reachable through any path according to the discovered topology
-- *-3* - destination node or valid next hop appear to be reachable but send failed or other OpenSIPS internal error
+- *1* - 成功发送消息到目标节点或有效下一跳
+- *-1* - 本地节点已禁用，无法发送
+- *-2* - 根据发现的拓扑，目标节点无法通过任何路径到达
+- *-3* - 目标节点或有效下一跳似乎可以到达但发送失败或其他 OpenSIPS 内部错误
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, LOCAL_ROUTE and EVENT_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、LOCAL_ROUTE 和 EVENT_ROUTE。
 
 
-```c title="cluster_send_rpl() usage"
+```c title="cluster_send_rpl() 使用"
 ...
 event_route[E_CLUSTERER_REQ_RECEIVED] {
   cluster_send_rpl($param(cluster_id), $param(src_id), $var(my_reply), $param(tag));
 }
 ...
-				
+					
 ```
 
 
 #### cluster_broadcast_req(cluster_id, msg, [tag], [include_self])
 
 
-This function has a similar behaviour to the `cluster_send_req()` function with the exception that the message is sent to all the nodes in the specified cluster.
+此函数与 `cluster_send_req()` 函数类似，不同之处在于消息被发送到指定集群中的所有节点。
 
 
-- *include_self* (bool, optional, default: *false*) - raise the event for current node as well, but without actually sending a packet (both req and rpl).
+- *include_self* (bool, optional, default: *false*) - 也为当前节点引发事件，但不实际发送数据包（请求和回复都）。
 
 
-The function can return the following values:
+函数可以返回以下值：
 
 
-- *1* - successfully sent message to at least one node;
-- *-1* - local node is disabled so sending is impossbile;
-- *-2* - all nodes in the cluster are unreachable according to the discovered topology;
-- *-3* - send failed for all nodes in the cluster or other OpenSIPS internal error.
+- *1* - 成功发送消息到至少一个节点；
+- *-1* - 本地节点已禁用，无法发送；
+- *-2* - 根据发现的拓扑，集群中所有节点都无法到达；
+- *-3* - 发送给集群中所有节点失败或其他 OpenSIPS 内部错误。
 
 
-The meaning of the parameters is the same as for `cluster_send_req()`.
+参数的含义与 `cluster_send_req()` 相同。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, LOCAL_ROUTE and EVENT_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、LOCAL_ROUTE 和 EVENT_ROUTE。
 
 
-```c title="cluster_broadcast_req() usage"
+```c title="cluster_broadcast_req() 使用"
 ...
-# also raise the event for current node
+# 也为当前节点引发事件
 cluster_broadcast_req($var(cl_id), $var(share_data), , true);
 ...
-				
+					
 ```
 
 
 #### cluster_check_addr(cluster_id, ip, addr_type)
 
 
-This function checks whether the given IP address belongs
-					to one of the nodes in the cluster.
+此函数检查给定 IP 地址是否属于集群中的节点之一。
 
 
-Parameters:
+参数：
 
 
 - *cluster_id* (int)
 - *ip* (string)
 - *addr_type* (string, optional) -
-						select the address of the node that the comparison
-						is made against, with the possible values of:
+						选择要进行比较的节点地址，可能的值为：
 						
-							
-								*"sip"* (default) - a node's DB provisioned SIP address
-							
-							
-								*"bin"* - a node's BIN interface listener
+						
+							*"sip"* (default) - 节点的数据库配置 SIP 地址
+						
+						
+							*"bin"* - 节点的 BIN 接口监听器
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, LOCAL_ROUTE and EVENT_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、LOCAL_ROUTE 和 EVENT_ROUTE。
 
 
-```c title="cluster_check_addr() usage"
+```c title="cluster_check_addr() 使用"
 ...
 if (cluster_check_addr(1, $si)) {
 	...
 }
 ...
-				
+					
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### clusterer:reload
 
 
-Replaces obsolete MI command: *clusterer_reload*.
+替换已弃用的 MI 命令：*clusterer_reload*。
 
 
-Reloads data from the clusterer database. The currently established topology will be lost and the node will rediscover the new topology.
+从 clusterer 数据库重新加载数据。当前建立的拓扑将丢失，节点将重新发现新拓扑。
 
 
-Name: *clusterer:reload*
+名称：*clusterer:reload*
 
 
-Parameters:*none*
+参数：*无*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -861,19 +790,19 @@ MI FIFO Command Format:
 #### clusterer:list
 
 
-Replaces obsolete MI command: *clusterer_list*.
+替换已弃用的 MI 命令：*clusterer_list*。
 
 
-Lists information(node id, URL, link state with that node etc.) about the other nodes in each cluster.
+列出有关每个集群中其他节点的信息（节点 ID、URL、与该节点的链路状态等）。
 
 
-Name: *clusterer:list*
+名称：*clusterer:list*
 
 
-Parameters:*none*
+参数：*无*
 
 
-```c title="clusterer:list usage"
+```c title="clusterer:list 使用"
 $ opensips-cli -x mi clusterer:list
 {
     "Clusters": [
@@ -898,22 +827,22 @@ $ opensips-cli -x mi clusterer:list
 #### clusterer:list_topology
 
 
-Replaces obsolete MI command: *clusterer_list_topology*.
+替换已弃用的 MI 命令：*clusterer_list_topology*。
 
 
-Lists each cluster's topology from the local node's perspective as an adjacency list. A node appears as a neighbour if the link with that node is up.
+从本地节点的角度列出每个集群的拓扑作为邻接表。如果节点的链路处于活动状态，则该节点显示为邻居。
 
 
-Note that if a node id appears in multiple clusters, it refers to the same instance that belongs to different clusters, for which it has a different topology.
+请注意，如果节点 ID 出现在多个集群中，它指的是属于不同集群的同一实例，它有不同的拓扑。
 
 
-Name: *clusterer:list_topology*
+名称：*clusterer:list_topology*
 
 
-Parameters:*none*
+参数：*无*
 
 
-```c title="clusterer:list_topology usage"
+```c title="clusterer:list_topology 使用"
 $ opensips-cli -x mi clusterer:list_topology
 {
     "Clusters": [
@@ -942,31 +871,30 @@ $ opensips-cli -x mi clusterer:list_topology
 #### clusterer:set_status
 
 
-Replaces obsolete MI command: *clusterer_set_status*.
+替换已弃用的 MI 命令：*clusterer_set_status*。
 
 
-Sets the status(Enabled/Disabled) of a node. If the local instance is disabled, the node will not send any messages and ignore received ones thus appearing as a failed node in the topology (from the other node's perspective). If a different node is disabled, the specified node will simply be ignored by the local instance in terms of sending/receiving any messages, as if no longer part of the topology.
+设置节点的状态（启用/禁用）。如果本地实例被禁用，节点将不发送任何消息并忽略收到的消息，从而在拓扑中显得像是一个失败的节点（从其他节点的角度看）。如果不同的节点被禁用，指定节点将在发送/接收任何消息方面被本地实例简单忽略，就好像不再是拓扑的一部分。
 
 
-Name: *clusterer:set_status*
+名称：*clusterer:set_status*
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - indicates the id of the cluster.
-- *node_id* (optional) - indicates the id of the node to be disabled.
-			If missing, the local instance will be disalbed.
-- *status* - indicates the new status(0 - Disabled, 1 - Enabled).
+- *cluster_id* - 指示集群的 ID。
+- *node_id* (optional) - 指示要禁用的节点的 ID。如果缺失，本地实例将被禁用。
+- *status* - 指示新状态（0 - 禁用，1 - 启用）。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-		#disable the local instance
+		# 禁用本地实例
 		opensips-cli -x mi clusterer:set_status 1 0
-		#disable node ID 3
+		# 禁用节点 ID 3
 		opensips-cli -x mi clusterer:set_status 1 3 0
 		
 ```
@@ -975,31 +903,26 @@ MI FIFO Command Format:
 #### clusterer:remove_node
 
 
-Replaces obsolete MI command: *clusterer_remove_node*.
+替换已弃用的 MI 命令：*clusterer_remove_node*。
 
 
-Removes a node from the cluster's topology. It is enough to run the function
-			on a single node in order to remove the target node from all the other
-			nodes in the cluster. If the node to be removed is running when triggering
-			this function, it will be automatically disabled (equivalent to running
-			[mi set status](#mi_set_status) on that specific node).
+从集群拓扑中移除节点。只需在一个节点上运行函数即可从集群中所有其他节点移除目标节点。如果要移除的节点在触发此函数时正在运行，它将自动被禁用（等同于在该特定节点上运行 [mi set status](#mi_set_status)）。
 
 
-This function can only be used when [db mode](#param_db_mode) is set to
-			*0* (disabled).
+此函数仅在 [db mode](#param_db_mode) 设置为 *0*（禁用）时可用。
 
 
-Name: *clusterer:remove_node*
+名称：*clusterer:remove_node*
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - cluster ID
-- *node_id* - ID of the node to be removed.
+- *cluster_id* - 集群 ID
+- *node_id* - 要移除的节点的 ID。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1011,30 +934,28 @@ MI FIFO Command Format:
 #### clusterer:send_mi
 
 
-Replaces obsolete MI command: *cluster_send_mi*.
+替换已弃用的 MI 命令：*cluster_send_mi*。
 
 
-Dispatches a given MI command to be run on a specific node in the cluster.
+分派给定的 MI 命令在集群中的特定节点上运行。
 
 
-Name: *clusterer:send_mi*
+名称：*clusterer:send_mi*
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - id of the cluster.
-- *destination* - id of the destination node
-- *cmd_name* - name of the MI command to be run
-- *cmd_params* (optional) - array of parameters for
-			the MI command to be run
+- *cluster_id* - 集群的 ID。
+- *destination* - 目标节点的 ID
+- *cmd_name* - 要运行的 MI 命令的名称
+- *cmd_params* (optional) - 要运行的 MI 命令的参数数组
 
 
-Note that MI commands that require named parameters or arrays as
-			parameter values are not currently supported.
+请注意，目前不支持需要命名参数或数组作为参数值的 MI 命令。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1046,29 +967,27 @@ opensips-cli -x mi clusterer:send_mi 1 3 lb_reload
 #### clusterer:broadcast_mi
 
 
-Replaces obsolete MI command: *cluster_broadcast_mi*.
+替换已弃用的 MI 命令：*cluster_broadcast_mi*。
 
 
-Dispatches a given MI command to be run on all the nodes in a cluster. The command is also executed locally.
+分派给定的 MI 命令在集群中的所有节点上运行。该命令也在本地执行。
 
 
-Name: *clusterer:broadcast_mi*
+名称：*clusterer:broadcast_mi*
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - id of the cluster.
-- *cmd_name* - name of the MI command to be run
-- *cmd_params* (optional) - array of parameters for
-			the MI command to be run
+- *cluster_id* - 集群的 ID。
+- *cmd_name* - 要运行的 MI 命令的名称
+- *cmd_params* (optional) - 要运行的 MI 命令的参数数组
 
 
-Note that MI commands that require named parameters or arrays as
-			parameter values are not currently supported.
+请注意，目前不支持需要命名参数或数组作为参数值的 MI 命令。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1080,19 +999,19 @@ opensips-cli -x mi clusterer:broadcast_mi 1 dr_reload partition_5
 #### clusterer:list_cap
 
 
-Replaces obsolete MI command: *clusterer_list_cap*.
+替换已弃用的 MI 命令：*clusterer_list_cap*。
 
 
-Lists the registered capabilities and their states.
+列出已注册的能力及其状态。
 
 
-Name: *clusterer:list_cap*
+名称：*clusterer:list_cap*
 
 
-Parameters:*none*
+参数：*无*
 
 
-```c title="clusterer:list_cap usage"
+```c title="clusterer:list_cap 使用"
 $ opensips-cli -x mi clusterer:list_cap
 {
     "Clusters": [
@@ -1119,31 +1038,30 @@ $ opensips-cli -x mi clusterer:list_cap
 #### clusterer:set_cap_status
 
 
-Replaces obsolete MI command: *clusterer_set_cap_status*.
+替换已弃用的 MI 命令：*clusterer_set_cap_status*。
 
 
-Sets the status(Enabled/Disabled) of a capability. If a capability is disabled, the node will not send any replication/sync messages belonging to that capability. Likewise, received messages will be dropped. Also, the cabability will transition to a "not synced" state and the node will no longer be able to be a donor for syncing.
+设置能力的状态（启用/禁用）。如果能力被禁用，节点将不发送属于该能力的任何复制/同步消息。同样，收到 messages 将被丢弃。而且，该能力将转换到"未同步"状态，节点将不再能够成为同步的供体。
 
 
-Name: *clusterer:set_cap_status*
+名称：*clusterer:set_cap_status*
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - the id of the cluster
-- *capability* - name of the capability, as listed by
-			[mi list cap](#mi_list_cap)
-- *status* - indicates the new status(0 - Disabled, 1 - Enabled).
+- *cluster_id* - 集群的 ID
+- *capability* - 能力的名称，如 [mi list cap](#mi_list_cap) 所列
+- *status* - 指示新状态（0 - 禁用，1 - 启用）。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-		#disable dialog replication in cluster 1
+		# 在集群 1 中禁用对话框复制
 		opensips-cli -x mi clusterer:set_cap_status 1 dialog-dlg-repl 0
-		#enable dialog profile replication in cluster 2
+		# 在集群 2 中启用对话框概要复制
 		opensips-cli -x mi clusterer:set_cap_status 2 dialog-prof-repl 1
 		
 ```
@@ -1152,24 +1070,19 @@ MI FIFO Command Format:
 #### clusterer:shtag_set_active
 
 
-Replaces obsolete MI command: *clusterer_shtag_set_active*.
+替换已弃用的 MI 命令：*clusterer_shtag_set_active*。
 
 
-Set the given sharing tag to the *active* state.
-		The information about this change is also broadcasted in the cluster 
-		in order to force any other node that may be active on this tag to 
-		step down to backup.
+将给定的共享标签设置为 *active* 状态。关于此更改的信息也在集群中广播，以强制可能在 此标签上活动的任何其他节点降为 backup。
 
 
-Name: *clusterer:shtag_set_active*
+名称：*clusterer:shtag_set_active*
 
 
-Parameters: *tag* - the name of
-		the tag to be set active and the cluster it belogs to, in the
-		format 'tag/cluster_id'.
+参数： *tag* - 要设置为活动的标签名称及其所属集群，格式为 'tag/cluster_id'。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1181,19 +1094,19 @@ MI FIFO Command Format:
 #### clusterer:list_shtags
 
 
-Replaces obsolete MI command: *clusterer_list_shtags*.
+替换已弃用的 MI 命令：*clusterer_list_shtags*。
 
 
-Lists all known sharing tags and their states.
+列出所有已知的共享标签及其状态。
 
 
-Name: *clusterer:list_shtags*
+名称：*clusterer:list_shtags*
 
 
-Parameters: *Command takes no parameters*
+参数： *命令不带参数*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1202,120 +1115,107 @@ MI FIFO Command Format:
 ```
 
 
-### Exported Script Variables
+### 导出的脚本变量
 
 
 #### $cluster.sh_tag
 
 
-This is a read/write variable that allows access to the
-			sharing tags managed by the clusterer module.
+这是一个读/写变量，允许访问由 clusterer 模块管理的共享标签。
 
 
-The name of such a variable has the format of 
-			*tag_name/cluster_id*, like 
-			*$cluster.sh_tag(vip/3)* accessing the
-			sharing tag "vip" from cluster ID 3.
+此类变量的名称格式为 *tag_name/cluster_id*，如 *$cluster.sh_tag(vip/3)* 访问集群 ID 3 中的名为 "vip" 的共享标签。
 
 
-When setting, a sharing tag may be only switched to active by
-			assigned it:
+设置时，共享标签只能通过分配以下值切换到活动状态：
 
 
 - "active"
 - 1
 
 
-When reading it value, a sharing tag returns:
+读取时，共享标签返回：
 
 
-- "active" or 1
-- "backup" or 0
+- "active" 或 1
+- "backup" 或 0
 
 
-A NULL value may returned only as a result of an internal error
-			(like memory errors).
+NULL 值可能仅作为内部错误的结果返回（如内存错误）。
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_CLUSTERER_REQ_RECEIVED
 
 
-This event is raised when a generic, request-like, clusterer message is received. This type of message is sent directly from the script and not by an OpenSIPS module.
+当收到通用请求类 clusterer 消息时引发此事件。此类消息直接从脚本发送，不是由 OpenSIPS 模块发送。
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - The cluster ID of the source node.
-- *src_id* - The ID of the source node.
-- *msg* - The actual message payload.
-- *tag* - The communication tag of this message, generated by the source node. This could be used to send a reply corresponding to the received message by providing the tag to the `cluster_send_rpl()` function.
+- *cluster_id* - 源节点的集群 ID。
+- *src_id* - 源节点的 ID。
+- *msg* - 实际消息负载。
+- *tag* - 此消息的通信标签，由源节点生成。这可用于通过将标签提供给 `cluster_send_rpl()` 函数来发送对应于收到消息的回复。
 
 
 #### E_CLUSTERER_RPL_RECEIVED
 
 
-This event is raised when a generic, reply-like, clusterer message is received. This type of message is sent directly from the script and not by an OpenSIPS module.
+当收到通用回复类 clusterer 消息时引发此事件。此类消息直接从脚本发送，不是由 OpenSIPS 模块发送。
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - The cluster ID of the source node.
-- *src_id* - The ID of the source node.
-- *msg* - The actual message payload.
-- *tag* - The communication tag of this message. This could be used to match the received reply with a request sent with the `cluster_send_req()` or `cluster_broadcast_req()` functions.
+- *cluster_id* - 源节点的集群 ID。
+- *src_id* - 源节点的 ID。
+- *msg* - 实际消息负载。
+- *tag* - 此消息的通信标签。这可用于将通过 `cluster_send_req()` 或 `cluster_broadcast_req()` 函数发送的请求与收到的回复进行匹配。
 
 
 #### E_CLUSTERER_NODE_STATE_CHANGED
 
 
-This event is raised when the state of a node changes in terms of
-			availability.
+当节点的状态在可用性方面发生变化时引发此事件。
 
 
-Parameters:
+参数：
 
 
-- *cluster_id* - The cluster ID.
-- *node_id* - The ID of the node.
-- *new_state* - The new state of the node, with
-				the possible values: 0 - down, 1 - up.
+- *cluster_id* - 集群 ID。
+- *node_id* - 节点的 ID。
+- *new_state* - 节点的新状态，可能的值为：0 - down，1 - up。
 
 
 #### E_CLUSTERER_SHARING_TAG_CHANGED
 
 
-This event is raised when the state of a sharing tag changes.
+当共享标签的状态发生变化时引发此事件。
 
 
-Parameters:
+参数：
 
 
-- *name* - The name of the sharing tag.
-- *cluster* - The cluster ID.
-- *state* - The new state of the sharing tag,
-				the possible values: "active" or "backup".
-- *reason* - short text describing what
-				triggered the change of the state, like a another node
-				stepping as active, an MI command or script variable.
+- *name* - 共享标签的名称。
+- *cluster* - 集群 ID。
+- *state* - 共享标签的新状态，可能的值为："active" 或 "backup"。
+- *reason* - 简短文本，描述触发状态变化的原因，如另一个节点作为活动节点、一个 MI 命令或脚本变量。
 
 
-### Exported Status/Report Identifiers
+### 导出的状态/报告标识符
 
 
-The module provides the *clusterer* Status/Report group.
+模块提供 *clusterer* 状态/报告组。
 
 
 #### sharing_tags
 
 
-The *sharing_tags* identifier is provided for reporting state
-	changes of the sharing_tags (between active and backup), along with the reason of
-	the change. This identifier has a 200 records history before discarding the old ones.
+提供 *sharing_tags* 标识符用于报告 sharing_tags 状态变化的报告（在 active 和 backup 之间），以及变化的原因。此标识符有 200 条记录历史，然后丢弃旧记录。
 
 
 ```c
@@ -1342,9 +1242,7 @@ The *sharing_tags* identifier is provided for reporting state
 #### node_states
 
 
-The *node_states* identifier is used for reporting node state
-	changes (in terms of availability). This identifier has a 200 records history
-	before discarding the old ones.
+*node_states* 标识符用于报告节点状态变化（在可用性方面）。此标识符有 200 条记录历史，然后丢弃旧记录。
 
 
 ```c
@@ -1371,18 +1269,13 @@ The *node_states* identifier is used for reporting node state
 #### cap:[capability_name]
 
 
-Each capability registered to the clusterer module has a corresponding
-	identifier, named *cap:[capability_name]*, used for
-	providing the status of the data syncing for that capability. This status
-	reflects the progress of the syncing process and can have the following values:
+注册到 clusterer 模块的每个能力都有相应的标识符，名为 *cap:[capability_name]*，用于提供该能力的数据同步状态。此状态反映同步过程的进度，可以有以下值：
 
 
-- *-3* - not synced
-- *-2* - sync pending (waiting for either a suitable
-			donor node or actual sync data)
-- *-1* - sync in progress
-- *1* - synced (either sync has completed or the
-			capability does not require data syncing at all)
+- *-3* - 未同步
+- *-2* - 同步待定（等待合适的供体节点或实际同步数据）
+- *-1* - 同步进行中
+- *1* - 已同步（同步已完成或该能力根本不需要数据同步）
 
 
 ```c
@@ -1396,9 +1289,7 @@ Each capability registered to the clusterer module has a corresponding
 ```
 
 
-The capability identifiers also provide reports regarding the main stages of
-	the sync process. These identifiers have a 200 records history before discarding
-	the old ones.
+能力标识符还提供关于同步过程主要阶段的报告。这些标识符有 200 条记录历史，然后丢弃旧记录。
 
 
 ```c
@@ -1427,32 +1318,22 @@ The capability identifiers also provide reports regarding the main stages of
 ```
 
 
-For how to access and use the Status/Report information, please see
-	[Status/Report Interface documentation](https://docs.opensips.org/manual/3-4/interface-statusreport).
+有关如何访问和使用状态/报告信息，请参阅 [状态/报告接口文档](https://docs.opensips.org/manual/3-4/interface-statusreport)。
 
 
-### Usage Example
+### 使用示例
 
 
-This section provides an usage example for replicating ratelimit
-		pipes between two OpenSIPS instances. It uses the clusterer module to
-		manage the replicating nodes, and along with the
-		*proto_bin* module, to send the replicated information.
+本节提供在两个 OpenSIPS 实例之间复制 ratelimit 管道的使用示例。它使用 clusterer 模块管理复制节点，并配合 *proto_bin* 模块发送复制信息。
 
 
-The setup topology is simple: we have two OpenSIPS nodes running on
-		two separate machines (although they could run on the same machine as
-		well): *Node A* has IP 192.168.0.5 and
-		*Node B* has IP 192.168.0.6. Both have, besides the
-		traffic listeners (UDP, TCP, etc.), BIN listeners bound on port
-		*5566*. These listeners will be used for the binary
-		communication.
+设置拓扑很简单：我们在两台独立的机器上运行两个 OpenSIPS 节点（尽管它们也可以在同一台机器上运行）：*节点 A* 的 IP 为 192.168.0.5，*节点 B* 的 IP 为 192.168.0.6。两者除了流量监听器（UDP、TCP 等）外，还在端口 *5566* 上绑定了 BIN 监听器。这些监听器将用于二进制通信。
 
 
-We insert in the the *clusterer* table the following:
+我们在 *clusterer* 表中插入以下内容：
 
 
-```c title="Example database content - clusterer table"
+```c title="示例数据库内容 - clusterer 表"
 +----+------------+---------+----------------------+-------+-----------------+----------+----------+-------+-------------+
 | id | cluster_id | node_id | url                  | state | no_ping_retries | priority | sip_addr | flags | description |
 +----+------------+---------+----------------------+-------+-----------------+----------+----------+-------+-------------+
@@ -1463,112 +1344,95 @@ We insert in the the *clusterer* table the following:
 ```
 
 
-- "cluster_id" - identifier of the cluster. All nodes within a
-					group/cluster should have the same id (in our example,
-					both nodes have ID *1*). The values must be greater than 0.
-- "node_id" - identifier of the machine/node so each instance within a
-					cluster should have a different ID. The values must be greater than 0. In our example,
-					*Node A* will have ID 1, and
-					*Node B* ID 2.
-- "url" - address where all the BIN packets for that instance will be
-				sent to.
-- "state" - state of the node: *1* means Enabled,
-				*0* means Disabled. A disabled node will not send any BIN packets
-				and will drop received ones.
-- "no_ping_retries" - maximum number of ping retries before the link
-				with a node is considered down.
-- "priority" - the priority of a node to be chosen
-				as next hop in case of same length(number of hops) paths when rerouting messages;
-				it is not relevant for this two-node topology example.
-- "sip_addr" - SIP address for the node that is transparently
-				provided to modules; it has no use for the ratelimit module in our example.
-- "flags" - used to define a seed node; it has no use in our example.
-- "description" - an opaque value used to
-					describe the node
+- "cluster_id" - 集群的标识符。组/集群内所有节点应有相同的 ID（在我们的示例中，两个节点都有 ID *1*）。值必须大于 0。
+- "node_id" - 机器/节点的标识符，因此集群内每个实例应有不同的 ID。值必须大于 0。在我们的示例中，*节点 A* 将有 ID 1，*节点 B* 有 ID 2。
+- "url" - 该实例所有 BIN 数据包将被发送到的地址。
+- "state" - 节点的状态：*1* 表示启用，*0* 表示禁用。禁用的节点将不发送任何 BIN 数据包并丢弃收到的数据包。
+- "no_ping_retries" - 在认为与节点的链路中断之前的最大 ping 重试次数。
+- "priority" - 节点在被选为下一跳时的优先级，当重新路由消息时相同长度（跳数）的路径；在这个双节点拓扑示例中，它不相关。
+- "sip_addr" - 节点的 SIP 地址，透明地提供给模块；在我们的示例中，它对 ratelimit 模块没有用处。
+- "flags" - 用于定义种子节点；在我们的示例中，它没有用处。
+- "description" - 用于描述节点的不透明值
 
 
-After provisioning the two nodes in the database, we have to configure
-		the two instances of OpenSIPS. First, we configure *Node
-			A*:
+在数据库中配置两个节点后，我们必须配置 OpenSIPS 的两个实例。首先，我们配置 *节点 A*：
 
 
-```c title="*Node A* configuration"
+```c title="*节点 A* 配置"
 ...
-socket= bin:192.168.0.5:5566 # bin listener for Node A
+socket= bin:192.168.0.5:5566 # 节点 A 的 BIN 监听器
 
 loadmodule "proto_bin.so"
 
 loadmodule "clusterer.so"
 modparam("clusterer", "db_url", "mysql://opensips@192.168.0.7/opensips")
-modparam("clusterer", "my_node_id", 1) # node_id for Node A
+modparam("clusterer", "my_node_id", 1) # 节点 A 的 node_id
 
 loadmodule "ratelimit.so"
 modparam("ratelimit", "pipe_replication_cluster", 1)
 ...
-		
+			
 ```
 
 
-Similarly, the configuration for *Node B* is as follows:
+类似地，*节点 B* 的配置如下：
 
 
-```c title="*Node B* configuration"
+```c title="*节点 B* 配置"
 ...
-socket= bin:192.168.0.6:5566 # bin listener for Node B
+socket= bin:192.168.0.6:5566 # 节点 B 的 BIN 监听器
 
 loadmodule "proto_bin.so"
 
 loadmodule "clusterer.so"
-# ideally, use the same database for both nodes
+# 理想情况下，两个节点使用同一个数据库
 modparam("clusterer", "db_url", "mysql://opensips@192.168.0.7/opensips")
-modparam("clusterer", "my_node_id", 2) # node_id for Node B
+modparam("clusterer", "my_node_id", 2) # 节点 B 的 node_id
 
 loadmodule "ratelimit.so"
 modparam("ratelimit", "pipe_replication_cluster", 1)
 ...
-		
+			
 ```
 
 
-Starting the two OpenSIPS instances with the above configurations provides
-	your platform the ability to used shared ratelimit pipes in a very
-	efficient and scalable way.
+使用上述配置启动两个 OpenSIPS 实例后，您的平台能够以非常高效和可扩展的方式使用共享 ratelimit 管道。
 
 
-### Exported Statistics
+### 导出的统计信息
 
 
 #### clusterer_nodes
 
 
-Returns the total number of cluster nodes.
+返回集群节点总数。
 
 
 #### clusterer_nodes_up
 
 
-Returns the total number of cluster nodes in the UP state.
+返回处于 UP 状态的集群节点总数。
 
 
 #### clusterer_nodes_down
 
 
-Returns the total number of cluster nodes not in the UP state.
+返回不处于 UP 状态的集群节点总数。
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Available Functions
+### 可用函数
 
 
 #### get_nodes(cluster_id)
 
 
-This function will return a list of all the reachable nodes(if the direct link is down/probing, a path through intermediary nodes is considered) in the specified cluster.
+此函数将返回指定集群中所有可达节点的列表（如果直接链路关闭/探测中，则考虑通过中间节点的路径）。
 
 
-The returned nodes structure:
+返回的节点结构：
 
 
 ```c
@@ -1585,35 +1449,35 @@ typedef struct clusterer_node {
 ```
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *int cluster_id* - the cluster id
+- *int cluster_id* - 集群 id
 
 
 #### free_nodes(list)
 
 
-This function will free the lits of nodes returned by *get_nodes*.
+此函数将释放由 *get_nodes* 返回的节点列表。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *clusterer_node_t *list* - list header
+- *clusterer_node_t *list* - 列表头
 
 
 #### set_state(cluster_id, state)
 
 
-This function sets the state(enabled/disabled) of the current node in the specified cluster.
+此函数设置当前节点在指定集群中的状态（启用/禁用）。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *int cluster_id* - the cluster id
-- *enum cl_node_state state* - the new state; possible values:
+- *int cluster_id* - 集群 id
+- *enum cl_node_state state* - 新状态；可能的值：
 
   - *STATE_DISABLED*
   - *STATE_ENABLED*
@@ -1622,109 +1486,109 @@ Meaning of the parameters is as follows:
 #### check_addr(cluster_id, su)
 
 
-This function checks if a given address belongs to one of the nodes in the cluster.
+此函数检查给定地址是否属于集群中的节点之一。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *int cluster_id* - the cluster id
-- *union sockaddr_union* su* - socket address
+- *int cluster_id* - 集群 id
+- *union sockaddr_union* su* - 套接字地址
 
 
 #### get_my_id()
 
 
-This function will return the id of the current node.
+此函数将返回当前节点的 ID。
 
 
 #### send_to(packet, cluster_id, node_id)
 
 
-This functon will send the given BIN packet to the specified node in the cluster. If the direct link is down/probing, it will send the packet to an intermediary node if the destination node is reachable through another path in the cluster topology.
+此函数将发送给定的 BIN 数据包到集群中的指定节点。如果直接链路关闭/探测中，如果目标节点可通过拓扑中的另一条路径到达，它将把数据包发送到中间节点。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *bin_packet_t packet* - the packet to be sent
-- *int cluster_id* - the cluster id
-- *int node_id* - the id of the destination node
+- *bin_packet_t packet* - 要发送的数据包
+- *int cluster_id* - 集群 id
+- *int node_id* - 目标节点的 id
 
 
-The function returns one of the following:
+函数返回以下值之一：
 
 
-- *CLUSTERER_SEND_SUCCESS* - successfully sent packet to destination node or a valid next hop
-- *CLUSTERER_CURR_DISABLED* - current node is disabled so sending is impossbile
-- *CLUSTERER_DEST_DOWN* - destination node is not reachable through any path according to the discovered topology
-- *CLUSTERER_SEND_ERR* - destination node or valid next hop appear to be reachable but send failed
+- *CLUSTERER_SEND_SUCCESS* - 成功发送数据包到目标节点或有效下一跳
+- *CLUSTERER_CURR_DISABLED* - 当前节点已禁用，无法发送
+- *CLUSTERER_DEST_DOWN* - 根据发现的拓扑，目标节点无法通过任何路径到达
+- *CLUSTERER_SEND_ERR* - 目标节点或有效下一跳似乎可以到达但发送失败
 
 
 #### send_all(packet, cluster_id)
 
 
-Send the given BIN packet to all the nodes in the specified cluster. The function operates similarly to *send_to*.
+将给定的 BIN 数据包发送到指定集群中的所有节点。该函数操作类似于 *send_to*。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *bin_packet_t packet* - the packet to be sent
-- *int cluster_id* - the cluster id
+- *bin_packet_t packet* - 要发送的数据包
+- *int cluster_id* - 集群 id
 
 
-The function returns one of the following:
+函数返回以下值之一：
 
 
-- *CLUSTERER_SEND_SUCCESS* - successfully sent packet to at least one node
-- *CLUSTERER_CURR_DISABLED* - current node is disabled so sending is impossbile
-- *CLUSTERER_DEST_DOWN* - all nodes in the cluster are unreachable according to the discovered topology
-- *CLUSTERER_SEND_ERR* - send failed for all nodes in the cluster
+- *CLUSTERER_SEND_SUCCESS* - 成功发送数据包到至少一个节点
+- *CLUSTERER_CURR_DISABLED* - 当前节点已禁用，无法发送
+- *CLUSTERER_DEST_DOWN* - 根据发现的拓扑，集群中所有节点都无法到达
+- *CLUSTERER_SEND_ERR* - 发送给集群中所有节点失败
 
 
 #### get_next_hop(cluster_id, node_id)
 
 
-This function returns the next hop from the computed shortest path to the given destination node in the specified cluster. This is the node that is the actual destination for the *send_to* and *send_all* functions when the direct link with the intended destination is down. The function returns the same structure as *get_nodes*.
+此函数返回到指定集群中给定目标节点的计算最短路径的下一跳。当直接链路与预期目标关闭时，这是 *send_to* 和 *send_all* 函数的实际目标节点。函数返回与 *get_nodes* 相同的结构。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *int cluster_id* - the cluster id
-- *int node_id* - the node id of the destination for which the next hop is returned.
+- *int cluster_id* - 集群 id
+- *int node_id* - 要返回下一跳的目标节点的节点 id
 
 
 #### free_next_hop(next_hop)
 
 
-This function will free the next hop returned by *get_next_hop*.
+此函数将释放由 *get_next_hop* 返回的下一跳。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *clusterer_node_t *next_hop* - next hop to be freed
+- *clusterer_node_t *next_hop* - 要释放的下一跳
 
 
 #### register_module(mod_name, cb, auth_check, accept_clusters_ids, no_accept_clusters)
 
 
-This function registers an OpenSIPS module in order to receive BIN packets and cluster notifications. A certain module can accept packets from multiple clusters and provides a single callback function that will be called for each received packet. This function will also be called to notify cluster events like nodes becoming reachable/unreachable.
+此函数注册一个 OpenSIPS 模块以接收 BIN 数据包和集群通知。某个模块可以接受来自多个集群的数据包，并提供在收到每个数据包时调用的单个回调函数。此函数还将被调用以通知集群事件，如节点变得可达/不可达。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *char *mod_name* - module name
-- *clusterer_cb_f cb* - callback function
-- *int auth_check* - 0 - no check, 1 - for every BIN packet received check if source IP belongs to one of the nodes in the cluster
-- *int* accept_clusters_ids* - array of cluster ids from which packets are accepted
-- *int no_accept_clusters* - length of *accept_clusters_ids* array
+- *char *mod_name* - 模块名
+- *clusterer_cb_f cb* - 回调函数
+- *int auth_check* - 0 - 无检查，1 - 对收到的每个 BIN 数据包检查源 IP 是否属于集群中的节点之一
+- *int* accept_clusters_ids* - 接受数据包的集群 ID 数组
+- *int no_accept_clusters* - accept_clusters_ids 数组的长度
 
 
-The callback function prototype:
+回调函数原型：
 
 
 ```c
@@ -1735,15 +1599,15 @@ typedef void (*clusterer_cb_f)(enum clusterer_event ev,bin_packet_t *, int packe
 ```
 
 
-Possble values for the event signaled through *ev* parameter of the callback funtion:
+通过 *ev* 参数传递给回调函数的事件的可能值：
 
 
-- *CLUSTER_RECV_MSG* - received BIN message
-- *CLUSTER_ROUTE_FAILED* - failed to route a received BIN packet destined for another node in the cluster
-- *CLUSTER_NODE_UP* - a node became reachable
-- *CLUSTER_NODE_DOWN* - a node became unreachable
+- *CLUSTER_RECV_MSG* - 收到 BIN 消息
+- *CLUSTER_ROUTE_FAILED* - 路由到集群中另一节点的收到的 BIN 数据包失败
+- *CLUSTER_NODE_UP* - 节点变得可达
+- *CLUSTER_NODE_DOWN* - 节点变得不可达
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

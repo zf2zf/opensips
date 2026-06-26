@@ -1,54 +1,52 @@
 ---
-title: "RATE_CACHER Module"
-description: "The *rate_cacher* module provides a means of caching and real-time querying of the ratesheets assigned to your clients and / or vendors. It also allows for real-time cost-based routing and cost-based filtering."
+title: "RATE_CACHER 模块"
+description: "*rate_cacher* 模块提供了一种缓存和实时查询分配给客户和/或供应商的费率表的方法。它还允许实时基于成本的路由和基于成本的过滤。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The *rate_cacher* module provides a means of caching
-	and real-time querying of the ratesheets assigned to your clients and / or vendors.
-	It also allows for real-time cost-based routing and cost-based filtering.
+*rate_cacher* 模块提供了一种缓存和实时查询分配给客户和/或供应商的费率表的方法。
+	它还允许实时基于成本的路由和基于成本的过滤。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules.*.
+- *不依赖其他 OpenSIPS 模块。*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### vendors_db_url (str)
 
 
-The DB URL for querying the Vendors used by the module
+用于查询模块使用的供应商的 DB URL
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the vendors_db_url parameter"
+```c title="设置 vendors_db_url 参数"
 ...
 modparam("rate_cacher", "vendors_db_url", "mysql://opensips:opensipsrw@localhost/opensips")
 ...
@@ -58,13 +56,13 @@ modparam("rate_cacher", "vendors_db_url", "mysql://opensips:opensipsrw@localhost
 #### vendors_db_table (str)
 
 
-The DB Table for querying the Vendors used by the module
+用于查询模块使用的供应商的 DB 表
 
 
-*Default value is "rc_vendors".*
+*默认值为 "rc_vendors"。*
 
 
-```c title="Setting the vendors_db_table parameter"
+```c title="设置 vendors_db_table 参数"
 ...
 modparam("rate_cacher", "vendors_db_table", "my_vendors_view")
 ...
@@ -74,15 +72,13 @@ modparam("rate_cacher", "vendors_db_table", "my_vendors_view")
 #### vendors_hash_size (int)
 
 
-The size of the hash table internally used to keep the vendors. A
-		larger table is much faster but consumes more memory. The hash size
-		must be a power of 2 number.
+模块内部用于保存供应商的哈希表的大小。较大的表速度更快但消耗更多内存。哈希大小必须是 2 的幂。
 
 
-*Default value is "256".*
+*默认值为 "256"。*
 
 
-```c title="Setting the vendors_hash_size parameter"
+```c title="设置 vendors_hash_size 参数"
 ...
 modparam("rate_cacher", "vendors_hash_size", 1024)
 ...
@@ -92,13 +88,13 @@ modparam("rate_cacher", "vendors_hash_size", 1024)
 #### clients_db_url (str)
 
 
-The DB URL for querying the Clients used by the module
+用于查询模块使用的客户的 DB URL
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the clients_db_url parameter"
+```c title="设置 clients_db_url 参数"
 ...
 modparam("rate_cacher", "clients_db_url", "mysql://opensips:opensipsrw@localhost/opensips")
 ...
@@ -108,13 +104,13 @@ modparam("rate_cacher", "clients_db_url", "mysql://opensips:opensipsrw@localhost
 #### clients_db_table (str)
 
 
-The DB Table for querying the Clients used by the module
+用于查询模块使用的客户的 DB 表
 
 
-*Default value is "rc_clients".*
+*默认值为 "rc_clients"。*
 
 
-```c title="Setting the clients_db_table parameter"
+```c title="设置 clients_db_table 参数"
 ...
 modparam("rate_cacher", "clients_db_table", "my_clients_view")
 ...
@@ -124,15 +120,13 @@ modparam("rate_cacher", "clients_db_table", "my_clients_view")
 #### clients_hash_size (int)
 
 
-The size of the hash table internally used to keep the clients. A
-		larger table is much faster but consumes more memory. The hash size
-		must be a power of 2 number.
+模块内部用于保存客户的哈希表的大小。较大的表速度更快但消耗更多内存。哈希大小必须是 2 的幂。
 
 
-*Default value is "256".*
+*默认值为 "256"。*
 
 
-```c title="Setting the vendors_hash_size parameter"
+```c title="设置 vendors_hash_size 参数"
 ...
 modparam("rate_cacher", "clients_hash_size", 1024)
 ...
@@ -142,13 +136,13 @@ modparam("rate_cacher", "clients_hash_size", 1024)
 #### rates_db_url (str)
 
 
-The DB URL for querying the Ratesheets used by the module
+用于查询模块使用的费率表的 DB URL
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the rates_db_url parameter"
+```c title="设置 rates_db_url 参数"
 ...
 modparam("rate_cacher", "rates_db_url", "mysql://opensips:opensipsrw@localhost/opensips")
 ...
@@ -158,65 +152,65 @@ modparam("rate_cacher", "rates_db_url", "mysql://opensips:opensipsrw@localhost/o
 #### rates_db_table (str)
 
 
-The DB Table for querying the Ratesheets used by the module
+用于查询模块使用的费率表的 DB 表
 
 
-*Default value is "rc_ratesheets".*
+*默认值为 "rc_ratesheets"。*
 
 
-```c title="Setting the rates_db_table parameter"
+```c title="设置 rates_db_table 参数"
 ...
 modparam("rate_cacher", "rates_db_table", "my_clients_view")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### get_client_price(client_id,is_wholesale,dialled_no,prefix_pvar,destination_pvar,price_pvar,minimum_pvar,increment_pvar)
 
 
-For a call originating from the provided Client ID, on a wholesale or retail quality, going to dialled_no, the function will matched the dialled number against the client's ratesheet and return the matched prefix, destination, price, minimum and increment.
+对于从提供的客户 ID 发起的呼叫，以批发或零售质量，拨打 dialled_no，该函数将根据客户的费率表匹配拨打的号码，并返回匹配的前缀、目的地、价格、最小值和增量。
 
 
-The *client_id* pseudo-var will hold the client_id originating this call
+*client_id* 伪变量将保存发起此呼叫的 client_id
 
 
-The  *is_wholesale* pseudo-var will contain either a 1 or a 0, depending on whether the call is wholesale or retail ( see client ratesheet provisioning ).
+*is_wholesale* 伪变量将包含 1 或 0，取决于呼叫是批发还是零售（见客户费率表配置）。
 
 
-The *dialled_no* pseudo-var contains the DNIS - the dialled number for the current call. It needs to be in E164 format, without the leading +
+*dialled_no* 伪变量包含 DNIS——当前呼叫的拨叫号码。它需要是 E164 格式，不带前导 +
 
 
-The *prefix* pseudo-var will contain the matched prefix from the client's ratesheet
+*prefix* 伪变量将包含从客户费率表匹配的前缀
 
 
-The *destination* pseudo-var will contain the matched destination from the client's ratesheet
+*destination* 伪变量将包含从客户费率表匹配的目的地
 
 
-The *price* pseudo-var will contain the matched price from the client's ratesheet
+*price* 伪变量将包含从客户费率表匹配的价格
 
 
-The *minimum* pseudo-var will contain the matched minimum from the client's ratesheet
+*minimum* 伪变量将包含从客户费率表匹配的最小值
 
 
-The *increment* pseudo-var will contain the matched increment from the client's ratesheet
+*increment* 伪变量将包含从客户费率表匹配的增量
 
 
-Possible parameter types
+可能的参数类型
 
 
-- *ALL Parameters* - String/Integer or pseudo-variables
+- *所有参数* - 字符串/整数或伪变量
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="get_client_price usage"
+```c title="get_client_price 使用示例"
 ...
 if (get_client_price("my_client",1,"4072794242",$var(prefix),$var(dest),$var(price),$var(min),$var(inc))) {
-                        xlog("We matched $var(prefix) , $var(dest) , $var(price) , $var(min) , $var(inc) for the client's ratesheet\n");
+                        xlog("我们匹配到了 $var(prefix) , $var(dest) , $var(price) , $var(min) , $var(inc) 用于客户的费率表\n");
                 }
 
 ...
@@ -226,43 +220,43 @@ if (get_client_price("my_client",1,"4072794242",$var(prefix),$var(dest),$var(pri
 #### get_vendor_price(vendor_id,dialled_no,prefix_pvar,destination_pvar,price_pvar,minimum_pvar,increment_pvar)
 
 
-For a call originating going to the provided vendor ID, going to dialled_no, the function will matched the dialled number against the vendor's ratesheet and return the matched prefix, destination, price, minimum and increment.
+对于发送到提供的供应商 ID 的呼叫，拨打 dialled_no，该函数将根据供应商的费率表匹配拨打的号码，并返回匹配的前缀、目的地、价格、最小值和增量。
 
 
-The *vendor_id* pseudo-var will hold the vendor_id
+*vendor_id* 伪变量将保存 vendor_id
 
 
-The *dialled_no* pseudo-var contains the DNIS - the dialled number for the current call. It needs to be in E164 format, without the leading +
+*dialled_no* 伪变量包含 DNIS——当前呼叫的拨叫号码。它需要是 E164 格式，不带前导 +
 
 
-The *prefix* pseudo-var will contain the matched prefix from the vendor's ratesheet
+*prefix* 伪变量将包含从供应商费率表匹配的前缀
 
 
-The *destination* pseudo-var will contain the matched destination from the vendor's ratesheet
+*destination* 伪变量将包含从供应商费率表匹配的目的地
 
 
-The *price* pseudo-var will contain the matched price from the vendor's ratesheet
+*price* 伪变量将包含从供应商费率表匹配的价格
 
 
-The *minimum* pseudo-var will contain the matched minimum from the vendor's ratesheet
+*minimum* 伪变量将包含从供应商费率表匹配的最小值
 
 
-The *increment* pseudo-var will contain the matched increment from the vendor's ratesheet
+*increment* 伪变量将包含从供应商费率表匹配的增量
 
 
-Possible parameter types
+可能的参数类型
 
 
-- *ALL Parameters* - String/Integer or pseudo-variables
+- *所有参数* - 字符串/整数或伪变量
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="get_vendor_price usage"
+```c title="get_vendor_price 使用示例"
 ...
 if (get_vendor_price("my_vendor","4072794242",$var(prefix),$var(dest),$var(price),$var(min),$var(inc))) {
-                        xlog("We matched $var(prefix) , $var(dest) , $var(price) , $var(min) , $var(inc) for the vendor's ratesheet\n");
+                        xlog("我们匹配到了 $var(prefix) , $var(dest) , $var(price) , $var(min) , $var(inc) 用于供应商的费率表\n");
                 }
 
 ...
@@ -272,47 +266,47 @@ if (get_vendor_price("my_vendor","4072794242",$var(prefix),$var(dest),$var(price
 #### cost_based_filtering(client_id,is_wholesale,vendors_csv,dialled_no,desired_margin,out_vendor_csv)
 
 
-For a call originating from the provided Client ID, on a wholesale or retail quality, going to dialled_no, the function removes the Vendors ( from the vendor_csv list ) which do not pass the desired_margin condition, and sets the out_vendor_csv variable to the list of Vendor that meet the margin condition, while maintaining the initial order provided in the vendor_csv variable.
+对于从提供的客户 ID 发起的呼叫，以批发或零售质量，拨打 dialled_no，该函数将移除（从 vendor_csv 列表中）不符合 desired_margin 条件的供应商，并将 out_vendor_csv 变量设置为满足 margin 条件的供应商列表，同时保持 vendor_csv 变量中提供的初始顺序。
 
 
-The *client_id* pseudo-var will hold the client_id originating this call
+*client_id* 伪变量将保存发起此呼叫的 client_id
 
 
-The  *is_wholesale* pseudo-var will contain either a 1 or a 0, depending on whether the call is wholesale or retail ( see client ratesheet provisioning ).
+*is_wholesale* 伪变量将包含 1 或 0，取决于呼叫是批发还是零售（见客户费率表配置）。
 
 
-The *vendors_csv* pseudo-var contains a list of Vendors that need to be filtered based on the desired margin ( keep just those that match your desired percentage margin for this call )
+*vendors_csv* 伪变量包含需要根据所需利润 margin 进行过滤的供应商列表（只保留与此次呼叫所需百分比利润 margin 匹配的供应商）
 
 
-The *dialled_no* pseudo-var contains the DNIS - the dialled number for the current call. It needs to be in E164 format, without the leading +
+*dialled_no* 伪变量包含 DNIS——当前呼叫的拨叫号码。它需要是 E164 格式，不带前导 +
 
 
-The *desired_margin* pseudo-var contains the minimum Integer margin that the script writer wants to achieve, based on the Client sell and Vendor buy prices. The formula used is : vendor_margin=(client_price - results[i])*100/client_price) . If the vendor_margin is higher than the desired_margin, then the Vendor is ok to use. The desired margin can be positive ( call will be profitable ) or negative ( the call will cause a loss ).
+*desired_margin* 伪变量包含脚本编写者希望实现的最小整数利润 margin，基于客户的卖出价和供应商的买入价。使用的公式是：vendor_margin=(client_price - results[i])*100/client_price)。如果 vendor_margin 高于 desired_margin，则该供应商可以使用。所需利润 margin 可以是正数（呼叫将盈利）或负数（呼叫将导致亏损）。
 
 
-The *out_vendors_csv* pseudo-var is an output parameter, and the pvar will get populated with the CSV list of Vendors that meet the desired margin condition
+*out_vendors_csv* 伪变量是一个输出参数，pvar 将被填充满足 desired_margin 条件的供应商的 CSV 列表
 
 
-Possible parameter types
+可能的参数类型
 
 
-- *ALL Parameters* - String/Integer or pseudo-variables
+- *所有参数* - 字符串/整数或伪变量
 
 
-This function can be used from a REQUEST or FAILURE route.
+此函数可用于 REQUEST 或 FAILURE 路由。
 
 
-```c title="cost_based_filtering usage"
+```c title="cost_based_filtering 使用示例"
 ...
 
 
-# If we get a call from testClient on it's wholesale quality,
-# going to number 40720018124, and we have to pick from the list 
-# of vendors 'testVendor,testVendor2' based on a a profit margin 
-# of 0 ( we do not want to lose money on this call ),
-# then $avp(out_vendor_csv) will have the vendors that we need 
-# to use based on the above call characteristics, the order of the
-# vendors that was provided in $avp(carrierlist) and the desired margin
+# 如果我们从 testClient 收到一个呼叫，以其批发质量，
+# 拨打号码 40720018124，我们必须从供应商列表
+# 'testVendor,testVendor2' 中选择，基于 0 的利润 margin
+#（我们不想在此次呼叫上亏损），
+# 那么 $avp(out_vendor_csv) 将包含我们需要使用的供应商
+# 基于上述呼叫特性，$avp(carrierlist) 中提供的供应商顺序
+# 和所需的利润 margin
 $avp(client_id)="testClient";
 $avp(is_ws)=1;  
 $avp(carrierlist)="testVendor,testVendor2";
@@ -320,7 +314,7 @@ $avp(dnis)="40720018124";
 $avp(profit_margin)=0;
 
 if (cost_based_filtering("$avp(client_id)","$avp(is_ws)","$avp(carrierlist)","$avp(dnis)","$avp(profit_margin)","$avp(out_vendor_result)")) {
-	xlog("XXX - Out of the $avp(carrierlist) carriers, we should only use $avp(out_vendor_result) \n");
+	xlog("XXX - 在 $avp(carrierlist) 运营商中，我们只应使用 $avp(out_vendor_result) \n");
 ...
 ```
 
@@ -328,46 +322,46 @@ if (cost_based_filtering("$avp(client_id)","$avp(is_ws)","$avp(carrierlist)","$a
 #### cost_based_ordering(client_id,is_wholesale,vendors_csv,dialled_no,desired_margin,out_vendor_csv)
 
 
-For a call originating from the provided Client ID, on a wholesale or retail quality, going to dialled_no, the function removes the Vendors ( from the vendor_csv list ) which do not pass the desired_margin condition, and sets th out_vendor_csv variable to the list of Vendor that meet the margin condition, in descending order of their margin ( from most profitable Vendor to least profitable Vendor that still meets the margin condition )
+对于从提供的客户 ID 发起的呼叫，以批发或零售质量，拨打 dialled_no，该函数将移除（从 vendor_csv 列表中）不符合 desired_margin 条件的供应商，并将 out_vendor_csv 变量设置为满足 margin 条件的供应商列表，按其利润 margin 降序排列（从最盈利的供应商到仍满足 margin 条件的最不盈利的供应商）
 
 
-The *client_id* pseudo-var will hold the client_id originating this call
+*client_id* 伪变量将保存发起此呼叫的 client_id
 
 
-The  *is_wholesale* pseudo-var will contain either a 1 or a 0, depending on whether the call is wholesale or retail ( see client ratesheet provisioning ).
+*is_wholesale* 伪变量将包含 1 或 0，取决于呼叫是批发还是零售（见客户费率表配置）。
 
 
-The *vendors_csv* pseudo-var contains a list of Vendors that need to be filtered based on the desired margin ( keep just those that match your desired percentage margin for this call )
+*vendors_csv* 伪变量包含需要根据所需利润 margin 进行过滤的供应商列表（只保留与此次呼叫所需百分比利润 margin 匹配的供应商）
 
 
-The *dialled_no* pseudo-var contains the DNIS - the dialled number for the current call. It needs to be in E164 format, without the leading +
+*dialled_no* 伪变量包含 DNIS——当前呼叫的拨叫号码。它需要是 E164 格式，不带前导 +
 
 
-The *desired_margin* pseudo-var contains the minimum Integer margin that the script writer wants to achieve, based on the Client sell and Vendor buy prices. The formula used is : vendor_margin=(client_price - results[i])*100/client_price) . If the vendor_margin is higher than the desired_margin, then the Vendor is ok to use. The desired margin can be positive ( call will be profitable ) or negative ( the call will cause a loss ).
+*desired_margin* 伪变量包含脚本编写者希望实现的最小整数利润 margin，基于客户的卖出价和供应商的买入价。使用的公式是：vendor_margin=(client_price - results[i])*100/client_price)。如果 vendor_margin 高于 desired_margin，则该供应商可以使用。所需利润 margin 可以是正数（呼叫将盈利）或负数（呼叫将导致亏损）。
 
 
-The *out_vendors_csv* pseudo-var is an output parameter, and the pvar will get populated with the CSV list of Vendors that meet the desired margin condition
+*out_vendors_csv* 伪变量是一个输出参数，pvar 将被填充满足 desired_margin 条件的供应商的 CSV 列表
 
 
-Possible parameter types
+可能的参数类型
 
 
-- *ALL Parameters* - String/Integer or pseudo-variables
+- *所有参数* - 字符串/整数或伪变量
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="cost_based_ordering usage"
+```c title="cost_based_ordering 使用示例"
 ...
-# If we get a call from testClient on it's wholesale quality,
-# going to number 40720018124, and we have to pick from the list 
-# of vendors 'testVendor,testVendor2' based on a a profit margin 
-# of 0 ( we do not want to lose money on this call ),
-# then $avp(out_vendor_csv) will have the vendors that we need 
-# to use based on the above call characteristics, and the desired margin
-# The order in $avp(carrierlist) does not matter, the vendors will be
-# ordered from most profitable to least profitable
+# 如果我们从 testClient 收到一个呼叫，以其批发质量，
+# 拨打号码 40720018124，我们必须从供应商列表
+# 'testVendor,testVendor2' 中选择，基于 0 的利润 margin
+#（我们不想在此次呼叫上亏损），
+# 那么 $avp(out_vendor_csv) 将包含我们需要使用的供应商
+# 基于上述呼叫特性和所需的利润 margin
+# $avp(carrierlist) 中的顺序无关紧要，供应商将
+# 从最盈利到最不盈利排序
 $avp(client_id)="testClient";
 $avp(is_ws)=1;  
 $avp(carrierlist)="testVendor,testVendor2";
@@ -375,38 +369,38 @@ $avp(dnis)="40720018124";
 $avp(profit_margin)=0;
 
 if (cost_based_ordering("$avp(client_id)","$avp(is_ws)","$avp(carrierlist)","$avp(dnis)","$avp(profit_margin)","$avp(out_vendor_result)")) {
-	xlog("XXX - Out of the $avp(carrierlist) carriers, we should only use $avp(out_vendor_result) , in the provided order\n");
+	xlog("XXX - 在 $avp(carrierlist) 运营商中，我们只应使用 $avp(out_vendor_result) ，按提供的顺序\n");
 
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### rate_cacher:addVendor
 
 
-Replaces obsolete MI command: *rc_addVendor*.
+替代已废弃的 MI 命令：*rc_addVendor*。
 
 
-Adds a new Vendor, without assigning any ratesheet to it.
+添加新供应商，不为其分配任何费率表。
 
 
-Name: *rate_cacher:addVendor*
+名称：*rate_cacher:addVendor*
 
 
-Parameters :
+参数：
 
 
-- *vendorName* - name of the Vendor to be added
+- *vendorName* - 要添加的供应商名称
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Add a new Vendor
+## 添加新供应商
 # opensips-cli -x mi rate_cacher:addVendor myNewVendor
 		
 ```
@@ -415,26 +409,26 @@ MI FIFO Command Format:
 #### rate_cacher:deleteVendor
 
 
-Replaces obsolete MI command: *rc_deleteVendor*.
+替代已废弃的 MI 命令：*rc_deleteVendor*。
 
 
-Removes a vendor from memory, along with the ratesheet asigned with it ( if any )
+从内存中删除供应商及其关联的费率表（如果有）
 
 
-Name: *rate_cacher:deleteVendor*
+名称：*rate_cacher:deleteVendor*
 
 
-Parameters :
+参数：
 
 
-- *vendorName* - name of the Vendor to be deleted
+- *vendorName* - 要删除的供应商名称
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Delete a Vendor
+## 删除供应商
 # opensipss-cli -x mi rate_cacher:deleteVendor myNewVendor
 		
 ```
@@ -443,27 +437,27 @@ MI FIFO Command Format:
 #### rate_cacher:reloadVendorRate
 
 
-Replaces obsolete MI command: *rc_reloadVendorRate*.
+替代已废弃的 MI 命令：*rc_reloadVendorRate*。
 
 
-Reloads the provided ratesheet and assigns it to the Vendor
+重新加载提供的费率表并将其分配给供应商
 
 
-Name: *rate_cacher:reloadVendorRate*
+名称：*rate_cacher:reloadVendorRate*
 
 
-Parameters :
+参数：
 
 
-- *vendorName* - name of the Vendor
-- *ratesheet_id* - ID of the ratesheet to be reloaded and assigned
+- *vendorName* - 供应商名称
+- *ratesheet_id* - 要重新加载并分配的费率表 ID
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Reloads a Vendor Ratesheet
+## 重新加载供应商费率表
 # opensips-cli -x mi rate_cacher:reloadVendorRate myVendor 3
 		
 ```
@@ -472,26 +466,26 @@ MI FIFO Command Format:
 #### rate_cacher:deleteVendorRate
 
 
-Replaces obsolete MI command: *rc_deleteVendorRate*.
+替代已废弃的 MI 命令：*rc_deleteVendorRate*。
 
 
-Deletes the assigned ratesheet from the Vendor
+从供应商中删除分配的费率表
 
 
-Name: *rate_cacher:deleteVendorRate*
+名称：*rate_cacher:deleteVendorRate*
 
 
-Parameters :
+参数：
 
 
-- *vendorName* - name of the Vendor
+- *vendorName* - 供应商名称
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Reloads a Vendor Ratesheet
+## 重新加载供应商费率表
 # opensips-cli -x mi rate_cacher:deleteVendorRate myVendor
 		
 ```
@@ -500,27 +494,27 @@ MI FIFO Command Format:
 #### rate_cacher:getVendorPrice
 
 
-Replaces obsolete MI command: *rc_getVendorPrice*.
+替代已废弃的 MI 命令：*rc_getVendorPrice*。
 
 
-Fetches all the ratesheet information ( destination name, price, minimum, increment ) for the provided Vendor and dialled number
+获取提供供应商和拨叫号码的所有费率表信息（目的地名称、价格、最小值、增量）
 
 
-Name: *rate_cacher:getVendorPrice*
+名称：*rate_cacher:getVendorPrice*
 
 
-Parameters :
+参数：
 
 
-- *vendorName* - name of the Vendor
-- *dialledNumber* - number to match in the above Vendor's ratesheet
+- *vendorName* - 供应商名称
+- *dialledNumber* - 在上述供应商费率表中匹配的号码
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Query for the price of myVendor for the 4072731825 number
+## 查询 myVendor 拨打 4072731825 号码的价格
 #/usr/local/bin/opensips-cli -x mi rate_cacher:getVendorPrice myVendor 4072731825
 {
     "prefix": "40727",
@@ -537,26 +531,26 @@ MI FIFO Command Format:
 #### rate_cacher:addClient
 
 
-Replaces obsolete MI command: *rc_addClient*.
+替代已废弃的 MI 命令：*rc_addClient*。
 
 
-Adds a new Client, without assigning any ratesheet to it.
+添加新客户，不为其分配任何费率表。
 
 
-Name: *rate_cacher:addClient*
+名称：*rate_cacher:addClient*
 
 
-Parameters :
+参数：
 
 
-- *clientName* - name of the Client to be added
+- *clientName* - 要添加的客户名称
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Add a new Client
+## 添加新客户
 # opensips-cli -x mi fifo rate_cacher:addClient myNewClient
 		
 ```
@@ -565,26 +559,26 @@ MI FIFO Command Format:
 #### rate_cacher:deleteClient
 
 
-Replaces obsolete MI command: *rc_deleteClient*.
+替代已废弃的 MI 命令：*rc_deleteClient*。
 
 
-Removes a Client from memory, along with the ratesheet asigned with it ( if any )
+从内存中删除客户及其关联的费率表（如果有）
 
 
-Name: *rate_cacher:deleteClient*
+名称：*rate_cacher:deleteClient*
 
 
-Parameters :
+参数：
 
 
-- *clientName* - name of the Client to be deleted
+- *clientName* - 要删除的客户名称
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Delete a Client
+## 删除客户
 # opensips-cli -x mi rate_cacher:deleteClient myClient
 		
 ```
@@ -593,28 +587,28 @@ MI FIFO Command Format:
 #### rate_cacher:reloadClientRate
 
 
-Replaces obsolete MI command: *rc_reloadClientRate*.
+替代已废弃的 MI 命令：*rc_reloadClientRate*。
 
 
-Reloads the provided ratesheet and assigns it to the Client
+重新加载提供的费率表并将其分配给客户
 
 
-Name: *rate_cacher:reloadClientRate*
+名称：*rate_cacher:reloadClientRate*
 
 
-Parameters :
+参数：
 
 
-- *clientName* - name of the Cient
-- *isWholesale* - is the ratesheet assigned on the wholesale or retail quality
-- *ratesheet_id* - ID of the ratesheet to be reloaded and assigned
+- *clientName* - 客户名称
+- *isWholesale* - 费率表是分配在批发还是零售质量上
+- *ratesheet_id* - 要重新加载并分配的费率表 ID
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Reloads the Client's wholesale Ratesheet, assigning it rate id 3
+## 重新加载客户的批发费率表，分配费率 ID 3
 # opensips-cli -x mi rate_cacher:reloadClientRate myClient 1 3
 		
 ```
@@ -623,27 +617,27 @@ MI FIFO Command Format:
 #### rate_cacher:deleteClientRate
 
 
-Replaces obsolete MI command: *rc_deleteClientRate*.
+替代已废弃的 MI 命令：*rc_deleteClientRate*。
 
 
-Deletes the assigned ratesheet from the Client
+从客户中删除分配的费率表
 
 
-Name: *rate_cacher:deleteClientRate*
+名称：*rate_cacher:deleteClientRate*
 
 
-Parameters :
+参数：
 
 
-- *ClientName* - name of the Client
-- *isWholesale* - delete the wholesale or retail ratesheet
+- *ClientName* - 客户名称
+- *isWholesale* - 删除批发还是零售费率表
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Deletes a Client Ratesheet
+## 删除客户费率表
 # opensips-cli -x mi rate_cacher:deleteClientRate myClient 1
 		
 ```
@@ -652,28 +646,28 @@ MI FIFO Command Format:
 #### rate_cacher:getClientPrice
 
 
-Replaces obsolete MI command: *rc_getClientPrice*.
+替代已废弃的 MI 命令：*rc_getClientPrice*。
 
 
-Fetches all the ratesheet information ( destination name, price, minimum, increment ) for the provided Client, on the specified quality ( wholesale vs retail ) and dialled number
+获取提供客户在指定质量（批发 vs 零售）和拨叫号码上的所有费率表信息（目的地名称、价格、最小值、增量）
 
 
-Name: *rate_cacher:getClientPrice*
+名称：*rate_cacher:getClientPrice*
 
 
-Parameters :
+参数：
 
 
-- *ClientName* - name of the Client
-- *isWholesale* - wholesale = 1, retail = 0
-- *dialledNumber* - number to match in the above Client's ratesheet
+- *ClientName* - 客户名称
+- *isWholesale* - 批发 = 1，零售 = 0
+- *dialledNumber* - 在上述客户费率表中匹配的号码
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-## Query for the price of myClient, on the retail quality, for the 4072731825 number
+## 查询 myClient 在零售质量上拨打 4072731825 号码的价格
 #/usr/local/bin/opensips-cli -x mi rate_cacher:getClientPrice myClient 0 4072731825
 {
     "prefix": "40727",
@@ -688,6 +682,6 @@ MI FIFO Command Format:
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0（Creative Common License 4.0）授权。

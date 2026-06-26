@@ -1,94 +1,81 @@
 ---
-title: "pike Module"
-description: "The module provides a simple mechanism for DOS protection - DOS based on floods at network level. The module keeps trace of all (or selected ones) IPs of incoming SIP traffic (as source IP) and blocks the ones that exceeded some limit. Works simultaneous for IPv4 and IPv6 addresses."
+title: "pike 模块"
+description: "该模块提供了一种简单的 DOS 防护机制——基于网络层 flood 攻击的 DOS 防护。该模块跟踪所有（或选定的）传入 SIP 流量的 IP（作为源 IP），并阻止超过限制的 IP。同时支持 IPv4 和 IPv6 地址。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module provides a simple mechanism for DOS protection - DOS based
-		on floods at network level. The module keeps trace of all (or selected
-		ones) IPs of incoming SIP traffic (as source IP) and blocks the ones
-		that exceeded some limit.
-		Works simultaneous for IPv4 and IPv6 addresses.
+该模块提供了一种简单的 DOS 防护机制——基于网络层 flood 攻击的 DOS 防护。
+		该模块跟踪所有（或选定的）传入 SIP 流量的 IP（作为源 IP），
+		并阻止超过限制的 IP。
+		同时支持 IPv4 和 IPv6 地址。
 
 
-The module does not implement any actions on blocking - it just simply
-		reports that there is a high traffic from an IP; what to do, is
-		the administator decision (via scripting).
+该模块不实施任何阻止操作——它只是简单地报告某个 IP 有高流量；
+		做什么决定是管理员的事（通过脚本）。
 
 
-### How to use
+### 如何使用
 
 
-There are 2 ways of using this module (as detecting flood attacks and
-		as taking the right action to limit the impact on the system):
+有两种使用此模块的方法（作为检测 flood 攻击和采取正确行动限制对系统的影响）：
 
 
-- *manual* - from routing script you can force
-				the check of the source IP of an incoming requests, using
-				"pike_check_req" function. Note that this checking works only
-				for SIP requests and you can decide (based on scripting logic)
-				what source IPs to be monitored and what action to be taken
-				when a flood is detected.
-- *automatic* - the module will install
-				internal hooks to catch all incoming requests and replies (even
-				if not well formed from SIP point of view) - more or less the
-				module will monitor all incoming packages (from the network) on
-				the SIP sockets. Each time the source IP of a package needs to
-				be analyse (to see if trusted or not), the module will run a
-				script route - see "check_route" module parameter -, where,
-				based on custom logic, you can decide if that IP needs to be
-				monitored for flooding or not. As action, when flood is
-				detected, the module will automatically drop the packages.
+- *手动* - 在路由脚本中，您可以强制检查传入请求的源 IP，
+				使用 "pike_check_req" 函数。请注意，此检查仅适用于 SIP 请求，
+				您可以决定（基于脚本逻辑）要监控哪些源 IP 以及当检测到 flood 时要采取什么行动。
+- *自动* - 该模块将安装内部钩子以捕获所有传入的请求和回复（即使不是格式良好的 SIP）——
+				模块将监控 SIP 套接字上（从网络）传入的所有数据包。
+				每次需要分析数据包的源 IP（以查看是否可信）时，
+				模块将运行一个脚本路由——请参阅 "check_route" 模块参数——在那里，
+				基于自定义逻辑，您可以决定该 IP 是否需要监控 flood。
+				作为行动，当检测到 flood 时，模块将自动丢弃数据包。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *无其他 OpenSIPS 模块的依赖*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+必须在运行加载了此模块的 OpenSIPS 之前安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### sampling_time_unit (integer)
 
 
-Time period used for sampling (or the sampling accuracy ;-) ). The
-		smaller the better, but slower. If you want to detect peaks, use a
-		small one. To limit the access (like total number of requests on a
-		long period of time) to a proxy resource (a gateway for ex), use
-		a bigger value of this parameter.
+用于采样（或采样精度）的时间周期。越小越好，但会更慢。
+		如果您想检测峰值，请使用较小的值。
+		要限制对代理资源（例如网关）在较长时间内的访问总数，
+		请使用较大的值。
 
 
-IMPORTANT: a too small value may lead to performance penalties due
-		timer process overloading.
+重要提示：太小的值可能导致由于计时器进程过载而导致的性能损失。
 
 
-*Default value is 2.*
+*默认值为 2。*
 
 
-```c title="Set sampling_time_unit parameter"
+```c title="设置 sampling_time_unit 参数"
 ...
 modparam("pike", "sampling_time_unit", 10)
 ...
@@ -98,16 +85,15 @@ modparam("pike", "sampling_time_unit", 10)
 #### reqs_density_per_unit (integer)
 
 
-How many requests should be allowed per sampling_time_unit before
-		blocking all the incoming request from that IP. Practically, the
-		blocking limit is between ( let's have x=reqs_density_per_unit) x
-		and 3*x for IPv4 addresses and between x and 8*x for ipv6 addresses.
+在阻止该 IP 的所有传入请求之前，允许在 sampling_time_unit 内的请求数。
+		实际上，阻止限制对于 IPv4 地址介于 x（即 reqs_density_per_unit）和 3*x 之间，
+		对于 IPv6 地址介于 x 和 8*x 之间。
 
 
-*Default value is 30.*
+*默认值为 30。*
 
 
-```c title="Set reqs_density_per_unit parameter"
+```c title="设置 reqs_density_per_unit 参数"
 ...
 modparam("pike", "reqs_density_per_unit", 30)
 ...
@@ -117,22 +103,20 @@ modparam("pike", "reqs_density_per_unit", 30)
 #### remove_latency (integer)
 
 
-For how long the IP address will be kept in memory after the last
-		request from that IP address. It's a sort of timeout value.
+在最后一次来自该 IP 的请求之后，IP 地址将在内存中保留多长时间。
+		这是一 种超时值。
 
 
-*Note:* If the *remove_latency*
-		value is lower than *sampling_time_unit* value,
-		nodes might expire before being unblocked, therefore losing some
-		UNBLOCK events. In order to prevent this, if the
-		*remove_latency* is lower, OpenSIPS internally
-		forces its value to *sampling_time_unit + 1*.
+*注意：* 如果 *remove_latency* 的值低于 *sampling_time_unit* 的值，
+		节点可能在解除阻止之前过期，从而丢失一些 UNBLOCK 事件。
+		为了防止这种情况，如果 *remove_latency* 较低，
+		OpenSIPS 会在内部强制其值为 *sampling_time_unit + 1*。
 
 
-*Default value is 120.*
+*默认值为 120。*
 
 
-```c title="Set remove_latency parameter"
+```c title="设置 remove_latency 参数"
 ...
 modparam("pike", "remove_latency", 130)
 ...
@@ -142,27 +126,25 @@ modparam("pike", "remove_latency", 130)
 #### check_route (integer)
 
 
-The name of the script route to be triggers (in automatic way) when a
-		package is received from the network. If you do a "drop" in this route,
-		it will indicate to the module that the source IP of the package does
-		not need to be monitored. Otherwise, the source IP will be
-		automatically monitered.
+脚本路由的名称，当从网络接收到数据包时，该路由将被触发（以自动方式）。
+		如果您在此路由中执行 "drop"，它将向模块指示不需要监控数据包的源 IP。
+		否则，源 IP 将被自动监控。
 
 
-By defining this parameter, the automatic checking mode is enabled.
+通过定义此参数，启用自动检查模式。
 
 
-*Default value is NONE (no auto mode).*
+*默认值为 NONE（无自动模式）。*
 
 
-```c title="Set check_route parameter"
+```c title="设置 check_route 参数"
 ...
 modparam("pike", "check_route", "pike")
 ...
 route[pike]{
-    if ($si==111.222.111.222)  /*trusted, do not check it*/
+    if ($si==111.222.111.222)  /*可信，不检查*/
         drop;
-    /* all other IPs are checked*/
+    /* 所有其他 IP 都会被检查*/
 }
 ....
 ```
@@ -171,72 +153,68 @@ route[pike]{
 #### pike_log_level (integer)
 
 
-Log level to be used by module to auto report the blocking (only first
-		time) and unblocking of IPs detected as source of floods.
+模块用于自动报告被检测为 flood 源头的 IP 的阻止（仅第一次）
+		和解除阻止时使用的日志级别。
 
 
-*Default value is 1 (L_WARN).*
+*默认值为 1（L_WARN）。*
 
 
-```c title="Set pike_log_level parameter"
+```c title="设置 pike_log_level 参数"
 ...
 modparam("pike", "pike_log_level", -1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### pike_check_req()
 
 
-Process the source IP of the current request and returns false if
-		the IP was exceeding the blocking limit.
+处理当前请求的源 IP，如果 IP 超过阻止限制则返回 false。
 
 
-Return codes:
+返回码：
 
 
-- *1 (true)* - IP is not to be blocked or
-				internal error occurred.
+- *1 (true)* - IP 不应被阻止或发生内部错误。
 
-  > **Warning:** 
-- *-1 (false)* - IP is source of
-				flooding, being previously detected
-- *-2 (false)* - IP is detected as a new
-				source of flooding - first time detection
+  > **警告：**
+- *-1 (false)* - IP 是 flood 源头，已被先前检测到。
+- *-2 (false)* - IP 被检测为新的 flood 源头——首次检测。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="pike_check_req usage"
+```c title="pike_check_req 使用示例"
 ...
 if (!pike_check_req()) { exit; };
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### pike:list
 
 
-Replaces obsolete MI command: *pike_list*.
+替换过时的 MI 命令：*pike_list*。
 
 
-Lists the nodes in the pike tree.
+列出 pike 树中的节点。
 
 
-Name: *pike:list*
+名称：*pike:list*
 
 
-Parameters: *none*
+参数：*无*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -248,22 +226,22 @@ MI FIFO Command Format:
 #### pike:rm
 
 
-Replaces obsolete MI command: *pike_rm*.
+替换过时的 MI 命令：*pike_rm*。
 
 
-Remove a node from the pike tree by IP address.
+按 IP 地址从 pike 树中移除节点。
 
 
-Name: *pike:rm*
+名称：*pike:rm*
 
 
-Parameters:
+参数：
 
 
-- *IP* - IP address currently blocked.
+- *IP* - 当前被阻止的 IP 地址。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -272,95 +250,86 @@ MI FIFO Command Format:
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_PIKE_BLOCKED
 
 
-This event is raised when the *pike* module
-			decides that an IP should be blocked.
+当 *pike* 模块决定应阻止 IP 时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *ip* - the IP address that has been blocked.
+- *ip* - 被阻止的 IP 地址。
 
 
-### Provided Status/Report Identifiers
+### 提供状态/报告标识符
 
 
-The module provides the "pike" Status/Report group, only with
-	the "main"/default SR identifier.
+该模块提供 "pike" 状态/报告组，只有 "main"/默认 SR 标识符。
 
 
-There is no usefull status published by the module.
+该模块没有发布有用的状态。
 
 
-In terms of reports/logs, the following events will be reported:
+在报告/日志方面，以下事件将被报告：
 
 
-- IP X.Y.Z.W detected as flooding
+- IP X.Y.Z.W 被检测为 flood
 
 
-For how to access and use the Status/Report information, please see
-	[https://www.opensips.org/Documentation/Interface-StatusReport-3-3](>https://www.opensips.org/Documentation/Interface-StatusReport-3-3).
+关于如何访问和使用状态/报告信息，请参见
+		[https://www.opensips.org/Documentation/Interface-StatusReport-3-3](>https://www.opensips.org/Documentation/Interface-StatusReport-3-3)。
 
 
-## Developer Guide
+## 开发者指南
 
 
-One single tree (for both IPv4 and IPv6) is used. Each node contains a byte, the IP
-	addresses stretching from root to the leafs.
+使用单一树（IPv4 和 IPv6 共用）。每个节点包含一个字节，从根到叶子的 IP 地址展开。
 
 
-```c title="Tree of IP addresses"
+```c title="IP 地址树"
 	   / 193 - 175 - 132 - 164
 tree root /                  \ 142
-	  \ 195 - 37 - 78 - 163
-	   \ 79 - 134
+		  \ 195 - 37 - 78 - 163
+		   \ 79 - 134
 ```
 
 
-To detect the whole address, step by step, from the root to the leafs, the nodes corresponding
-	to each byte of the ip address are expanded. In order to be expended a node has to be hit
-	for a given number of times (possible by different addresses; in the previous example, the
-	node "37" was expended by the 195.37.78.163 and 195.37.79.134 hits).
+为了检测完整地址，从根到叶子逐步展开，IP 地址的每个字节对应的节点被扩展。
+		为了被展开，一个节点必须被命中给定次数（可能来自不同地址；
+		在前面的例子中，节点 "37" 被 195.37.78.163 和 195.37.79.134 命中）。
 
 
-For 193.175.132.164 with x= reqs_density_per_unit:
+对于 193.175.132.164，x = reqs_density_per_unit：
 
 
-- After first req hits -> the "193" node is built.
-- After x more hits, the "175" node is build; the hits of
-		"193" node are split between itself and its child--both of them gone
-		have x/2.
-- And so on for node "132" and "164".
-- Once "164" build the entire address can be found in the
-		tree. "164" becomes a leaf. After it will be hit as a leaf for x
-		times, it will become "RED" (further request from this address will
-		be blocked).
+- 第一次请求命中后 -> 构建 "193" 节点。
+- 再命中 x 次后，构建 "175" 节点；"193" 节点的命中在自身及其子节点之间分配——两者都是 x/2。
+- 依此类推，节点 "132" 和 "164"。
+- 一旦 "164" 构建完成，整个地址可以在树中找到。"164" 成为叶子。
+		作为叶子被命中 x 次后，它将变为 "RED"（来自此地址的进一步请求将被阻止）。
 
 
-So, to build and block this address were needed 3*x hits. Now, if reqs start coming from
-	193.175.132.142, the first 3 bytes are already in the tree (they are shared with the previous
-	address), so I will need only x hits (to build node "142" and to make it
-	"RED") to make this address also to be blocked.  This is the reason for the
-	variable number of hits necessary to block an IP.
+因此，构建和阻止此地址需要 3*x 次命中。现在，如果请求开始来自 193.175.132.142，
+		前三个字节已在树中（它们与前一个地址共享），
+		所以我只需要 x 次命中（构建节点 "142" 并使其变为 "RED"）
+		就可以阻止此地址。这就是阻止 IP 所需命中次数可变的原因。
 
 
-The maximum number of hits to turn an address red are (n is the address's number of bytes):
+将地址变为红色所需的最大命中次数为（n 是地址的字节数）：
 
 
-1 (first byte) + x (second byte) + (x / 2) * (n - 2) (for the rest of the bytes) + (n - 1)
-	(to turn the node to red).
+1（第一个字节）+ x（第二个字节）+ (x / 2) * (n - 2)（其余字节）+ (n - 1)
+	（变为红色）。
 
 
-So, for IPv4 (n = 4) will be 3x and for IPv6 (n = 16) will be 9x. The minimum number of hits
-	to turn an address red is x.
+因此，对于 IPv4（n = 4）将是 3x，对于 IPv6（n = 16）将是 9x。
+		将地址变为红色的最小命中次数是 x。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

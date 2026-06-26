@@ -1,150 +1,138 @@
 ---
-title: "Auth_db Module"
-description: "This module contains all authentication related functions that need the access to the database. This module should be used together with auth module, it cannot be used independently because it depends on the module. Select this module if you want to use database to store authentication in..."
+title: "Auth_db 模块"
+description: "此模块包含所有需要访问数据库的认证相关函数。此模块应与 auth 模块一起使用，不能独立使用，因为它依赖于该模块。如果要使用数据库存储认证信息（如订户用户名和密码），请选择此模块。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module contains all authentication related functions that need
-		the access to the database. This module should be used together with
-		auth module, it cannot be used independently because it depends on
-		the module. Select this module if you want to use database to store
-		authentication information like subscriber usernames and passwords. If
-		you want to use radius authentication, then use auth_radius instead.
+此模块包含所有需要访问数据库的认证相关函数。
+		此模块应与 auth 模块一起使用，不能独立使用，因为它依赖于该模块。
+        如果要使用数据库存储认证信息（如订户用户名和密码），请选择此模块。
+        如果要使用 radius 认证，请改用 auth_radius。
 
 
-#### RFC 8760 Support (Strenghtened Authentication)
+#### RFC 8760 支持（增强型认证）
 
 
-Starting with OpenSIPS 3.2, the [auth](../auth),
-			[auth_db](../auth_db) and
+从 OpenSIPS 3.2 开始，[auth](../auth)、
+			[auth_db](../auth_db) 和
 			[uac_auth](../uac_auth)
-			modules include support for two new digest authentication algorithms
-			("SHA-256" and "SHA-512-256"), according to the
+			模块支持两种新的摘要认证算法
+			（"SHA-256" 和 "SHA-512-256"），符合
 	        [RFC 8760](https://datatracker.ietf.org/doc/html/rfc8760)
-	        specs.
+	        规范。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The module depends on the following modules (in the other words
-			the listed modules must be loaded before this module):
+该模块依赖以下模块（换句话说，
+			列出的模块必须在此模块之前加载）：
 
 
-- *auth* -- Generic authentication
-				functions
-- *database* -- Any database module
-				(currently mysql, postgres, dbtext)
+- *auth* -- 通用认证函数
+- *database* -- 任何数据库模块
+				（当前为 mysql、postgres、dbtext）
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed
-			before running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装
+			以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### db_url (string)
+#### db_url (字符串)
 
 
-This is URL of the database to be used. Value of the parameter depends
-		on the database module used. For example for mysql and postgres modules
-		this is something like mysql://username:password@host:port/database.
-		For dbtext module (which stores data in plaintext files) it is
-		directory in which the database resides.
+这是要使用的数据库的 URL。参数的值取决于所使用的数据库模块。
+		例如，对于 mysql 和 postgres 模块，这类似于 mysql://username:password@host:port/database。
+		对于 dbtext 模块（以纯文本文件存储数据），这是数据库所在的目录。
 
 
-*Default value is "mysql://opensipsro:opensipsro@localhost/opensips".*
+*默认值为 "mysql://opensipsro:opensipsro@localhost/opensips"。*
 
 
-```c title="db_url parameter usage"
+```c title="db_url 参数使用"
 modparam("auth_db", "db_url", "dbdriver://username:password@dbhost/dbname")
 ```
 
 
-#### calculate_ha1 (integer)
+#### calculate_ha1 (整数)
 
 
-This parameter tells the server whether it should considered the
-		loaded password (for authentification) as plaintext passwords or
-		a pre-calculated HA1 string.
+此参数告诉服务器应将加载的密码（用于认证）视为明文密码还是
+		预计算的 HA1 字符串。
 
 
-Possible meanings of this parameter are:
+此参数的可能含义如下：
 
 
-- *1 (calculate HA1)* - the loaded
-			password is a plaintext password, so OpenSIPS will internally
-			calculate the HA1. As the passwords will be loaded from the column
-			specified in the [password column](#param_password_column) parameter,
-			be sure this parameter points to a column holding a plaintext password
-			(by default, this parameter points to the "ha1" column);
-- *0 (do **not**
-			calculate HA1)* - the loaded password is a pre-computed
-			HA1 hash (no calculation needed).  The module will load all hashes
-			stored in the [password column](#param_password_column),
-			[hash column sha256](#param_hash_column_sha256) and
-			[hash column sha512t256](#param_hash_column_sha512t256) columns, then use
-			the hash corresponding to the hashing algorithm selected for a
-			given digest authentication challenge.
-The content of the hash columns can be generated as follows:
-			
+- *1（计算 HA1）* - 加载的密码是明文密码，
+			因此 OpenSIPS 将在内部计算 HA1。
+            由于密码将从 [password column](#param_password_column) 参数指定的列加载，
+            请确保此参数指向包含明文密码的列
+           （默认情况下，此参数指向 "ha1" 列）；
+- *0（不计算 HA1）* - 加载的密码是预计算的
+			HA1 哈希（无需计算）。
+            模块将加载存储在 [password column](#param_password_column)、
+            [hash column sha256](#param_hash_column_sha256) 和
+            [hash column sha512t256](#param_hash_column_sha512t256) 列中的所有哈希，
+            然后使用与给定摘要认证挑战所选哈希算法对应的哈希。
+哈希列的内容可按如下方式生成：
+				
 			password_column: MD5(username:realm:password)
 			hash_column_sha256: SHA-256(username:realm:password)
 			hash_column_sha512t256: SHA-512-256(username:realm:password)
 
 
-Default value of this parameter is
-			*0 (use hashed passwords)*.
+此参数的默认值为
+			*0（使用哈希密码）*。
 
 
-```c title="calculate_ha1 parameter usage"
+```c title="calculate_ha1 参数使用"
 modparam("auth_db", "calculate_ha1", 1)
 ```
 
 
-#### use_domain (boolean)
+#### use_domain (布尔值)
 
 
-If true (not 0), domain will be also used when looking up in the
-		subscriber table. If you have a multi-domain setup, it is strongly
-		recommended to keep this parameter enabled, to avoid username
-		overlapping between domains.
+如果为 true（非 0），则在查找订户表时也将使用域名。
+		如果有多个域设置，强烈建议保持此参数启用，以避免域之间的用户名重叠。
 
 
-Default value is *true* (enabled).
+默认值为 *true*（已启用）。
 
 
-```c title="use_domain parameter usage"
+```c title="use_domain 参数使用"
 modparam("auth_db", "use_domain", true)
-		
+			
 ```
 
 
-#### load_credentials (string)
+#### load_credentials (字符串)
 
 
-This parameter specifies credentials to be fetched from database when
-		the authentication is performed. The loaded credentials will be stored
-		in AVPs. If the AVP name is not specificaly given, it will be used a
-		NAME AVP with the same name as the column name.
+此参数指定执行认证时要从数据库获取的凭据。
+		加载的凭据将存储在 AVP 中。
+        如果未特别给出 AVP 名称，将使用与列名相同的名称 AVP。
 
 
-Parameter syntax:
+参数语法：
 
 
 - *load_credentials = credential (';' credential)**
@@ -153,216 +141,203 @@ Parameter syntax:
 - *avp_specification = '$avp(' + NAME + ')'*
 
 
-Default value of this parameter is empty / """" list.
+此参数的默认值为空 / """" 列表。
 
 
-```c title="load_credentials parameter usage"
-# load rpid column into $avp(13) and email_address column
-# into $avp(email_address)
+```c title="load_credentials 参数使用"
+# 将 rpid 列加载到 $avp(13)，将 email_address 列加载到
+# $avp(email_address)
 modparam("auth_db", "load_credentials", "$avp(13)=rpid;email_address")
 ```
 
 
-#### skip_version_check (int)
+#### skip_version_check (整数)
 
 
-This parameter specifies not to check the auth table version. This
-		parameter should be set when a custom authentication table is used.
+此参数指定不检查 auth 表版本。
+		当使用自定义认证表时应设置此参数。
 
 
-Default value is "0 (false)".
+默认值为 "0（false）"。
 
 
-```c title="skip_version_check parameter usage"
+```c title="skip_version_check 参数使用"
 modparam("auth_db", "skip_version_check", 1)
-		
+			
 ```
 
 
-#### user_column (string)
+#### user_column (字符串)
 
 
-This is the name of the column in a 'SUBSCRIBER' like table holding
-		the usernames. Default value is fine for most people.
-		Use the parameter if you really need to change it.
+这是 "SUBSCRIBER" 类表中保存用户名的列名。
+		默认值对大多数人都应该没问题。
+		只有在真正需要更改时才使用此参数。
 
 
-Default value is "username".
+默认值为 "username"。
 
 
-```c title="user_column parameter usage"
+```c title="user_column 参数使用"
 modparam("auth_db", "user_column", "user")
 ```
 
 
-#### domain_column (string)
+#### domain_column (字符串)
 
 
-This is the name of the column in a 'SUBSCRIBER' like table holding
-		the domains of users. Default value is fine for most people.
-		Use the parameter if you really need to
-		change it.
+这是 "SUBSCRIBER" 类表中保存用户域的列名。
+		默认值对大多数人都应该没问题。
+		只有在真正需要时才使用此参数。
 
 
-Default value is "domain".
+默认值为 "domain"。
 
 
-```c title="domain_column parameter usage"
+```c title="domain_column 参数使用"
 modparam("auth_db", "domain_column", "domain")
 ```
 
 
-#### password_column (string)
+#### password_column (字符串)
 
 
-This is the name of the column in a *"subscriber"*
-		like table holding MD5 HA1 hash strings or plaintext passwords.  An MD5 HA1
-		hash is an MD5 hash of username, password and realm.  Storing hashes in the
-		DB (as opposed to passwords directly) is much more secure, because the
-		server does not need to know plaintext passwords and because it is
-		computationally infeasible for an attacker to reverse-obtain a password
-		from an HA1 string.
+这是 "subscriber" 类表中保存 MD5 HA1 哈希字符串或明文密码的列名。
+        MD5 HA1 哈希是用户名、密码和 realm 的 MD5 哈希。
+        在 DB 中存储哈希（而不是直接存储密码）更加安全，
+        因为服务器不需要知道明文密码，而且攻击者从 HA1 字符串
+        反向获取密码在计算上是不可行的。
 
 
-Default value is "ha1".
+默认值为 "ha1"。
 
 
-```c title="password_column parameter usage"
+```c title="password_column 参数使用"
 modparam("auth_db", "password_column", "password")
 ```
 
 
-#### hash_column_sha256 (string)
+#### hash_column_sha256 (字符串)
 
 
-The name of the column holding SHA-256 HA1 hashes
-		([RFC 8760](https://datatracker.ietf.org/doc/html/rfc8760) support).
+保存 SHA-256 HA1 哈希的列名
+		（[RFC 8760](https://datatracker.ietf.org/doc/html/rfc8760) 支持）。
 
 
-Default value is "ha1_sha256".
+默认值为 "ha1_sha256"。
 
 
-```c title="password_column parameter usage"
+```c title="password_column 参数使用"
 modparam("auth_db", "hash_column_sha256", "ha1_sha256")
 ```
 
 
-#### hash_column_sha512t256 (string)
+#### hash_column_sha512t256 (字符串)
 
 
-The name of the column holding SHA-512/256 HA1 hashes.
-		([RFC 8760](https://datatracker.ietf.org/doc/html/rfc8760) support).
+保存 SHA-512/256 HA1 哈希的列名。
+		（[RFC 8760](https://datatracker.ietf.org/doc/html/rfc8760) 支持）。
 
 
-Default value is "ha1_sha512t256".
+默认值为 "ha1_sha512t256"。
 
 
-```c title="password_column parameter usage"
+```c title="password_column 参数使用"
 modparam("auth_db", "hash_column_sha512t256", "ha1_sha512t256")
 ```
 
 
-#### uri_user_column (string)
+#### uri_user_column (字符串)
 
 
-Column holding usernames in an 'URI' like table.
+保存 "URI" 类表中用户名的列。
 
 
-*Default value is "username".*
+*默认值为 "username"。*
 
 
-```c title="Set uri_user_column parameter"
+```c title="设置 uri_user_column 参数"
 ...
 modparam("auth_db", "uri_user_column", "username")
 ...
 ```
 
 
-#### uri_domain_column (string)
+#### uri_domain_column (字符串)
 
 
-Column holding domain in an 'URI' like table.
+保存 "URI" 类表中域的列。
 
 
-*Default value is "domain".*
+*默认值为 "domain"。*
 
 
-```c title="Set uri_domain_column parameter"
+```c title="设置 uri_domain_column 参数"
 ...
 modparam("auth_db", "uri_domain_column", "domain")
 ...
 ```
 
 
-#### uri_uriuser_column (string)
+#### uri_uriuser_column (字符串)
 
 
-Column holding URI username in an 'URI' like table.
+保存 "URI" 类表中 URI 用户名的列。
 
 
-*Default value is "uri_user".*
+*默认值为 "uri_user"。*
 
 
-```c title="Set uriuser_column parameter"
+```c title="设置 uriuser_column 参数"
 ...
 modparam("auth_db", "uri_uriuser_column", "uri_user")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### www_authorize(realm, table)
 
 
-The function verifies the received credentials against a
-		"SUBSCRIBER"-like table according to digest authentication as per
-		[RFC2617](http://www.ietf.org/rfc/rfc2617.txt).
-		If the credentials are verified successfully then the function will
-		succeed and mark the credentials as authorized (marked credentials
-		can be later used by some other functions). If the function was
-		unable to verify the
-		credentials for some reason then it will fail and the script should
-		call `www_challenge` which will
-		challenge the user again.
+此函数根据 RFC2617
+		（[RFC2617](http://www.ietf.org/rfc/rfc2617.txt)）中的摘要认证，
+        针对 "SUBSCRIBER" 类表验证收到的凭据。
+        如果凭据验证成功，则函数将成功并将凭据标记为已授权
+        （标记的凭据可供其他函数稍后使用）。
+        如果函数由于某种原因无法验证凭据，则它将失败，
+        脚本应调用 `www_challenge` 再次向用户发起挑战。
 
 
-Negative codes may be interpreted as follows:
+负返回码的解释如下：
 
 
-- *-5 (generic error)* - some generic error
-			occurred and no reply was sent out;
-- *-4 (no credentials)* - credentials were not
-			found in request;
-- *-3 (stale nonce)* - stale nonce;
-- *-2 (invalid password)* - valid user, but
-			wrong password;
-- *-1 (invalid user)* - authentication user does
-			not exist.
+- *-5（通用错误）* - 发生某些通用错误，未发送回复；
+- *-4（无凭据）* - 在请求中未找到凭据；
+- *-3（过期 nonce）* - nonce 已过期；
+- *-2（密码无效）* - 用户有效，但密码错误；
+- *-1（用户无效）* - 认证用户不存在。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *realm (string)* - Realm is an opaque string that
-			the user agent should present to the user so it can decide what
-			username and password to use. Usually this is domain of the host
-			the server is running on.
-If an empty string "" is used then the server will
-			generate it from the request. In case of REGISTER requests To
-			header field domain will be used (because this header field
-			represents a user being registered), for all other messages From
-			header field domain will be used.
-The string may contain pseudo variables.
-- *table (string)* - Table to be used to lookup
-			usernames and passwords (usually subscribers table).
+- *realm (字符串)* - Realm 是一个不透明字符串，
+			用户代理应向用户展示，以便用户决定使用什么
+			用户名和密码。通常这是服务器运行所在的主机域名。
+如果使用空字符串 ""，则服务器将从请求中生成它。
+            对于 REGISTER 请求的 To 头域，将使用该头域中的域名
+            （因为此头域代表正在注册的用户），
+            对于所有其他消息，将使用 From 头域中的域名。
+该字符串可以包含伪变量。
+- *table (字符串)* - 用于查找用户名和密码的表（通常为 subscribers 表）。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="www_authorize usage"
+```c title="www_authorize 使用"
 ...
 if (!www_authorize("siphub.net", "subscriber"))
 	www_challenge("siphub.net", "auth");
@@ -373,54 +348,44 @@ if (!www_authorize("siphub.net", "subscriber"))
 #### proxy_authorize(realm, table)
 
 
-The function verifies the received credentials against a
-		"SUBSCRIBER"-like table according to digest authentication as per
-		[RFC2617](http://www.ietf.org/rfc/rfc2617.txt). If
-		the credentials are verified successfully then the function will
-		succeed and mark the credentials as authorized (marked credentials can
-		be later used by some other functions). If the function was unable to
-		verify the credentials for some reason then it will fail and
-		the script should call
-		`proxy_challenge` which will
-		challenge the user again.
+此函数根据 RFC2617
+		（[RFC2617](http://www.ietf.org/rfc/rfc2617.txt)）中的摘要认证，
+        针对 "SUBSCRIBER" 类表验证收到的凭据。
+        如果凭据验证成功，则函数将成功并将凭据标记为已授权
+        （标记的凭据可供其他函数稍后使用）。
+        如果函数由于某种原因无法验证凭据，则它将失败，
+        脚本应调用 `proxy_challenge` 再次向用户发起挑战。
 
 
-Negative codes may be interpreted as follows:
+负返回码的解释如下：
 
 
-- *-5 (generic error)* - some generic
-					error occurred and no reply was sent out;
-- *-4 (no credentials)* - credentials
-					were not found in request;
-- *-3 (stale nonce)* - stale nonce;
-- *-2 (invalid password)* - valid user,
-					but wrong password;
-- *-1 (invalid user)* - authentication
-					user does not exist.
+- *-5（通用错误）* - 发生某些通用错误，未发送回复；
+- *-4（无凭据）* - 在请求中未找到凭据；
+- *-3（过期 nonce）* - nonce 已过期；
+- *-2（密码无效）* - 用户有效，但密码错误；
+- *-1（用户无效）* - 认证用户不存在。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *realm (string)* - Realm is an opaque string that
-			the user agent should present to the user so it can decide what
-			username and password to use. Usually this is domain of the host
-			the server is running on.
-If an empty string "" is used then the server will
-			generate it from the request. From header field domain will be
-			used as realm.
-The string may contain pseudo variables.
-- *table (string)* - Table to be used to lookup
-			usernames and passwords (usually subscribers table).
+- *realm (字符串)* - Realm 是一个不透明字符串，
+			用户代理应向用户展示，以便用户决定使用什么
+			用户名和密码。通常这是服务器运行所在的主机域名。
+如果使用空字符串 ""，则服务器将从请求中生成它。
+            From 头域的域名将被用作 realm。
+该字符串可以包含伪变量。
+- *table (字符串)* - 用于查找用户名和密码的表（通常为 subscribers 表）。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="proxy_authorize usage"
+```c title="proxy_authorize 使用"
 ...
 if (!proxy_authorize("", "subscriber"))
-	proxy_challenge("", "auth");  # Realm will be autogenerated
+	proxy_challenge("", "auth");  # Realm 将自动生成
 ...
 ```
 
@@ -428,32 +393,29 @@ if (!proxy_authorize("", "subscriber"))
 #### db_is_to_authorized(table)
 
 
-The function checks against a  'URI' like table to see if the
-		username extracted from the To header URI is allowed/authorized to
-		use the credentials (authentication username) validated by
-		[www authorize](#func_www_authorize).
+此函数针对 "URI" 类表进行检查，
+        以查看从 To 头域 URI 中提取的用户名是否允许/授权使用
+        通过 [www authorize](#func_www_authorize) 验证的凭据（认证用户名）。
 
 
-The function is part of the mechanism that allows to create
-		mapping between the SIP users (from the FROM/TO headers) and the
-		authentication users (from a SUBSCRIBER-like table) that they use. The
-		mapping is stored into an URI-like table.
+此函数是允许创建 SIP 用户（来自 FROM/TO 头域）
+        与他们使用的认证用户（来自 SUBSCRIBER 类表）之间映射的机制的一部分。
+        映射存储在 URI 类表中。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *table (string)* - Table to be used to lookup
-			for the URI/AUTH mappings (usually the URI table).
+- *table (字符串)* - 用于查找 URI/AUTH 映射的表（通常为 URI 表）。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="db_is_to_authorized usage"
+```c title="db_is_to_authorized 使用"
 ...
 if (!db_is_to_authorized("uri")) {
-	xlog("User $tu is not authorized to authenticate with $au credential\n");
+	xlog("用户 $tu 未被授权使用 $au 凭据进行认证\n");
 }
 ...
 ```
@@ -462,30 +424,28 @@ if (!db_is_to_authorized("uri")) {
 #### db_is_from_authorized(table)
 
 
-Similar to [db is to authorized](#func_db_is_to_authorized) but instead of
-		checking the TO header URI, the FROM header URI is checked.
+类似于 [db is to authorized](#func_db_is_to_authorized)，
+        但不是检查 TO 头域 URI，而是检查 FROM 头域 URI。
 
 
 #### db_does_uri_exist(uri, table)
 
 
-Checks if the username@domain from the given URI is an existing
-		user in a 'SUBSCRIBER' like table.
+检查给定 URI 的 username@domain 是否是 "SUBSCRIBER" 类表中的现有用户。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *uri (string)* - The SIP URI to be tested. It must
-			hold a username part for a valid check. Variables are allowed.
-- *table (string)* - Table to be used to search
-			for the URI (usually the SUBSCRIBER table).
+- *uri (字符串)* - 要测试的 SIP URI。
+            它必须包含用户名部分才能进行有效检查。允许使用变量。
+- *table (字符串)* - 用于搜索 URI 的表（通常为 SUBSCRIBER 表）。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="db_does_uri_exist usage"
+```c title="db_does_uri_exist 使用"
 ...
 if (db_does_uri_exist($ru, "subscriber")) {
 	...
@@ -497,31 +457,28 @@ if (db_does_uri_exist($ru, "subscriber")) {
 #### db_get_auth_id(table, uri, auth, realm)
 
 
-Checks given uri-string username against an 'URI' like table.
-		Returns true if the user exists in the database, and sets the given
-		variables to the authentication id and realm corresponding to
-		the given uri.
+针对 "URI" 类表检查给定 uri 字符串的用户名。
+        如果用户存在于数据库中则返回 true，
+        并将给定变量设置为与给定 uri 对应的认证 id 和 realm。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *table (string)* - Table to be used to search
-			for the URI (usually the URI table).
-- *uri (string)* - The input SIP URI to be tested.
-			It must hold a username part for a valid check.
-			Variables are allowed.
-- *auth (var)* - an output variable to store the
-			found authentication id matching the given SIP URI.
-- *realm (var)* - an output variable to store the
-			found authentication realm matching the given SIP URI.
+- *table (字符串)* - 用于搜索 URI 的表（通常为 URI 表）。
+- *uri (字符串)* - 要测试的输入 SIP URI。
+            它必须包含用户名部分才能进行有效检查。允许使用变量。
+- *auth (var)* - 用于存储与给定 SIP URI 匹配的
+			找到的认证 id 的输出变量。
+- *realm (var)* - 用于存储与给定 SIP URI 匹配的
+			找到的认证 realm 的输出变量。
 
 
-This function can be used from REQUEST_ROUTE ,FAILURE_ROUTE and
-		LOCAL_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE 和
+		LOCAL_ROUTE。
 
 
-```c title="db_get_auth_id usage"
+```c title="db_get_auth_id 使用"
 ...
 if (db_get_auth_id("uri", $ru, $avp(auth_id), $avp(auth_realm))) {
 	...
@@ -530,6 +487,6 @@ if (db_get_auth_id("uri", $ru, $avp(auth_id), $avp(auth_realm))) {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

@@ -1,104 +1,91 @@
 ---
-title: "Diversion Module"
-description: "The module implements the Diversion extensions as per draft-levy-sip-diversion-08. The diversion extensions are useful in various scenarios involving call forwarding. Typically one needs to communicate the original recipient of the call to the PSTN gateway and this is what the diversio..."
+title: "Diversion 模块"
+description: "该模块实现了 draft-levy-sip-diversion-08 中规定的 Diversion 扩展。Diversion 扩展在各种呼叫转发场景中很有用。通常需要将呼叫的原始收件人传达给 PSTN 网关，这就是 diversion 扩展的用途。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module implements the Diversion extensions as per 
-		draft-levy-sip-diversion-08.  The
-		diversion extensions are useful in various scenarios involving call
-		forwarding. Typically one needs to communicate the original recipient 
-		of the call to the PSTN gateway and this is what the diversion 
-		extensions can be used for.
+该模块实现了 draft-levy-sip-diversion-08 中规定的 Diversion 扩展。
+Diversion 扩展在各种呼叫转发场景中很有用。通常需要将呼叫的原始收件人传达给 PSTN 网关，这就是 diversion 扩展的用途。
 
 
 > [!WARNING]
-> The draft-levy-sip-diversion-08 is expired!! See
-		[IETF I-D tracker](https://datatracker.ietf.org/public/idindex.cgi?command=id_detail&and;id=6002).
+> draft-levy-sip-diversion-08 已过期！请参阅
+		[IETF I-D tracker](https://datatracker.ietf.org/public/idindex.cgi?command=id_detail&and;id=6002)。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None.
+无。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### suffix (string)
 
 
-The suffix to be appended to the end of the header field. You can use 
-		the parameter to specify additional parameters to be added to the 
-		header field, see the example.
+要附加到头部字段末尾的后缀。您可以使用该参数指定要添加到头部字段的额外参数，请参见示例。
 
 
-Default value is "" (empty string).
+默认值为 ""（空字符串）。
 
 
-```c title="suffix usage"
+```c title="suffix 使用"
 modparam("diversion", "suffix", ";privacy=full")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### add_diversion(reason, [uri], [counter])
 
 
-The function adds a new diversion header field before any other 
-		existing Diversion header field in the message (the newly added 
-		Diversion header field will become the topmost Diversion header field).
-		The inbound (without any modifications done by the
-		proxy server) Request-URI will be used as the Diversion URI.
+该函数在消息中任何现有的 Diversion 头部字段之前添加一个新的 diversion 头部字段（新添加的 Diversion 头部字段将成为最上面的 Diversion 头部字段）。
+入站（未经代理服务器修改的）Request-URI 将被用作 Diversion URI。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *reason* (string) - The reason string to be added 
-			as the reason parameter
-- *uri* (string, optional) - The URI to be added in the header. If missing
-			    the unchanged RURI from the original message will be used.
-- *counter* (int, optional) - Diversion counter to be added to the header, as defined by the standard.
+- *reason* (string) - 要添加为 reason 参数的原因字符串
+- *uri* (string, optional) - 要添加到头部的 URI。如果缺失，将使用原始消息中未修改的 RURI。
+- *counter* (int, optional) - 要添加到头部的 Diversion 计数器，如标准所定义。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE。
 
 
-```c title="add_diversion usage"
+```c title="add_diversion 使用"
 ...
 add_diversion("user-busy");
 ...
 ```
 
 
-### Diversion Example
+### Diversion 示例
 
 
-The following example shows a Diversion header field added to 
-			INVITE message. The original INVITE received by the user agent 
-			of sip:bob@sip.org is:
+以下示例显示添加到 INVITE 消息的 Diversion 头部字段。用户代理
+收到的原始 INVITE sip:bob@sip.org 是：
 
 
 ```c
@@ -113,9 +100,8 @@ Content-Length: 0
 ```
 
 
-The INVITE message is diverted by the user agent 
-			of sip:bob@sip.org because the user was talking to someone else 
-			and the new destination is sip:alice@sip.org :
+INVITE 消息被 sip:bob@sip.org 的用户代理转发，因为用户正在与他人通话，
+新目标是 sip:alice@sip.org：
 
 
 ```c
@@ -132,31 +118,19 @@ Content-Length: 0
 ```
 
 
-## Developer Guide
+## 开发者指南
 
 
-According to the specification new Diversion header field should be inserted as the topmost
-	Diversion header field in the message, that means before any other existing Diversion header
-	field in the message. In addition to that, `add_diversion` function can be called several times and each time
-	it should insert the new Diversion header field as the topmost one.
+根据规范，新的 Diversion 头部字段应作为消息中最上面的 Diversion 头部字段插入，这意味着在任何其他现有的 Diversion 头部字段之前。此外，`add_diversion` 函数可以多次调用，每次都应将新的 Diversion 头部字段插入为最上面的。
 
 
-In order to implement this, add_diversion function creates the anchor in data_lump lists as
-	a static variable to ensure that the next call of the function will use the same anchor and
-	would insert new Diversion headers before the one created in the previous execution. To my
-	knowledge this is the only way of inserting the diversion header field before any other
-	created in previous runs of the function.
+为了实现这一点，add_diversion 函数在 data_lump 列表中创建锚点作为静态变量，以确保函数的下次调用将使用相同的锚点，并将新的 Diversion 头部插入到上次执行创建的头部之前。据我所知，这是将 diversion 头部字段插入到之前创建的任何其他头部之前的唯一方法。
 
 
-The anchor kept this way is only valid for a single message and we have to invalidate it
-	when another message is being processed. For this reason, the function also stores the id of
-	the message in another static variable and compares the value of that variable with the id
-	of the SIP message being processed. If they differ then the anchor will be invalidated and
-	the function creates a new one.
+以这种方式保持的锚点仅对单个消息有效，当处理另一条消息时我们必须使其失效。为此，函数还在另一个静态变量中存储消息的 ID，并将该变量的值与正在处理的 SIP 消息的 ID 进行比较。如果不同，则锚点将失效，函数将创建一个新的。
 
 
-The following code snippet shows the code that invalidates the anchor, new anchor will be
-	created when the `anchor` variable is set to 0.
+以下代码片段显示了使锚点失效的代码，当 `anchor` 变量设置为 0 时将创建新锚点。
 
 
 ```c
@@ -174,6 +148,6 @@ static inline int add_diversion_helper(struct sip_msg* msg, str* s)
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

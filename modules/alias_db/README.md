@@ -1,61 +1,54 @@
 ---
-title: "ALIAS_DB Module"
-description: "ALIAS_DB module can be used as an alternative for user aliases via usrloc. The main feature is that it does not store all adjacent data as for user location and always uses database for search (no memory caching)."
+title: "ALIAS_DB 模块"
+description: "ALIAS_DB 模块可用作用户别名的替代方案，通过 usrloc 实现。其主要特点是不会像用户位置那样存储所有相关数据，并且始终使用数据库进行搜索（无内存缓存）。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-ALIAS_DB module can be used as an alternative for user aliases
-	via usrloc. The main feature is that it does not store all adjacent
-	data as for user location and always uses database for search (no
-	memory caching).
+ALIAS_DB 模块可用作用户别名的替代方案，通过 usrloc 实现。其主要特点是不会像用户位置那样存储所有相关数据，并且始终使用数据库进行搜索（无内存缓存）。
 
 
-Having no memory caching, search speed might decrease but 
-	provisioning is easier. With very fast databases like MySQL, speed
-	penalty can be lowered. Also, search can be performed on different
-	tables in the same script.
+由于没有内存缓存，搜索速度可能会降低，但配置更简单。对于像 MySQL 这样的快速数据库，速度惩罚可以降低。此外，可以在同一脚本中对不同的表进行搜索。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *database module* (mysql, dbtext, ...).
+- *数据库模块*（mysql、dbtext 等）。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (str)
 
 
-Database URL.
+数据库 URL。
 
 
-*Default value is "mysql://opensipsro:opensipsro@localhost/opensips".*
+*默认值为 "mysql://opensipsro:opensipsro@localhost/opensips"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("alias_db", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
@@ -65,13 +58,13 @@ modparam("alias_db", "db_url", "dbdriver://username:password@dbhost/dbname")
 #### user_column (str)
 
 
-Name of the column storing username.
+保存用户名的列名。
 
 
-*Default value is "username".*
+*默认值为 "username"。*
 
 
-```c title="Set user_column parameter"
+```c title="设置 user_column 参数"
 ...
 modparam("alias_db", "user_column", "susername")
 ...
@@ -81,13 +74,13 @@ modparam("alias_db", "user_column", "susername")
 #### domain_column (str)
 
 
-Name of the column storing user's domain.
+保存用户域名的列名。
 
 
-*Default value is "domain".*
+*默认值为 "domain"。*
 
 
-```c title="Set domain_column parameter"
+```c title="设置 domain_column 参数"
 ...
 modparam("alias_db", "domain_column", "sdomain")
 ...
@@ -97,13 +90,13 @@ modparam("alias_db", "domain_column", "sdomain")
 #### alias_user_column (str)
 
 
-Name of the column storing alias username.
+保存别名用户名的列名。
 
 
-*Default value is "alias_username".*
+*默认值为 "alias_username"。*
 
 
-```c title="Set alias_user_column parameter"
+```c title="设置 alias_user_column 参数"
 ...
 modparam("alias_db", "alias_user_column", "auser")
 ...
@@ -113,13 +106,13 @@ modparam("alias_db", "alias_user_column", "auser")
 #### alias_domain_column (str)
 
 
-Name of the column storing alias domain.
+保存别名域名的列名。
 
 
-*Default value is "alias_domain".*
+*默认值为 "alias_domain"。*
 
 
-```c title="Set alias_domain_column parameter"
+```c title="设置 alias_domain_column 参数"
 ...
 modparam("alias_db", "alias_domain_column", "adomain")
 ...
@@ -129,14 +122,13 @@ modparam("alias_db", "alias_domain_column", "adomain")
 #### domain_prefix (str)
 
 
-Specifies the prefix to be stripped from the domain in R-URI before
-		doing the search.
+指定在执行搜索之前从 R-URI 中剥离的域名前缀。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set domain_prefix parameter"
+```c title="设置 domain_prefix 参数"
 ...
 modparam("alias_db", "domain_prefix", "sip.")
 ...
@@ -146,57 +138,45 @@ modparam("alias_db", "domain_prefix", "sip.")
 #### append_branches (int)
 
 
-If the alias resolves to many SIP IDs, the first is replacing
-			the R-URI, the rest are added as branches.
+如果别名解析为多个 SIP ID，第一个替换 R-URI，其余作为分支添加。
 
 
-*Default value is "0" (0 - don't add branches;
-			1 - add branches).*
+*默认值为 "0"（0 - 不添加分支；1 - 添加分支）。*
 
 
-```c title="Set append_branches parameter"
+```c title="设置 append_branches 参数"
 ...
 modparam("alias_db", "append_branches", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### alias_db_lookup(table_name, [flags])
 
 
-The function takes the R-URI and search to see whether it is an alias
-		or not. If it is an alias for a local user, the R-URI is replaced with
-		user's SIP uri.
+该函数获取 R-URI 并搜索它是否是别名。如果它是本地用户的别名，则 R-URI 将被替换为用户的 SIP URI。
 
 
-The function returns TRUE if R-URI is alias and it was replaced by
-		user's SIP uri.
+如果 R-URI 是别名并被替换为用户的 SIP URI，则函数返回 TRUE。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *table_name (string)* - the name of the
-				table to search for the alias
-- *flags (string, optional)* - set of
-			character flags to control the alias lookup process:
+- *table_name (string)* - 搜索别名的表名
+- *flags (string, 可选)* - 控制别名查找过程的字符标志集：
 
-  - **d** - do not use domain URI part in
-				the alias lookup query (use only a username-based lookup). By
-				default, both username and domain are used.
-  - **r** - do reverse alias lookup - lookup
-				for the alias mapped to the current URI (URI 2 alias 
-				translation); normally, the function looks up for the URI 
-				mapped to the alias (alias 2 URI translation).
+  - **d** - 在别名查找查询中不使用域名 URI 部分（仅使用基于用户名的查找）。默认情况下，用户名和域名都会被使用。
+  - **r** - 执行反向别名查找 - 查找映射到当前 URI 的别名（URI 到别名的转换）；通常，该函数查找映射到别名的 URI（别名到 URI 的转换）。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE 使用。
 
 
-```c title="alias_db_lookup() usage"
+```c title="alias_db_lookup() 使用示例"
 ...
 alias_db_lookup("dbaliases", "rd");
 alias_db_lookup("dba_$(rU{s.substr,0,1})");
@@ -207,72 +187,57 @@ alias_db_lookup("dba_$(rU{s.substr,0,1})");
 #### alias_db_find(table_name, input_uri, output_var, [flags])
 
 
-The function is very similar to `alias_db_lookup()`,
-		but instead of using fixed input (RURI) and output (RURI) is able to
-		get the input SIP URI from a pseudo-variable and place the result back
-		also in a pseudo-variable.
+该函数与 `alias_db_lookup()` 非常相似，但能够从伪变量获取输入 SIP URI 并将结果也放回伪变量，而不是使用固定输入（RURI）和输出（RURI）。
 
 
-The function is useful as the alias lookup does not affect the request
-		itself (no RURI changes), can be used in a reply context (as it does 
-		not work with RURI only) and can be used for others URI than the RURI
-		(To URI, From URI, custom URI).
+该函数很有用，因为别名查找不会影响请求本身（不更改 RURI），可以在回复上下文中使用（因为它不仅处理 RURI），并且可以用于 RURI 以外的 URI（To URI、From URI、自定义 URI）。
 
 
-The function returns TRUE if any alias mapping was found and returned.
+如果找到任何别名映射则返回 TRUE。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *table_name (string)* - the name of the table to
-				search for the alias
-- *input_uri (string)* - a SIP URI to look up
-- *output_var (var)* - a variable to hold
-				the SIP URI result
-- *flags (string, optional)* (optional) - set of flags 
-			(char based flags) to control the alias lookup process:
+- *table_name (string)* - 搜索别名的表名
+- *input_uri (string)* - 要查找的 SIP URI
+- *output_var (var)* - 保存 SIP URI 结果的变量
+- *flags (string, 可选) （可选） - 控制别名查找过程的标志集（基于字符的标志）：
 
-  - *d* - do not use domain URI part in
-				the alias lookup query (use only a username-based lookup). By
-				default, both username and domain are used.
-  - *r* - do revers alias lookup - lookup
-				for the alias mapped to the current URI (URI 2 alias 
-				translation); normally, the function looks up for the URI 
-				mapped to the alias (alias 2 URI translation).
+  - *d* - 在别名查找查询中不使用域名 URI 部分（仅使用基于用户名的查找）。默认情况下，用户名和域名都会被使用。
+  - *r* - 执行反向别名查找 - 查找映射到当前 URI 的别名（URI 到别名的转换）；通常，该函数查找映射到别名的 URI（别名到 URI 的转换）。
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			LOCAL_ROUTE, STARTUP_ROUTE, FAILURE_ROUTE and ONREPLY_ROUTE.
+此函数可以从 REQUEST_ROUTE、BRANCH_ROUTE、LOCAL_ROUTE、STARTUP_ROUTE、FAILURE_ROUTE 和 ONREPLY_ROUTE 使用。
 
 
-```c title="alias_db_find() usage"
+```c title="alias_db_find() 使用示例"
 ...
-# do revers alias lookup and find the alias for the FROM URI
+# 执行反向别名查找并查找 FROM URI 的别名
 alias_db_find("dbaliases", $fu, $avp(from_alias), "r");
 ...
 ```
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: What happened with old use_domain parameter**
+**Q: 旧的 use_domain 参数怎么了**
 
 
-The global parameter (affecting the entire module) was replaced 
-			with a per lookup parameter (affecting only current lookup).
-			See the "d" (do not used domain part) flag in the db_alias_lookup()
-			and db_alias_find() functions.
 
 
-**Q: How can I report a bug?**
+全局参数（影响整个模块）已被每个查找参数（仅影响当前查找）取代。
+			参见 db_alias_lookup() 和 db_alias_find() 函数中的"d"（不使用域名部分）标志。
 
 
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+**Q: 如何报告 bug？**
+
+
+请遵循以下指南：
+			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证。

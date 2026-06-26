@@ -1,94 +1,96 @@
 ---
-title: "AAA RADIUS MODULE"
-description: "This module provides a Radius implementation for the AAA API from the core."
+title: "AAA RADIUS 模块"
+description: "此模块为核心中的 AAA API 提供 Radius 实现。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides a Radius implementation for the AAA API from the core.
+此模块为核心中的 AAA API 提供 Radius 实现。
 
 
-It also provides two functions to be used from the script for generating custom Radius acct and auth requests.
-		Detection and handling of SIP-AVPs from Radius replies is automatically and transparently done by the module.
+它还提供两个函数，可从脚本用于生成自定义 Radius acct 和 auth 请求。
+		Radius 回复中的 SIP-AVP 检测和处理由模块自动透明地完成。
 
 
-Since version 2.2, aaa_radius module supports asynchronous operations. But in order to use them, one must apply
-		the patch contained by the modules/aaa_radius folder, called *radius_async_support.patch*.In
-		order to do this, you must have freeradius-client sources. In order to do this you can follow
-		the tutorial in the end of the documentation.
+自版本 2.2 起，aaa_radius 模块支持异步操作。
+		但要使用它们，必须应用位于 modules/aaa_radius 文件夹中的
+		名为 *radius_async_support.patch* 的补丁。
+        为此，您必须拥有 freeradius-client 源代码。
+        为此，您可以按照文档末尾的教程进行操作。
 
 
-Any module that wishes to use it has to do the following:
+任何希望使用它的模块必须执行以下操作：
 
 
 - *include aaa.h*
-- *make a bind call with a proper radius specific url*
+- *使用适当的 radius 特定 URL 进行绑定调用*
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None.
+无。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-One of the following libraries must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装
+		以下库之一：
 
 
-- *radiusclient-ng* 0.5.0 or higher
-				See [http://developer.berlios.de/projects/radiusclient-ng/](http://developer.berlios.de/projects/radiusclient-ng/).
+- *radiusclient-ng* 0.5.0 或更高版本
+				参见 [http://developer.berlios.de/projects/radiusclient-ng/](http://developer.berlios.de/projects/radiusclient-ng/)。
 - *freeradius-client*
-				See [http://freeradius.org/](http://freeradius.org/).
+				参见 [http://freeradius.org/](http://freeradius.org/)。
 
 
-One can force the radius library that is usedby setting RADIUSCLIENT env, before compiling the module, to one of the following values:
+可以通过在编译模块之前设置 RADIUSCLIENT 环境来强制使用某个 radius 库：
 
 
-- *RADCLI  **** libradcli-dev library shall be used;
-- *FREERADIUS  **** libfreeradius-client-dev library shall be used;
-- *RADIUSCLIENT  **** libradiusclient-ng library shall be used;
+- *RADCLI **** 应使用 libradcli-dev 库；
+- *FREERADIUS **** 应使用 libfreeradius-client-dev 库；
+- *RADIUSCLIENT **** 应使用 libradiusclient-ng 库；
 
 
-IMPORTANT: If the selected library is not installed the module won't compile.
-				NOTE: If RADIUSCLIENT env not set, the module will try to find one of the three radius libraries in
-				the following order: radcli, freeradius, radiusclient-ng. That is if radcli library is installed
-				it shall be used, else freeradius shall be looked for and so on.
+重要提示：如果未安装选定的库，模块将无法编译。
+				注意：如果未设置 RADIUSCLIENT 环境，模块将按以下顺序尝试查找三个 radius 库：
+                radcli、freeradius、radiusclient-ng。
+                也就是说，如果安装了 radcli 库，则使用它，
+                否则查找 freeradius，依此类推。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### sets (string)
+#### sets (字符串)
 
 
-Sets of Radius AVPs to be used when building custom RADIUS requests (set of input RADIUS AVPs)
-			or when fetching data from the RADIUS reply (set of output RADIUS AVPs).
+构建自定义 RADIUS 请求（输入 RADIUS AVP 集）
+			或从 RADIUS 回复获取数据（输出 RADIUS AVP 集）时要使用的 RADIUS AVP 集。
 
 
-The format for a set definition is the following:
+集合定义的格式如下：
 
 
 - " set_name = ( attribute_name1 = var1 [, attribute_name2 = var2 ]* ) "
 
 
-The left-hand side of the assignment must be an attribute name known by the RADIUS dictionary.
+赋值的左侧必须是 RADIUS 字典知道的属性名称。
 
 
-The right-hand side of the assignment must be a script pseudo variable or
-			a script AVP. For more information about them see [CookBooks - Scripting Variables](https://opensips.org/Resources/DocsCoreVar15).
+赋值的右侧必须是脚本伪变量或脚本 AVP。
+			有关它们的更多信息，请参阅 [CookBooks - Scripting Variables](https://opensips.org/Resources/DocsCoreVar15)。
 
 
-```c title="Set sets parameter"
+```c title="设置 sets 参数"
 ...
 modparam("aaa_radius","sets","set4  =  (  Sip-User-ID  =   $avp(10)
 			,   Sip-From-Tag=$si,Sip-To-Tag=$tt      )      ")
@@ -105,183 +107,173 @@ modparam("aaa_radius","sets","set2 = (Sip-Group = $var(sipgrup)) ")
 ```
 
 
-#### radius_config (string)
+#### radius_config (字符串)
 
 
-Radiusclient configuration file.
+Radiusclient 配置文件。
 
 
-This parameter is optional. It must be set only if the radius_send_acct
-			and radius_send_auth functions are used.
+此参数是可选的。
+			仅当使用 radius_send_acct 和 radius_send_auth 函数时才需要设置。
 
 
-```c title="Set radius_config parameter"
+```c title="设置 radius_config 参数"
 ...
 modparam("aaa_radius", "radius_config", "/etc/radiusclient-ng/radiusclient.conf")
 ...
 ```
 
 
-#### syslog_name (string)
+#### syslog_name (字符串)
 
 
-Enable logging of the client library to syslog, using the given log name.
+启用将客户端库记录到 syslog，使用给定的日志名称。
 
 
-This parameter is optional. Radius client libraries will try to use syslog
-		to report errors (such as problems with dictionaries) with the given ident
-		string .If this parameter is set, then these errors are visible in syslog.
-		Otherwise errors are hidden.
+此参数是可选的。Radius 客户端库会尝试使用 syslog
+		报告错误（如字典问题），并使用给定的身份字符串。
+        如果设置此参数，这些错误将在 syslog 中可见。
+        否则，错误将被隐藏。
 
 
-By default this parameter is not set (no logging).
+默认情况下此参数未设置（无日志记录）。
 
 
-```c title="Set syslog_name parameter"
+```c title="设置 syslog_name 参数"
 ...
 modparam("aaa_radius", "syslog_name", "aaa-radius")
 ...
 ```
 
 
-#### fetch_all_values (integer)
+#### fetch_all_values (整数)
 
 
-For the output sets, this parameter controls if all the values (for the same
-		RADIUS AVP) should be returned (otherwise only the first value will be
-		returned). When enabling this options, be sure that the variable you use
-		to get the RADIUS output can store multiple values (like the AVP variables).
+对于输出集，此参数控制是否应返回所有值（对于相同的
+		RADIUS AVP）（否则只返回第一个值）。
+        启用此选项时，请确保您使用的 RADIUS 输出变量
+        可以存储多个值（如 AVP 变量）。
 
 
-By default this parameter is disabled (set to 0) for backward compatibility
-		reasons.
+出于向后兼容的原因，此参数默认禁用（设置为 0）。
 
 
-```c title="Set fetch_all_values parameter"
+```c title="设置 fetch_all_values 参数"
 ...
 modparam("aaa_radius", "fetch_all_values", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### radius_send_auth(input_set_name, output_set_name)
 
 
-This function can be used from the script to make custom
-			radius authentication request. The function takes two parameters.
+此函数可用于从脚本发起自定义
+			radius 认证请求。该函数接受两个参数。
 
 
-Parameters:
+参数：
 
 
-- *input_set_name* (string) - the name of the
-				set that contains the list of attributes and pvars that will
-				form the authentication request (see the "sets"
-				module parameter).
-- *output_set_name* (string) - the name of the
-				set that contains the list of attributes and pvars that will be
-				extracted form the authentication reply (see the "sets"
-				module parameter).
+- *input_set_name* (字符串) - 包含将
+				构成认证请求的属性和 pvar 列表的集合的名称
+                （请参阅 "sets" 模块参数）。
+- *output_set_name* (字符串) - 包含将
+				从认证回复中提取的属性和 pvar 列表的集合的名称
+                （请参阅 "sets" 模块参数）。
 
 
-The sets must be defined using the "sets" exported
-			parameter.
+这些集合必须使用 "sets" 导出参数定义。
 
 
-The function return TRUE (retcode 1) if authentication was
-			successful, FALSE (retcode -1) if an error (any kind of error)
-			occurred during authentication processes or FALSE (retcode -2) if
-			authentication was rejected or denied by RADIUS server.
+函数在认证成功时返回 TRUE（返回码 1），
+			在认证过程中发生任何种类的错误时返回 FALSE（返回码 -1），
+            或者在 RADIUS 服务器拒绝或否认认证时返回 FALSE（返回码 -2）。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, ERROR_ROUTE and LOCAL_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、ERROR_ROUTE 和 LOCAL_ROUTE。
 
 
-```c title="radius_send_auth usage"
+```c title="radius_send_auth 使用"
 ...
 radius_send_auth("set1","set2");
 switch ($rc) {
 	case 1:
-		xlog("authentication ok \n");
+		xlog("认证成功 \n");
 		break;
 	case -1:
-		xlog("error during authentication\n");
+		xlog("认证过程中出错\n");
 		break;
 	case -2:
-		xlog("authentication denied \n");
+		xlog("认证被拒绝 \n");
 		break;
 }
 ...
 
-		
+
+			
 ```
 
 
 #### radius_send_acct(input_set_name)
 
 
-This function can be used from the script to make custom
-			radius authentication request. The function takes only one string parameter
-			that represents the name of the set that contains the list of attributes
-			and pvars that will form the accounting request.
+此函数可用于从脚本发起自定义
+			radius 认证请求。该函数只接受一个字符串参数，
+            该参数表示包含将构成 accounting 请求的属性和 pvar 列表的集合的名称。
 
 
-Only one set is needed as a parameter because no AVPs can be extracted
-			from the accounting replies.
+只需要一个集合作为参数，因为无法从 accounting 回复中提取 AVP。
 
 
-The set must be defined using the "sets" exported parameter.
+该集合必须使用 "sets" 导出参数定义。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, ERROR_ROUTE and LOCAL_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、ERROR_ROUTE 和 LOCAL_ROUTE。
 
 
-```c title="radius_send_acct usage"
+```c title="radius_send_acct 使用"
 ...
 radius_send_acct("set1");
 ...
 
-		
+			
 ```
 
 
-### Exported Asynchronous Functions
+### 导出的异步函数
 
 
 #### radius_send_auth(input_set_name, output_set_name)
 
 
-This function can be used from the script to make custom
-			radius authentication request.
+此函数可用于从脚本发起自定义
+			radius 认证请求。
 
 
-Parameters:
+参数：
 
 
-- *input_set_name* (string) - the name of the
-				set that contains the list of attributes and pvars that will
-				form the authentication request (see the "sets"
-				module parameter).
-- *output_set_name* (string) - the name of the
-				set that contains the list of attributes and pvars that will be
-				extracted form the authentication reply (see the "sets"
-				module parameter).
+- *input_set_name* (字符串) - 包含将
+				构成认证请求的属性和 pvar 列表的集合的名称
+                （请参阅 "sets" 模块参数）。
+- *output_set_name* (字符串) - 包含将
+				从认证回复中提取的属性和 pvar 列表的集合的名称
+                （请参阅 "sets" 模块参数）。
 
 
-The sets must be defined using the "sets" exported
-			parameter.
+这些集合必须使用 "sets" 导出参数定义。
 
 
-The function return TRUE (retcode 1) if authentication was
-			successful, FALSE (retcode -1) if an error (any kind of error)
-			occurred during authentication processes or FALSE (retcode -2) if
-			authentication was rejected or denied by RADIUS server.
+函数在认证成功时返回 TRUE（返回码 1），
+			在认证过程中发生任何种类的错误时返回 FALSE（返回码 -1），
+            或者在 RADIUS 服务器拒绝或否认认证时返回 FALSE（返回码 -2）。
 
 
-```c title="radius_send_auth usage"
+```c title="radius_send_auth 使用"
 ...
 {
 async( radius_send_auth("set1","set2"), resume);
@@ -290,92 +282,91 @@ async( radius_send_auth("set1","set2"), resume);
 route[resume] {
 switch ($rc) {
 	case 1:
-		xlog("authentication ok \n");
+		xlog("认证成功 \n");
 		break;
 	case -1:
-		xlog("error during authentication\n");
+		xlog("认证过程中出错\n");
 		break;
 	case -2:
-		xlog("authentication denied \n");
+		xlog("认证被拒绝 \n");
 		break;
 }
 ...
 
-		
+			
 ```
 
 
 #### radius_send_acct(input_set_name)
 
 
-This function can be used from the script to make custom
-			radius authentication request. The function takes only one string parameter
-			that represents the name of the set that contains the list of attributes
-			and pvars that will form the accounting request.
+此函数可用于从脚本发起自定义
+			radius 认证请求。该函数只接受一个字符串参数，
+            该参数表示包含将构成 accounting 请求的属性和 pvar 列表的集合的名称。
 
 
-Only one set is needed as a parameter because no AVPs can be extracted
-			from the accounting replies.
+只需要一个集合作为参数，因为无法从 accounting 回复中提取 AVP。
 
 
-The set must be defined using the "sets" exported parameter.
+该集合必须使用 "sets" 导出参数定义。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE, ERROR_ROUTE and LOCAL_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE、ERROR_ROUTE 和 LOCAL_ROUTE。
 
 
-```c title="radius_send_acct usage"
+```c title="radius_send_acct 使用"
 ...
 {
 async( radius_send_acct("set1","set2"), resume);
 }
 
 route[resume] {
-xlog(" accounting finished\n");
+xlog(" accounting 完成\n");
 }
 
 ...
 
-		
+			
 ```
 
 
-## Using radius async
+## 使用 radius 异步
 
 
-### Downloading radius-client library
+### 下载 radius-client 库
 
 
-You can download the last freeRADIUS Client Library sources from
-			[here](ftp://ftp.freeradius.org/pub/freeradius/freeradius-client-1.1.7.tar.gz).
-			So the first step would be to download these sources in any folder you want.
-			In this exaple we will consider this folder generically called
-			*freeRADIUS-client*. After you download the sources,
-			extract the contents of the archive.
+您可以从
+			[这里](ftp://ftp.freeradius.org/pub/freeradius/freeradius-client-1.1.7.tar.gz)
+			下载最新的 freeRADIUS Client Library 源代码。
+			所以第一步是将其下载到您想要的任何文件夹中。
+			在这个例子中，我们将把这个文件夹一般地称为
+			*freeRADIUS-client*。下载源代码后，
+			解压存档的内容。
 
 
-```c title="downloading the library"
+```c title="下载库"
 ........
 mkdir freeRADIUS-client; cd freeRADIUS-client
 wget ftp://ftp.freeradius.org/pub/freeradius/freeradius-client-1.1.7.tar.gz
 tar -xzvf freeradius-client-1.1.7.tar.gz
 ........
-		
+			
 ```
 
 
-### Applying the patch
+### 应用补丁
 
 
-After you extracted the contents of the archive, you can apply the patch
-			called *radius_async_support.patch* that you can find in
-			*modules/aaa_radius/* inside OpenSIPS sources folder.
-			You must apply this patch to the freeRADIUS-client library and after this
-			you can install the radius library as usual using configure and make
-			commands and free to use the library.
+解压存档内容后，
+			您可以应用位于 OpenSIPS 源文件夹中
+			*modules/aaa_radius/* 内的名为 *radius_async_support.patch* 的补丁。
+			您必须将此补丁应用到 freeRADIUS-client 库，
+            然后按照通常的方式使用 configure 和 make 命令安装 radius 库，
+            然后可以自由使用该库。
 
 
-```c title="How to apply the patch"
+```c title="如何应用补丁"
 ........
 cd freeRADIUS-client/freeradius-client-1.1.7.tar.gz
 patch -p1 < /path/to/opensips/modules/aaa_radius/radius_async_support.patch
@@ -383,10 +374,10 @@ patch -p1 < /path/to/opensips/modules/aaa_radius/radius_async_support.patch
 make
 sudo make install
 ........
-		
+			
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

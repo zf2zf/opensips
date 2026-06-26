@@ -1,108 +1,101 @@
 ---
-title: "Statistics Module"
-description: "The Statistics module is a wrapper over the internal statistics manager, allowing the script writer to dynamically define and use of statistic variables."
+title: "统计模块"
+description: "统计模块是内部统计管理器的包装器，允许脚本编写者动态定义和使用统计变量。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Statistics module is a wrapper over the internal
-		statistics manager, allowing the script writer to dynamically define and
-		use of statistic variables.
+统计模块是内部统计管理器的包装器，
+		允许脚本编写者动态定义和使用统计变量。
 
 
-By bringing the statistics support into the script, it takes advantage
-		of the script flexibility in defining logics, making possible 
-		implementation of any kind of statistic scenario.
+通过将统计支持引入脚本，它利用了脚本定义逻辑的灵活性，
+		使实现任何类型的统计场景成为可能。
 
 
-### Statistic Groups
+### 统计组
 
 
-Starting with OpenSIPS 2.3, statistics may be grouped by prefixing
-		their names with the name of the desired group, along with a colon
-		separator (e.g. **$stat(method:invite)** or
-**update_stat("packets:$var(ptype)", "+1")**).
-		In order for this to work, the groups must be defined prior to OpenSIPS startup
-		using the **[stat groups](#param_stat_groups)**
-		module parameter.
+从 OpenSIPS 2.3 开始，统计信息可以通过使用所需组的名称
+		以及冒号分隔符（即 **$stat(method:invite)** 或
+**update_stat("packets:$var(ptype)", "+1")**）来前缀统计名称进行分组。
+		为了使其工作，必须在 OpenSIPS 启动之前使用
+		**[stat groups](#param_stat_groups)**
+		模块参数定义组。
 
 
-The module allows easy iteration over the statistics of a group using
-		the **[stat iter init](#func_stat_iter_init)**
-		and **[stat iter next](#func_stat_iter_next)**
-		functions.
+该模块允许使用
+		**[stat iter init](#func_stat_iter_init)**
+		和 **[stat iter next](#func_stat_iter_next)**
+		函数轻松遍历组的统计信息。
 
 
-By default, all statistics belong to the
-		**"dynamic"** group.
+默认情况下，所有统计信息都属于
+		**"dynamic"** 组。
 
 
-### Statistic Series
+### 统计序列
 
 
-Statistic series provide the ability to accumulate statistical data
-		over a pre-defined time window. Data is stored in a circular buffer, pushing
-		new data on top, and removing stale values (values outside the timeframe) from
-		the bottom. These statistics can be used to provide per-time stats, such as
-		ACD, ASR, AST, etc, that can be read using the classic statistics interface,
-		through the *$stat()* variable.
+统计序列提供在预定义时间窗口内累积统计数据的能力。
+		数据存储在循环缓冲区中，将新数据推送到顶部，
+		并从底部移除过期值（超出时间范围的值）。
+		这些统计信息可用于提供按时间统计的数据，
+		如 ACD、ASR、AST 等，可以通过经典统计接口读取，
+		即通过 *$stat()* 变量。
 
 
-Statistic series profile describe the timeframe used to store the data, as
-		well as how the data is be accumulated and interpreted. There are several
-		types a statistic series can be used, depending on the provisioned algorithm:
+统计序列配置文件描述了用于存储数据的时间范围，
+		以及如何累积和解释数据。根据配置的算法，
+		统计序列有几种类型可以使用：
 
 
-- *accumulate* - accumulates the specified values in a
-			counter; works similar to clasical statistics, except that they reset
-			after the specified timeframe
-- *average* - returns an average of all the data fed
-			within the timeframe; can be useful when computing PDD, AST, ACD stats.
-- *percentage* - indicates the percentage of a set of
-			values out of the total amount of values fed; can be useful when computing
-			ASR, NER, CCR stats.
+- *accumulate* - 在计数器中累积指定值；
+			类似于经典统计方式工作，只是会在指定时间范围后重置
+- *average* - 返回时间范围内所有输入数据的平均值；
+			在计算 PDD、AST、ACD 统计时很有用。
+- *percentage* - 表示一组值占总值的百分比；
+			在计算 ASR、NER、CCR 统计时很有用。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### variable (string)
 
 
-Name of a new statistic variable. The name may be followed by additional
-		flag which describe the variable behavior:
+新统计变量的名称。名称后面可以跟随描述变量行为的附加标志：
 
 
-- *no_reset* : variable cannot be reset.
+- *no_reset* : 变量不能重置。
 
 
-```c title="variable example"
+```c title="variable 示例"
 modparam("statistics", "variable", "register_counter")
 modparam("statistics", "variable", "active_calls/no_reset")
 ```
@@ -111,12 +104,11 @@ modparam("statistics", "variable", "active_calls/no_reset")
 #### stat_groups (string)
 
 
-A comma-separated values string, specifying the statistic groups that
-		may be used throughout the OpenSIPS script. Groups cannot contain leading or
-		trailing whitespace characters.
+一个逗号分隔的值字符串，指定可以在 OpenSIPS 脚本中使用的统计组。
+		组不能包含前导或尾随空白字符。
 
 
-```c title="setting the stat_groups parameter"
+```c title="设置 stat_groups 参数"
 modparam("statistics", "stat_groups", "method, packet, response")
 ```
 
@@ -124,79 +116,78 @@ modparam("statistics", "stat_groups", "method, packet, response")
 #### stat_series_profile (string)
 
 
-Used to define a statistic series profile. Has the following format:
-		*name: [attr=value]**, where *name*
-		represents the name of the profile, and *attr=value*
-		contains multiple settings of the defined profile. Possible attributes
-		and their values are:
+用于定义统计序列配置文件。格式为：*name: [attr=value]**，
+		其中 *name* 是配置文件的名称，
+		*attr=value* 包含所定义配置文件的多个设置。
+		可能的属性及其值如下：
 
 
-- *algorithm* - indicates the way data should be
-			stored and accumulated over the specified timeframe. Possible values are:
-			*accumulate*, *average* and
-			*percentage*, as described in the
-			**[section stat series](#statistic_series)**
-			paragraph (default is *accumulate*)
-- *hash_size* - each statistic defined/used is stored in
-			a hash map attached to the profile; this setting tunes the size of the hash
-			(default is: 8)
-- *group* - indicates the group where the statistics
-			beloging to this profile are grouped (as described in
+- *algorithm* - 指示数据应如何在指定时间范围内
+			存储和累积。可能的值有：
+			*accumulate*、*average* 和
+			*percentage*，如
+			**[统计序列部分](#statistic_series)**
+			段落所述（默认为 *accumulate*）
+- *hash_size* - 每个定义/使用的统计信息都存储在
+			附加到配置文件的哈希映射中；此设置调整哈希的大小
+			（默认为：8）
+- *group* - 指示属于此配置文件的统计信息
+			所在的组（如同
 			**[stat groups](#param_stat_groups)**
-			(default is to use the same group as the profile)
-- *window* - the number of seconds a timeframe has;
-			all older values (out of the specified window) are discarded
-			(default is *60* seconds)
-- *slots* - the number of slots per window; used to tune
-			the granularity of the circular buffer; the higher the number of slots is,
-			the more accurate the resulted statistic;
-			(default is the same value of the *window* parameter)
-- *percentage_factor* - used for
-			*percentage* algorithm profiles to specify the
-			percentage factor to be used (defaults to *100*)
+			中所述
+			（默认为使用与配置文件相同的组）
+- *window* - 时间范围包含的秒数；
+			所有旧值（超出指定窗口）将被丢弃
+			（默认为 *60* 秒）
+- *slots* - 每个窗口的槽数；用于调整
+			循环缓冲区的粒度；槽数越高，
+			得到的统计信息越准确；
+			（默认为与 *window* 参数相同的值）
+- *percentage_factor* - 用于
+			*percentage* 算法配置文件以指定
+			要使用的百分比因子（默认为 *100*）
 
 
-This parameter can be set multiple times, for each profile needed.
+可以为每个需要的配置文件多次设置此参数。
 
 
-```c title="setting the stat_series_profile parameter"
+```c title="设置 stat_series_profile 参数"
 ...
-# define a statistic that accumulates average values in the last minute
+# 定义一个在最后一分钟累积平均值的统计
 modparam("statistics", "stat_series_profile", "avg: algorithm=average")
 ...
-# define a statistic that accumulates average values in the 10 minutes
-# with 1 minute granularity (10 slots out of the 600s window)
+# 定义一个在 10 分钟内累积平均值，粒度为 1 分钟的统计
+# （600 秒窗口中的 10 个槽）
 modparam("statistics", "stat_series_profile", "avg_10m: algorithm=average window=600 slots=10")
 ...
-# define a statistic that computes the percentage of values in the last hour
-# with 10 minutes granularity (6 slots out of the 3600s window)
+# 定义一个计算最后一小时内值百分比的统计，粒度为 10 分钟
+# （3600 秒窗口中的 6 个槽）
 modparam("statistics", "stat_series_profile", "perc_1h: algorithm=percentage window=3600 slots=6")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### update_stat(variable, value)
 
 
-Updates the value of the statistic variable with the new value.
+用新值更新统计变量的值。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *variable* (string) - variable to be updated;
-- *value* (int) - value to update with; it may be
-			also negative.
+- *variable* (string) - 要更新的变量；
+- *value* (int) - 要更新的值；也可以为负。
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE, 
-		FAILURE_ROUTE and ONREPLY_ROUTE.
+此函数可用于 REQUEST_ROUTE、BRANCH_ROUTE、
+		FAILURE_ROUTE 和 ONREPLY_ROUTE。
 
 
-```c title="update_stat usage"
+```c title="update_stat 使用示例"
 ...
 update_stat("register_counter", 1);
 ...
@@ -209,20 +200,20 @@ update_stat($var(a_calls), -1);
 #### reset_stat(variable)
 
 
-Resets to zero the value of the statistic variable.
+将统计变量的值重置为零。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *variable* (string) - variable to be reset-ed
+- *variable* (string) - 要重置的变量
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE, 
-		FAILURE_ROUTE and ONREPLY_ROUTE.
+此函数可用于 REQUEST_ROUTE、BRANCH_ROUTE、
+		FAILURE_ROUTE 和 ONREPLY_ROUTE。
 
 
-```c title="reset_stat usage"
+```c title="reset_stat 使用示例"
 ...
 reset_stat("register_counter");
 ...
@@ -235,23 +226,21 @@ update_stat($var(reg_counter));
 #### stat_iter_init(group, iter)
 
 
-Re-initializes "iter" in order to begin iterating through all
-		statistics belonging to the given "group".
+重新初始化 "iter" 以便开始遍历属于给定 "group" 的所有统计信息。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
 - *group* (string)
-- *iter* (string) - internally matched
-				to a corresponding iterator
+- *iter* (string) - 在内部与相应的迭代器匹配
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE, 
-		FAILURE_ROUTE and ONREPLY_ROUTE.
+此函数可用于 REQUEST_ROUTE、BRANCH_ROUTE、
+		FAILURE_ROUTE 和 ONREPLY_ROUTE。
 
 
-```c title="stat_iter_init usage"
+```c title="stat_iter_init 使用示例"
 ...
 stat_iter_init("packet", "iter");
 ...
@@ -261,27 +250,26 @@ stat_iter_init("packet", "iter");
 #### stat_iter_next(name, val, iter)
 
 
-Attempts to fetch the current statistic to which "iter" points.
-		If successful, the relevant data will be written to "name" and "val",
-		while also advancing "iter". Returns negative when reaching the end of iteration.
+尝试获取 "iter" 指向的当前统计信息。
+		如果成功，相关信息将写入 "name" 和 "val"，
+		同时推进 "iter"。到达迭代末尾时返回负值。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
 - *name* (var)
 - *val* (var)
-- *iter* (string) - internally matched
-				to a corresponding iterator
+- *iter* (string) - 在内部与相应的迭代器匹配
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE, 
-		FAILURE_ROUTE and ONREPLY_ROUTE.
+此函数可用于 REQUEST_ROUTE、BRANCH_ROUTE、
+		FAILURE_ROUTE 和 ONREPLY_ROUTE。
 
 
-```c title="stat_iter_next usage"
+```c title="stat_iter_next 使用示例"
 ...
-# periodically clear packet-related data
+# 定期清除数据包相关数据
 timer_route [clear_packet_stats, 7200] {
 	stat_iter_init("packet", "iter");
 	while (stat_iter_next($var(stat), $var(val), "iter"))
@@ -294,67 +282,65 @@ timer_route [clear_packet_stats, 7200] {
 #### update_stat_series(profile, variable, value)
 
 
-Updates the value of a series statistic.
+更新序列统计信息的值。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *profile* (string) - the profile as defined in
+- *profile* (string) - 如
 			**[stat series profile](#param_stat_series_profile)**
-- *variable* (string) - variable to be updated;
-- *value* (int) - value to update with; it may be
-			also negative; when using *percentage* algorithm, the
-			resulted value represents the percentage of positive values out of the
-			total number of values (positive + negative)
+			中所定义的配置文件
+- *variable* (string) - 要更新的变量；
+- *value* (int) - 要更新的值；也可以为负；
+			当使用 *percentage* 算法时，
+			结果值表示正值占总值的百分比（正值 + 负值）
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="update_stat_series usage"
+```c title="update_stat_series 使用示例"
 ...
-# account failed calls
+# 记录失败呼叫
 update_stat_series("perc_1h", "ASR_1h", -1);
 
-# account successful calls
+# 记录成功呼叫
 update_stat_series("perc_1h", "ASR_1h", 1);
 
-# compute average PDD
+# 计算平均 PDD
 update_stat_series("avg", "PDD", $var(pdd_ms));
 ...
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $stat
 
 
-Allows "get" or "reset" operations on the given statistics.
+允许对给定统计信息进行 "获取" 或 "重置" 操作。
 
 
-The name of a statistic may be optionally prefixed with a searching
-			group, along with a colon separator.
+统计信息的名称可以选择性地以搜索组和冒号分隔符为前缀。
 
 
-If a searching group is not provided, the statistic is first
-			searched for in the core groups. If not found, search continues with
-			the "dynamic" group which, by default, holds all non-explicitly
-			grouped statistics which are not exported by the OpenSIPS core.
+如果未提供搜索组，统计信息首先在核心组中搜索。
+		如果未找到，搜索将继续在 "dynamic" 组中进行，
+		默认情况下，该组包含所有未明确分组且未由 OpenSIPS 核心导出的统计信息。
 
 
-```c title="$stat usage"
+```c title="$stat 使用示例"
 ...
-xlog("SHM used size = $stat(used_size), no_invites = $stat(method:invite)\n");
+xlog("SHM 已用大小 = $stat(used_size), 无邀请 = $stat(method:invite)\n");
 ...
 $stat(err_requests) = 0;
 ...
-			
+
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

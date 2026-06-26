@@ -1,71 +1,65 @@
 ---
-title: "presence_dfks Module"
-description: "The module enables the handling of the \"as-feature-event\" event package (as defined by Broadsoft's [Device Feature Key Synchronization](https://h30434.www3.hp.com/psg/attachments/psg/Desk_IP_Conference_Phones/1740/1/DeviceFeatureKeySynchronizationFD.pdf) protocol) by the presence m..."
+title: "presence_dfks 模块"
+description: "该模块支持通过 presence 模块处理 \"as-feature-event\" 事件包（如 Broadsoft 的 [Device Feature Key Synchronization](https://h30434.www3.hp.com/psg/attachments/psg/Desk_IP_Conference_Phones/1740/1/DeviceFeatureKeySynchronizationFD.pdf) 协议所定义）。这可用于在 SIP..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module enables the handling of the "as-feature-event" event package (as
-	    defined by Broadsoft's
+该模块支持通过 presence 模块处理 "as-feature-event" 事件包（如
+	    Broadsoft 的
 	    [Device Feature Key Synchronization](https://h30434.www3.hp.com/psg/attachments/psg/Desk_IP_Conference_Phones/1740/1/DeviceFeatureKeySynchronizationFD.pdf)
-	    protocol) by the presence module. This can be used to synchronize the status of
-	    features such as Do Not Disturb and different forwarding types between a SIP
-	    phone and a SIP server.
+	    协议所定义）。这可用于在 SIP 电话和 SIP 服务器之间同步"请勿打扰"和各种转发类型等功能的状态。
 
 
-The module supports synchronization for the following features: Do Not Disturb,
-	    Call Forwarding Always, Call Forwarding Busy and Call Forwarding No Answer.
-	    Feature status can be changed either from the SIP phone or the OpenSIPS Server(
-	    by running an MI command).
+该模块支持同步以下功能："请勿打扰"、"呼叫转移始终"、"呼叫转移占线"和"呼叫转移无应答"。
+	    功能状态可以从 SIP 电话或 OpenSIPS 服务器更改（通过运行 MI 命令）。
 
 
-When handling a SUBSCRIBE message without a body, the module will run a script
-	    route for each feature, that will be used to retrieve the current status of that
-	    feature. Conversely, a SUBSCRIBE with a body will trigger a script route where the
-	    updated status of a specific feature is available. This route might also be run
-	    if the feature update was triggered from OpenSIPS via MI.
+当处理没有正文的 SUBSCRIBE 消息时，模块将为每个功能运行一个脚本路由，
+	    用于检索该功能的当前状态。相反，带有正文的 SUBSCRIBE 将触发一个脚本路由，
+	    其中包含特定功能的更新状态。如果功能更新是从 OpenSIPS 通过 MI 触发的，
+	    此路由也可能运行。
 
 
-Note that the module does not automatically cache or persist any feature information
-	    as this is left for the script writer to implement in the routes triggered by the module.
+请注意，模块不会自动缓存或持久化任何功能信息，
+	    因为这是留给脚本编写者在模块触发的路由中实现的。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *presence*.
+- *presence*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-- *libxml2-dev*.
+- *libxml2-dev*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### get_route (string)
 
 
-The name of the script route to be run in order to retrieve the status
-		of a feature.
+脚本路由的名称，用于检索功能的状态。
 
 
-*Default value is "dfks_get".*
+*默认值为 "dfks_get"。*
 
 
-```c title="Set parameter"
+```c title="设置参数"
 ...
 modparam("presence_dfks", "get_route", "dfks_get")
 ...
@@ -75,77 +69,66 @@ modparam("presence_dfks", "get_route", "dfks_get")
 #### set_route (string)
 
 
-The name of the script route to be run when a feature status update
-		from a SIP phone is received.
+从 SIP 电话收到功能状态更新时运行的脚本路由名称。
 
 
-*Default value is "dfks_get".*
+*默认值为 "dfks_get"。*
 
 
-```c title="Set parameter"
+```c title="设置参数"
 ...
 modparam("presence_dfks", "set_route", "dfks_set")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-None.
+无。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### presence_dfks:set_feature
 
 
-Replaces obsolete MI command: *dfks_set_feature*.
+替换过时的 MI 命令：*dfks_set_feature*。
 
 
-Triggers the sending of NOTIFY messages containing a feature status update
-		to all watchers.
+触发发送包含功能状态更新的 NOTIFY 消息给所有 watcher。
 
 
-*Note:* calling this MI function also triggers the
-			*set_route* run. One can determine if the route is
-			triggered by an MI function by checking the existence of the
-			*$dfks(param)* variable.
+*注意：* 调用此 MI 函数也会触发 *set_route* 运行。
+		可以通过检查 *$dfks(param)* 变量是否存在来确定路由是否由 MI 函数触发。
 
 
-Name: *presence_dfks:set_feature*
+名称：*presence_dfks:set_feature*
 
 
-Parameters:
+参数：
 
 
-- *presentity*: the URI of the user whose feature status
-				should be updated
-- *feature*: The name of the feature to update. Takes one
-				of the following values:
+- *presentity*：应更新其功能状态的用户 URI
+- *feature*：要更新的功能名称。取以下值之一：
 
   - *DoNotDisturb*
   - *CallForwardingAlways*
   - *CallForwardingBusy*
   - *CallForwardingNoAnswer*
-- *status*: the new status of the feature:
-				*0* - disabled, *1* - enabled
-- *route_param*: optional string parameter
-				passed to the *$dfks(param)* variable in
-				*set_route*.
-- *values*: an array of extra values that can be updated
-				for a feature. The format of an array element is:
-				*field*/*value*. Supported fields are:
-				
-				
-					*forwardTo* - for all forwarding types
-				
-				
-					*ringCount* - for *CallForwardingNoAnswer*
+- *status*：功能的新状态：*0* - 禁用，*1* - 启用
+- *route_param*：可选字符串参数，传递给 *set_route* 中的 *$dfks(param)* 变量。
+- *values*：可以为功能更新的额外值数组。数组元素格式为：*field*/*value*。支持的字段有：
+					
+					
+				*forwardTo* - 适用于所有转发类型
+					
+					
+				*ringCount* - 适用于 *CallForwardingNoAnswer*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -154,54 +137,46 @@ ringCount/4 forwardTo/sip:bob@10.0.0.11
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $dfks(field)
 
 
-This pseudo-variable can be used in the routes triggered by the module
-		to handle the feature information through the following subnames:
+此伪变量可用于模块触发的路由中，通过以下子名称处理功能信息：
 
 
-- *assigned* - inform the SIP phone that a
-		feature is unassigned by setting this to *0* (the NOTIFY response
-		will contain no XML data for the corresponding feature) By default, features are assigned.
-- *notify* - suppress the sending of the NOTIFY
-		message by setting this to *0*. By default, the NOTIFY is sent.
-- *presentity* - read-only, returns the current presentity URI.
-- *feature* - read-only, returns the current feature name.
-		Possible values are:
+- *assigned* - 通过将此设置为 *0* 来通知 SIP 电话功能未分配
+		（NOTIFY 响应将不包含相应功能的 XML 数据）。默认情况下，功能是分配的。
+- *notify* - 通过将此设置为 *0* 来禁止发送 NOTIFY 消息。默认情况下，NOTIFY 被发送。
+- *presentity* - 只读，返回当前 presentity URI。
+- *feature* - 只读，返回当前功能名称。可能的值有：
 
   - *DoNotDisturb*
   - *CallForwardingAlways*
   - *CallForwardingBusy*
   - *CallForwardingNoAnswer*
-- *status* - read or write the feature status. A value of
-		*1* means enabled and *0* disabled.
-- *param* - returns the parameter passed by the
-		*mi_dfks_set_feature* MI function. This field will be
-		*NULL* if the parameter was not specified, or if the
-		*set_route* is not triggered by an MI command, but by
-		SIP signalling.
-- *value/field* - read or write extra feature values.
-		*field* can be one of:
-		
-		
-			*forwardTo* - for all forwarding types
-		
-		
-			*ringCount* - for *CallForwardingNoAnswer*
+- *status* - 读取或写入功能状态。值 *1* 表示启用，*0* 表示禁用。
+- *param* - 返回由 *mi_dfks_set_feature* MI 函数传递的参数。
+		如果未指定参数，或者 *set_route* 不是由 MI 命令而是由 SIP 信令触发，则此字段为 *NULL*。
+- *value/field* - 读取或写入额外的功能值。
+		*field* 可以是：
+			
+			
+			*forwardTo* - 适用于所有转发类型
+			
+			
+			*ringCount* - 适用于 *CallForwardingNoAnswer*
 
 
-```c title="dfks usage"
+```c title="dfks 使用示例"
 ...
 route[dfks_set] {
-    # CallForwardingAlways is not allowed
+    # 不允许 CallForwardingAlways
     if ($dfks(feature) == "CallForwardingAlways")
         $dfks(status) = 0;
 
-    xlog("New status: $dfks(status) for feature '$dfks(feature)' of user '$dfks(presentity)'\n");
+    xlog("新状态：$dfks(status)，功能 '$dfks(feature)'，用户 '$dfks(presentity)'\n");
 }
 route[dfks_get] {
     if ($dfks(feature) == "CallForwardingNoAnswer") {
@@ -219,6 +194,6 @@ route[dfks_get] {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

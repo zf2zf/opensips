@@ -1,81 +1,75 @@
 ---
-title: "cachedb_sql Module"
-description: "This module is an implementation of a cache system designed to work with a regular SQL-based server. It uses the internal DB interface to connect to the back-end, and also implements the Key-Value interface exported from the core."
+title: "cachedb_sql 模块"
+description: "本模块是缓存系统的实现，旨在与常规基于 SQL 的服务器配合工作。它使用内部 DB 接口连接到后端，并实现了 OpenSIPS 核心导出的 Key-Value 接口。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of a cache system designed to work with a 
-		regular SQL-based server. It uses the internal DB interface to connect
-		to the back-end, and also implements the Key-Value interface exported from the core.
+本模块是缓存系统的实现，旨在与常规基于 SQL 的服务器配合工作。
+它使用内部 DB 接口连接到后端，并实现了 OpenSIPS 核心导出的 Key-Value 接口。
 
 
-### Advantages
+### 优势
 
 
-- *memory costs are no longer on the server*
-- *the cache is 100% persistent. A restart
-					of OpenSIPS server will not affect the DB. The DB is also
-				persistent so it can also be restarted without loss of information.*
-- *Multiple OpenSIPS instances can easily share key-value information
-				via a regular SQL-based database*
+- *内存成本不再由服务器承担*
+- *缓存是 100% 持久化的。OpenSIPS 服务器的重启不会影响 DB。DB 也是持久化的，
+			因此也可以在不失数据的情况下重启。*
+- *多个 OpenSIPS 实例可以通过常规基于 SQL 的数据库轻松共享键值信息*
 
 
-### Limitations
+### 限制
 
 
-- *The module's counter operations ( ADD and SUB ) are currently only 
-				supported by MySQL*
+- *模块的计数器操作（ADD 和 SUB）目前仅支持 MySQL*
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None.
+无。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载本模块之前，必须安装以下库或应用程序：
 
 
-- *none:*
+- *无：*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### cachedb_url (string)
+#### cachedb_url (字符串)
 
 
-The url of the Database  that OpenSIPS will connect to in order
-			to use the from script cache_store,cache_fetch, etc operations.
+OpenSIPS 将连接到的数据库 URL，以便在脚本中使用 cache_store、cache_fetch 等操作。
 
 
-The format to follow is : sql:[conn_id]-dburl
+格式为：sql:[conn_id]-dburl
 
 
-The parameter can be set multiple times to create multiple connections accessible from the OpenSIPS script.
+可以为多个连接设置此参数，使其可从 OpenSIPS 脚本访问。
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("cachedb_sql", "cachedb_url", "sql:1st-mysql://root:vlad@localhost/opensips_sql")
 ...
-	
+
 ```
 
 
-```c title="Usage example"
+```c title="使用示例"
 ...
 modparam("cachedb_sql", "cachedb_url", "sql:1st-mysql://root:vlad@localhost/opensips_sql")
 modparam("cachedb_sql", "cachedb_url", "sql:2nd-postgres://root:vlad@localhost/opensips_pg")
@@ -84,113 +78,110 @@ modparam("cachedb_sql", "cachedb_url", "sql:2nd-postgres://root:vlad@localhost/o
 cache_store("sql:1st-mysql","key","$ru value");
 cache_store("sql:2nd-postgres","counter","10");
 ...
-	
+
 ```
 
 
-#### db_table (string)
+#### db_table (字符串)
 
 
-The table of the Database  that OpenSIPS will connect to in order
-			to use the from script cache_store,cache_fetch, etc operations.
+OpenSIPS 将连接到的数据库表，以便在脚本中使用 cache_store、cache_fetch 等操作。
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("cachedb_sql", "db_table","my_table");
 ...
-	
+
 ```
 
 
-#### key_column (string)
+#### key_column (字符串)
 
 
-The column where the key will be stored
+存储键的列。
 
 
-```c title="Set key_column parameter"
+```c title="设置 key_column 参数"
 ...
 modparam("cachedb_sql", "key_column","some_name");
 ...
-	
+
 ```
 
 
-#### value_column (string)
+#### value_column (字符串)
 
 
-The column where the value will be stored
+存储值的列。
 
 
-```c title="Set value_column parameter"
+```c title="设置 value_column 参数"
 ...
 modparam("cachedb_sql", "value_column","some_name");
 ...
-	
+
 ```
 
 
-#### counter_column (string)
+#### counter_column (字符串)
 
 
-The column where the counter value will be stored
+存储计数器值的列。
 
 
-```c title="Set counter_column parameter"
+```c title="设置 counter_column 参数"
 ...
 modparam("cachedb_sql", "counter_column","some_name");
 ...
-	
+
 ```
 
 
-#### expires_column (string)
+#### expires_column (字符串)
 
 
-The column where the expires will be stored
+存储过期时间的列。
 
 
-```c title="Set expires_column parameter"
+```c title="设置 expires_column 参数"
 ...
 modparam("cachedb_sql", "expires_column","some_name");
 ...
-	
+
 ```
 
 
-#### cache_clean_period (int)
+#### cache_clean_period (整数)
 
 
-The interval in seconds at which the expired keys will be removed from
-			the database. Default value is 60 ( seconds )
+从数据库中删除过期键的时间间隔（秒）。默认值为 60（秒）。
 
 
-```c title="Set cache_clean_period parameter"
+```c title="设置 cache_clean_period 参数"
 ...
 modparam("cachedb_sql", "cache_clean_period",10);
 ...
-	
+
 ```
 
 
-#### Exported Functions
+### 导出的函数
 
 
-The module does not export functions to be used
-		in configuration script.
+本模块不导出在配置脚本中使用的函数。
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: What happened with the old "db_url" module parameter?**
+**Q: 旧的 "db_url" 模块参数发生了什么？**
 
 
-It was replaced with the "cachedb_url" parameter.
-			See the documentation for the usage of the "cachedb_url" parameter.
+它已被 "cachedb_url" 参数替换。
+		请参阅 "cachedb_url" 参数的文档以了解其用法。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享许可证 4.0 版授权

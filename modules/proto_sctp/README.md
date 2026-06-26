@@ -1,82 +1,73 @@
 ---
-title: "proto_sctp Module"
-description: "The **proto_sctp** module is an optional transport module (shared library) which exports the required logic in order to handle SCTP-based communication. (socket initialization and send/recv primitives to be used by higher-level network layers)"
+title: "proto_sctp 模块"
+description: "**proto_sctp** 模块是一个可选的传输模块(共享库),导出处理基于 SCTP 通信所需的逻辑。(套接字初始化和 send/recv 原语,供更高级别的网络层使用)"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The **proto_sctp** module is an optional transport module (shared library) which
-	exports the required logic in order to handle SCTP-based communication. (socket initialization
-	and send/recv primitives to be used by higher-level network layers)
+**proto_sctp** 模块是一个可选的传输模块(共享库),导出处理基于 SCTP 通信所需的逻辑。(套接字初始化和 send/recv 原语,供更高级别的网络层使用)
 
 
-Once loaded, you will be able to define *"sctp:"* listeners in your script.
+加载后,你将能够在脚本中定义 *"sctp:"* 监听器。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
-- *None*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前,必须安装以下库或应用程序:
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### sctp_port (integer)
 
 
-The default port to be used for all SCTP related operation. Be careful
-		as the default port impacts both the SIP listening part (if no port is
-		defined in the SCTP listeners) and the SIP sending part (if the 
-		destination SCTP URI has no explicit port).
+用于所有 SCTP 相关操作的默认端口。请小心,因为默认端口会影响 SIP 监听部分(如果在 SCTP 监听器中未定义端口)和 SIP 发送部分(如果目标 SCTP URI 没有显式端口)。
 
 
-If you want to change only the listening port for STP, use the port
-		option in the SIP listener defintion.
+如果你只想更改 STP 的监听端口,请使用 SIP 监听器定义中的端口选项。
 
 
-*Default value is 5060.*
+*默认值为 5060。*
 
 
-```c title="Set sctp_port parameter"
+```c title="设置 sctp_port 参数"
 ...
 modparam("proto_sctp", "sctp_port", 5070)
 ...
 ```
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: After switching to OpenSIPS 2.1, I'm getting this error:
+**Q: 切换到 OpenSIPS 2.1 后,我收到此错误:
 				"listeners found for protocol sctp, but no module can handle it"**
 
 
-You need to load the "proto_sctp" module. In your script, make sure
-			you do a **loadmodule "proto_sctp.so"**
-			after setting the **[mpath](https://docs.opensips.org/manual/2-1/script-coreparameters#mpath)**.
+你需要加载 "proto_sctp" 模块。在脚本中,确保在设置 **[mpath](https://docs.opensips.org/manual/2-1/script-coreparameters#mpath)** 之后执行 **loadmodule "proto_sctp.so"**。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)采用 Creative Common License 4.0 授权

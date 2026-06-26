@@ -1,64 +1,54 @@
 ---
-title: "Presence_XCAPDiff Module"
-description: "The presence_xcapdiff is an OpenSIPS module that adds support for the \"xcap-diff\" event to presence and pua. At the moment, the module just registers the event but doesn't do any event-specific processing. The module will automatically determine if the presence and/or pua ..."
+title: "Presence_XCAPDiff 模块"
+description: "presence_xcapdiff 是一个 OpenSIPS 模块，它为 presence 和 pua 添加了对 \"xcap-diff\" 事件的支持。目前，该模块只是注册事件，不进行任何特定于事件的处理。该模块将自动确定 presence 和/或 pua 模块是否存在，如果存在..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The presence_xcapdiff is an OpenSIPS module that adds support for the
-      "xcap-diff" event to presence and pua. At the moment, the module
-      just registers the event but doesn't do any event-specific processing.
-      The module will automatically determine if the presence and/or pua
-      modules are present and if so it will register the xcap-diff event
-      with them. This allows the module to automatically offer presence
-      or pua related functionality simply based on the presence of the
-      aforementioned modules in the OpenSIPS configuration, without any
-      need for manual configuration.
+presence_xcapdiff 是一个 OpenSIPS 模块，它为 presence 和 pua 添加了对
+      "xcap-diff" 事件的支持。目前，该模块只是注册事件，不进行任何特定于事件的处理。
+      该模块将自动确定 presence 和/或 pua 模块是否存在，
+      如果存在，它将向其注册 xcap-diff 事件。
+      这允许模块仅基于 OpenSIPS 配置中存在上述模块，
+      自动提供 presence 或 pua 相关功能，无需任何手动配置。
 
 
-Registering the event with pua, allows the XCAP server to publish
-      the xcap-event when some modification of a document happens.
-      Registering the event with presence allows clients to subscribe
-      to the event.
+向 pua 注册事件允许 XCAP 服务器在文档发生某些修改时发布 xcap-event。
+      向 presence 注册事件允许客户端订阅该事件。
 
 
-The module is intended to be used with the OpenXCAP server (www.openxcap.org),
-      although it doesn't contain any OpenXCAP-specific code and should be usable
-      with any XCAP server.
+该模块旨在与 OpenXCAP 服务器（www.openxcap.org）一起使用，
+      尽管它不包含任何 OpenXCAP 特定代码，应该可以与任何 XCAP 服务器一起使用。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *presence* module - to enable clients to
-              subscribe to the xcap-diff event package.
-- *pua* module - to be able to publish the
-              xcap-diff event when some modification of a document happens.
-- *pua_mi* module - to enable pua to publish
-              the xcap-diff event using the MI interface. This is needed if
-              this module is intended to be used in conjunction with OpenXCAP.
+- *presence* 模块 - 允许客户端订阅 xcap-diff 事件包。
+- *pua* 模块 - 能够在文档发生某些修改时发布 xcap-diff 事件。
+- *pua_mi* 模块 - 允许 pua 通过 MI 接口发布 xcap-diff 事件。
+		如果此模块旨在与 OpenXCAP 结合使用，则需要此模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-        running OpenSIPS with this module loaded:
+必须在运行加载了此模块的 OpenSIPS 之前安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

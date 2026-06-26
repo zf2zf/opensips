@@ -1,31 +1,29 @@
 ---
-title: "Perl Virtual Database Module"
-description: "The Perl Virtual Database (VDB) provides a virtualization framework for OpenSIPS's database access. It does not handle a particular database engine itself but lets the user relay database requests to arbitrary Perl functions."
+title: "Perl 虚拟数据库模块"
+description: "Perl 虚拟数据库（VDB）为 OpenSIPS 的数据库访问提供了一个虚拟化框架。它本身不处理特定的数据库引擎，而是让用户将数据库请求中继到任意 Perl 函数。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Perl Virtual Database (VDB) provides a virtualization framework
-		for OpenSIPS's database access. It does not handle a particular
-		database engine itself but lets the user relay database requests
-		to arbitrary Perl functions.
+Perl 虚拟数据库（VDB）为 OpenSIPS 的数据库访问提供了一个虚拟化框架。
+它本身不处理特定的数据库引擎，而是让用户将数据库请求
+中继到任意 Perl 函数。
 
 
-This module cannot be used "out of the box". The user has to supply
-		functionality dedicated to the client module. See below for options.
+此模块不能"开箱即用"。用户必须提供
+专用于客户端模块的功能。请参阅下文了解选项。
 
 
-The module can be used in all current OpenSIPS modules that need
-		database access. Relaying of insert, update, query and delete
-		operations is supported.
+该模块可用于所有需要数据库访问的当前 OpenSIPS 模块。
+支持中继 insert、update、query 和 delete 操作。
 
 
-Modules can be configured to use the db_perlvdb module as
-		database backend using the db_url_parameter:
+模块可以配置为使用 db_perlvdb 模块作为
+数据库后端，使用 db_url_parameter：
 
 
 ```c
@@ -33,55 +31,54 @@ modparam("acc", "db_url", "perlvdb:OpenSIPS::VDB::Adapter::AccountingSIPtrace")
 ```
 
 
-This configuration options tells acc module that it should use the
-		db_perlvdb module which will in turn use the Perl class
-		OpenSIPS::VDB::Adapter::AccountingSIPtrace
-		to relay the database requests.
+此配置选项告诉 acc 模块它应该使用
+db_perlvdb 模块，而该模块将使用 Perl 类
+OpenSIPS::VDB::Adapter::AccountingSIPtrace
+来中继数据库请求。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following  modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *perl* -- Perl module
+- *perl* -- Perl 模块
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None* (Besides the ones mentioned in the perl
-				module documentation).
+- *无*（除 perl 模块文档中提到的那些）。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-*None*.
+*无*。
 
 
-### Exported Functions
+### 导出的函数
 
 
-*None*.
+*无*。
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Introduction
+### 简介
 
 
-OpenSIPS uses a database API for requests of numerous different
-		types of data. Four primary operations are supported:
+OpenSIPS 使用数据库 API 来请求多种不同类型的数据。
+支持四种主要操作：
 
 
 - query
@@ -90,48 +87,42 @@ OpenSIPS uses a database API for requests of numerous different
 - delete
 
 
-This module relays these database requests to user implemented
-			Perl functions.
+此模块将这些数据库请求中继到用户实现的
+Perl 函数。
 
 
-### Base class OpenSIPS::VDB
+### 基类 OpenSIPS::VDB
 
 
-A client module has to be configured to use the db_perlvdb module in conjunction
-			with a Perl class to provide the functions. The configured class needs to
-			inherit from the base class `OpenSIPS::VDB`.
+客户端模块必须配置为将 db_perlvdb 模块与提供函数的
+Perl 类结合使用。配置的类需要继承自基类 `OpenSIPS::VDB`。
 
 
-Derived classes have to implement the necessary
-			functions "query", "insert", "update" and/or "delete". The client module
-			specifies the necessary functions.
-			To find out which functions are called from a module, its processes may
-			be evaluated with the `OpenSIPS::VDB::Adapter::Describe` class which will
-			log incoming requests (without actually providing any real functionality).
+派生类必须实现必要的函数 "query"、"insert"、"update" 和/或 "delete"。
+客户端模块指定必要的函数。
+要找出模块调用了哪些函数，可以评估其进程
+使用 `OpenSIPS::VDB::Adapter::Describe` 类，该类将记录传入的请求（而不实际提供任何真实功能）。
 
 
-While users can directly implement their desired functionality in a class
-			derived from OpenSIPS::VDB, it is advisable to split the implementation into
-			an Adapter that transforms the relational structured parameters into pure
-			Perl function arguments, and add a virtual table (VTab) to provide the
-			relaying to an underlying technology.
+虽然用户可以直接在与 OpenSIPS::VDB 派生的类中实现所需功能，
+但建议将实现拆分为一个适配器，该适配器将关系结构化参数转换为纯
+Perl 函数参数，并添加一个虚拟表（VTab）以提供到底层技术的中继。
 
 
-### Data types
+### 数据类型
 
 
-Before introducing the higher level concepts of this module, the used
-			datatypes will briefly be explained.
-			The OpenSIPS Perl library includes some data types that have to be used
-			in this module:
+在介绍此模块的更高级概念之前，
+将简要解释使用的数据类型。
+OpenSIPS Perl 库包含一些必须在此模块中使用的数据类型：
 
 
 #### OpenSIPS::VDB::Value
 
 
-A value includes a data type flag and a value. Valid data types are
-			DB_INT, DB_DOUBLE, DB_STRING, DB_STR, DB_DATETIME, DB_BLOB, DB_BITMAP.
-			A new variable may be created with
+一个值包含数据类型标志和值。有效的数据类型为
+DB_INT、DB_DOUBLE、DB_STRING、DB_STR、DB_DATETIME、DB_BLOB、DB_BITMAP。
+可以用以下方式创建新变量：
 
 
 ```c
@@ -139,16 +130,14 @@ my $val = new OpenSIPS::VDB::Value(DB_STRING, "foobar");
 ```
 
 
-Value objects contain the type() and data() methods to get or set the type
-			and data attributes.
+值对象包含 type() 和 data() 方法来获取或设置类型和数据属性。
 
 
 #### OpenSIPS::VDB::Pair
 
 
-The Pair class is derived from the Value class and additionally contains a
-			column name (key).
-			A new variable may be created with
+Pair 类派生自 Value 类，还包含列名（键）。
+可以用以下方式创建新变量：
 
 
 ```c
@@ -156,17 +145,16 @@ my $pair = new OpenSIPS::VDB::Pair("foo", DB_STRING, "bar");
 ```
 
 
-where foo is the key and bar is the value.
-			Additonally to the methods of the Value class, it contains a key() method to
-			get or set the key attribute.
+其中 foo 是键，bar 是值。
+除了 Value 类的方法外，它还包含 key() 方法来获取或设置键属性。
 
 
 #### OpenSIPS::VDB::ReqCond
 
 
-The ReqCond class is used for select condition and is derived from the Pair
-			class. It contains an addtional operator attribute.
-			A new variable may be created with
+ReqCond 类用于选择条件，派生自 Pair 类。
+它包含一个额外的运算符属性。
+可以用以下方式创建新变量：
 
 
 ```c
@@ -174,18 +162,16 @@ my $cond = new OpenSIPS::VDB::ReqCond("foo", ">", DB_INT, 5);
 ```
 
 
-where foo is the key, "greater" is the operator and 5 is the value to compare.
-			Additonally to the methods of the Pair class, it contains an op() method to
-			get or set the operator attribute.
+其中 foo 是键，"greater" 是运算符，5 是要比较的值。
+除了 Pair 类的方法外，它还包含 op() 方法来获取或设置运算符属性。
 
 
 #### OpenSIPS::VDB::Column
 
 
-This class represents a column definition or database schema. It contains an
-			array for the column names and an array for the column types. Both arrays need
-			to have the same length.
-			A new variable may be created with
+此类表示列定义或数据库模式。它包含
+列名数组和列类型数组。这两个数组需要具有相同的长度。
+可以用以下方式创建新变量：
 
 
 ```c
@@ -195,105 +181,91 @@ my $cols = new OpenSIPS::VDB::Column(\@types, \@names);
 ```
 
 
-The class contains the methods type() and name() to get or set the type and name
-			arrays.
+该类包含 type() 和 name() 方法来获取或设置类型和名称数组。
 
 
 #### OpenSIPS::VDB::Result
 
 
-The Result class represents a query result. It contains a schema (class Column)
-			and an array of rows, where each row is an array of Values. The object methods
-			coldefs() and rows() may be used to get and set the object attributes.
+Result 类表示查询结果。它包含一个模式（Column 类）
+和一行数组，其中每一行都是一个 Values 数组。可以使用对象方法
+coldefs() 和 rows() 来获取和设置对象属性。
 
 
-### Adapters
+### 适配器
 
 
-Adapters should be used to turn the relational structured database request into
-			pure Perl function arguments. The alias_db function alias_db_lookup for example 
-			takes a user/host pair, and turns it into another user/host pair. The Alias
-			adapter turns the ReqCond array into two separate scalars that are used as parameters
-			for a VTab call.
+适配器应用于将关系结构化数据库请求转换为
+纯 Perl 函数参数。例如 alias_db 函数 alias_db_lookup
+接受 user/host 对，并将其转换为另一个 user/host 对。
+Alias 适配器将 ReqCond 数组转换为两个独立标量，用作 VTab 调用的参数。
 
 
-Adapter classes have to inherit from the OpenSIPS::VDB base class and may provide
-			one or more functions with the names insert, update, replace, query and/or delete,
-			depending on the module which is to be used with the adapter. While modules such as
-			alias_db only require a query function, others -- such as siptrace -- depend
-			on inserts only.
+适配器类必须继承自 OpenSIPS::VDB 基类，并且可以提供一个或多个
+名为 insert、update、replace、query 和/或 delete 的函数，
+具体取决于要使用适配器的模块。虽然诸如 alias_db 之类的模块只需要 query 函数，
+但其他（如 siptrace）仅依赖插入。
 
 
-#### Function parameters
+#### 函数参数
 
 
-The implemented functions need to deal with the correct data types. The
-				parameter and return types are listed in this section.
+实现的函数需要处理正确的数据类型。参数和返回类型列在本节中。
 
 
-*insert()* is passed an array of OpenSIPS::VDB::Pair objects.
-				It should return an integer value.
+*insert()* 接收 OpenSIPS::VDB::Pair 对象数组。
+它应返回一个整数值。
 
 
-*replace()* is passed an array of OpenSIPS::VDB::Pair objects.
-				This function is currently not used by any publicly available modules.
-				It should return an integer value.
+*replace()* 接收 OpenSIPS::VDB::Pair 对象数组。
+此函数目前不被任何公开可用的模块使用。
+它应返回一个整数值。
 
 
-*delete()* is passed an array of OpenSIPS::VDB::ReqCond objects.
-				It should return an integer value.
+*delete()* 接收 OpenSIPS::VDB::ReqCond 对象数组。
+它应返回一个整数值。
 
 
-*update()* is passed an array of OpenSIPS::VDB::ReqCond objects
-				(which rows to update) and an array of OpenSIPS::VDB::Pair objects
-				(new data).
-				It should return an integer value.
+*update()* 接收 OpenSIPS::VDB::ReqCond 对象数组
+（要更新哪些行）和 OpenSIPS::VDB::Pair 对象数组
+（新数据）。
+它应返回一个整数值。
 
 
-*query()* is passed an array of OpenSIPS::VDB::ReqCond objects
-				(which rows to select), an array of strings (which column names to return)
-				and a single string by which column to sort.
-				It should return an object of type OpenSIPS::VDB::Result.
+*query()* 接收 OpenSIPS::VDB::ReqCond 对象数组
+（选择哪些行）、字符串数组（返回哪些列名）
+和一个用于排序的列字符串。
+它应返回一个 OpenSIPS::VDB::Result 类型的对象。
 
 
 ### VTabs
 
 
-VTabs (virtual tables) provide a particular implementation for an adapter. The Alias
-			adapter e.g. calls a function with two parameters (user, host) and expects a hash to
-			be returned with the two elements username and domain, or undef (when no result
-			is found).
-			A sample VTab implementation for the Alias adapter demonstrates this technique with
-			a Perl hash that contains the alias data.
+VTabs（虚拟表）为适配器提供特定实现。例如，Alias
+适配器使用两个参数（user、host）调用函数，并期望返回一个包含
+两个元素 username 和 domain 的哈希，或者当没有结果时返回 undef。
+Alias 适配器的示例 VTab 实现通过包含别名数据的 Perl 哈希演示了此技术。
 
 
-The standard Adapter/VTab pattern lets the user choose between three options on how to
-			implement VTabs:
+标准 Adapter/VTab 模式让用户选择三种方式来实现 VTabs：
 
 
-- *Single function*. When a function is used
-				as a virtual table, it is passed the operation name (insert, replace, update,
-				query, delete) as its first parameter. The function may be implemented
-				in the main namespace.
+- *单函数*。当函数用作虚拟表时，
+传递操作名称（insert、replace、update、query、delete）作为其第一个参数。
+该函数可以在主命名空间中实现。
 
 
-- *Package/class*. The defined class needs
-				to have an init() function. It will be called during the first call of that
-				VTab.
-				Addtionally, the package has
-				to define the necessary functions insert, replace, update, delete and/or query.
-				These functions will be called in a function context (first parameter is the
-				class name).
+- *包/类*。定义的类需要
+有一个 init() 函数。它将在该 VTab 的第一次调用期间被调用。
+此外，包必须定义必要的函数 insert、replace、update、delete 和/或 query。
+这些函数将以函数上下文调用（第一个参数是类名）。
 
 
-- *Object*. The defined class needs
-				to have a new() function which will return a reference to the newly
-				created object. This object needs to define the necessary functions insert,
-				replace, update, delete and/or query.
-				These functions will be called in a method context (first parameter is
-				a reference to the object).
+- *对象*。定义的类需要有一个 new() 函数，该函数将返回对新创建对象的引用。
+此对象需要定义必要的函数 insert、replace、update、delete 和/或 query。
+这些函数将以方法上下文调用（第一个参数是对对象的引用）。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

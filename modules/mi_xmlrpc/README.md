@@ -1,65 +1,60 @@
 ---
-title: "mi_xmlrpc Module"
-description: "This module implements a xmlrpc server that handles xmlrpc requests and generates xmlrpc responses. When a xmlrpc message is received a default method is executed."
+title: "mi_xmlrpc 模块"
+description: "本模块实现了一个 xmlrpc 服务器，用于处理 xmlrpc 请求并生成 xmlrpc 响应。当收到 xmlrpc 消息时，将执行默认方法。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements a xmlrpc server that handles xmlrpc
-		requests and generates xmlrpc responses.
-		When a xmlrpc message is received a default method is executed.
+本模块实现了一个 xmlrpc 服务器，用于处理 xmlrpc 请求并生成 xmlrpc 响应。
+当收到 xmlrpc 消息时，将执行默认方法。
 
 
-At first, it looks up the MI command.
-		If found it parses the called procedure's parameters
-		into a MI tree and the command is executed.
-		A MI reply tree is returned that is formatted back in xmlrpc.
-		The response is built in two ways - like a string that
-		contains the MI tree nodes information (name, values and
-		attributes) or like an array whose elements are consisted
-		of each MI tree node stored information.
+首先，它查找 MI 命令。
+如果找到，则将调用的过程的参数解析为 MI 树，然后执行该命令。
+返回一个 MI 回复树，该树被格式化为 xmlrpc 格式。
+响应以两种方式构建 - 一种是包含 MI 树节点信息（名称、值和属性）的字符串，
+另一种是由每个 MI 树节点存储的信息组成的数组。
 
 
-### Dependencies
+### 依赖
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
 - *libxml2*
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *httpd* module.
+- *httpd* 模块。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### http_root(string)
+#### http_root (string)
 
 
-Specifies the root path for xmlrpc requests:
-		http://[opensips_IP]:[opensips_httpd_port]/[http_root]
+指定 xmlrpc 请求的根路径：
+http://[opensips_IP]:[opensips_httpd_port]/[http_root]
 
 
-*The default value is "RPC2".*
+*默认值为 "RPC2"。*
 
 
-```c title="Set http_root parameter"
+```c title="设置 http_root 参数"
 ...
 modparam("mi_xmlrpc", "http_root", "opensips_mi_xmlrpc")
 ...
@@ -69,20 +64,19 @@ modparam("mi_xmlrpc", "http_root", "opensips_mi_xmlrpc")
 #### trace_destination (string)
 
 
-Trace destination as defined in the tracing module. Currently
-		the only tracing module is **proto_hep**.
-		This is where traced mi messages will go.
+跟踪目标，定义在跟踪模块中。
+目前唯一的跟踪模块是 **proto_hep**。
+跟踪的 mi 消息将发送到这里。
 
 
-**WARNING:**A tracing module must be
-			loaded in order for this parameter to work. (for example
-			**proto_hep**).
+**警告：** 必须加载跟踪模块此参数才能工作。
+（例如 **proto_hep**）。
 
 
-*Default value is none(not defined).*
+*默认值为无（未定义）。*
 
 
-```c title="Set trace_destination parameter"
+```c title="设置 trace_destination 参数"
 ...
 modparam("proto_hep", "trace_destination", "[hep_dest]10.0.0.2;transport=tcp;version=3")
 
@@ -94,70 +88,62 @@ modparam("mi_xmlrpc", "trace_destination", "hep_dest")
 #### trace_bwlist (string)
 
 
-Filter traced mi commands based on a blacklist or a whitelist.
-		**trace_destination** must be defined for
-		this parameter to have any purpose. Whitelists can be defined using
-		'w' or 'W', blacklists using 'b' or 'B'. The type is separate by the
-		actual blacklist by ':'. The mi commands in the list must be separated
-		by ','.
+基于黑名单或白名单过滤跟踪的 mi 命令。
+**trace_destination** 必须定义此参数才能生效。
+白名单可以使用 'w' 或 'W' 定义，黑名单使用 'b' 或 'B'。
+类型与实际黑名单之间用 ':' 分隔。
+列表中的 mi 命令必须用 ',' 分隔。
 
 
-Defining a blacklists means all the commands that are not blacklisted
-			will be traced. Defining a whitelist means all the commands that are
-			not whitelisted will not be traced.
-			**WARNING:** One can't define both
-			a whitelist and a blacklist. Only one of them is allowed. Defining
-			the parameter a second time will just overwrite the first one.
+定义黑名单意味着所有未被列入黑名单的命令都将被跟踪。
+定义白名单意味着所有未被列入白名单的命令都不会被跟踪。
+**警告：** 不能同时定义白名单和黑名单。
+只允许其中一种。第二次定义此参数将覆盖第一次的值。
 
 
-**WARNING:**A tracing module must be
-			loaded in order for this parameter to work. (for example
-			**proto_hep)**.
+**警告：** 必须加载跟踪模块此参数才能工作。
+（例如 **proto_hep**）。
 
 
-*Default value is none(not defined).*
+*默认值为无（未定义）。*
 
 
-```c title="Set trace_destination parameter"
+```c title="设置 trace_destination 参数"
 ...
-## blacklist ps and which mi commands
-## all the other commands shall be traced
+## 黑名单 ps 和 which mi 命令
+## 所有其他命令都将被跟踪
 modparam("mi_xmlrpc", "trace_bwlist", "b: ps, which")
 ...
-## allow only sip_trace mi command
-## all the other commands will not be traced
+## 仅允许 sip_trace mi 命令
+## 所有其他命令都不会被跟踪
 modparam("mi_xmlrpc", "trace_bwlist", "w: sip_trace")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+配置文件中没有导出可供使用的函数。
 
 
-### Known Issues
+### 已知问题
 
 
-Commands with large responses (like ul_dump) will fail if the
-		configured size of the httpd buffer is to small (or if there
-		isn't enough pkg memory configured).
+大型响应的命令（如 ul_dump）如果 httpd 缓冲区配置太小（或没有配置足够的 pkg 内存）将会失败。
 
 
-Future realeases of the httpd and mi_xmlrpc modules
-		will address this issue.
+httpd 和 mi_xmlrpc 模块的未来版本将解决此问题。
 
 
-### Example
+### 示例
 
 
-This is an example showing the xmlrpc format for the
-		"get_statistics net: shmem:" MI commad:
-		response.
+这是一个展示 "get_statistics net: shmem:" MI 命令的 xmlrpc 格式的示例：
+响应。
 
 
-```c title="XMLRPC request"
+```c title="XMLRPC 请求"
 POST /xmlrpc HTTP/1.0
 Host: my.host.com
 User-Agent: My xmlrpc UA
@@ -202,6 +188,6 @@ Date: Mon, 8 Mar 2013 12:00:00 GMT
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

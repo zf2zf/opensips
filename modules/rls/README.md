@@ -1,82 +1,68 @@
 ---
-title: "Resource List Server"
-description: "The modules is a Resource List Server implementation following the specification in RFC 4662 and RFC 4826."
+title: "资源列表服务器"
+description: "该模块是 RFC 4662 和 RFC 4826 规范的资源列表服务器实现。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The modules is a Resource List Server implementation following the
-	specification in RFC 4662 and RFC 4826.
+该模块是 RFC 4662 和 RFC 4826 规范的资源列表服务器实现。
 
 
-The server is independent from local presence servers, retrieving presence
-	information with Subscribe-Notify messages.
+服务器独立于本地存在服务器，通过 Subscribe-Notify 消息检索存在信息。
 
 
-The module uses the presence module as a library, as it requires a resembling
-	mechanism for handling Subscribe. Therefore, in case the local presence server
-	is not collocated on the same machine with the RL server, the presence module
-	should be loaded in a library mode only (see doc for presence module).
+该模块将存在模块用作库，因为它需要类似的机制来处理 Subscribe。因此，如果本地存在服务器与 RL 服务器不在同一台机器上，则存在模块应该仅以库模式加载（请参阅存在模块的文档）。
 
 
-It handles subscription to lists in an event independent way.The default event
-	is presence, but if some other events are to be handled by the server, they
-	should be added using the module parameter "rls_events".
+它以事件独立的方式处理对列表的订阅。默认事件是存在，但如果服务器要处理其他事件，应使用"rls_events"模块参数添加它们。
 
 
-It works with XCAP server for storage. There is also the possibility to
-	configure it to work in an integrated_xcap server mode, when it only
-	queries database for the resource lists documents. This is useful in a
-	small architecture when all the clients use an integrated server and there
-	are no references to exterior documents in their lists.
+它与 XCAP 服务器配合进行存储。也可以配置为集成 xcap 服务器模式，此时它仅查询数据库以获取资源列表文档。这在小型架构中很有用，当所有客户端使用集成服务器且列表中没有对外部文档的引用时。
 
 
-The same as presence module, it has a caching mode with periodical update
-	in database for subscribe information. The information retrieved with Notify
-	messages is stored in database only.
+与存在模块相同，它具有带数据库定期更新的缓存模式用于订阅信息。通過 Notify 消息检索的信息仅存储在数据库中。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *a database module*.
-- *signaling*.
-- *tm*.
-- *presence- in a library mode*.
-- *pua*.
-- *xcap*.
+- *数据库模块*。
+- *signaling*。
+- *tm*。
+- *presence（以库模式）*。
+- *pua*。
+- *xcap*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-- *libxml-dev*.
+- *libxml-dev*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### rlsubs_table(str)
 
 
-The name of the db table where resource lists subscription 
-		information is stored.
+存储资源列表订阅信息的数据库表名称。
 
 
-*Default value is "rls_watchers".*
+*默认值为 "rls_watchers"。*
 
 
-```c title="Set rlsubs_table parameter"
+```c title="设置 rlsubs_table 参数"
 ...
 modparam("rls", "rlsubs_table", "rls_subscriptions")
 ...
@@ -86,14 +72,13 @@ modparam("rls", "rlsubs_table", "rls_subscriptions")
 #### rlpres_table(str)
 
 
-The name of the db table where notified event specific
-		information is stored.
+存储通知事件特定信息的数据库表名称。
 
 
-*Default value is "rls_presentity".*
+*默认值为 "rls_presentity"。*
 
 
-```c title="Set rlpres_table parameter"
+```c title="设置 rlpres_table 参数"
 ...
 modparam("rls", "rlpres_table", "rls_notify")
 ...
@@ -103,13 +88,13 @@ modparam("rls", "rlpres_table", "rls_notify")
 #### clean_period (int)
 
 
-The period at which to check for expired information.
+检查过期信息的时间周期。
 
 
-*Default value is "100".*
+*默认值为 "100"。*
 
 
-```c title="Set clean_period parameter"
+```c title="设置 clean_period 参数"
 ...
 modparam("rls", "clean_period", 100)
 ...
@@ -119,15 +104,13 @@ modparam("rls", "clean_period", 100)
 #### waitn_time (int)
 
 
-The timer period at which the server should attempt to send
-	 Notifies with the updated presence state of the subscribed list
-	 or watcher information.
+服务器尝试发送带有订阅列表或观察者信息更新存在状态的 Notify 的计时器周期。
 
 
-*Default value is "50".*
+*默认值为 "50"。*
 
 
-```c title="Set waitn_time parameter"
+```c title="设置 waitn_time 参数"
 ...
 modparam("rls", "waitn_time", 10)
 ...
@@ -137,170 +120,144 @@ modparam("rls", "waitn_time", 10)
 #### max_expires (int)
 
 
-The maximum accepted expires for a subscription to a list.
+订阅列表的最大允许过期时间。
 
 
-*Default value is "7200".*
+*默认值为 "7200"。*
 
 
-```c title="Set max_expires parameter"
+```c title="设置 max_expires 参数"
 ...
 modparam("rls", "max_expires", 10800)
 ...
-		
 ```
 
 
 #### hash_size (int)
 
 
-The dimension of the hash table used to store subscription to a list.
-        This parameter will be used as the power of 2 when computing table size.
+用于存储订阅列表的哈希表维度。此参数在计算表大小时将用作 2 的幂。
 
 
-*Default value is "9 (512)".*
+*默认值为 "9 (512)"。*
 
 
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("rls", "hash_size", 11)
 ...
-		
 ```
 
 
 #### xcap_root (str)
 
 
-The address of the xcap server.
+xcap 服务器的地址。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("rls", "xcap_root", "http://192.168.2.132/xcap-root:800")
 ...
-		
 ```
 
 
 #### to_presence_code (int)
 
 
-The code to be returned by rls_handle_subscribe function 
-		if the processed Subscribe is not a resource list Subscribe.
-		This code can be used in an architecture with presence and rls
-		servers collocated on the same machine, to call handle_subscribe
-		on the message causing this code.
+如果处理的 Subscribe 不是资源列表 Subscribe，则由 rls_handle_subscribe 函数返回的代码。当存在和 rls 服务器在同一台机器上的架构中，此代码可用于对导致此代码的消息调用 handle_subscribe。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set to_presence_code parameter"
+```c title="设置 to_presence_code 参数"
 ...
 modparam("rls", "to_presence_code", 10)
 ...
-		
 ```
 
 
 #### rls_event (str)
 
 
-The default event that RLS handles is presence. If some other
-		events should also be handled by RLS they should be added using
-		this parameter. It can be set more than once.
+RLS 处理的默认事件是存在。如果其他事件也应由 RLS 处理，应使用此参数添加。它可以设置多次。
 
 
-*Default value is ""presence"".*
+*默认值为 ""presence""。*
 
 
-```c title="Set rls_event parameter"
+```c title="设置 rls_event 参数"
 ...
 modparam("rls", "rls_event", "dialog;sla")
 ...
-		
 ```
 
 
 #### presence_server (str)
 
 
-The address of the presence server. It will be used as outbound proxy for
-		Subscribe requests sent by the RLS server to bouncing on and off the
-		proxy and having to include special processing for this messages
-		in the proxy's configuration file.
+存在服务器的地址。它将用作 RLS 服务器发送的 Subscribe 请求的出站代理，以避免在代理上弹跳并需要在代理配置文件中包含对此消息的特殊处理。
 
 
-```c title="Set presence_server parameter"
+```c title="设置 presence_server 参数"
 ...
 modparam("rls", "presence_server", "sip:pres@opensips.org:5060")
 ...
-		
 ```
 
 
 #### contact_user (str)
 
 
-This is the username that will be used in the Contact header for the 200 OK
-		replies to SUBSCRIBE and in the following in-dialog NOTIFY requests, as well
-		as for the SUBSCRIBE requests that are generated by the RLS server.
-		The IP address, port and transport for the Contact will be automatically
-		determined based on the interface where the SUBSCRIBE was received or sent
-		from.
+这是在 200 OK 回复 SUBSCRIBE 时以及在后续的同-dialog NOTIFY 请求中使用的 Contact 头中的用户名，也是 RLS 服务器生成的 SUBSCRIBE 请求中使用的用户名。Contact 的 IP 地址、端口和传输将根据接收或发送 SUBSCRIBE 的接口自动确定。
 
 
-If set to an empty string, no username will be added to the contact and
-		the contact will be built just out of the IP, port and transport.
+如果设置为空字符串，则不会在 contact 中添加用户名，contact 将仅由 IP、端口和传输构建。
 
 
-*Default value is "rls".*
+*默认值为 "rls"。*
 
 
-```c title="Set contact_user parameter"
+```c title="设置 contact_user 参数"
 ...
 modparam("rls", "contact_user", "rls")
 ...
-		
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### rls_handle_subscribe()
 
 
-This function detects if a Subscribe message should be
-		handled by RLS. If not it replies with the configured 
-		to_presence_code. If it is, it extracts the dialog info and sends
-		aggregate Notify requests with information for the list.
+此函数检测 Subscribe 消息是否应由 RLS 处理。如果不是，它回复配置的 to_presence_code。如果是，它提取对话信息并发送带有列表信息的聚合 Notify 请求。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="rls_handle_subscribe usage"
+```c title="rls_handle_subscribe 用法"
 ...
-For presence and rls on the same machine:
+对于同一机器上的存在和 rls：
 	modparam(rls, "to_presence_code", 10)
 
-	if(is_method("SUBSCRIBE"))
+	如果（是方法("SUBSCRIBE")）
 	{	
 		$var(ret_code)= rls_handle_subscribe();
 
-		if($var(ret_code)== 10)
+		如果($var(ret_code)== 10)
 				handle_subscribe();
 
 		t_release();
 	}
 
-For rls only:
-	if(is_method("SUBSCRIBE"))
+仅用于 rls：
+	如果（是方法("SUBSCRIBE")）
 	{
 		rls_handle_subscribe();
 		t_release();
@@ -313,55 +270,50 @@ For rls only:
 #### rls_handle_notify()
 
 
-This function has to be called for Notify messages sent by presence
-			servers in reply to the Subscribe messages sent by RLS.
+此函数必须为存在服务器回复 RLS 发送的 Subscribe 消息的 Notify 消息调用。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-It can return 3 codes:
+它可以返回 3 个代码：
 
 
-- *1* - the Notify was inside a dialog that was
-				recognized by the RLS server and was processed successfully.
-- *2* - the Notify did not belog to a dialog initiated
-				by the RLS server.
-- *-1* - an error occurred during processing.
+- *1* - Notify 在 RLS 服务器识别的对话中，处理成功。
+- *2* - Notify 不属于 RLS 服务器发起的对话。
+- *-1* - 处理过程中发生错误。
 
 
-```c title="rls_handle_notify usage"
+```c title="rls_handle_notify 用法"
 ...
-if($rm=="NOTIFY")
+如果($rm=="NOTIFY")
     rls_handle_notify();
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### rls:update_subscriptions
 
 
-Replaces obsolete MI command: *rls_update_subscriptions*.
+替换已弃用的 MI 命令：*rls_update_subscriptions*。
 
 
-Triggers updating backend subscriptions after a resources-list or rls-services document
-		has been updated.
+在资源列表或 rls-services 文档更新后触发后端订阅更新。
 
 
-Name: *rls:update_subscriptions*
+名称：*rls:update_subscriptions*
 
 
-Parameters:
+参数：
 
 
-- presentity_uri : the uri of the user who made the change
-				and whose subscriptions should be updated
+- presentity_uri : 进行更改的用户的 URI，其订阅应被更新
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -370,23 +322,19 @@ opensips-cli -x mi rls:update_subscriptions sip:alice@atlanta.com
 ```
 
 
-### Installation
+### 安装
 
 
-The module requires 2 table in OpenSIPS database: rls_presentity
-	and rls_watchers.The SQL syntax to create them can be found in
-	rls-create.sql script in the database directories in
-	the opensips/scripts folder.
-	You can also find the complete database documentation on the
-	project webpage, [https://opensips.org/docs/db/db-schema-devel.html](https://opensips.org/docs/db/db-schema-devel.html).
+该模块需要在 OpenSIPS 数据库中有 2 个表：rls_presentity 和 rls_watchers。创建它们的 SQL 语法可以在 opensips/scripts 文件夹的数据库目录中的 rls-create.sql 脚本中找到。
+您还可以在项目网页上找到完整的数据库文档，[https://opensips.org/docs/db/db-schema-devel.html](https://opensips.org/docs/db/db-schema-devel.html)。
 
 
-## Developer Guide
+## 开发者指南
 
 
-The module provides no functions to be used	in other OpenSIPS modules.
+该模块不提供供其他 OpenSIPS 模块使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

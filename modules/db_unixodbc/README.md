@@ -1,61 +1,60 @@
 ---
-title: "unixodbc Module"
-description: "This module allows to use the unixodbc package with OpenSIPS. It have been tested with mysql and the odbc connector, but it should work also with other database. The auth_db module works."
+title: "unixodbc 模块"
+description: "此模块允许在 OpenSIPS 中使用 unixodbc 包。它已使用 mysql 和 odbc 连接器进行了测试，但应该也适用于其他数据库。auth_db 模块可以工作。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module allows to use the unixodbc package with OpenSIPS. It have been 
-	tested with mysql and the odbc connector, but it should work also with 
-	other database. The auth_db module works.
+此模块允许在 OpenSIPS 中使用 unixodbc 包。它已使用
+mysql 和 odbc 连接器进行了测试，但应该也适用于其他数据库。auth_db 模块可以工作。
 
 
-For more information, see the [http://www.unixodbc.org/](http://www.unixodbc.org/) project web page.
+有关更多信息，请参阅 [http://www.unixodbc.org/](http://www.unixodbc.org/) 项目网页。
 
 
-To see what DB engines can be used via unixodbc, look at 
-	[http://www.unixodbc.org/drivers.html](http://www.unixodbc.org/drivers.html).
+要查看可以通过 unixodbc 使用哪些 DB 引擎，请查看
+[http://www.unixodbc.org/drivers.html](http://www.unixodbc.org/drivers.html)。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### auto_reconnect (int)
 
 
-Turns on or off the auto_reconnect mode.
+开启或关闭自动重连模式。
 
 
-*Default value is "1", this means it is enabled.*
+*默认值为 "1"，表示已启用。*
 
 
-```c title="Set the 'auto_reconnect' parameter"
+```c title="设置 'auto_reconnect' 参数"
 ...
 modparam("db_unixodbc", "auto_reconnect", 0)
 ...
@@ -65,49 +64,42 @@ modparam("db_unixodbc", "auto_reconnect", 0)
 #### use_escape_common (int)
 
 
-Escape values in query using internal escape_common() function.
-		It escapes single quote ''', double quote '"', backslash '\',
-		and NULL characters.
+使用内部 escape_common() 函数转义查询中的值。
+它转义单引号 '''、双引号 '"'、反斜杠 '\' 和 NULL 字符。
 
 
-You should enable this parameter if you know that the ODBC driver
-		considers the above characters as special (for marking begin and end
-		of a value, escape other characters ...). It prevents against SQL
-		injection.
+如果您知道 ODBC 驱动程序将上述字符视为特殊字符（用于标记值的开始和结束、转义其他字符...），则应启用此参数。这可以防止 SQL 注入攻击。
 
 
-*Default value is "0" (0 = disabled; 1 = enabled).*
+*默认值为 "0"（0 = 禁用；1 = 启用）。*
 
 
-```c title="Set the 'use_escape_common' parameter"
+```c title="设置 'use_escape_common' 参数"
 ...
 modparam("db_unixodbc", "use_escape_common", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-NONE
+无
 
 
-### Installation and Running
+### 安装和运行
 
 
-#### Installing
+#### 安装
 
 
-Prerequirement: you should first install unixodbc (or another program that 
-	implements the odbc standard, such iodbc), your database, and the right 
-	connector. Set the DSN in the odbc.ini file and the connector drivers in 
-	the odbcinst.ini file.
+先决条件：您应该首先安装 unixodbc（或其他实现 odbc 标准的程序，如 iodbc）、您的数据库和正确的连接器。在 odbc.ini 文件中设置 DSN，在 odbcinst.ini 文件中设置连接器驱动程序。
 
 
-#### Configuring and Running
+#### 配置和运行
 
 
-In the opensips.conf file, add the line:
+在 opensips.conf 文件中，添加以下行：
 
 
 ```c
@@ -117,7 +109,7 @@ loadmodule "/usr/local/lib/opensips/modules/db_unixodbc.so"
 ```
 
 
-You should also uncomment this:
+您还应该取消注释以下内容：
 
 
 ```c
@@ -131,8 +123,7 @@ modparam("auth_db", "password_column", "password")
 ```
 
 
-and setting the DSN specified in the odbc.ini, inserting this with the 
-	url adding this line:
+并设置 odbc.ini 中指定的 DSN，将此行与 url 一起添加：
 
 
 ```c
@@ -143,11 +134,10 @@ modparam("usrloc|auth_db", "db_url",
 ```
 
 
-replacing my_dsn with the correct value.
+将 my_dsn 替换为正确的值。
 
 
-HINT: if unixodbc don't want to connect to mysql server, try restarting 
-	mysql server with:
+提示：如果 unixodbc 无法连接到 mysql 服务器，请尝试使用以下命令重启 mysql 服务器：
 
 
 ```c
@@ -155,17 +145,15 @@ shell>safe_mysqld --user=mysql --socket=/var/lib/mysql/mysql.sock
 ```
 
 
-The connector search the socket in /var/lib/mysql/mysql.sock and not 
-	in /tmp/mysql.sock
+连接器在 /var/lib/mysql/mysql.sock 中搜索套接字，而不是在 /tmp/mysql.sock 中
 
 
-## Developer Guide
+## 开发者指南
 
 
-The module implements the OpenSIPS DB API, in order to 
-	be used by other modules.
+该模块实现了 OpenSIPS DB API，以供其他模块使用。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

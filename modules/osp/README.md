@@ -1,56 +1,60 @@
 ---
-title: "OSP Module for Secure, Multi-Lateral Peering"
-description: "The OSP module enables OpenSIPS to support secure, multi-lateral peering using the OSP standard defined by ETSI (TS 101 321 V4.1.1). This module will enable your OpenSIPS to:"
+title: "用于安全多边对等的 OSP 模块"
+description: "OSP 模块使 OpenSIPS 能够支持使用 ETSI(TS 101 321 V4.1.1)定义的 OSP 标准进行安全的多边对等。本模块将使您的 OpenSIPS 能够:"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The OSP module enables OpenSIPS to support secure, multi-lateral peering using the OSP standard defined by ETSI (TS 101 321 V4.1.1). This module will enable your OpenSIPS to:
+OSP 模块使 OpenSIPS 能够支持使用 ETSI(TS 101 321 V4.1.1)定义的 OSP 标准进行安全的多边对等。本模块将使您的 OpenSIPS 能够:
 
 
-- Send a peering authorization request to a peering server.
-- Validate a digitally signed peering authorization token received in a SIP INVITE message.
-- Report usage information to a peering server.
+- 向对等服务器发送对等授权请求。
+- 验证 SIP INVITE 消息中收到的数字签名对等授权令牌。
+- 向对等服务器报告使用信息。
 
 
-### Dependencies
+### 依赖
 
 
-The OSP module depends on the following modules which must be loaded before the OSP module.
+OSP 模块依赖以下模块,必须在此模块之前加载。
 
 
-- *auth* -- Authentication Framework module
-- *sqlops* -- SQL operation module
-- *maxfwd* -- Max-Forward processor module
-- *mi_fifo* -- FIFO support for Management Interface
-- *options* -- OPTIONS server replier module
-- *proto_udp* -- UDP protocol module - implements UDP-plain transport for SIP
-- *registrar* -- SIP Registrar implementation module
-- *rr* -- Record-Route and Route module
-- *signaling* -- SIP signaling module
-- *sipmsgops* -- SIP operations module
-- *sl* -- Stateless replier module
-- *tm* -- Transaction (stateful) module
-- *uac* -- UAC functionalies (FROM mangling and UAC auth)
-- *uac_auth* -- UAC Authentication functionality
-- *usrloc* -- User location implementation module
-- *OSP Toolkit* -- The OSP Toolkit, available from https://github.com/TransNexus/osptoolkit, must be built before building OpenSIPS with the OSP module. For instructions on building OpenSIPS with the OSP Toolkit, see http://www.http://transnexus.com/wp-content/uploads/OSP-Routing-and-CDR-Collection-Server-with-OpenSIPS-1.7.2.pdf. For OpenSIPS 2.4.0, OSP Toolkit 4.16.0 or later versions should be used.
+- *auth* -- 认证框架模块
+- *sqlops* -- SQL 操作模块
+- *maxfwd* -- Max-Forward 处理模块
+- *mi_fifo* -- 管理接口的 FIFO 支持
+- *options* -- OPTIONS 服务器回复模块
+- *proto_udp* -- UDP 协议模块 - 实现 SIP 的 UDP-plain 传输
+- *registrar* -- SIP Registrar 实现模块
+- *rr* -- Record-Route 和 Route 模块
+- *signaling* -- SIP 信令模块
+- *sipmsgops* -- SIP 操作模块
+- *sl* -- 无状态回复模块
+- *tm* -- 事务(有状态)模块
+- *uac* -- UAC 功能(FROM 修改和 UAC 认证)
+- *uac_auth* -- UAC 认证功能
+- *usrloc* -- 用户位置实现模块
+- *OSP Toolkit* -- OSP Toolkit,可从 https://github.com/TransNexus/osptoolkit 获取,
+必须在使用 OSP 模块构建 OpenSIPS 之前构建。
+有关使用 OSP Toolkit 构建 OpenSIPS 的说明,请参阅 http://www.http://transnexus.com/wp-content/uploads/OSP-Routing-and-CDR-Collection-Server-with-OpenSIPS-1.7.2.pdf。
+对于 OpenSIPS 2.4.0,应使用 OSP Toolkit 4.16.0 或更高版本。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### work_mode
 
 
-The work_mode (integer) parameter instructs the OSP module what mode it should work in. If this value is set to 0, the OSP module works in direct mode. If this value is set to 1, the OSP module works in indirect mode. The default value is 0.
+work_mode(integer) 参数指示 OSP 模块应工作在什么模式。
+如果设置为 0,OSP 模块工作在直接模式。如果设置为 1,OSP 模块工作在间接模式。默认值为 0。
 
 
-```c title="Instructing the module to work in direct mode"
+```c title="指示模块工作在直接模式"
 modparam("osp","work_mode",0)
         
 ```
@@ -59,10 +63,13 @@ modparam("osp","work_mode",0)
 #### service_type
 
 
-The service_type (integer) parameter instructs the OSP module what services it should provide. If this value is set to 0, the OSP module provides normal voice service. If this value is set to 1, the OSP module provides ported number query service. If this value is set to 2, the OSP module provides CNAM query service. The default value is 0.
+service_type(integer) 参数指示 OSP 模块应提供什么服务。
+如果设置为 0,OSP 模块提供正常的语音服务。
+如果设置为 1,OSP 模块提供号码携带查询服务。
+如果设置为 2,OSP 模块提供 CNAM 查询服务。默认值为 0。
 
 
-```c title="Instructing the module to provide normal voice service"
+```c title="指示模块提供正常的语音服务"
 modparam("osp","service_type",0)
         
 ```
@@ -71,16 +78,22 @@ modparam("osp","service_type",0)
 #### sp1_uri, sp2_uri, ..., sp16_uri
 
 
-These sp_uri (string) parameters define peering servers to be used for requesting peering authorization and routing information. At least one peering server must be configured. Others are required only if there are more than one peering servers. Each peering server address takes the form of a standard URL, and consists of up to four components:
+这些 sp_uri(string) 参数定义用于请求对等授权和路由信息的对等服务器。
+必须至少配置一个对等服务器。仅当有多个对等服务器时才需要其他。
+每个对等服务器地址采用标准 URL 的形式,由最多四个组件组成:
 
 
-- An optional indication of the protocol to be used for communicating with the peering server. Both HTTP and HTTP secured with SSL/TLS are supported and are indicated by "http://" and "https://" respectively. If the protocol is not explicitly indicated, the OpenSIPS defaults to HTTP secured with SSL.
-- The Internet domain name for the peering server. An IP address may also be used, provided it is enclosed in square brackets such as [172.16.1.1].
-- An optional TCP port number for communicating with the peering server. If the port number is omitted, the OpenSIPS defaults to port 5045 (for HTTP) or port 1443 (for HTTP secured with SSL).
-The uniform resource identifier for requests to the peering server. This component is not optional and must be included.
+- 可选的协议指示,用于与对等服务器通信。支持 HTTP 和使用 SSL/TLS 保护的 HTTP,
+分别由 "http://" 和 "https://" 表示。
+如果未明确指示协议,OpenSIPS 默认为 HTTP,使用 SSL 保护。
+- 对等服务器的互联网域名。也可以使用 IP 地址,
+但必须用方括号括起来,如 [172.16.1.1]。
+- 可选的 TCP 端口号,用于与对等服务器通信。
+如果省略端口号,OpenSIPS 默认为端口 5045(对于 HTTP)或端口 1443(对于使用 SSL 保护的 HTTP)。
+对等服务器请求的统一资源标识符。此组件不是可选的,必须包含。
 
 
-```c title="Setting the OSP servers"
+```c title="设置 OSP 服务器"
 modparam("osp","sp1_uri","http://osptestserver.transnexus.com:5045/osp")
 modparam("osp","sp2_uri","https://[1.2.3.4]:1443/osp")
         
@@ -90,10 +103,17 @@ modparam("osp","sp2_uri","https://[1.2.3.4]:1443/osp")
 #### sp1_weight, sp2_weight, ..., sp16_weight
 
 
-These sp_weight (integer) parameters are used for load balancing peering requests to peering servers. These parameters are most effective when configured as factors of 1000. For example, if sp1_uri should manage twice the traffic load of sp2_uri, then set sp1_weight to 2000 and sp2_weight to 1000. Shared load balancing between peering servers is recommended. However, peering servers can be configured as primary and backup by assigning a sp_weight of 0 to the primary server and a non-zero sp_weight to the back-up server. The default values for sp1_weight and sp2_weight are 1000.
+这些 sp_weight(integer) 参数用于对等服务器之间的负载均衡对等请求。
+这些参数在配置为 1000 的因数时最有效。
+例如,如果 sp1_uri 应管理 sp2_uri 两倍的流量负载,
+则将 sp1_weight 设置为 2000,sp2_weight 设置为 1000。
+建议在对等服务器之间进行共享负载均衡。
+但是,可以将对等服务器配置为主服务器和备份服务器,
+方法是将主服务器的 sp_weight 设置为 0,将备份服务器的 sp_weight 设置为非零。
+sp1_weight 和 sp2_weight 的默认值均为 1000。
 
 
-```c title="Setting the OSP server weights"
+```c title="设置 OSP 服务器权重"
 modparam("osp","sp1_weight",1000)
         
 ```
@@ -102,10 +122,11 @@ modparam("osp","sp1_weight",1000)
 #### device_ip
 
 
-The device_ip (string) is a recommended parameter that explicitly defines the IP address of OpenSIPS in a peering request message (as SourceAlternate type=transport).  The dotted-decimal IP address must be in brackets as shown in the example below.
+device_ip(string) 是一个推荐参数,明确定义对等请求消息中 OpenSIPS 的 IP 地址(作为 SourceAlternate type=transport)。
+点分十进制 IP 地址必须用括号括起来,如示例所示。
 
 
-```c title="Setting the device IP address"
+```c title="设置设备 IP 地址"
 modparam("osp","device_ip","[127.0.0.1]:5060")
         
 ```
@@ -114,10 +135,12 @@ modparam("osp","device_ip","[127.0.0.1]:5060")
 #### use_security_features
 
 
-The use_security_features (integer) parameter instructs the OSP module how to use the OSP security features. If this value is set to 1, the OSP module uses the OSP security features. If this value is set to 0, the OSP module will not use the OSP security features. The default value is 0.
+use_security_features(integer) 参数指示 OSP 模块如何使用 OSP 安全功能。
+如果设置为 1,OSP 模块使用 OSP 安全功能。
+如果设置为 0,OSP 模块将不使用 OSP 安全功能。默认值为 0。
 
 
-```c title="Instructing the module not to use OSP security features"
+```c title="指示模块不使用 OSP 安全功能"
 modparam("osp","use_security_features",0)
         
 ```
@@ -126,22 +149,26 @@ modparam("osp","use_security_features",0)
 #### token_format
 
 
-When OpenSIPS receives a SIP INVITE with a peering token, the OSP module will validate the token to determine whether or not the call has been authorized by a peering server. Peering tokens may, or may not, be digitally signed. The token_format (integer) parameter defines if OpenSIPS will validate signed or unsigned tokens or both. The values for token format are defined below. The default value is 2.
+当 OpenSIPS 收到带有对等令牌的 SIP INVITE 时,
+OSP 模块将验证令牌以确定呼叫是否已通过对等服务器授权。
+对等令牌可能已签名或未签名。
+token_format(integer) 参数定义 OpenSIPS 是验证签名令牌、未签名令牌还是两者都验证。
+令牌格式值定义如下。默认值为 2。
 
 
-If use_security_features parameter is set to 0, signed tokens cannot be validated.
+如果 use_security_features 参数设置为 0,则无法验证签名令牌。
 
 
-0 - Validate only signed tokens. Calls with valid signed tokens are allowed.
+0 - 仅验证签名令牌。带有有效签名令牌的呼叫被允许。
 
 
-1 - Validate only unsigned tokens. Calls with valid unsigned tokens are allowed.
+1 - 仅验证未签名令牌。带有有效未签名令牌的呼叫被允许。
 
 
-2 - Validate both signed and unsigned tokens are allowed. Calls with valid tokens are allowed.
+2 - 允许验证签名和未签名令牌。带有有效令牌的呼叫被允许。
 
 
-```c title="Setting the token format"
+```c title="设置令牌格式"
 modparam("osp","token_format",2)
         
 ```
@@ -150,16 +177,20 @@ modparam("osp","token_format",2)
 #### private_key, local_certificate, ca_certificates
 
 
-These parameters identify files are used for validating peering authorization tokens and establishing a secure channel between OpenSIPS and a peering server using SSL.  The files are generated using the 'Enroll' utility from the OSP Toolkit. By default, the proxy will look for pkey.pem, localcert.pem, and cacart_0.pem in the default configuration directory. The default config directory is set at compile time using CFG_DIR and defaults to /usr/local/etc/opensips/. The files may be copied to the expected file location or the parameters below may be changed.
+这些参数标识用于验证对等授权令牌以及使用 SSL 在 OpenSIPS 和对等服务器之间建立安全通道的文件。
+这些文件是使用 OSP Toolkit 的 'Enroll' 实用程序生成的。
+默认情况下,代理将在默认配置目录中查找 pkey.pem、localcert.pem 和 cacart_0.pem。
+默认配置目录在编译时使用 CFG_DIR 设置,默认为 /usr/local/etc/opensips/。
+文件可以复制到预期的文件位置,或更改以下参数。
 
 
-If use_security_features parameter is set to 0, these parameters will be ignored.
+如果 use_security_features 参数设置为 0,这些参数将被忽略。
 
 
-If the default CFG_DIR value was used at compile time, the files will be loaded from:
+如果编译时使用了默认 CFG_DIR 值,则文件将从以下位置加载:
 
 
-```c title="Set authorization files"
+```c title="设置授权文件"
 modparam("osp","private_key","/usr/local/etc/opensips/pkey.pem")
 modparam("osp","local_certificate","/usr/local/etc/opensips/localcert.pem")
 modparam("osp","ca_certificates","/usr/local/etc/opensips/cacert.pem")
@@ -170,10 +201,12 @@ modparam("osp","ca_certificates","/usr/local/etc/opensips/cacert.pem")
 #### enable_crypto_hardware_support
 
 
-The enable_crypto_hardware_support (integer) parameter is used to set the cryptographic hardware acceleration engine in the openssl library. The default value is 0 (no crypto hardware is present). If crypto hardware is used, the value should be set to 1.
+enable_crypto_hardware_support(integer) 参数用于在 openssl 库中设置加密硬件加速引擎。
+默认值为 0(没有加密硬件)。
+如果使用加密硬件,应将该值设置为 1。
 
 
-```c title="Setting the hardware support"
+```c title="设置硬件支持"
 modparam("osp","enable_crypto_hardware_support",0)
         
 ```
@@ -182,10 +215,12 @@ modparam("osp","enable_crypto_hardware_support",0)
 #### ssl_lifetime
 
 
-The ssl_lifetime (integer) parameter defines the lifetime, in seconds, of a single SSL session key. Once this time limit is exceeded, the OSP module will negotiate a new session key. Communication exchanges in progress will not be interrupted when this time limit expires. This is an optional field with default value is 200 seconds.
+ssl_lifetime(integer) 参数定义单个 SSL 会话密钥的生存期(秒)。
+一旦超过此时间限制,OSP 模块将协商新的会话密钥。
+正在进行中的通信交换不会在此时间限制到期时中断。这是一个可选字段,默认值为 200 秒。
 
 
-```c title="Setting the ssl lifetime"
+```c title="设置 ssl 生存期"
 modparam("osp","ssl_lifetime",200)
         
 ```
@@ -194,10 +229,11 @@ modparam("osp","ssl_lifetime",200)
 #### persistence
 
 
-The persistence (integer) parameter defines the time, in seconds, that an HTTP connection should be maintained after the completion of a communication exchange. The OSP module will maintain the connection for this time period in anticipation of future communication exchanges to the same peering server.
+persistence(integer) 参数定义在通信交换完成后 HTTP 连接应保持的时间(秒)。
+OSP 模块将为此时间段保持连接,以便将来与同一对等服务器的通信交换。
 
 
-```c title="Setting the persistence"
+```c title="设置 persistence"
 modparam("osp","persistence",1000)
         
 ```
@@ -206,10 +242,11 @@ modparam("osp","persistence",1000)
 #### retry_delay
 
 
-The retry_delay (integer) parameter defines the time, in seconds, between retrying connection attempts to an OSP peering server. After exhausting all peering servers the OSP module will delay for this amount of time before resuming connection attempts. This is an optional field with default value is 1 second.
+retry_delay(integer) 参数定义重试连接到 OSP 对等服务器的时间间隔(秒)。
+在耗尽所有对等服务器后,OSP 模块将在恢复连接尝试之前延迟此时间量。这是一个可选字段,默认值为 1 秒。
 
 
-```c title="Setting the retry delay"
+```c title="设置重试延迟"
 modparam("osp","retry_delay",1)
         
 ```
@@ -218,10 +255,12 @@ modparam("osp","retry_delay",1)
 #### retry_limit
 
 
-The retry_limit (integer) parameter defines the maximum number of retries for connection attempts to a peering server. If no connection is established after this many retry attempts to all peering servers, the OSP module will cease connection attempts and return appropriate error codes. This number does not count the initial connection attempt, so that a retry_limit of 1 will result in a total of two connection attempts to every peering server. The default value is 2.
+retry_limit(integer) 参数定义连接到对等服务器的最大重试次数。
+如果经过多次重试后仍无法与所有对等服务器建立连接,OSP 模块将停止连接尝试并返回适当的错误代码。
+此数字不计初始连接尝试,因此 retry_limit 为 1 将导致对每个对等服务器进行总共两次连接尝试。默认值为 2。
 
 
-```c title="Setting the retry limit"
+```c title="设置重试限制"
 modparam("osp","retry_limit",2)
         
 ```
@@ -230,10 +269,11 @@ modparam("osp","retry_limit",2)
 #### timeout
 
 
-The timeout (integer) parameter defines the maximum time in milliseconds, to wait for a response from a peering server. If no response is received within this time, the current connection is aborted and the OSP module attempts to contact the next peering server. The default value is 10 seconds.
+timeout(integer) 参数定义等待对等服务器响应的最长时间(毫秒)。
+如果在此时间内未收到响应,当前连接将中止,OSP 模块尝试联系下一个对等服务器。默认值为 10 秒。
 
 
-```c title="Setting the timeout"
+```c title="设置超时"
 modparam("osp","timeout",10)
         
 ```
@@ -242,10 +282,10 @@ modparam("osp","timeout",10)
 #### support_nonsip_protocol
 
 
-The support_nonsip_protocol (integer) parameter is used to tell the OSP module if non-SIP signaling protocol destination devices are supported. The default value is 0.
+support_nonsip_protocol(integer) 参数用于告诉 OSP 模块是否支持非 SIP 信令协议目标设备。默认值为 0。
 
 
-```c title="Setting support non-SIP destination devices"
+```c title="设置支持非 SIP 目标设备"
 modparam("osp","support_nonsip_protocol",0)
         
 ```
@@ -254,10 +294,11 @@ modparam("osp","support_nonsip_protocol",0)
 #### max_destinations
 
 
-The max_destinations (integer) parameter defines the maximum number of destinations that OpenSIPS requests the peering server to return in a peering response. The OSP module supports up to 12 destinations.  The default value is 12.
+max_destinations(integer) 参数定义 OpenSIPS 请求对等服务器在对等响应中返回的最大目标数量。
+OSP 模块最多支持 12 个目标。默认值为 12。
 
 
-```c title="Setting the number of destination"
+```c title="设置目标数量"
 modparam("osp","max_destinations",12)
         
 ```
@@ -266,10 +307,14 @@ modparam("osp","max_destinations",12)
 #### report_networkid
 
 
-The report_networkid (integer) parameter is used to tell the OSP module if to report network ID in completed call CDRs. If it is set to 0, ths OSP module does not report any network ID. If it is set to 1, the OSP module reports source network ID. If it is set to 2, the OSP module reports destination network ID. If it is set to 3, the OSP module report both source and destination network IDs.  The default value is 3.
+report_networkid(integer) 参数用于告诉 OSP 模块是否在已结束呼叫 CDR 中报告网络 ID。
+如果设置为 0,OSP 模块不报告任何网络 ID。
+如果设置为 1,OSP 模块报告源网络 ID。
+如果设置为 2,OSP 模块报告目标网络 ID。
+如果设置为 3,OSP 模块报告源和目标网络 ID。默认值为 3。
 
 
-```c title="Setting report network ID flag"
+```c title="设置报告网络 ID 标志"
 modparam("osp","report_networkid",3)
         
 ```
@@ -278,10 +323,13 @@ modparam("osp","report_networkid",3)
 #### validate_call_id
 
 
-The validate_call_id (integer) parameter instructs the OSP module to validate call id in the peering token. If this value is set to 1, the OSP module validates that the call id in the SIP INVITE message matches the call id in the peering token. If they do not match the INVITE is rejected. If this value is set to 0, the OSP module will not validate the call id in the peering token. The default value is 1.
+validate_call_id(integer) 参数指示 OSP 模块验证对等令牌中的呼叫 ID。
+如果设置为 1,OSP 模块验证 SIP INVITE 消息中的呼叫 ID 与对等令牌中的呼叫 ID 是否匹配。
+如果不匹配,INVITE 将被拒绝。
+如果设置为 0,OSP 模块将不验证对等令牌中的呼叫 ID。默认值为 1。
 
 
-```c title="Instructing the module to validate call id"
+```c title="指示模块验证呼叫 ID"
 modparam("osp","validate_call_id",1)
         
 ```
@@ -290,10 +338,12 @@ modparam("osp","validate_call_id",1)
 #### use_number_portability
 
 
-The use_number_portability (integer) parameter instructs the OSP module how to use the number portability parameters in the Request URI of the SIP INVITE message. If this value is set to 1, the OSP module uses the number portability parameters in the Request URI when these parameters exist. If this value is set to 0, the OSP module will not use the number portability parameters. The default value is 1.
+use_number_portability(integer) 参数指示 OSP 模块如何使用 SIP INVITE 消息 Request URI 中的号码携带参数。
+如果设置为 1,OSP 模块在存在这些参数时使用 Request URI 中的号码携带参数。
+如果设置为 0,OSP 模块将不使用号码携带参数。默认值为 1。
 
 
-```c title="Instructing the module to use number portability parameters in Request URI"
+```c title="指示模块在 Request URI 中使用号码携带参数"
 modparam("osp","use_number_portablity",1)
         
 ```
@@ -302,10 +352,12 @@ modparam("osp","use_number_portablity",1)
 #### append_userphone
 
 
-The append_userphone (integer) parameter instructs the OSP module if to append "user=phone" parameter in URI. If this value is set to 0, the OSP module does not append "user=phone" parameter. If this value is set to 1, the OSP module will append "user=phone" parameter. The default value is 0
+append_userphone(integer) 参数指示 OSP 模块是否在 URI 中附加 "user=phone" 参数。
+如果设置为 0,OSP 模块不附加 "user=phone" 参数。
+如果设置为 1,OSP 模块将附加 "user=phone" 参数。默认值为 0
 
 
-```c title="Append user=phone parameter"
+```c title="附加 user=phone 参数"
 modparam("osp","append_userphone",0)
         
 ```
@@ -314,19 +366,19 @@ modparam("osp","append_userphone",0)
 #### networkid_location
 
 
-The networkid_location (integer) parameter instructs the OSP module where the destination network ID should be appended. The default value is 2
+networkid_location(integer) 参数指示 OSP 模块应在何处附加目标网络 ID。默认值为 2
 
 
-0 - network ID is not appended.
+0 - 不附加网络 ID。
 
 
-1 - network ID is appended as userinfo parameter.
+1 - 作为 userinfo 参数附加网络 ID。
 
 
-2 - network ID is appended as URI parameter.
+2 - 作为 URI 参数附加网络 ID。
 
 
-```c title="Append networkid location"
+```c title="附加 networkid 位置"
 modparam("osp","networkid_location",2)
         
 ```
@@ -335,10 +387,10 @@ modparam("osp","networkid_location",2)
 #### networkid_parameter
 
 
-The networkid_parameter (string) parameter instructs the OSP module to use which parameter name in outbound destination URIs to append destination network ID. The default value is "networkid"
+networkid_parameter(string) 参数指示 OSP 模块在出站目标 URI 中使用哪个参数名附加目标网络 ID。默认值为 "networkid"
 
 
-```c title="Networkid parameter name"
+```c title="Networkid 参数名"
 modparam("osp","networkid_param","networkid")
         
 ```
@@ -347,19 +399,19 @@ modparam("osp","networkid_param","networkid")
 #### switchid_location
 
 
-The switchid_location (integer) parameter instructs the OSP module where the destination switch ID should be appended. The default value is 2
+switchid_location(integer) 参数指示 OSP 模块应在何处附加目标交换机 ID。默认值为 2
 
 
-0 - switch ID is not appended.
+0 - 不附加交换机 ID。
 
 
-1 - switch ID is appended as userinfo parameter.
+1 - 作为 userinfo 参数附加交换机 ID。
 
 
-2 - switch ID is appended as URI parameter.
+2 - 作为 URI 参数附加交换机 ID。
 
 
-```c title="Append switchid location"
+```c title="附加 switchid 位置"
 modparam("osp","switchid_location",2)
         
 ```
@@ -368,10 +420,10 @@ modparam("osp","switchid_location",2)
 #### switchid_parameter
 
 
-The switchid_parameter (string) parameter instructs the OSP module to use which parameter name in outbound destination URIs to append destination switch ID. The default value is "switchid"
+switchid_parameter(string) 参数指示 OSP 模块在出站目标 URI 中使用哪个参数名附加目标交换机 ID。默认值为 "switchid"
 
 
-```c title="Networkid parameter name"
+```c title="Networkid 参数名"
 modparam("osp","switchid_param","switchid")
         
 ```
@@ -380,19 +432,19 @@ modparam("osp","switchid_param","switchid")
 #### parameterstring_location
 
 
-The parameterstring_location (integer) parameter instructs the OSP module where the parameter string should be appended. The default value is 0
+parameterstring_location(integer) 参数指示 OSP 模块应在何处附加参数字符串。默认值为 0
 
 
-0 - parameter string is not appended.
+0 - 不附加参数字符串。
 
 
-1 - parameter string is appended as userinfo parameter.
+1 - 作为 userinfo 参数附加参数字符串。
 
 
-2 - parameter string is appended as URI parameter.
+2 - 作为 URI 参数附加参数字符串。
 
 
-```c title="Append parameter string location"
+```c title="附加参数字符串位置"
 modparam("osp","parameterstring_location",0)
         
 ```
@@ -401,10 +453,10 @@ modparam("osp","parameterstring_location",0)
 #### parameterstring_value
 
 
-The parameterstring_value (string) parameter instructs the OSP module to append the parameter string in outbound URIs. The default value is ""
+parameterstring_value(string) 参数指示 OSP 模块在出站 URI 中附加的参数字符串。默认值为 ""
 
 
-```c title="Parameter string value"
+```c title="参数字符串值"
 modparam("osp","parameterstring_value","")
         
 ```
@@ -413,10 +465,12 @@ modparam("osp","parameterstring_value","")
 #### source_device_avp
 
 
-The source_device_avp (string) parameter instructs the OSP module to use the defined AVP to pass the source device IP value in the indirect work mode. The default value is "$avp(_osp_source_device_)".  Then the source device IP can be set by "$avp(_osp_source_device_) = pseudo-variables".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+source_device_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递源设备 IP 值(在间接工作模式下)。默认值为 "$avp(_osp_source_device_)"。
+然后可以使用 "$avp(_osp_source_device_) = 伪变量" 设置源设备 IP。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the source device IP AVP"
+```c title="设置源设备 IP AVP"
 modparam("osp","source_device_avp","$avp(srcdev)")
         
 ```
@@ -425,10 +479,12 @@ modparam("osp","source_device_avp","$avp(srcdev)")
 #### source_networkid_avp
 
 
-The source_networkid_avp (string) parameter instructs the OSP module to use the defined AVP to pass the source network ID value. The default value is "$avp(_osp_source_networkid_)".  Then the source network ID can be set by "$avp(_osp_source_networkid_) = pseudo-variables".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+source_networkid_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递源网络 ID 值。默认值为 "$avp(_osp_source_networkid_)"。
+然后可以使用 "$avp(_osp_source_networkid_) = 伪变量" 设置源网络 ID。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the source network ID AVP"
+```c title="设置源网络 ID AVP"
 modparam("osp","source_networkid_avp","$avp(snid)")
         
 ```
@@ -437,10 +493,12 @@ modparam("osp","source_networkid_avp","$avp(snid)")
 #### source_switchid_avp
 
 
-The source_switchid_avp (string) parameter instructs the OSP module to use the defined AVP to pass the source switch ID value. The default value is "$avp(_osp_source_switchid_)".  Then the source switch ID can be set by "$avp(_osp_source_switchid_) = pseudo-variables".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+source_switchid_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递源交换机 ID 值。默认值为 "$avp(_osp_source_switchid_)"。
+然后可以使用 "$avp(_osp_source_switchid_) = 伪变量" 设置源交换机 ID。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the source switch ID AVP"
+```c title="设置源交换机 ID AVP"
 modparam("osp","source_switchid_avp","$avp(swid)")
         
 ```
@@ -449,10 +507,12 @@ modparam("osp","source_switchid_avp","$avp(swid)")
 #### custom_info_avp
 
 
-The custom_info_avp (string) parameter instructs the OSP module to use the defined AVP to pass the custom information values. The default value is "$avp(_osp_custom_info_)".  Then the custom information can be set by "$avp(_osp_custom_info_) = pseudo-variables".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+custom_info_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递自定义信息值。默认值为 "$avp(_osp_custom_info_)"。
+然后可以使用 "$avp(_osp_custom_info_) = 伪变量" 设置自定义信息。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the custom info AVP"
+```c title="设置自定义信息 AVP"
 modparam("osp","custom_info_avp","$avp(cinfo)")
         
 ```
@@ -461,10 +521,12 @@ modparam("osp","custom_info_avp","$avp(cinfo)")
 #### cnam_avp
 
 
-The cnam_avp (string) parameter instructs the OSP module to use the defined AVP to pass the CNAM values. The default value is "$avp(_osp_cnam_)".  Then the CNAM can be used by "$avp(_osp_cnam_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+cnam_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递 CNAM 值。默认值为 "$avp(_osp_cnam_)"。
+然后可以使用 "$avp(_osp_cnam_)" 使用 CNAM。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the CNAM AVP"
+```c title="设置 CNAM AVP"
 modparam("osp","cnam_avp","$avp(cnam)")
         
 ```
@@ -473,10 +535,10 @@ modparam("osp","cnam_avp","$avp(cnam)")
 #### extraheaders_value
 
 
-The extraheaders_value (string) parameter instructs the OSP module to append the defined SIP headers in outbound SIP NOTIFY messages. The default value is empty.
+extraheaders_value(string) 参数指示 OSP 模块在出站 SIP NOTIFY 消息中附加定义的 SIP 头。默认值为空。
 
 
-```c title="Setting the NOTIFY extra headers"
+```c title="设置 NOTIFY 额外头"
 modparam("osp", "extraheaders_value", "Source: N")
         
 ```
@@ -485,10 +547,11 @@ modparam("osp", "extraheaders_value", "Source: N")
 #### source_media_avp, destination_media_avp
 
 
-These parameters are used to tell the OSP module which AVPs are used to store media addresses. The default values are "$avp(_osp_source_media_address_)" and "$avp(_osp_destination_media_address_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+这些参数用于告诉 OSP 模块哪些 AVP 用于存储媒体地址。默认值分别为 "$avp(_osp_source_media_address_)" 和 "$avp(_osp_destination_media_address_)"。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the media address AVPs"
+```c title="设置媒体地址 AVP"
 modparam("osp", "source_media_avp", "$avp(srcmedia)")
 modparam("osp", "destination_media_avp", "$avp(destmedia)")
         
@@ -498,10 +561,12 @@ modparam("osp", "destination_media_avp", "$avp(destmedia)")
 #### request_date_avp
 
 
-The request_date_avp (string) parameter instructs the OSP module to use the defined AVP to pass the SIP request Date header values. The default value is "$avp(_osp_request_date_)".  Then the request date can be used by "$avp(_osp_request_date_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+request_date_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递 SIP 请求 Date 头值。默认值为 "$avp(_osp_request_date_)"。
+然后可以使用 "$avp(_osp_request_date_)" 使用请求日期。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the request date AVP"
+```c title="设置请求日期 AVP"
 modparam("osp","request_date_avp","$avp(reqdate)")
         
 ```
@@ -510,10 +575,12 @@ modparam("osp","request_date_avp","$avp(reqdate)")
 #### sdp_fingerprint_avp
 
 
-The sdp_fingerprint_avp (string) parameter instructs the OSP module to use the defined AVP to pass the SDP fing print attribute values. The default value is "$avp(_osp_sdp_fingerprint_)".  Then the SDP finger print attributes can be used by "$avp(_osp_sdp_fingerprint_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+sdp_fingerprint_avp(string) 参数指示 OSP 模块使用定义的 AVP 传递 SDP 指纹属性值。默认值为 "$avp(_osp_sdp_fingerprint_)"。
+然后可以使用 "$avp(_osp_sdp_fingerprint_)" 使用 SDP 指纹属性。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the SDP finger print AVP"
+```c title="设置 SDP 指纹 AVP"
 modparam("osp","sdp_fingerprint_avp","$avp(sdpfp)")
         
 ```
@@ -522,10 +589,14 @@ modparam("osp","sdp_fingerprint_avp","$avp(sdpfp)")
 #### identity_signature_avp, identity_algorithm_avp, identity_information_avp, identity_type_avp, identity_canon_avp
 
 
-These parameters instruct the OSP module to use the defined AVPs to pass the Identity related values. The default values are "$avp(_osp_identity_signature_)", "$avp(_osp_identity_algorithm_)", "$avp(_osp_identity_information_)", "$avp(_osp_identity_type_)", "$avp(_osp_identity_canon_)".  Then the indentity related values can be used by these AVPs.  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+这些参数指示 OSP 模块使用定义的 AVP 传递 Identity 相关值。
+默认值分别为 "$avp(_osp_identity_signature_)"、"$avp(_osp_identity_algorithm_)"、
+"$avp(_osp_identity_information_)"、"$avp(_osp_identity_type_)"、"$avp(_osp_identity_canon_)"。
+然后可以通过这些 AVP 使用身份相关值。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the Identity related AVPs"
+```c title="设置 Identity 相关 AVP"
 modparam("osp","identity_signature_avp","$avp(idsign)")
 modparam("osp","identity_algorithm_avp","$avp(idalg)")
 modparam("osp","identity_information_avp","$avp(idinfo)")
@@ -538,10 +609,11 @@ modparam("osp","identity_canon_avp","$avp(idcanon)")
 #### service_provider_avp
 
 
-These parameter is used to tell the OSP module which AVP is used to store source service provider information. The default value is "$avp(_osp_service_provider_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+此参数用于告诉 OSP 模块哪个 AVP 用于存储源服务提供商信息。默认值为 "$avp(_osp_service_provider_)"。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the source service provider AVP"
+```c title="设置源服务提供商 AVP"
 modparam("osp", "service_provider_avp", "$avp(sp)")
         
 ```
@@ -550,10 +622,11 @@ modparam("osp", "service_provider_avp", "$avp(sp)")
 #### user_group_avp
 
 
-These parameter is used to tell the OSP module which AVP is used to store source user group information. The default value is "$avp(_osp_user_group_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+此参数用于告诉 OSP 模块哪个 AVP 用于存储源用户组信息。默认值为 "$avp(_osp_user_group_)"。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the source user group AVP"
+```c title="设置源用户组 AVP"
 modparam("osp", "user_group_avp", "$avp(groupid)")
         
 ```
@@ -562,33 +635,34 @@ modparam("osp", "user_group_avp", "$avp(groupid)")
 #### user_id_avp
 
 
-These parameter is used to tell the OSP module which AVP is used to store source user ID information. The default value is "$avp(_osp_user_id_)".  All pseudo variables are described in https://opensips.org/Resources/DocsCoreVar.
+此参数用于告诉 OSP 模块哪个 AVP 用于存储源用户 ID 信息。默认值为 "$avp(_osp_user_id_)"。
+所有伪变量均在 https://opensips.org/Resources/DocsCoreVar 中描述。
 
 
-```c title="Setting the source user ID AVP"
+```c title="设置源用户 ID AVP"
 modparam("osp", "user_id_avp", "$avp(userid)")
         
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### checkospheader()
 
 
-This function checks for the existence of the OSP-Auth-Token header field.
+此函数检查 OSP-Auth-Token 头字段是否存在。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="checkospheader usage"
+```c title="checkospheader 用法"
 ...
 if (checkospheader()) {
-  log(1,"OSP header field found.\n");
+  log(1,"找到 OSP 头字段。\n");
 } else {
-  log(1,"no OSP header field present\n");
+  log(1,"不存在 OSP 头字段\n");
 };
 ...
         
@@ -598,18 +672,21 @@ if (checkospheader()) {
 #### validateospheader()
 
 
-This function validates an OSP-Token specified in the OSP-Auth-Tokenheader field of the SIP message. If a peering token is present, it will be validated locally. If no OSP header is found or the header token is invalid or expired, -1 is returned; on successful validation 1 is returned.
+此函数验证 SIP 消息的 OSP-Auth-Token 头字段中指定的 OSP-Token。
+如果存在对等令牌,将在本地验证。
+如果未找到 OSP 头或头令牌无效或过期,返回 -1;
+验证成功返回 1。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="validateospheader usage"
+```c title="validateospheader 用法"
 ...
 if (validateospheader()) {
-  log(1,"valid OSP header found\n");
+  log(1,"找到有效 OSP 头\n");
 } else {
-  log(1,"OSP header not found, invalid or expired\n");
+  log(1,"未找到 OSP 头、无效或过期\n");
 };
 ...
         
@@ -619,18 +696,18 @@ if (validateospheader()) {
 #### getlocaladdress()
 
 
-This function gets the receiving IP address of SIP response and stores it as proxy egress address.
+此函数获取 SIP 响应的接收 IP 地址并将其存储为代理出口地址。
 
 
-This function can be used from ONREPLY_ROUTE.
+此函数可用于 ONREPLY_ROUTE。
 
 
-```c title="getlocaladress usage"
+```c title="getlocaladress 用法"
 ...
 if (getlocaladdress()) {
-  log(1,"Obtain proxy local egress address\n");
+  log(1,"获取代理本地出口地址\n");
 } else {
-  log(1,"Failed to get proxy local egress address\n");
+  log(1,"获取代理本地出口地址失败\n");
 };
 ...
         
@@ -640,18 +717,18 @@ if (getlocaladdress()) {
 #### setrequestdate()
 
 
-This function gets the receiving IP address of SIP response and stores it as proxy egress address.
+此函数获取 SIP 响应的接收 IP 地址并将其存储为代理出口地址。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="setrequestdate usage"
+```c title="setrequestdate 用法"
 ...
 if (setrequest()) {
-  log(1,"Set request date\n");
+  log(1,"设置请求日期\n");
 } else {
-  log(1,"Failed to set request date\n");
+  log(1,"设置请求日期失败\n");
 };
 ...
         
@@ -661,21 +738,26 @@ if (setrequest()) {
 #### requestosprouting()
 
 
-This function launches a query to the peering server requesting the IP address of one or more destination peers serving the called party. If destination peers are available, the peering server will return the IP address and a peering authorization token for each destination peer. The OSP-Auth-Token Header field is inserted into the SIP message and the SIP uri is rewritten to the IP address of destination peer provided by the peering server.
+此函数向对等服务器发起查询,请求提供服务于被叫方的目标对等方的 IP 地址。
+如果目标对等方可用,对等服务器将返回每个目标对等的 IP 地址和对等授权令牌。
+OSP-Auth-Token 头字段被插入到 SIP 消息中,
+SIP uri 被重写为对等服务器提供的结果。
 
 
-The address of the called party must be a valid E164 number, otherwise this function returns -1. If the transaction was accepted by the peering server, the uri is being rewritten and 1 returned, on errors (peering servers are not available, authentication failed or there is no route to destination or the route is blocked) -1 is returned.
+被叫方的地址必须是有效的 E164 号码,否则此函数返回 -1。
+如果事务被对等服务器接受,uri 被重写并返回 1;
+出错时(对等服务器不可用、认证失败、没有到目的地的路由或路由被阻止)返回 -1。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="requestosprouting usage"
+```c title="requestosprouting 用法"
 ...
 if (requestosprouting()) {
-  log(1,"successfully queried OSP server, now relaying call\n");
+  log(1,"成功查询 OSP 服务器,现在转发呼叫\n");
 } else {
-  log(1,"Authorization request was rejected from OSP server\n");
+  log(1,"OSP 服务器拒绝授权请求\n");
 };
 ...
         
@@ -685,18 +767,18 @@ if (requestosprouting()) {
 #### checkosproute()
 
 
-This function is used to check if there is any route for the call.
+此函数用于检查呼叫是否有任何路由。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="checkosproute usage"
+```c title="checkosproute 用法"
 ...
 if (checkosproute()) {
-  log(1,"There is at least one route for the call\n");
+  log(1,"呼叫至少有一条路由\n");
 } else {
-  log(1,"There is not any route for the call\n");
+  log(1,"呼叫没有任何路由\n");
 };
 ...
         
@@ -706,18 +788,22 @@ if (checkosproute()) {
 #### prepareosproute()
 
 
-This function tries to prepare the INVITE to be forwarded using the destination in the list returned by the peering server. If the calling number is translated, a RPID value for the RPID AVP will be set. If the route could not be prepared, the function returns 'FALSE' back to the script, which can then decide how to handle the failure. Note, if checkosproute has been called and returns 'TRUE' before calling prepareosproute, prepareosproute should not return 'FALSE' because checkosproute has confirmed that there is at least one route.
+此函数尝试使用对等服务器返回的列表中的目标准备转发 INVITE。
+如果呼叫号码被翻译,将设置 RPID AVP 的 RPID 值。
+如果无法准备路由,函数返回 'FALSE',脚本可以决定如何处理失败。
+注意,如果 checkosproute 已被调用并在 prepareosproute 之前返回 'TRUE',
+prepareosproute 不应返回 'FALSE',因为 checkosproute 已确认至少有一条路由。
 
 
-This function can be used from BRANCH_ROUTE.
+此函数可用于 BRANCH_ROUTE。
 
 
-```c title="prepareosproute usage"
+```c title="prepareosproute 用法"
 ...
 if (prepareosproute()) {
-  log(1,"successfully prepared the route, now relaying call\n");
+  log(1,"成功准备路由,现在转发呼叫\n");
 } else {
-  log(1,"could not prepare the route, there is not route\n");
+  log(1,"无法准备路由,没有路由\n");
 };
 ...
         
@@ -727,18 +813,19 @@ if (prepareosproute()) {
 #### prepareospresponse()
 
 
-This function tries to prepare all the routes in the list returned by the peering server into SIP 300 Redirect or SIP 380 Alternative Service message. The message is then replied to the source. If unsuccessful in preparing the routes a SIP 500 is sent back and a trace message is logged.
+此函数尝试将对等服务器返回的列表中的所有路由准备为 SIP 300 Redirect 或 SIP 380 Alternative Service 消息。
+然后将消息回复给源。如果准备路由失败,则发送 SIP 500 并记录跟踪消息。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="prepareospresponse usage"
+```c title="prepareospresponse 用法"
 ...
 if (prepareospresponse()) {
-  log(1,"Response is prepared.\n");
+  log(1,"响应已准备。\n");
 } else {
-  log(1,"Could not prepare the response.\n");
+  log(1,"无法准备响应。\n");
 };
 ...
         
@@ -748,18 +835,19 @@ if (prepareospresponse()) {
 #### prepareallosproutes()
 
 
-This function tries to prepare all the routes in the list returned by the peering server. The message is then forked off to the destinations. If unsuccessful in preparing the routes a SIP 500 is sent back and a trace message is logged.
+此函数尝试将对等服务器返回的列表中的所有路由准备就绪。
+然后将消息分叉到目的地。如果准备路由失败,则发送 SIP 500 并记录跟踪消息。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="prepareallosproutes usage"
+```c title="prepareallosproutes 用法"
 ...
 if (prepareallosproutes()) {
-  log(1,"Routes are prepared, now forking the call\n");
+  log(1,"路由已准备,现在分叉呼叫\n");
 } else {
-  log(1,"Could not prepare the routes. No destination available\n");
+  log(1,"无法准备路由。没有目的地可用\n");
 };
 ...
         
@@ -769,20 +857,24 @@ if (prepareallosproutes()) {
 #### checkcallingtranslation()
 
 
-This function is used to check if the calling number is translated. Before calling checkcallingtranslation, prepareosproute should be called. If the calling number does been translated, the original Remote-Party-ID, if it exists, should be removed from the INVITE message. And a new Remote-Party-ID header should be added (a RPID value for the RPID AVP has been set by prepareosproute). If the calling number is not translated, nothing should be done.
+此函数用于检查呼叫号码是否被翻译。
+在调用 checkcallingtranslation 之前应调用 prepareosproute。
+如果呼叫号码已被翻译,应从 INVITE 消息中删除原始 Remote-Party-ID(如果存在)。
+并应添加新的 Remote-Party-ID 头(RPID AVP 已由 prepareosproute 设置了 RPID 值)。
+如果呼叫号码未被翻译,则不应执行任何操作。
 
 
-This function can be used from BRANCH_ROUTE.
+此函数可用于 BRANCH_ROUTE。
 
 
-```c title="checkcallingtranslation usage"
+```c title="checkcallingtranslation 用法"
 ...
 if (checkcallingtranslation()) {
-  # Remove the Remote_Party-ID from the received message
-  # Otherwise it will be forwarded on to the next hop
+  # 从收到的消息中删除 Remote_Party-ID
+  # 否则它将被转发到下一跳
   remove_hf("Remote-Party-ID");
 
-  # Append a new Remote_Party
+  # 附加新的 Remote-Party
   append_rpid_hf();
 }
 ...
@@ -793,30 +885,34 @@ if (checkcallingtranslation()) {
 #### reportospusage()
 
 
-This function should be called after receiving a BYE message. If the message contains an OSP cookie, the function will forward originating and/or terminating duration usage information to a peering server. The function returns TRUE if the BYE includes an OSP cookie. The actual usage message will be send on a different thread and will not delay BYE processing. The function should be called before relaying the message.
+此函数应在收到 BYE 消息后调用。
+如果消息包含 OSP cookie,函数将向前向和/或终端持续时间使用信息转发给对等服务器。
+如果 BYE 包含 OSP cookie,函数返回 TRUE。
+实际使用消息将在不同的线程上发送,不会延迟 BYE 处理。
+函数应在转发消息之前调用。
 
 
-Meaning of the parameter is as follows:
+参数含义如下:
 
 
-- 0 - Source device releases the call.
-- 1 - Destination device releases the call.
+- 0 - 源设备释放呼叫。
+- 1 - 目标设备释放呼叫。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="reportospusage usage"
+```c title="reportospusage 用法"
 ...
 if (is_direction("downstream")) {
-  log(1,"This BYE message is from SOURCE\n");
+  log(1,"此 BYE 消息来自 SOURCE\n");
   if (!reportospusage(0)) {
-    log(1,"This BYE message does not include OSP usage information\n");
+    log(1,"此 BYE 消息不包含 OSP 使用信息\n");
   }
 } else {
-  log(1,"This BYE message is from DESTINATION\n");
+  log(1,"此 BYE 消息来自 DESTINATION\n");
   if (!reportospusage(1)) {
-    log(1,"This BYE message does not include OSP usage information\n");
+    log(1,"此 BYE 消息不包含 OSP 使用信息\n");
   }
 }
 ...
@@ -827,19 +923,21 @@ if (is_direction("downstream")) {
 #### processsubscribe([cachedcnamrecord])
 
 
-This function should be called after receiving a SUBSCRIBE for CNAM message and there is a cached CNAM record for this message. This function generates a NOTIFY message including the cached CNAM record, then sends the NOTIFY message to the device sending the SUBSCRIBE message.
+此函数应在收到带有缓存 CNAM 记录的 SUBSCRIBE for CNAM 消息后调用。
+此函数生成包含缓存 CNAM 记录的 NOTIFY 消息,
+然后将 NOTIFY 消息发送到发送 SUBSCRIBE 消息的设备。
 
 
-Meaning of the parameter is as follows:
+参数含义如下:
 
 
-- *cachedcnamrecord* (string) - Cached CNAM record.
+- *cachedcnamrecord* (string) - 缓存的 CNAM 记录。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="processsubscribe usage"
+```c title="processsubscribe 用法"
 ...
 if (is_method("SUBSCRIBE")) {
     if (($var(sevent) == "calling-name") && (is_myself("$rd"))) {
@@ -857,12 +955,12 @@ if (is_method("SUBSCRIBE")) {
 ```
 
 
-## Developer Guide
+## 开发者指南
 
 
-The functions of the OSP modules are not used by other OpenSIPS modules.
+OSP 模块的功能不被其他 OpenSIPS 模块使用。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享许可证 4.0 版授权

@@ -1,393 +1,256 @@
 ---
-title: "Config Module"
-description: "The *config* module enables dynamic, runtime configuration of OpenSIPS parameters by loading them from persistent storage at startup and exposing them to the script level via the [config](#pv_config) pseudo-variable."
+title: "配置模块"
+description: "*config* 模块通过在启动时从持久存储加载配置参数并在脚本级别通过 [config](#pv_config) 伪变量公开，从而实现 OpenSIPS 参数的动态运行时配置。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+*config* 模块通过在启动时从持久存储加载配置参数并在脚本级别通过 [config](#pv_config) 伪变量公开，从而实现 OpenSIPS 参数的动态运行时配置。
 
+所有配置变量都存储在 OpenSIPS 内部缓存中，允许在 SIP 处理期间快速访问以保持高性能。缓存可以通过三种方式更新：
 
-The *config*
-		module enables dynamic, runtime configuration of OpenSIPS
-		parameters by loading them from persistent storage at startup and
-		exposing them to the script level via the [config](#pv_config)
-		pseudo-variable.
+- *脚本* – 给 [config](#pv_config) 伪变量赋值会更新内存缓存，但此更改不会持久化到数据库。
+- *MI 命令* – 使用 [mi push](#mi_push) 或 [mi push bulk](#mi_push_bulk) 可以在运行时缓存中更新一个或多个变量。这些更新也不会保存到数据库。
+- *数据库* – 手动修改数据库中的值，然后触发 [mi reload](#mi_reload) 命令，将使用数据库中的更新值刷新内存缓存。
 
+#### 重启持久内存
 
-All configuration variables are stored in OpenSIPS' internal
-		cache, allowing fast access during SIP processing to maintain high
-		performance. The cache can be updated in three ways:
+默认情况下，配置缓存在启动时通过从数据库读取来初始化，仅在运行时保持。任何通过脚本或 MI 命令进行的临时更改（未使用 [mi flush](#mi_flush) 命令明确刷新到数据库）在重启后将丢失。
 
+在这种情况下，重启持久内存变得有用。通过 [enable rpm](#param_enable_restart_persistency) 参数启用后，OpenSIPS 不再在启动时从数据库加载配置值。相反，它会恢复先前保存的内存缓存，保留跨重启的运行时更改。
 
-- *Script* – Assigning a value to the
-			[config](#pv_config) pseudo-variable updates the
-			in-memory cache, but this change is not persisted to the database.
-- *MI Commands* – Using
-			[mi push](#mi_push) or
-			[mi push bulk](#mi_push_bulk) updates one or more variables
-			in the runtime cache. These updates are also not saved to the database.
-- *Database* – Manually modifying values in the
-				database, then triggering the [mi reload](#mi_reload)
-				command, will refresh the in-memory cache with updated values from
-				the database.
+如果需要，您仍可以通过运行 [mi reload](#mi_reload) MI 命令从数据库手动重新初始化缓存。
 
+### 依赖
 
-#### Restart Persistent Memory
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载：
 
-By default, the configuration cache is initialized
-			at startup by reading from the database and
-			persists only during the runtime. Any temporary
-			changes made through the script or MI commands
-			that are not explicitly flushed to the database
-			using the
-			[mi flush](#mi_flush)
-			command will be lost after a restart.
+- *需要数据库模块来读取初始缓存。*
 
+#### 外部库或应用程序
 
-In such cases, restart persistent memory becomes useful. When enabled
-			via the [enable rpm](#param_enable_restart_persistency) parameter, OpenSIPS no longer
-			loads configuration values from the database on startup. Instead, it
-			restores the previously saved in-memory cache, preserving runtime changes
-			across restarts.
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
+- *无*。
 
-If needed, you can still manually re-initialize the cache from the
-			database by running the [mi reload](#mi_reload) MI command.
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-The following  modules must be loaded before this module:
-
-
-- *A database module is needed to read the initial cache*.
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
-
-
-- *None*.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### db_url (string)
 
+用于加载初始配置值并在运行时使用 [mi flush](#mi_flush) MI 命令刷新它们的数据库 URL。
 
-Database URL used to load the initial configuration values,
-			and flush them at runtime using the
-			[mi flush](#mi_flush) MI command.
+*默认值为 "mysql://opensips:opensipsrw@localhost/opensips"。*
 
-
-*Default value is "mysql://opensips:opensipsrw@localhost/opensips".*
-
-
-```c title="Set 'db_url' parameter"
+```c title="设置 'db_url' 参数"
 ...
 modparam("config", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
 ```
 
-
 #### table_name (string)
 
+存储配置项的表名。
 
-Name of the table where configuration entries are stored.
+*默认值为 "config"。*
 
-
-*Default value is "config".*
-
-
-```c title="Set 'table_name' parameter"
+```c title="设置 'table_name' 参数"
 ...
 modparam("config", "table_name", "configuration")
 ...
 ```
 
-
 #### name_column (string)
 
+存储配置变量名的列名。
 
-Name of the column storing configuration variable names.
+*默认值为 "name"。*
 
-
-*Default value is "name".*
-
-
-```c title="Set 'name_column' parameter"
+```c title="设置 'name_column' 参数"
 ...
 modparam("config", "name_column", "key")
 ...
 ```
 
-
 #### value_column (string)
 
+存储配置变量值的列名。
 
-Name of the column storing configuration variable values.
+*默认值为 "value"。*
 
-
-*Default value is "value".*
-
-
-```c title="Set 'value_column' parameter"
+```c title="设置 'value_column' 参数"
 ...
 modparam("config", "value_column", "val")
 ...
 ```
 
-
 #### description_column (string)
 
+存储变量描述的列名。
 
-Name of the column storing variable descriptions.
+*默认值为 "description"。*
 
-
-*Default value is "description".*
-
-
-```c title="Set 'desctiption_column' parameter"
+```c title="设置 'desctiption_column' 参数"
 ...
 modparam("config", "description_column", "desc")
 ...
 ```
 
-
 #### enable_restart_persistency (integer)
 
+启用重启持久性。有关详细信息，请参阅[重启持久内存](#restart_persistent_memory)。
 
-Enables restart persistency. Check the
-			[restart persistent memory](#restart_persistent_memory) for more information.
+*默认值为 "0 / 禁用"。*
 
-
-*Default value is "0 / disabled".*
-
-
-```c title="Set 'restart_persistent_memory' parameter"
+```c title="设置 'restart-persistent-memory' 参数"
 ...
-modparam("config", "restart_persistent_memory", yes)
+modparam("config", "restart-persistent_memory", yes)
 ...
 ```
 
-
 #### hash_size (integer)
 
+用于存储配置变量的内部哈希表的大小。必须是 2 的幂次方，否则其值将四舍五入到小于所提供值的最接近的 2 的幂次方。
 
-Size of the internal hash table used to store config variables.
-		Must be a power of 2 number, otherwise its value will be rounded to the
-		closest value of 2 smaller than the provided value.
+*默认值为 "16"。*
 
-
-*Default value is "16".*
-
-
-```c title="Set 'hash_size' parameter"
+```c title="设置 'hash_size' 参数"
 ...
 modparam("config", "hash_size", 32)
 ...
 ```
 
-
-### Exported Pseudo-Variables
-
+### 导出的伪变量
 
 #### $config(name)
 
+按名称返回给定配置变量的值。也可用于临时更改值。
 
-Returns the value of the given config variable by name.
-			Can also be used for temporarily changing the value.
-
-
-```c title="Usage of $config(...)"
+```c title="$config(...) 用法"
 			...
-			xlog("Config value: $config(debug_mode)\n"); # reading the value
-			$config(debug_mode) = 1; # temporarily changing the value
+			xlog("配置值: $config(debug_mode)\n"); # 读取值
+			$config(debug_mode) = 1; # 临时更改值
 			...
 			
 ```
-
 
 #### $config.description(name)
 
+如果可用，返回配置变量的描述。
 
-Returns the description of a config variable if available.
+此变量是只读的。
 
-
-This variable is read-only.
-
-
-```c title="Usage of $config.description(name)"
+```c title="$config.description(name) 用法"
 			...
-			xlog("Description: $config.description(debug_mode)\n");
+			xlog("描述: $config.description(debug_mode)\n");
 			...
 			
 ```
 
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### config:reload
 
+替换已弃用的 MI 命令：*config_reload*。
 
-Replaces obsolete MI command: *config_reload*.
+从数据库重新加载所有配置变量。
 
-
-Reloads all configuration variables from the database.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
-		## reload configuration cache from the database
+		## 从数据库重新加载配置缓存
 		opensips-mi config:reload
 		opensips-cli -x mi config:reload
 		
 ```
 
-
 #### config:list
 
+替换已弃用的 MI 命令：*config_list*。
 
-Replaces obsolete MI command: *config_list*.
+列出当前缓存中加载的所有配置变量，也打印临时值。如果提供了可选的 *description* 参数且不同于 *0*，则返回一个数组，也包含值的描述。
 
-
-Lists all config variables currently loaded in cache,
-		printing temporary values as well.
-		If the optional *description* parameter
-		is provided and different than *0*, it
-		returns an array containing the description of the values
-		as well.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
-		## list all configuration cache
+		## 列出所有配置缓存
 		opensips-mi config:list
 		opensips-cli -x mi config:list 1
 		
 ```
 
-
 #### config:push
 
+替换已弃用的 MI 命令：*config_push*。
 
-Replaces obsolete MI command: *config_push*.
+临时推送单个配置变量。
 
+预期参数：
 
-Temporarily pushes a single configuration variable.
+- *name* – (string) 变量名
+- *value* – (string) 变量值
+- *description* – (string，可选) 变量描述；如果缺失则继承描述，或者如果变量是新变量则使用空值。
 
-
-Expected parameters are:
-
-
-- *name* – (string) the name of the variable
-- *value* – (string) the value of the variable
-- *description* – (string, optional) the
-				description of the variable; if missing the description is
-				inheritted, or a null value is used if the variable is new.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
-		## push temporarily debug_mode configuration value
-		opensips-mi config:push debug_mode 1 "Enable Debug mode"
+		## 临时推送 debug_mode 配置值
+		opensips-mi config:push debug_mode 1 "启用调试模式"
 		opensips-cli -x mi config:list 1
 		
 ```
 
-
 #### config:push_bulk
 
+替换已弃用的 MI 命令：*config_push_bulk*。
 
-Replaces obsolete MI command: *config_push_bulk*.
+将多个临时配置变量推送到内存中。
 
+预期参数：
 
-Pushes multiple temporarily configuration variables in memory.
+- *configs* – (json) 一个 JSON 数组，包含要推送的一组变量。每个变量应描述为一个 JSON 对象，包含以下键：
+	
+	*name* – (string) 要更改的变量名。
+	
+	*value* – (string 或 null) 变量的新值。
+	
+	*description* – (string，可选) 变量描述。
 
-
-Expected parameters are:
-
-
-- *configs* – (json) a JSON
-				array containing a set of variables to be pushed. Each
-				variable should be described as a JSON object with the following
-				keys:
-				
-				
-					*name* – (string) the
-					name of the variable to be changed.
-				
-				
-					*value* – (string or null) the
-					new value of the variable.
-				
-				
-					*description* – (string, optional)
-					the description of the variable.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
-		## push bulk temporarily values to the config cache
+		## 临时批量推送配置缓存值
 		opensips-mi config:push_bulk -j '[[{"name":"debug_mode","value":"1"},{"name":"debug_level","value":"5"}]]'
 		
 ```
 
-
-The command returns the number of values successfully pushed.
-
+该命令返回成功推送的值数量。
 
 #### config:flush
 
+替换已弃用的 MI 命令：*config_flush*。
 
-Replaces obsolete MI command: *config_flush*.
+将变量从内存刷新到数据库。
 
+预期参数：
 
-Flushes the variables from the memory to the database.
+- *name* – (string，可选) 如果存在，仅刷新数据库中的特定配置变量，否则刷新整个缓存。
 
-
-Expected parameters are:
-
-
-- *name* – (string, optional) if present,
-				flushes only a specific config variable in database, otherwise
-				the entire cache.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
-		## Flush config variables to the database
+		## 将配置变量刷新到数据库
 		opensips-mi config:flush
 		opensips-cli -x mi config:flush debug_mode
 		
 ```
 
-
-The command returns the number of values successfully flushed.
+该命令返回成功刷新的值数量。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

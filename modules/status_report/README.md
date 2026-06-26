@@ -1,92 +1,86 @@
 ---
-title: "Status/Reports Module"
-description: "The Status/Report module is a wrapper over the internal status/report framework, allowing the script writer to dynamically define and use of SR groups."
+title: "状态/报告模块"
+description: "状态/报告模块是内部状态/报告框架的包装器，允许脚本编写者动态定义和使用 SR 组。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Status/Report module is a wrapper over the 
-		internal status/report framework, allowing the script writer to 
-		dynamically define and use of SR groups.
+状态/报告模块是内部状态/报告框架的包装器，
+		允许脚本编写者动态定义和使用 SR 组。
 
 
-By bringing the Status/Report support into the script, it opens the
-		possibility to create custom reports from script, depending on
-		the logic you have there.
+通过将状态/报告支持引入脚本，它开启了从脚本创建自定义报告的可能性，
+		具体取决于您在那里的逻辑。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### script_sr_group (string)
 
 
-Name of a new Status/Report group to be created and later used
-		from script level.
+要创建并在脚本级别稍后使用的状态/报告组的名称。
 
 
-This parameter may be defined multiple times, in order to define
-		multiple groups.
+可以多次定义此参数，以定义多个组。
 
 
-```c title="script_sr_group example"
+```c title="script_sr_group 示例"
 modparam("status_report", "script_sr_group", "security")
 modparam("status_report", "script_sr_group", "alarms")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### sr_set_status( group, status, [details])
 
 
-Sets a new status (and details) for a Status/Report group.
+为状态/报告组设置新状态（及详情）。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *group* (string) - the name of the
-			SR group; you can change the status only for the groups defined via
-			this module (as parameter).
-- *status* (int) - the new status value
-			( strict positive meaning OK, strict negative meaning NOT OK,
-			0 is not accepts, it is converted to 1 automatically).
-- *details* (string, optional) - a
-			descripting text to detail the status value
+- *group* (string) - SR 组的名称；
+			您只能更改通过此模块定义的组的状态（作为参数）。
+- *status* (int) - 新状态值
+			（严格正值表示 OK，严格负值表示 NOT OK，
+			0 不被接受，会自动转换为 1）。
+- *details* (string, 可选) - 
+			描述状态值的文本
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="sr_set_status usage"
+```c title="sr_set_status 使用示例"
 ...
 sr_set_status( "script_caching", 1, "completed");
 ...
@@ -96,29 +90,27 @@ sr_set_status( "script_caching", 1, "completed");
 #### sr_add_report( group, report)
 
 
-Adds a new report/log to a Status/Report group.This must have been
-		defined via this module too.
+向状态/报告组添加新报告/日志。这同样必须通过此模块定义。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *group* (string) - the name of the
-			SR group; you can change the status only for the groups defined via
-			this module (as parameter).
-*report* (string) - the log to be added.
+- *group* (string) - SR 组的名称；
+			您只能更改通过此模块定义的组的状态（作为参数）。
+*report* (string) - 要添加的日志。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="sr_add_report usage"
+```c title="sr_add_report 使用示例"
 ...
-sr_add_report("security","IP $si detected as attacker");
+sr_add_report("security","检测到攻击者 IP $si");
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

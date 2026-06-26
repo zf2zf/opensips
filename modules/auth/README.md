@@ -1,313 +1,288 @@
 ---
-title: "Auth Module"
-description: "This is a module that provides common functions that are needed by other authentication related modules. Also, it can perform authentication taking username and password from pseudo-variables."
+title: "Auth 模块"
+description: "这是一个提供其他认证相关模块所需通用函数的模块。此外，它还可以从伪变量中获取用户名和密码进行认证。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is a module that provides common functions that are needed by
-		other authentication related modules. Also, it can perform 
-		authentication taking username and password from pseudo-variables.
+这是一个提供其他认证相关模块所需通用函数的模块。此外，它还可以从伪变量中获取用户名和密码进行认证。
 
 
-#### RFC 8760 Support (Strenghtened Authentication)
+#### RFC 8760 支持（增强型认证）
 
 
-Starting with OpenSIPS 3.2, the [auth](../auth),
-			[auth_db](../auth_db) and
+从 OpenSIPS 3.2 开始，[auth](../auth)、
+			[auth_db](../auth_db) 和
 			[uac_auth](../uac_auth)
-			modules include support for two new digest authentication algorithms
-			("SHA-256" and "SHA-512-256"), according to the
+			模块支持两种新的摘要认证算法
+			（"SHA-256" 和 "SHA-512-256"），符合
 	        [RFC 8760](https://datatracker.ietf.org/doc/html/rfc8760)
-	        specs.
+	        规范。
 
 
-### Nonce Security
+### Nonce 安全机制
 
 
-The authentication mechanism offers protection against sniffing intrusion.
-        The module generates and verifies the nonces so that they can be used only
-        once (in an auth response). This is done
-        by having a lifetime value and an index associated with every nonce.
-        Using only an expiration value is not good enough because,as this value
-        has to be of few tens of seconds, it is possible for someone to sniff
-        on the network, get the credentials and then reuse them in another packet
-        with which to register a different contact or make calls using the others's
-        account. The index ensures that this will never be possible since it
-		is generated as unique through the lifetime of the nonce.
+认证机制提供防止嗅探入侵的保护。
+        模块生成并验证 nonce，使其只能使用一次（在一次认证响应中）。
+        这是通过为每个 nonce 设置生命周期值和索引来实现的。
+        仅使用过期时间是不够的，因为该值必须只有几十秒，
+        攻击者有可能在网络上嗅探到凭据，然后在另一个数据包中重用它们，
+        用它来注册不同的联系人或使用他人的账户进行呼叫。
+        索引确保这永远不会发生，因为它在整个 nonce 生命周期内是唯一生成的。
 
 
-The default limit for the requests that can be authenticated is 100000 
-		in 30 seconds.
-		If you wish to adjust this you can decrease the lifetime of a nonce(
-		how much time to wait for a reply to a challenge). However, be aware not to
-		set it to a too smaller value.
+默认限制是 30 秒内可认证 100000 个请求。
+		如果需要调整，可以减少 nonce 的生命周期（等待回复的时间）。
+        但要注意不要设置得太小。
 
 
-However this mechanism does not work for architectures using a cluster
-		of servers that share the same dns name for load balancing. In this case
-		you can disable the nonce reusability check by setting the module parameter
-		'disable_nonce_check'.
+但是，对于使用服务器集群通过相同的 DNS 名称进行负载均衡的架构，
+		此机制不起作用。在这种情况下，
+		可以通过设置模块参数 'disable_nonce_check' 来禁用 nonce 可重用性检查。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The module depends on the following modules (in the other words 
-			the listed modules must be loaded before this module):
+该模块依赖以下模块（换句话说，
+			列出的模块必须在此模块之前加载）：
 
 
-- *signaling* -- Signaling module
+- *signaling* -- 信令模块
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed 
-			before running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装
+			以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### secret (string)
+#### secret (字符串)
 
 
-Secret phrase used to calculate the nonce value.
-		Must be exactly 32-character long.
+用于计算 nonce 值的密钥短语。
+		必须恰好是 32 个字符长。
 
 
-The default is to use a random value generated from the random source in the core.
+默认使用核心中随机源生成的随机值。
 
 
-If you use multiple servers in your installation, and would like to authenticate
-		on the second server against the nonce generated at the first one its necessary
-		to explicitly set the secret to the same value on all servers. 
-		However, the use of a shared (and fixed) secret as nonce is insecure, much better
-		is to stay with the default. Any clients should send the reply to the server that
-		issued the request.
+如果在安装中使用多台服务器，并且希望使用第一台服务器生成的 nonce
+		在第二台服务器上进行认证，则必须明确设置所有服务器上的密钥为相同的值。
+		但是，使用共享（和固定）的密钥作为 nonce 是不安全的，
+        更好的做法是保持默认值。任何客户端都应将回复发送到发出请求的服务器。
 
 
-```c title="secret parameter example"
+```c title="secret 参数示例"
 modparam("auth", "secret", "johndoessecretphrase")
 ```
 
 
-#### nonce_expire (integer)
+#### nonce_expire (整数)
 
 
-Nonces have limited lifetime. After a given period of time nonces 
-		will be considered invalid. This is to protect replay attacks. 
-		Credentials containing a stale nonce will be not authorized, but the 
-		user agent will be challenged again. This time the challenge will 
-		contain `stale` parameter which will indicate to the
-		client that it doesn't have to disturb user by asking for username 
-		and password, it can recalculate credentials using existing username 
-		and password.
+Nonce 有有限的生命周期。超过指定时间后
+		nonce 将被视为无效。这是为了防止重放攻击。
+		包含过期 nonce 的凭据将不会被授权，但用户代理将再次收到挑战。
+        这次挑战将包含 `stale` 参数，向客户端表明
+		不必打扰用户询问用户名和密码，
+        它可以使用现有的用户名和密码重新计算凭据。
 
 
-The value is in seconds and default value is 30 seconds.
+该值以秒为单位，默认值为 30 秒。
 
 
-```c title="nonce_expire parameter example"
-modparam("auth", "nonce_expire", 15)   # Set nonce_expire to 15s
+```c title="nonce_expire 参数示例"
+modparam("auth", "nonce_expire", 15)   # 将 nonce_expire 设置为 15 秒
 ```
 
 
-#### rpid_prefix (string)
+#### rpid_prefix (字符串)
 
 
-Prefix to be added to Remote-Party-ID header field just before 
-		the URI returned from either radius or database.
+在 Remote-Party-ID 头域之前添加的前缀，
+		该头域中的 URI 是从 radius 或数据库返回的。
 
 
-Default value is "".
+默认值为 ""。
 
 
-```c title="rpid_prefix parameter example"
+```c title="rpid_prefix 参数示例"
 modparam("auth", "rpid_prefix", "Whatever <")
 ```
 
 
-#### rpid_suffix (string)
+#### rpid_suffix (字符串)
 
 
-Suffix to be added to Remote-Party-ID header field after the URI 
-		returned from either radius or database.
+在 Remote-Party-ID 头域之后添加的后缀，
+		该头域中的 URI 是从 radius 或数据库返回的。
 
 
-Default value is 
-			";party=calling;id-type=subscriber;screen=yes".
+默认值为 
+			";party=calling;id-type=subscriber;screen=yes"。
 
 
-```c title="rpid_suffix parameter example"
+```c title="rpid_suffix 参数示例"
 modparam("auth", "rpid_suffix", "@1.2.3.4>")
 ```
 
 
-#### realm_prefix (string)
+#### realm_prefix (字符串)
 
 
-Prefix to be automatically strip from realm. As an alternative to
-			SRV records (not all SIP clients support SRV lookup), a subdomain
-			of the master domain can be defined for SIP purposes (like 
-			sip.mydomain.net pointing to same IP address as the SRV
-			record for mydomain.net). By ignoring the realm_prefix 
-			"sip.", at authentication, sip.mydomain.net will be
-			equivalent to mydomain.net .
+自动从 realm 中剥离的前缀。作为
+			SRV 记录的替代方案（并非所有 SIP 客户端都支持 SRV 查询），
+			可以为 SIP 用途定义主域的子域
+			（如 sip.mydomain.net 指向与 mydomain.net 的 SRV 记录相同的 IP 地址）。
+        通过在认证时忽略 realm_prefix
+			"sip."，sip.mydomain.net 将等同于 mydomain.net。
 
 
-Default value is empty string.
+默认值为空字符串。
 
 
-```c title="realm_prefix parameter example"
+```c title="realm_prefix 参数示例"
 modparam("auth", "realm_prefix", "sip.")
 ```
 
 
-#### rpid_avp (string)
+#### rpid_avp (字符串)
 
 
-Full AVP specification for the AVP which 
-			stores the RPID value. It used to transport the RPID value from
-			authentication backend modules (auth_db or auth_radius) or from
-			script to the auth function append_rpid_hf and is_rpid_user_e164.
+用于存储 RPID 值的 AVP 的完整规范。
+        它用于将 RPID 值从认证后端模块（auth_db 或 auth_radius）
+        或从脚本传递到 auth 函数 append_rpid_hf 和 is_rpid_user_e164。
 
 
-If defined to NULL string, all RPID functions will fail at 
-			runtime.
+如果设置为 NULL 字符串，所有 RPID 函数将在
+			运行时失败。
 
 
-Default value is "$avp(rpid)".
+默认值为 "$avp(rpid)"。
 
 
-```c title="rpid_avp parameter example"
+```c title="rpid_avp 参数示例"
 modparam("auth", "rpid_avp", "$avp(caller_rpid)")
-		
+			
 ```
 
 
-#### username_spec (string)
+#### username_spec (字符串)
 
 
-This name of the pseudo-variable that will hold the username.
+用于保存用户名的伪变量名称。
 
 
-Default value is "NULL".
+默认值为 "NULL"。
 
 
-```c title="username_spec parameter usage"
+```c title="username_spec 参数使用"
 modparam("auth", "username_spec", "$var(username)")
 ```
 
 
-#### password_spec (string)
+#### password_spec (字符串)
 
 
-This name of the pseudo-variable that will hold the password.
+用于保存密码的伪变量名称。
 
 
-Default value is "NULL".
+默认值为 "NULL"。
 
 
-```c title="password_spec parameter usage"
+```c title="password_spec 参数使用"
 modparam("auth", "password_spec", "$var(password)")
 ```
 
 
-#### calculate_ha1 (integer)
+#### calculate_ha1 (整数)
 
 
-This parameter tells the server whether it should expect plaintext
-		passwords in the pseudo-variable or a pre-calculated HA1 string.
+此参数告诉服务器是否应期望伪变量中的明文
+		密码或预计算的 HA1 字符串。
 
 
-If the parameter is set to 1 then the server will assume that the
-		"password_spec" pseudo-variable contains plaintext passwords
-		and it will calculate HA1 strings on the fly. If the parameter is set to 0
-		then the server assumes the pseudo-variable contains the HA1 strings directly
-		and will not calculate them.
+如果参数设置为 1，则服务器将假定
+		"password_spec" 伪变量包含明文密码，
+        并将动态计算 HA1 字符串。如果参数设置为 0，
+        则服务器假定伪变量直接包含 HA1 字符串，不会计算它们。
 
 
-Default value of this parameter is 0.
+此参数的默认值为 0。
 
 
-```c title="calculate_ha1 parameter usage"
+```c title="calculate_ha1 参数使用"
 modparam("auth", "calculate_ha1", 1)
 ```
 
 
-#### disable_nonce_check (int)
+#### disable_nonce_check (整数)
 
 
-By setting this parameter you disable the security mechanism 
-		that protects against intrusion sniffing and does not allow
-		nonces to be reused. But, because of the current implementation,
-		having this enabled breaks auth for an architecture where load
-		is balanced by having more servers with the same dns name.
-		This parameter has to be set in this case.
+通过设置此参数，可以禁用保护免受入侵嗅探的安全机制，
+		不允许 nonce 被重用。但是，由于当前实现，
+		启用此功能会破坏使用相同 DNS 名称进行负载均衡的架构的认证。
+        在这种情况下必须设置此参数。
 
 
-Default value is "0" (enabled).
+默认值为 "0"（已启用）。
 
 
-```c title="disable_nonce_check parameter usage"
+```c title="disable_nonce_check 参数使用"
 modparam("auth", "disable_nonce_check", 1)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### www_challenge(realm[, qop[, algorithms]])
 
 
-The function challenges a user agent. It will generate one or
-		more WWW-Authorize header fields containing a digest challenges, it will
-		put the header field(s) into a response generated from the request the
-		server is processing and will send the reply. Upon reception of such a
-		reply the user agent should compute credentials and retry the
-		request. For more information regarding digest authentication 
-		see RFC2617, RFC3261 and RFC8760.
+向用户代理发起挑战。它将生成一个或
+		多个包含摘要挑战的 WWW-Authorize 头域，
+        它将把头域放入从服务器正在处理的请求生成的响应中并发送回复。
+        收到此类回复后，用户代理应计算凭据并重试请求。
+        有关摘要认证的更多信息，请参阅 RFC2617、RFC3261 和 RFC8760。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *realm* (string) - Realm is an opaque string that 
-			the user agent should present to the user so it can decide what 
-			username and password to use. Usually this is domain of the host 
-			the server is running on.
-If an empty string "" is used then the server will 
-			generate it from the request. In case of REGISTER request's To 
-			header field, domain will be used (because this header field 
-			represents a user being registered), for all other messages From 
-			header field domain will be used.
-- *qop* (string, optional) - Value of this
-			parameter can be either "auth", "auth-int"
-			or both (separated by *,*). When this parameter is
-			set the server will put a qop parameter in the challenge. It
-			is recommended to use the qop parameter, however there are still some
-			user agents that cannot handle qop properly so we made this optional.
-			On the other hand there are still some user agents that cannot handle
-			request without a qop parameter too.
-Enabling this parameter does not improve security at the moment,
-			because the sequence number is not stored and therefore could not be
-			checked. Actually there is no information kept by the module during
-			the challenge and response requests.
-- *algorithms* (string, optional) - Value of this
-			parameter is a comma-separated list of digest algorithms to be offered for
-			the UAC to use for authentication. Possible values are:
+- *realm* (字符串) - Realm 是一个不透明字符串，
+			用户代理应向用户展示，以便用户决定使用什么
+			用户名和密码。通常这是服务器运行所在的主机域名。
+如果使用空字符串 ""，则服务器将
+			从请求中生成它。对于 REGISTER 请求的 To
+			头域，将使用该头域中的域名（因为此头域
+			代表正在注册的用户），对于所有其他消息，
+			将使用 From 头域中的域名。
+- *qop* (字符串，可选) - 此参数的值可以是 "auth"、"auth-int"
+			或两者的组合（用 *,* 分隔）。设置此参数后，
+            服务器将在挑战中放入 qop 参数。建议使用 qop 参数，
+            但仍有一些用户代理不能正确处理 qop，所以设为可选。
+            另一方面，仍有一些用户代理不能处理没有 qop 参数的请求。
+启用此参数目前不会提高安全性，
+			因为序列号未被存储，因此无法检查。
+            实际上，模块在挑战和响应请求期间不保留任何信息。
+- *algorithms* (字符串，可选) - 此参数的值是一个逗号分隔的摘要算法列表，
+			可供 UAC 选择用于认证。可能的值有：
 
   - MD5
   - MD5-sess
@@ -315,18 +290,16 @@ Enabling this parameter does not improve security at the moment,
   - SHA-256-sess
   - SHA-512-256
   - SHA-512-256-sess
-When the value is empty or not set, the only offered digest
-			algorithm is *MD5*, to provide compatibility
-			with pre-RFC8760 UAC implementations.
-Values can be listed in any order. The actual order of individual
-			challenges in SIP response is defined by the RFC8760: from stronger
-			algorithm to a weaker one.
+当值为空或未设置时，唯一提供的摘要
+			算法是 *MD5*，以提供与 RFC8760 之前 UAC 实现的兼容性。
+值的顺序可以任意排列。SIP 响应中各个挑战的实际顺序由 RFC8760 定义：
+            从更强的算法到更弱的算法。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="www_challenge usage"
+```c title="www_challenge 使用"
 ...
 if (!www_authorize("siphub.net", "subscriber")) {
 	www_challenge("siphub.net", "auth,auth-int", "MD5,SHA-512-256");
@@ -338,30 +311,28 @@ if (!www_authorize("siphub.net", "subscriber")) {
 #### proxy_challenge(realm[, qop[, algorithms]])
 
 
-The function challenges a user agent. It will generate a 
-		Proxy-Authorize header field containing a digest challenge, it will 
-		put the header field into a response generated from the request the 
-		server is processing and will send the reply. Upon reception of such a 
-		reply the user agent should compute credentials and retry the request.
-		For more information regarding digest authentication see RFC2617,
-		RFC3261 and RFC8760.
+此函数向用户代理发起挑战。它将生成一个包含摘要挑战的
+		Proxy-Authorize 头域，
+        它将把头域放入从服务器正在处理的请求生成的响应中并发送回复。
+        收到此类回复后，用户代理应计算凭据并重试请求。
+        有关摘要认证的更多信息，请参阅 RFC2617、RFC3261 和 RFC8760。
 
 
-See the paragraph on [www challenge params](#www_challenge_params) for
-		    the description of the parameters.
+有关参数的说明，请参阅
+		    [www challenge 参数](#www_challenge_params)。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="proxy_challenge usage"
+```c title="proxy_challenge 使用"
 ...
 $var(secure_algorithms) = "sha-256,sha-512-256";
 ...
 if (!proxy_authorize("", "subscriber")) {
 ...
-	proxy_challenge("", "auth", $var(secure_algorithms));  # Realm will be autogenerated
-							       # MD5 won't be allowed
+	proxy_challenge("", "auth", $var(secure_algorithms));  # Realm 将自动生成
+							       # MD5 将不被允许
 }
 ...
 ```
@@ -370,20 +341,18 @@ if (!proxy_authorize("", "subscriber")) {
 #### consume_credentials()
 
 
-This function removes previously authorized credentials from the 
-		message being processed by the server. That means that the downstream 
-		message will not contain credentials there were used by this server. 
-		This ensures that the proxy will not reveal information about 
-		credentials used to downstream elements and also the message will be 
-		a little bit shorter. The function must be called after 
-		`www_authorize` or 
-		`proxy_authorize`.
+此函数从服务器正在处理的消息中删除先前授权的凭据。
+		这意味着下游消息将不包含这些被此服务器使用的凭据。
+        这确保代理不会向下游元素透露有关
+        凭据的信息，并且消息也会稍微短一些。
+        此函数必须在 `www_authorize` 或
+		`proxy_authorize` 之后调用。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="consume_credentials example"
+```c title="consume_credentials 示例"
 ...
 if (www_authorize("", "subscriber")) {
     consume_credentials();
@@ -395,20 +364,20 @@ if (www_authorize("", "subscriber")) {
 #### is_rpid_user_e164()
 
 
-The function checks if the SIP URI received from the database or 
-		radius server and will potentially be used in Remote-Party-ID header 
-		field contains an E164 number (+followed by up to 15 decimal digits) 
-		in its user part.  Check fails, if no such SIP URI exists 
-		(i.e. radius server or database didn't provide this information).
+此函数检查从数据库或 radius 服务器收到的 SIP URI
+		（将用于 Remote-Party-ID 头域）的用户部分是否包含 E164 号码
+        （+ 后跟最多 15 位十进制数字）。
+        如果不存在这样的 SIP URI（即 radius 服务器或数据库未提供此信息），
+        检查失败。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="is_rpid_user_e164 usage"
+```c title="is_rpid_user_e164 使用"
 ...
 if (is_rpid_user_e164()) {
-    # do something here
+    # 在此进行相应处理
 }
 ...
 ```
@@ -417,20 +386,19 @@ if (is_rpid_user_e164()) {
 #### append_rpid_hf()
 
 
-Appends to the message a Remote-Party-ID header that contains header
-		'Remote-Party-ID: ' followed by the saved value of the SIP URI 
-		received from the database or radius server followed by the value of 
-		module parameter radius_rpid_suffix.  The function does nothing if 
-		no saved SIP URI exists.
+向消息追加一个 Remote-Party-ID 头域，
+		该头域包含 'Remote-Party-ID: '，后跟从数据库或 radius 服务器收到的 SIP URI 的保存值，
+        再后跟模块参数 radius_rpid_suffix 的值。
+        如果不存在保存的 SIP URI，此函数不执行任何操作。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、
+		BRANCH_ROUTE。
 
 
-```c title="append_rpid_hf usage"
+```c title="append_rpid_hf 使用"
 ...
-append_rpid_hf();  # Append Remote-Party-ID header field
+append_rpid_hf();  # 追加 Remote-Party-ID 头域
 ...
 ```
 
@@ -438,33 +406,31 @@ append_rpid_hf();  # Append Remote-Party-ID header field
 #### append_rpid_hf(prefix, suffix)
 
 
-This function is the same as 
-		[append rpid hf no params](#func_append_rpid_hf). The only difference is
-		that it accepts two parameters--prefix and suffix to be added to 
-		Remote-Party-ID header field. This function ignores rpid_prefix and 
-		rpid_suffix parameters, instead of that allows to set them in every 
-		call.
+此函数与
+		[append rpid hf no params](#func_append_rpid_hf) 相同。
+        唯一的区别是它接受两个参数——前缀和后缀，
+        将被添加到 Remote-Party-ID 头域。
+        此函数忽略 rpid_prefix 和 rpid_suffix 参数，
+        相反，允许在每次调用时设置它们。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *prefix* (string) - Prefix of the 
-			Remote-Party-ID URI. The string will be added at the beginning of 
-			body of the header field, just before the URI.
-- *suffix* (string) - Suffix of the Remote-Party-ID 
-			header field. The string will be appended at the end of the 
-			header field. It can be used to set various URI parameters, 
-			for example.
+- *prefix* (字符串) - Remote-Party-ID URI 的前缀。
+			该字符串将被添加到头域主体的开头，正好在 URI 之前。
+- *suffix* (字符串) - Remote-Party-ID 头域的后缀。
+			该字符串将被追加到头域的末尾。
+            例如，它可以用于设置各种 URI 参数。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、
+		BRANCH_ROUTE。
 
 
-```c title="append_rpid_hf(prefix, suffix) usage"
+```c title="append_rpid_hf(prefix, suffix) 使用"
 ...
-# Append Remote-Party-ID header field
+# 追加 Remote-Party-ID 头域
 append_rpid_hf("", ";party=calling;id-type=subscriber;screen=yes");
 ...
 ```
@@ -473,48 +439,40 @@ append_rpid_hf("", ";party=calling;id-type=subscriber;screen=yes");
 #### pv_www_authorize(realm)
 
 
-The function verifies credentials according to 
-		[RFC2617](http://www.ietf.org/rfc/rfc2617.txt). If the 
-		credentials are verified successfully then the function will succeed 
-		and mark the credentials as authorized (marked credentials can be later 
-		used by some other functions). If the function was unable to verify the 
-		credentials for some reason then it will fail and the script should 
-		call `www_challenge` which will 
-		challenge the user again.
+此函数根据
+		[RFC2617](http://www.ietf.org/rfc/rfc2617.txt) 验证凭据。
+        如果凭据验证成功，则函数将成功并
+        将凭据标记为已授权（标记的凭据可供其他函数稍后使用）。
+        如果函数由于某种原因无法验证凭据，则它将失败，
+        脚本应调用 `www_challenge` 再次向用户发起挑战。
 
 
-Negative codes may be interpreted as follows:
+负返回码的解释如下：
 
 
-- *-5 (generic error)* - some generic error
-			occurred and no reply was sent out;
-- *-4 (no credentials)* - credentials were not
-			found in request;
-- *-3 (stale nonce)* - stale nonce;
-- *-2 (invalid password)* - valid user, but 
-			wrong password;
-- *-1 (invalid user)* - authentication user does
-			not exist.
+- *-5（通用错误）* - 发生某些通用错误，未发送回复；
+- *-4（无凭据）* - 在请求中未找到凭据；
+- *-3（过期 nonce）* - nonce 已过期；
+- *-2（密码无效）* - 用户有效，但密码错误；
+- *-1（用户无效）* - 认证用户不存在。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *realm* (string) - Realm is an opaque string that 
-			the user agent should present to the user so he can decide what 
-			username and password to use. Usually this is domain of the host 
-			the server is running on.
-If an empty string "" is used then the server will 
-			generate it from the request. In case of REGISTER requests To 
-			header field domain will be used (because this header field 
-			represents a user being registered), for all other messages From 
-			header field domain will be used.
+- *realm* (字符串) - Realm 是一个不透明字符串，
+			用户代理应向用户展示，以便用户决定使用什么
+			用户名和密码。通常这是服务器运行所在的主机域名。
+如果使用空字符串 ""，则服务器将从请求中生成它。
+            对于 REGISTER 请求的 To 头域，将使用该头域中的域名
+            （因为此头域代表正在注册的用户），
+            对于所有其他消息，将使用 From 头域中的域名。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="pv_www_authorize usage"
+```c title="pv_www_authorize 使用"
 ...
 $var(username)="abc";
 $var(password)="xyz";
@@ -528,44 +486,39 @@ if (!pv_www_authorize("opensips.org")) {
 #### pv_proxy_authorize(realm)
 
 
-The function verifies credentials according to 
-		[RFC2617](http://www.ietf.org/rfc/rfc2617.txt). If 
-		the credentials are verified successfully then the function will 
-		succeed and mark the credentials as authorized (marked credentials can 
-		be later used by some other functions). If the function was unable to 
-		verify the credentials for some reason then it will fail and
-		the script should call 
-		`proxy_challenge` which will
-		challenge the user again. For more about the negative return codes,
-		see the above function.
+此函数根据
+		[RFC2617](http://www.ietf.org/rfc/rfc2617.txt) 验证凭据。
+        如果凭据验证成功，则函数将成功并将凭据标记为已授权
+        （标记的凭据可供其他函数稍后使用）。
+        如果函数由于某种原因无法验证凭据，则它将失败，
+        脚本应调用 `proxy_challenge` 再次向用户发起挑战。
+        有关负返回码的更多信息，请参阅上面的函数。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *realm* (string) - Realm is an opaque string that 
-			the user agent should present to the user so he can decide what 
-			username and password to use. Usually this is domain of the host 
-			the server is running on.
-If an empty string "" is used then the server will 
-			generate it from the request. From header field domain will be 
-			used as realm.
+- *realm* (字符串) - Realm 是一个不透明字符串，
+			用户代理应向用户展示，以便用户决定使用什么
+			用户名和密码。通常这是服务器运行所在的主机域名。
+如果使用空字符串 ""，则服务器将从请求中生成它。
+            From 头域的域名将被用作 realm。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="pv_proxy_authorize usage"
+```c title="pv_proxy_authorize 使用"
 ...
 $var(username)="abc";
 $var(password)="xyz";
 if (!pv_proxy_authorize("")) {
-	proxy_challenge("", "auth");  # Realm will be autogenerated
+	proxy_challenge("", "auth");  # Realm 将自动生成
 }
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

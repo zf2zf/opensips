@@ -1,48 +1,44 @@
 ---
-title: "event_sqs Module"
-description: "The event_sqs module is an implementation of an Amazon SQS producer. It serves as a transport backend for the Event Interface and also provides a stand-alone connector to be used from the OpenSIPS script in order to publish messages to SQS queues. [https://aws.amazon.com/sqs/](https://aws.a..."
+title: "event_sqs 模块"
+description: "event_sqs 模块是 Amazon SQS 生产者的实现。它作为 Event Interface 的传输后端，同时也提供了一个独立连接器，可从 OpenSIPS 脚本中使用以向 SQS 队列发布消息。[https://aws.amazon.com/sqs/](https://aws.a..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The event_sqs module is an implementation of an Amazon SQS producer.
-		It serves as a transport backend for the Event Interface and also provides a stand-alone
-		connector to be used from the OpenSIPS script in order to publish messages to SQS queues.
+event_sqs 模块是 Amazon SQS 生产者的实现。它作为 Event Interface 的传输后端，同时也提供了一个独立连接器，可从 OpenSIPS 脚本中使用以向 SQS 队列发布消息。
 		[https://aws.amazon.com/sqs/](https://aws.amazon.com/sqs/)
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-There is no need to load any module before this module.
+此模块之前不需要加载任何模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
 - *AWS SDK for C++:*
-By following these steps, you'll have the AWS SDK for C++ installed and 
-				configured on your Linux system, allowing you to integrate with SQS:
-				[AWS SDK for C++ Installation Guide](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup-linux.html)
-Additional instructions for installation can be found at:
-				[AWS SDK for C++ GitHub Repository](https://github.com/aws/aws-sdk-cpp)
+按照以下步骤，您将在 Linux 系统上安装和配置 AWS SDK for C++，从而与 SQS 集成：
+				[AWS SDK for C++ 安装指南](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup-linux.html)
+其他安装说明可以在以下位置找到：
+				[AWS SDK for C++ GitHub 仓库](https://github.com/aws/aws-sdk-cpp)
 
 
-#### Deploying Amazon SQS locally on your computer
+#### 在本地计算机上部署 Amazon SQS
 
 
-For testing purposes, you can run SQS locally. To achieve this, you start localstack on your computer:
+出于测试目的，您可以在计算机上本地运行 SQS。为此，请在计算机上启动 localstack：
 
 
 ```c
@@ -52,7 +48,7 @@ localstack start
 ```
 
 
-Don't forget to set the necessary environment variables for testing, for example:
+别忘了设置测试所需的环境变量，例如：
 
 
 ```c
@@ -63,36 +59,33 @@ export AWS_DEFAULT_REGION=us-east-1
 ```
 
 
-Here you can find some cli commands such as create-queue, send/receive-message, etc.:
+您可以在此处找到一些 cli 命令，例如 create-queue、send/receive-message 等：
 		[https://docs.aws.amazon.com/cli/latest/reference/sqs/](https://docs.aws.amazon.com/cli/latest/reference/sqs/)
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### queue_url (string)
 
 
-This parameter specifies the configuration for an SQS queue that can be used
-			to publish messages directly from the script, using the sqs_publish_message() function
-			or to send messages using raise_event function.
+此参数指定可用于直接从脚本发布消息的 SQS 队列配置，使用 sqs_publish_message() 函数或使用 raise_event 函数发送消息。
 
 
-The format of the parameter is: [ID]sqs_url, where ID is an identifier
-		for this SQS queue instance and sqs_url is the full url of the queue.
+参数格式为：[ID]sqs_url，其中 ID 是此 SQS 队列实例的标识符，sqs_url 是队列的完整 URL。
 
 
-The queue_url contains:
+queue_url 包含：
 
 
 - *endpoint*
 - *region*
 
 
-This parameter can be set multiple times.
+此参数可以设置多次。
 
 
-```c title="Set queue_url parameter"
+```c title="设置 queue_url 参数"
 ...
 
 modparam("event_sqs", "queue_url",
@@ -106,31 +99,29 @@ modparam("event_sqs", "queue_url",
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### sqs_publish_message(queue_id, message)
 
 
-Publishes a message to an SQS queue. As the actual 
-		send operation is done asynchronously, this function does not block and returns 
-		immediately after queuing the message for sending.
+向 SQS 队列发布消息。由于实际发送操作是异步完成的，此函数不会阻塞，并在排队发送消息后立即返回。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-The function has the following parameters:
+函数具有以下参数：
 
 
-- *queue_id (string)* The ID of the SQS queue. Must be one of the IDs defined through the `queue_url` modparam.
-- *message (string)* - The payload of the message to publish.
+- *queue_id (string)* SQS 队列的 ID。必须是通过 `queue_url` modparam 定义的 ID 之一。
+- *message (string)* - 要发布的消息的有效负载。
 
 
-```c title="sqs_publish_message() function usage"
+```c title="sqs_publish_message() 函数使用示例"
 ...
 
-$var(msg) = "Hello, this is a message to SQS!";
+$var(msg) = "你好，这是一条发往 SQS 的消息！";
 sqs_publish_message("q1", $var(msg));
 
 ...
@@ -138,36 +129,36 @@ sqs_publish_message("q1", $var(msg));
 ```
 
 
-### Examples
+### 示例
 
 
-#### Event-Driven Messaging with *Event Interface*
+#### 使用 *Event Interface* 的事件驱动消息传递
 
 
-OpenSIPS' event interface can be utilized to send messages to SQS by subscribing to an event and raising it when needed.
+OpenSIPS 的事件接口可用于通过订阅事件并在需要时引发它来向 SQS 发送消息。
 
 
-Steps:
+步骤：
 
 
-- *Event Subscription:*
-First, register the event subscription in your OpenSIPS configuration file within the `startup_route`:
+- *事件订阅：*
+首先在 OpenSIPS 配置文件的 `startup_route` 中注册事件订阅：
 
   ```
   subscribe_event("MY_EVENT",
   	"sqs:http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/Queue2");
   		
   ```
-- *Event Subscription via CLI:*
-After starting OpenSIPS, you can subscribe to the event from another terminal using the OpenSIPS CLI:
+- *通过 CLI 订阅事件：*
+启动 OpenSIPS 后，您可以使用 OpenSIPS CLI 从另一个终端订阅事件：
 
   ```
   opensips-cli -x mi event_subscribe MY_EVENT \
   	  sqs:http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/Queue2
   		
   ```
-- *Raise the Event and Send Message:*
-Finally, to send a message, raise the subscribed event with the desired message content:
+- *引发事件并发送消息：*
+最后，要发送消息，请使用所需的消息内容引发订阅的事件：
 
   ```
   opensips-cli -x mi raise_event MY_EVENT 'OpenSIPS Message'
@@ -175,6 +166,6 @@ Finally, to send a message, raise the subscribed event with the desired message 
   ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证

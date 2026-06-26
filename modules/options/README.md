@@ -1,68 +1,61 @@
 ---
-title: "Options Module"
-description: "This module provides a function to answer OPTIONS requests which are directed to the server itself. This means an OPTIONS request which has the address of the server in the request URI, and no username in the URI. The request will be answered with a 200 OK which the capabilities of th..."
+title: "Options 模块"
+description: "本模块提供一个函数来应答直接发送给服务器本身的 OPTIONS 请求。这意味着 OPTIONS 请求的请求 URI 中包含服务器地址,且 URI 中没有用户名。请求将以 200 OK 应答,其中包含服务器的功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides a function to answer OPTIONS requests which 
-		are directed to the server itself. This means an OPTIONS request 
-		which has the address of the server in the request URI, and no 
-		username in the URI. The request will be answered with a 200 OK 
-		which the capabilities of the server.
+本模块提供一个函数来应答直接发送给服务器本身的 OPTIONS 请求。
+这意味着 OPTIONS 请求的请求 URI 中包含服务器地址,
+且 URI 中没有用户名。
+请求将以 200 OK 应答,其中包含服务器的功能。
 
 
-To answer OPTIONS request directed to your server is the easiest
-		way for is-alive-tests on the SIP (application) layer from remote 
-		(similar to	ICMP echo requests, also known as "ping", 
-		on the network layer).
+应答直接发送到您服务器的 OPTIONS 请求是进行 SIP(应用层)远程存活性测试的最简单方法
+(类似于网络层的 ICMP echo 请求,也称为 "ping")。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
-- *sl* -- Stateless replies.
-- *signaling* -- Stateless replies.
+- *sl* -- 无状态回复。
+- *signaling* -- 无状态回复。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前必须安装以下库或应用程序:
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### accept (string)
 
 
-This parameter is the content of the Accept header field. If
-			"", the header is not added in the reply.
-			Note: it is not clearly written in RFC3261 if a proxy should
-			accept any content (the default "*/*") because 
-			it does not care about content. Or if it does not accept 
-			any content, which is "".
+这是 Accept 头字段的内容。如果为 "",则不会在回复中添加该头。
+注意:在 RFC3261 中没有明确说明代理是否应该接受任何内容(默认 "*/*"),
+因为它不在乎内容。或者它不接受任何内容,即为 ""。
 
 
-*Default value is "*/*".*
+*默认值为 "*/*"。*
 
 
-```c title="Set accept parameter"
+```c title="设置 accept 参数"
 ...
 modparam("options", "accept", "application/*")
 ...
@@ -72,16 +65,14 @@ modparam("options", "accept", "application/*")
 #### accept_encoding (string)
 
 
-This parameter is the content of the Accept-Encoding header field.
-			If "", the header is not added in the reply.
-			Please do not change the default value because OpenSIPS 
-			does not support any encodings yet.
+这是 Accept-Encoding 头字段的内容。如果为 "",则不会在回复中添加该头。
+请勿更改默认值,因为 OpenSIPS 目前尚不支持任何编码。
 
 
-*Default value is "".*
+*默认值为 ""。*
 
 
-```c title="Set accept_encoding parameter"
+```c title="设置 accept_encoding 参数"
 ...
 modparam("options", "accept_encoding", "gzip")
 ...
@@ -91,18 +82,14 @@ modparam("options", "accept_encoding", "gzip")
 #### accept_language (string)
 
 
-This parameter is the content of the Accept-Language header field.
-			If "", the header is not added in the reply.
-			You can set any language code which you prefer for error 
-			descriptions from other devices, but presumably there are not
-			much devices around which support other languages then the 
-			default English.
+这是 Accept-Language 头字段的内容。如果为 "",则不会在回复中添加该头。
+您可以设置用于其他设备错误描述的语言代码,但大概没有多少设备支持英语以外的其他语言。
 
 
-*Default value is "en".*
+*默认值为 "en"。*
 
 
-```c title="Set accept_language parameter"
+```c title="设置 accept_language 参数"
 ...
 modparam("options", "accept_language", "de")
 ...
@@ -112,52 +99,47 @@ modparam("options", "accept_language", "de")
 #### support (string)
 
 
-This parameter is the content of the Support header field.
-			If "", the header is not added in the reply.
-			Please do not change the default value, because OpenSIPS currently 
-			does not support any of the SIP extensions registered at the IANA.
+这是 Support 头字段的内容。如果为 "",则不会在回复中添加该头。
+请勿更改默认值,因为 OpenSIPS 目前不支持 IANA 注册的任何 SIP 扩展。
 
 
-*Default value is "".*
+*默认值为 ""。*
 
 
-```c title="Set support parameter"
+```c title="设置 support 参数"
 ...
 modparam("options", "support", "100rel")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### options_reply()
 
 
-This function checks if the request method is OPTIONS and
-			if the request URI does not contain an username. If both
-			is true the request will be answered stateless with 
-			"200 OK" and the capabilities from the modules
-			parameters.
+此函数检查请求方法是否为 OPTIONS 且
+请求 URI 是否不包含用户名。
+如果两者都为真,则将以无状态方式用 "200 OK" 和
+模块参数中的功能来应答请求。
 
 
-It sends "500 Server Internal Error" for some errors
-			and returns false if it is called for a wrong request.
+对于某些错误,它发送 "500 Server Internal Error",
+如果为错误请求调用则返回 false。
 
 
-The check for the request method and the missing username is
-			optional because it is also done by the function itself. But
-			you should not call this function outside the myself check
-			because in this case the function could answer OPTIONS requests
-			which are sent to you as outbound proxy but with an other
-			destination then your proxy (this check is currently missing
-			in the function).
+请求方法和缺失用户名的检查是可选的,
+因为函数本身也会执行此检查。
+但您不应在此函数之外调用 myself 检查,
+因为在这种情况下,函数可能应答发送给您的出站代理,
+但目的地与您的代理不同(此检查目前在函数中缺失)。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="options_reply usage"
+```c title="options_reply 用法"
 ...
 if (is_myself("$rd")) {
 	if (is_method("OPTIONS") && (! $ru=~"sip:.*[@]+.*")) {
@@ -168,6 +150,6 @@ if (is_myself("$rd")) {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享许可证 4.0 版授权

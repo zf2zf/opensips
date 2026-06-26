@@ -1,140 +1,130 @@
 ---
-title: "PUA Bridged Line Appearances"
-description: "The pua_bla module enables Bridged Line Appearances support according to the specifications in draft-anil-sipping-bla-03.txt."
+title: "PUA 桥接线外观"
+description: "pua_bla 模块根据 draft-anil-sipping-bla-03.txt 规范提供桥接线外观（Bridged Line Appearances）支持。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The pua_bla module enables Bridged Line Appearances support according to 
-		 the specifications in draft-anil-sipping-bla-03.txt.
+pua_bla 模块根据 draft-anil-sipping-bla-03.txt 规范提供桥接线外观（Bridged Line Appearances）支持。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *usrloc*.
-- *pua*.
-- *presence*.
+- *usrloc*。
+- *pua*。
+- *presence*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *libxml*.
+- *libxml*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### default_domain(str)
+#### default_domain (str)
 
 
-The default domain for the registered users to be used when
-		constructing the uri for the registrar callback.
+注册用户的默认域名，用于构造注册回调的 URI。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set default_domain parameter"
+```c title="设置 default_domain 参数"
 ...
 modparam("pua_bla", "default_domain", "opensips.org")
 ...
 ```
 
 
-#### header_name(str)
+#### header_name (str)
 
 
-The name of the header to be added to Publish requests.
-		It will contain the uri of the user agent that sent the
-		Notify that is transformed into Publish. It stops sending 
-		a Notification with the same information to the sender.
+要添加到 PUBLISH 请求的 header 名称。它包含发送 Notify 的用户代理的 URI，该 Notify 被转换为 Publish。它停止向发送者发送包含相同信息的通知。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set header_name parameter"
+```c title="设置 header_name 参数"
 ...
 modparam("pua_bla", "header_name", "Sender")
 ...
 ```
 
 
-#### outbound_proxy(str)
+#### outbound_proxy (str)
 
 
-The outbound_proxy uri to be used when sending Subscribe requests.
+发送 SUBSCRIBE 请求时使用的 outbound_proxy URI。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set outbound_proxy parameter"
+```c title="设置 outbound_proxy 参数"
 ...
 modparam("pua_bla", "outbound_proxy", "sip:proxy@opensips.org")
 ...
 ```
 
 
-#### server_address(str)
+#### server_address (str)
 
 
-The IP address of the server.
+服务器的 IP 地址。
 
 
-```c title="Set server_address parameter"
+```c title="设置 server_address 参数"
 ...
 modparam("pua_bla", "server_address", "sip:bla@160.34.23.12")
 ...
 ```
 
 
-#### presence_server(str)
+#### presence_server (str)
 
 
-The address of the presence server - will be used as
-			an outbound proxy when sending PUBLISH requests. 
-			It is optional.
+Presence 服务器的地址——发送 PUBLISH 请求时将用作 outbound proxy。可选。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set presence_server parameter"
+```c title="设置 presence_server 参数"
 ...
 modparam("pua_bla", "presence_server", "sip:pa@opensips.org")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### bla_set_flag()
 
 
-The function is used to mark REGISTER requests made to a BLA AOR.
-				The modules subscribes to the registered contacts for dialog;sla 
-				event.
+此函数用于标记发送到 BLA AOR 的 REGISTER 请求。模块订阅已注册的联系人的 dialog;sla 事件。
 
 
-```c title="bla_set_flag usage"
+```c title="bla_set_flag 使用示例"
 ...
 if(is_method("REGISTER") && $tu=~"bla_aor@opensips.org") 
 	bla_set_flag();		
@@ -145,13 +135,10 @@ if(is_method("REGISTER") && $tu=~"bla_aor@opensips.org")
 #### bla_handle_notify()
 
 
-The function handles Notify requests sent from phones on the
-				same BLA to the server. The message is transformed in Publish 
-				request and passed to presence module for further handling.
-				in case of a successful processing a 2xx reply should be sent.
+此函数处理从同一 BLA 上的电话发送到服务器的 NOTIFY 请求。消息被转换为 PUBLISH 请求并传递给 presence 模块进行进一步处理。成功处理后应发送 2xx 回复。
 
 
-```c title="bla_handle_notify usage"
+```c title="bla_handle_notify 使用示例"
 ...
 if(is_method("NOTIFY") && $tu=~"bla_aor@opensips.org") 
 {
@@ -162,6 +149,6 @@ if(is_method("NOTIFY") && $tu=~"bla_aor@opensips.org")
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0（Creative Common License 4.0）授权。

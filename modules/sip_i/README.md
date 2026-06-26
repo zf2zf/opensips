@@ -1,58 +1,57 @@
 ---
-title: "SIP-I Module"
-description: "This module offers the possibility of processing ISDN User Part(ISUP) messages encapsulated in SIP. The available operations are: reading and modifying parameters from an ISUP message, removing or adding new optional parameters, adding an ISUP part to a SIP message body. This is done explicitly v..."
+title: "SIP-I 模块"
+description: "该模块提供处理封装在 SIP 中的 ISDN 用户部分(ISUP)消息的功能。可用的操作包括：从 ISUP 消息中读取和修改参数、删除或添加新的可选参数、向 SIP 消息体添加 ISUP 部分。这些操作通过脚本伪变量和函数显式执行。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module offers the possibility of processing ISDN User Part(ISUP) messages encapsulated in SIP. The available operations are: reading and modifying parameters from an ISUP message, removing or adding new optional parameters, adding an ISUP part to a SIP message body. This is done explicitly via script pseudovariables and functions.
+该模块提供处理封装在 SIP 中的 ISDN 用户部分(ISUP)消息的功能。可用的操作包括：从 ISUP 消息中读取和修改参数、删除或添加新的可选参数、向 SIP 消息体添加 ISUP 部分。这些操作通过脚本伪变量和函数显式执行。
 
 
-The supported ISUP message types are only the ones that can be included in a SIP message according to the SIP-I(SIP with encapsulated ISUP) protocol defined by ITU-T.
+支持的 ISUP 消息类型仅限于根据 ITU-T 定义的 SIP-I(SIP with encapsulated ISUP)协议可以包含在 SIP 消息中的那些类型。
 
 
-The format and specification of the ISUP messages and parameters follow the recomandations from ITU-T Rec. Q.763.
+ISUP 消息和参数的格式和规范遵循 ITU-T 建议 Q.763。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *None*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载此模块之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### param_subfield_separator (str)
 
 
-The character to be used as separator in the subname of the *$isup_param* and *$isup_param_str* pseudovariables between the ISUP parameter name and subfield name.
+用作 *$isup_param* 和 *$isup_param_str* 伪变量的子名称中 ISUP 参数名和子字段名之间的分隔符的字符。
 
 
-*Default value is "|".*
+*默认值为 "|"。*
 
 
-```c title="Set param_subfield_separator parameter"
+```c title="设置 param_subfield_separator 参数"
 ...
 modparam("sip_i", "param_subfield_separator", ":")
 ...
@@ -62,13 +61,13 @@ modparam("sip_i", "param_subfield_separator", ":")
 #### isup_mime_str (str)
 
 
-The string to be used for the Content-Type header field of the ISUP MIME body when creating a new ISUP part.
+创建新 ISUP 部分时用于 Content-Type 头字段的 ISUP MIME 体字符串。
 
 
-*Default value is "application/ISUP;version=itu-t92+".*
+*默认值为 "application/ISUP;version=itu-t92+"。*
 
 
-```c title="Set isup_mime_str parameter"
+```c title="设置 isup_mime_str 参数"
 ...
 modparam("sip_i", "isup_mime_str", "application/ISUP;base=itu-t92+;version=itu-t")
 ...
@@ -78,15 +77,13 @@ modparam("sip_i", "isup_mime_str", "application/ISUP;base=itu-t92+;version=itu-t
 #### default_part_headers (str)
 
 
-The default set of headers (fully defined, including the header
-		termination) to be pushed into the ISUP part together 
-		with the *Content-Type* header.
+与 *Content-Type* 头一起推送到 ISUP 部分的默认头部集（完全定义，包括头部终止）。
 
 
-*Default value is "Content-Disposition:signal;handling=optional\r\n".*
+*默认值为 "Content-Disposition:signal;handling=optional\r\n"。*
 
 
-```c title="Set default_part_headers parameter"
+```c title="设置 default_part_headers 参数"
 ...
 modparam("sip_i", "default_part_headers", "Content-Disposition:signal;handling=required\r\n")
 ...
@@ -96,44 +93,45 @@ modparam("sip_i", "default_part_headers", "Content-Disposition:signal;handling=r
 #### country_code (str)
 
 
-Country Code that the first part of the number from
-			P-Asserted-Identity is tested against when trying to map the
-			Calling Party Number ISUP parameter from SIP by default. If there
-			is a match, the value assigned to the Nature of Address Indicator
-			subfield is *3*(national), otherwise it is
-			*4*(international).
+当尝试从 SIP 默认映射 Calling Party Number ISUP 参数时，
+P-Asserted-Identity 号码第一部分所针对的国家代码。如果有匹配，
+地址性质指示符子字段的赋值为 *3*(国内)，否则为 *4*(国际)。
 
 
-*Default value is "+1".*
+*默认值为 "+1"。*
 
 
-```c title="Set country_code parameter"
+```c title="设置 country_code 参数"
 ...
 modparam("sip_i", "country_code", "+4")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### add_isup_part([isup_msg_type][,extra_headers])
 
 
-Adds a new ISUP part to the SIP message body.
+向 SIP 消息体添加新的 ISUP 部分。
 
 
-With the exception of some ISUP message types(IAM, REL, ACM, CPG, ANM, CON), the newly added part contains a blank ISUP message(i.e. all mandatory parameters zeroed and no optional ones) and all the required parameters should be set through $isup_param. For the previously mentioned message types, the mandatory parameters and some optional ones are automaticaly set to default values according to basic SIP-ISUP interworking rules from ITU-T Rec. Q.1912.5. This only provides a general and simplified mapping from SIP headers and message type (request method, reply code etc.) to ISUP parameters and you should not base your SIP-ISUP interworking only on this.
+除了某些 ISUP 消息类型(IAM、REL、ACM、CPG、ANM、CON)，新添加的部分包含一个空的 ISUP 消息（即所有必需参数置零且没有可选参数），所有必需参数应通过 $isup_param 设置。对于前面提到的消息类型，必需参数和一些可选参数会根据 ITU-T 建议 Q.1912.5 的基本 SIP-ISUP 互通规则自动设置为默认值。这仅提供了从 SIP 头部和消息类型（请求方法、回复代码等）到 ISUP 参数的通用简化映射，
+您不应仅基于此来构建您的 SIP-ISUP 互通。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *isup_msg_type (string, optional)* - name of the ISUP message to be added, exactly as it appears in ITU-T Rec. Q.763 or an abbreviation(eg. *IAM* for "Initial address").
-- *extra_headers (string, string, optional)* - a chunk of fully defined SIP headers (including header terminatior) to be inserted into the ISUP part next to the *Content-Type* header. It overrides the global module parameter *default_part_headers*. If not specified, the *default_part_headers* value will be used.
+- *isup_msg_type (string, 可选)* - 要添加的 ISUP 消息名称，
+		完全按照 ITU-T 建议 Q.763 中的显示，或使用缩写（例如：*IAM* 表示 "Initial address"）。
+- *extra_headers (string, string, 可选)* - 要插入到 ISUP 部分中的一组完全定义的 SIP 头部
+		（包括头部终止符），位于 *Content-Type* 头部旁边。
+		它会覆盖全局模块参数 *default_part_headers*。如果未指定，将使用 *default_part_headers* 值。
 
 
-If *isup_msg_type* is not explicitly provided, it is automatically deduced from the SIP message as follows:
+如果未明确提供 *isup_msg_type*，则会自动从 SIP 消息中推导，如下所示：
 
 
 - INVITE - IAM
@@ -144,7 +142,7 @@ If *isup_msg_type* is not explicitly provided, it is automatically deduced from 
 - 200 OK BYE - RLC
 
 
-The abbreviations that can be given as *isup_msg_type* for each ISUP message type are the following:
+可以作为 *isup_msg_type* 给出的每个 ISUP 消息类型的缩写如下：
 
 
 - Initial address - *IAM*
@@ -172,200 +170,213 @@ The abbreviations that can be given as *isup_msg_type* for each ISUP message typ
 - Pre-release information - *PRI*
 
 
-This function can be used from REQUEST_ROUTE,FAILURE_ROUTE,ONREPLY_ROUTE,LOCAL_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、LOCAL_ROUTE。
 
 
-```c title="add_isup_part usage"
+```c title="add_isup_part 用法"
 ...
 if ($rs == "183") {
-	# Encapsulate a CPG
+	# 封装一个 CPG
 	add_isup_part("Call progress");
-	# set desired parameters
+	# 设置所需的参数
 	...
 }
 ...
-	
+
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $(isup_param(param_name{sep}subfield_name)[byte_index])
 
 
-The ISUP parameter named *param_name* of a received or newly added ISUP message can be accessed through this read-write variable. For optional parameters, writing to a *param_name* that does not exist in this ISUP message will insert it. Assigning null to this variable will remove the optional parameter from the message or zeroize the parameter in case of a mandatory one.
+可以通过此读写变量访问收到的或新添加的 ISUP 消息中名为 *param_name* 的 ISUP 参数。
+对于可选参数，向此 ISUP 消息中不存在的 *param_name* 写入将插入它。
+为此变量分配 null 将从消息中删除可选参数，或者在必需参数的情况下将其置零。
 
 
-The format of the subname for `$isup_param` is the following:
+$isup_param 的子名称格式如下：
 
 
-- *param_name* - name of the ISUP parameter as it appears in ITU-T Rec. Q.763
-- *sep* - separator, whitespaces allowed before/after
-- *subfield_name* - name of the subfield of the ISUP parameter as it appears in ITU-T Rec. Q.763
+- *param_name* - ISUP 参数名称，按照 ITU-T 建议 Q.763 中的显示
+- *sep* - 分隔符，允许前后有空格
+- *subfield_name* - ISUP 参数的子字段名称，按照 ITU-T 建议 Q.763 中的显示
 
 
-The ISUP parameter can be addressed in different ways:
+ISUP 参数可以通过不同方式访问：
 
 
-- entire parameter - by providing as subname for the varaiable only the ISUP parameter name, allowing access to the contents of the entire parameter as: a hex string(similar to a hex "dump") for read/write, a string alias for writing, or an integer value for read/write; when assigning a hex string, the hex value must be preceded by "0x"; when reading, if string aliases are supported for this parameter, an associated integer value will be returned, otherwise a hex string is returned
-- at subfield level - by providing as subname for the varaiable the ISUP parameter name and the subfield name, allowing access to the specific subfield as an integer value or string value(eg. telephone number for parameters such as Called Party Number) for read/write or as a string alias for writing
-- at byte level - by providing as subname for the variable the ISUP parameter name and an index, allowing access to the byte with the specified index as an integer value
+- 整个参数 - 仅提供 ISUP 参数名作为变量子名称，允许访问整个参数内容为：
+	十六进制字符串（类似于十六进制"转储"）用于读写，写入时为字符串别名，或用于读写的整数值；
+	当分配十六进制字符串时，必须在前面加上 "0x"；
+	当读取时，如果此参数支持字符串别名，则返回关联的整数值，否则返回十六进制字符串
+- 子字段级别 - 提供 ISUP 参数名和子字段名作为变量子名称，允许作为整数值或字符串值
+	（例如：电话号码参数如 Called Party Number）进行读写访问，或作为写入时的字符串别名
+- 字节级别 - 提供 ISUP 参数名和索引作为变量子名称，允许作为整数值访问指定索引的字节
 
 
-Addressing at entire parameter level as a hex string and at byte level are supported for all the ISUP parameters defined in the ITU-T Rec. Q.763. Addressing at subfield level is supported only for some ISUP parameters and not all of the subfields of a parameter defined in the ITU Recommandation are supported.
+整个参数级别的十六进制字符串访问和字节级别访问支持 ITU-T 建议 Q.763 中定义的所有 ISUP 参数。
+子字段级别访问仅支持某些 ISUP 参数，且不支持 ITU 建议中定义的参数的所有子字段。
 
 
-String aliases are not available for all parameters or parameter subfields. Also, not all the possible values of a parameter or parameter subfield have a string alias defined.
+并非所有参数或参数子字段都有字符串别名可用。同样，并非参数或参数子字段的所有可能值都定义了字符串别名。
 
 
-For more information on supported subfields and aliases check [subfields aliases](#isup_parameter_subfields_and_string_aliases).
+有关支持的子字段和别名的更多信息，请查看 [子字段别名](#isup_parameter_subfields_and_string_aliases)。
 
 
-```c title="isup_param usage"
+```c title="isup_param 用法"
 ...
 	$isup_param(Called Party Number | Nature of address indicator) = 3;
 	...
-	# use a string alias
+	# 使用字符串别名
 	$isup_param(Called Party Number | Numbering plan indicator) = "ISDN";
 	...
 	$isup_param(Called Party Number | Address signal) = "99991234";
 	$isup_param(Nature of connection indicators) = "0x01"
 	$isup_param(Calling party's category) = 10;
 	...
-	# use a string alias
+	# 使用字符串别名
 	$isup_param(Transmission Medium Requirement) = "speech";
 	...
-	# access at byte level
+	# 字节级别访问
 	$(isup_param(Forward Call Indicators)[0]) = 96;
 	$(isup_param(Forward Call Indicators)[1]) = 1;
 ...
-	
+
 ```
 
 
 #### $isup_param_str(param_name{sep}subfield_name)
 
 
-The ISUP parameter named *param_name* of a received or newly added ISUP message can also be accessed through this read-only variable. This variable is similar in usage with *$isup_param* except it will return the string alias for the value when possible.
+收到的或新添加的 ISUP 消息中名为 *param_name* 的 ISUP 参数也可以通过此只读变量访问。
+此变量的用法与 *$isup_param* 类似，不同之处在于它在可能时返回值的字符串别名。
 
 
-The format of the subname for `$isup_param_str` is the following:
+$isup_param_str 的子名称格式如下：
 
 
-- *param_name* - name of the ISUP parameter as it appears in ITU-T Rec. Q.763
-- *sep* - separator, whitespaces allowed before/after
-- *subfield_name* - name of the subfield of the ISUP parameter as it appears in ITU-T Rec. Q.763
+- *param_name* - ISUP 参数名称，按照 ITU-T 建议 Q.763 中的显示
+- *sep* - 分隔符，允许前后有空格
+- *subfield_name* - ISUP 参数的子字段名称，按照 ITU-T 建议 Q.763 中的显示
 
 
-```c title="isup_param_str usage"
+```c title="isup_param_str 用法"
 ...
-	# may print: "NOA is: national"  
+	# 可能输出: "NOA is: national"  
 	xlog("NOA is: $isup_param_str(Called Party Number|Nature of address indicator)");
-	# may print: "CpN is: 99991234"
+	# 可能输出: "CpN is: 99991234"
 	xlog("CpN is: $isup_param_str(Called Party Number|Address signal)");
-	# may print: "nature of conn: 0x01"
+	# 可能输出: "nature of conn: 0x01"
 	xlog("nature of conn: $isup_param_str(Nature of connection indicators)");
-	# may print: "Cg cat is: ordinary"
+	# 可能输出: "Cg cat is: ordinary"
 	xlog("$isup_param_str(Calling party's category)");
 ...
-	
+
 ```
 
 
 #### $isup_msg_type
 
 
-Read-only variable, returns the ISUP message type as string.
+只读变量，返回 ISUP 消息类型作为字符串。
 
 
-```c title="isup_msg_type usage"
+```c title="isup_msg_type 用法"
 ...
-	# may print: "ISUP msg is: IAM"
+	# 可能输出: "ISUP msg is: IAM"
 	xlog("ISUP msg is: $isup_msg_type");
 ...
-	
+
 ```
 
 
-### Exported script transformations
+### 导出的脚本转换
 
 
-The module also provides a way for accessing the value of ISUP parameters and their subfields from an ISUP message contained in a arbitrary script variable as opposed to directly from the processed SIP (with encapsulated ISUP) message. This is done by aplying a transformation to a script variable containing the ISUP message body. The value of the original variable is not altered and a corresponding integer or string value (representing an ISUP parameter or subfield as the exact value or string alias) is returned.
+该模块还提供了一种从包含在任意脚本变量中的 ISUP 消息访问 ISUP 参数及其子字段值的方法，
+而不是直接从处理的 SIP（封装 ISUP）消息中访问。
+这是通过对包含 ISUP 消息体的脚本变量应用转换来完成的。
+原始变量的值不会改变，返回对应的整数或字符串值（表示 ISUP 参数或子字段作为确切值或字符串别名）。
 
 
 #### {isup.param,param_name,[subfield_name]}
 
 
-The result of this transformation is similar to a read access of the `$isup_param` pseudovariable with the exception that byte level access is not provided.
+此转换的结果类似于对 *$isup_param* 伪变量的读取访问，
+不同之处在于不提供字节级别访问。
 
 
-The parameters for the transformation are:
+转换的参数如下：
 
 
-- *param_name* - name of the ISUP parameter as it appears in ITU-T Rec. Q.763
-- *subfield_name* - optional, name of the subfield of the ISUP parameter as it appears in ITU-T Rec. Q.763
+- *param_name* - ISUP 参数名称，按照 ITU-T 建议 Q.763 中的显示
+- *subfield_name* - 可选，ISUP 参数的子字段名称，按照 ITU-T 建议 Q.763 中的显示
 
 
-```c title="isup.param usage"
+```c title="isup.param 用法"
 ...
-	# for this example, we take the ISUP body from the received SIP-I message
+	# 在此示例中，我们从收到的 SIP-I 消息中获取 ISUP 体
 	$var(isup_body) = $(rb[1]);
 
-	# may print: "NOA is: 3"  
+	# 可能输出: "NOA is: 3"  
 	xlog("NOA is: $(var(isup_body){isup.param, Called Party Number, Nature of address indicator})\n");
 
-	# may print: "CpN is: 99991234"  
+	# 可能输出: "CpN is: 99991234"  
 	xlog("CpN is: $(var(isup_body){isup.param, Called Party Number, Address signal})\n");
 
-	# may print: "Cg cat is: 10"
+	# 可能输出: "Cg cat is: 10"
 	xlog("Cg cat is: $(var(isup_body){isup.param, Calling party's category})\n");
 
-	# may print: "nature of conn: 0x01"
+	# 可能输出: "nature of conn: 0x01"
 	xlog("nature of conn: $(var(isup_body){isup.param, Nature of connection indicators})\n");
 ...
-		
+
 ```
 
 
 #### {isup.param.str,param_name,[subfield_name]}
 
 
-The result of this transformation is similar to a read access of the `$isup_param_str` pseudovariable with the exception that byte level access is not provided.
+此转换的结果类似于对 *$isup_param_str* 伪变量的读取访问，
+不同之处在于不提供字节级别访问。
 
 
-The parameters for the transformation are:
+转换的参数如下：
 
 
-- *param_name* - name of the ISUP parameter as it appears in ITU-T Rec. Q.763
-- *subfield_name* - optional, name of the subfield of the ISUP parameter as it appears in ITU-T Rec. Q.763
+- *param_name* - ISUP 参数名称，按照 ITU-T 建议 Q.763 中的显示
+- *subfield_name* - 可选，ISUP 参数的子字段名称，按照 ITU-T 建议 Q.763 中的显示
 
 
-```c title="isup.param.str usage"
+```c title="isup.param.str 用法"
 ...
-	# for this example, we take the ISUP body from the received SIP-I message
+	# 在此示例中，我们从收到的 SIP-I 消息中获取 ISUP 体
 	$var(isup_body) = $(rb[1]);
 
-	# may print: "NOA is: national"  
+	# 可能输出: "NOA is: national"  
 	xlog("NOA is: $(var(isup_body){isup.param.str, Called Party Number, Nature of address indicator})\n");
 
-	# may print: "CpN is: 99991234"  
+	# 可能输出: "CpN is: 99991234"  
 	xlog("CpN is: $(var(isup_body){isup.param.str, Called Party Number, Address signal})\n");
 
-	# may print: "Cg cat is: ordinary"
+	# 可能输出: "Cg cat is: ordinary"
 	xlog("Cg cat is: $(var(isup_body){isup.param.str, Calling party's category})\n");
 
-	# may print: "nature of conn: 0x01"
+	# 可能输出: "nature of conn: 0x01"
 	xlog("nature of conn: $(var(isup_body){isup.param.str, Nature of connection indicators})\n");
 ...
-		
+
 ```
 
 
-### ISUP parameter subfields and string aliases
+### ISUP 参数子字段和字符串别名
 
 
-The supported subfields for each ISUP parameter and the string aliases for their values are the following:
+每个 ISUP 参数支持的子字段及其值的字符串别名如下：
 
 
 - Nature of Connection Indicators
@@ -616,8 +627,8 @@ The supported subfields for each ISUP parameter and the string aliases for their
   - *restricted* - 1
   - *not available* - 2
   - *reserved* - 3
-- Redirecting Number - same as *Original Called Number*
-- Redirection Number - same as *Called Party Number*
+- Redirecting Number - 与 *Original Called Number* 相同
+- Redirection Number - 与 *Called Party Number* 相同
 - Redirection information
 
   - Redirecting indicator
@@ -716,10 +727,10 @@ The supported subfields for each ISUP parameter and the string aliases for their
   - *1920 kbit/s* - 10
 
 
-### Mandatory ISUP parameters
+### 必需的 ISUP 参数
 
 
-The mandatory parameters(According to ITU-T Rec. Q.763) for each supported ISUP message that requires this are the following:
+每个需要此参数的受支持 ISUP 消息的必需参数（根据 ITU-T 建议 Q.763）如下：
 
 
 - Initial address
@@ -769,6 +780,6 @@ The mandatory parameters(According to ITU-T Rec. Q.763) for each supported ISUP 
   - User-to-user information
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0 版授权

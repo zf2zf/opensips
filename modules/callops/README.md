@@ -1,56 +1,32 @@
 ---
-title: "Calling Operations Module"
-description: "This module provides a set of functions that allow the user to control ongoing calls. It can be used to trigger a call (either blind or attended) transfer, or put a call on hold from the proxy side, rather than the end-device side. The module binds on top of the [OpenSIPS Dialog module]..."
+title: "呼叫操作模块"
+description: "此模块提供一组允许用户控制正在进行的呼叫的函数。它可用于触发呼叫（盲转或 attended 转）转移，或从代理端而非终端设备端将呼叫置于保持状态。该模块绑定在 OpenSIPS Dialog 模块之上以获取有关正在进行的呼叫的信息，以及存储有关将启动的新呼叫的信息。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides a set of functions that allow the user to control
-		ongoing calls. It can be used to trigger a call (either blind or attended)
-		transfer, or put a call on hold from the proxy side, rather than the
-		end-device side.
-		The module binds on top of the [OpenSIPS Dialog
-		module](../dialog) to get information about the ongoing calls, as well as
-		storing information about new calls that will be started.
+此模块提供一组允许用户控制正在进行的呼叫的函数。它可用于触发呼叫（盲转或 attended 转）转移，或从代理端而非终端设备端将呼叫置于保持状态。
+该模块绑定在 [OpenSIPS Dialog 模块](../dialog) 之上以获取有关正在进行的呼叫的信息，以及存储有关将启动的新呼叫的信息。
 
 
-The module also triggers a set of events over Event Interface, providing
-		to external applications details about how calls are being transferred, and
-		how they link between them. These events can be used to track down all the
-		legs involved in a call transfer.
+该模块还通过事件接口触发一组事件，向外部应用程序提供有关呼叫如何被转移以及它们如何相互链接的详细信息。这些事件可用于跟踪呼叫转移中涉及的所有分支。
 
 
-One of the biggest challenge when doing Call Transfer scenarios is linking
-		new calls to the old calls being transferred, especially in blind call
-		transfer scenarios. In order to solve this challenge, the module can be
-		configured to refer old legs in two different modes, changeable using the
-		[mode](#param_mode) parameter:
+在呼叫转移场景中，最大的挑战之一是将新呼叫与被转移的旧呼叫链接起来，特别是在盲呼叫转移场景中。为了解决这个挑战，可以将模块配置为使用两种不同模式中的一种来引用旧分支，可通过 [mode](#param_mode) 参数更改：
 
 
-- Automatically (default mode), by adding a special parameter to the
-				destination URI that is being sent in the REFER. When the new call
-				comes back, the parameter will be present in the Request URI of the
-				new call. The module will find it, link the new call to the old call,
-				and remove the parameter from the URI.
-- Manually, by using custom/external logic (such as a database, or
-				local storage), to match the old call. In this mode, the user has to
-				explicitly call the [call blind replace](#func_call_blind_replace)
-				function to link the two calls together.
+- 自动（默认模式），通过在发送的 REFER 中的目标 URI 添加特殊参数。当新呼叫返回时，该参数将出现在新呼叫的 Request URI 中。模块将找到它，将新呼叫链接到旧呼叫，并从 URI 中删除该参数。
+- 手动，通过使用自定义/外部逻辑（如数据库或本地存储）来匹配旧呼叫。在此模式下，用户必须显式调用 [call blind replace](#func_call_blind_replace) 函数将两个呼叫链接在一起。
 
 
-The module can also be used to catch *Notify refer* events
-		and reply to them from the OpenSIPS level. However, note that in *auto* mode even if the NOTIFY is handled when the dialog is matched,
-		the request will still continue its execution of the script, unlike when
-		*manual* mode is used with the
-		[call transfer notify](#func_call_transfer_notify) function. In order to avoid sending
-		the NOTIFY to the end-point, you have to drop it, like below:
+该模块还可用于捕获 *Notify refer* 事件并从 OpenSIPS 级别回复它们。但是请注意，在 *auto* 模式下，即使在对话框匹配时处理了 NOTIFY，请求仍将继续执行脚本，这与使用 [call transfer notify](#func_call_transfer_notify) 函数的 *manual* 模式不同。为了避免将 NOTIFY 发送到端点，您必须丢弃它，如下所示：
 
 
-```c title="Drop automatically handled NOTIFY refer events"
+```c title="丢弃自动处理的 NOTIFY refer 事件"
 ...
 if (has_totag() && loose_route() &&
 		is_method("NOTIFY") && $hdr(Event) == "refer")
@@ -59,64 +35,48 @@ if (has_totag() && loose_route() &&
 ```
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *TM* - Transaction module.
-- *Dialog* - Dialog module for keeping track of the proxied calls.
+- *TM* - 事务模块。
+- *Dialog* - 用于跟踪代理呼叫的对话框模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### mode (string/integer)
 
 
-This parameter can be used to change the mode that the module
-		uses to match a transferred leg. Supported values are:
+此参数可用于更改模块用于匹配被转移分支的模式。支持的值为：
 
 
-- *param* / *0* - when
-					doing a blind transfer, the destination sent in the
-					refer message will contain a parameter used to identify
-					the dialog that is being replaced. this parameter will be
-					automatically removed when the new call is received.
-- *manual* / *1* - the user
-					will create its own logic to match the new calls, and will
-					call the [call blind replace](#func_call_blind_replace) function
-					to make OpenSIPS aware of the pair. Note that this mode does
-					not handle automatically the *Notify refer*
-					either, so you also have to use the
-					[call transfer notify](#func_call_transfer_notify) function to handle
-					them.
-- *callid* / *2* - similar
-					to the *param* value, except that instead
-					of storing in the Request URI the dialog id of the call to
-					be transfered, the actual callid is used as identifier.
+- *param* / *0* - 当进行盲转移时，refer 消息中发送的目标将包含一个用于识别被替换对话框的参数。当收到新呼叫时，此参数将被自动删除。
+- *manual* / *1* - 用户将创建自己的逻辑来匹配新呼叫，并将调用 [call blind replace](#func_call_blind_replace) 函数使 OpenSIPS 知道该配对。请注意，此模式也不会自动处理 *Notify refer*，因此您还必须使用 [call transfer notify](#func_call_transfer_notify) 函数来处理它们。
+- *callid* / *2* - 与 *param* 值类似，只是使用实际的 callid 作为标识符，而不是存储在 Request URI 中被转移呼叫的对话框 id。
 
 
-*Default value is "0 (auto mode using parameters)".*
+*默认值为 "0"（使用参数自动模式）。*
 
 
-```c title="Set mode parameter"
+```c title="设置 mode 参数"
 ...
-modparam("callops", "mode", "manual") # use your own logic
+modparam("callops", "mode", "manual") # 使用您自己的逻辑
 ...
 ```
 
@@ -124,49 +84,39 @@ modparam("callops", "mode", "manual") # use your own logic
 #### match_param (string)
 
 
-The parameter used to match the different calls together. This is
-		mainly using in the *param* mode, but it is also
-		used internally to store different values inside the transferred
-		dialog - make sure it does not overlap with existing dialog values.
+用于将不同呼叫匹配在一起的参数。这主要在 *param* 模式中使用，但也用于在内部存储被转移对话框中的不同值 - 确保它不与现有对话框值重叠。
 
 
-*Default value is "osid".*
+*默认值为 "osid"。*
 
 
-```c title="Set match_param parameter"
+```c title="设置 match_param 参数"
 ...
 modparam("callops", "match_param", "call")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### call_blind_replace(callid[, leg])
 
 
-When *manual mode* is used, this function is
-				called to create a mapping between the transferring call and the
-				transferred call. It should be called when OpenSIPS receives a
-				new call that is transferring an existing call.
+当使用 *manual mode* 时，调用此函数在被转移呼叫和转移呼叫之间创建映射。当 OpenSIPS 收到正在转移现有呼叫的新呼叫时应调用它。
 
 
-Parameters:
+参数：
 
 
-- *callid* (string) - the existing call that
-						is being transferred.
-- *leg* (string, optional) - the leg that is
-						being transferred. If not specified, and OpenSIPS cannot
-						determine the leg based on its destination, the
-						*unknown* tag should be used.
+- *callid* (string) - 正在被转移的现有呼叫。
+- *leg* (string, optional) - 正在被转移的分支。如果未指定，且 OpenSIPS 无法根据其目标确定分支，则应使用 *unknown* 标签。
 
 
-This function can be used only from a request route.
+此函数只能从请求路由使用。
 
 
-```c title="Use call_blind_replace() function to match an existing leg."
+```c title="使用 call_blind_replace() 函数匹配现有分支。"
 ...
 if (!has_totag() && is_method("INVITE")) {
 	if (cache_fetch("local", "callid_$si", $avp(callid))) {
@@ -181,19 +131,16 @@ if (!has_totag() && is_method("INVITE")) {
 #### call_transfer_notify()
 
 
-When *manual mode* is used, this function should
-				be called on in-dialog NOTIFY requests for an *Event: refer*
-				header, to handle them accordingly.
+当使用 *manual mode* 时，应在 *Event: refer* 头的对话框内 NOTIFY 请求上调用此函数来相应地处理它们。
 
 
-Note that if the function successfully handles the NOTIFY request,
-				the script no longer continues its execution.
+请注意，如果函数成功处理了 NOTIFY 请求，脚本将不再继续执行。
 
 
-This function can be used from a request route, failure route and local route.
+此函数可用于请求路由、失败路由和本地路由。
 
 
-```c title="Use call_transfer_notify() function to handle NOTIFY refer requests."
+```c title="使用 call_transfer_notify() 函数处理 NOTIFY refer 请求。"
 ...
 if (has_totag() && is_method("NOTIFY") && loose_route()) {
 	call_transfer_notify();
@@ -203,28 +150,23 @@ if (has_totag() && is_method("NOTIFY") && loose_route()) {
 ```
 
 
-#### call_transfer(leg, destination) or
+#### call_transfer(leg, destination) 或
 
 
-This function triggers a blind call transfer by sending a REFER
-				message during an ongoing call. The function needs to be run inside
-				the context of the dialog you are transferring.
+此函数通过在进行的呼叫期间发送 REFER 消息来触发盲呼叫转移。函数需要在您正在转移的对话框上下文中运行。
 
 
-Parameters:
+参数：
 
 
-- *leg* (string) - the leg that is
-						being transferred. Must be one of the *caller*
-						or *callee* values.
-- *destination* (string) - SIP URI of the destination
-						where the leg is being transferred.
+- *leg* (string) - 正在被转移的分支。必须是 *caller* 或 *callee* 之一。
+- *destination* (string) - 分支正在被转移到的目标 SIP URI。
 
 
-This function can be used from any route that has a dialog context.
+此函数可用于任何具有对话框上下文的路由。
 
 
-```c title="Use call_transfer() function to do a blind transfer of the caller to a new destination."
+```c title="使用 call_transfer() 函数将呼叫者盲转到新目的地。"
 ...
 if (has_totag() && && loose_route()) {
 	call_transfer("caller", "sip:announcement@127.0.0.1");
@@ -234,35 +176,25 @@ if (has_totag() && && loose_route()) {
 ```
 
 
-#### call_transfer(leg, transfer_callid, transfer_leg[, destination]) or
+#### call_transfer(leg, transfer_callid, transfer_leg[, destination]) 或
 
 
-This function triggers an attended call transfer by sending a REFER
-				message during an ongoing call. The function needs to be run inside
-				the context of the dialog you are transferring.
+此函数通过在进行的呼叫期间发送 REFER 消息来触发 attended 呼叫转移。函数需要在您正在转移的对话框上下文中运行。
 
 
-Parameters:
+参数：
 
 
-- *leg* (string) - the leg that is
-						being transferred. Must be one of the *caller*
-						or *callee* values.
-- *transfer_callid* (string) - the callid of the
-						second dialog that is being transferred.
-- *transfer_leg* (string) - the leg within the
-						second call that will be transferred to *leg*.
-						Must be one of the *caller* or
-						*callee* values.
-- *destination* (string, optional) - SIP URI of the
-						destination where the leg is being transferred. If missing, the
-						From/To URI of the initial call are used.
+- *leg* (string) - 正在被转移的分支。必须是 *caller* 或 *callee* 之一。
+- *transfer_callid* (string) - 正在被转移的第二个对话框的 callid。
+- *transfer_leg* (string) - 将被转移给 *leg* 的第二个呼叫中的分支。必须是 *caller* 或 *callee* 之一。
+- *destination* (string, optional) - 分支正在被转移到的目标 SIP URI。如果缺失，则使用初始呼叫的 From/To URI。
 
 
-This function can be used from any route that has a dialog context.
+此函数可用于任何具有对话框上下文的路由。
 
 
-```c title="Use call_transfer() function to do an attended transfer of the caller to the callee of a different call."
+```c title="使用 call_transfer() 函数将呼叫者转移到不同呼叫的被叫方。"
 ...
 if (has_totag() && && loose_route()) {
 	call_transfer("caller", "ba55b1b3-459d-4e84-a6f8-14c40e4f6ace", "callee");
@@ -272,266 +204,179 @@ if (has_totag() && && loose_route()) {
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### callops:transfer
 
 
-Replaces obsolete MI command: *call_transfer*.
+替换已弃用的 MI 命令：*call_transfer*。
 
 
-MI command to transfer an ongoing call to a new destination.
+用于将进行的呼叫转移到他处的 MI 命令。
 
 
-Depending on the parameters used, this command can do both
-		blind and attended transfers scenarios. When the
-		*transfer_callid* is used, then an attended
-		transfer is performed, other wise a blind transfer is issued.
+根据使用的参数，此命令可以执行盲转移和 attended 转移场景。当使用 *transfer_callid* 时，执行 attended 转移，否则发出盲转移。
 
 
-Name: *callops:transfer*
+名称：*callops:transfer*
 
 
-Parameters
+参数
 
 
-- *callid* (string) - the callid of the
-					dialog that is being transferred.
-- *leg* (string) - indicates the
-					leg of the *callid* call that is being
-					transferred/kept in the new transferring call.
-					Possible values are "caller",
-					"callee" or "both".
-- *destination* (string, optional) - the URI
-					where the call is being transferred. This parameter is
-					mandatory for blind transfers, and optional for attended
-					transfers. In the case of an attended transfer, if it is
-					missing, the destination of the call is taken from the
-					URIs in the transfer dialog.
-- *transfer_callid* (string, optional) -
-					mandatory in case of an attended transfer, to specify the
-					call of the Bleg in the new call.
-- *transfer_leg* (string, optional) -
-					in case of an attended transfer, it specifies the participant
-					of the *transfer_callid* call that will be
-					bridged with the *leg* of the
-					*callid*. If missing,
-					*transfer_fromtag* and
-					*transfer_totag* must be used to identify
-					the tag.
-- *transfer_fromtag* and
-					*transfer_totag* (string, optional) -
-					these parameters should always be specified together, and are
-					used in call attended transfer scenarios where the dialog of the
-					Bleg that is being transferred is not managed by OpenSIPS.
-					Note that for these scenarios only the A-leg dialog will
-					receive events about the call transfer.
+- *callid* (string) - 正在被转移的对话框的 callid。
+- *leg* (string) - 指示正在被转移的 *callid* 呼叫的哪个分支/保留在新的转移呼叫中。可能的值为 "caller"、"callee" 或 "both"。
+- *destination* (string, optional) - 呼叫正在被转移到的 URI。对于盲转移此参数是必需的，对于 attended 转移则是可选的。在 attended 转移的情况下，如果缺失，呼叫的目标取自转移对话框中的 URI。
+- *transfer_callid* (string, optional) - 在 attended 转移的情况下是必需的，以指定新呼叫中 Bleg 的呼叫。
+- *transfer_leg* (string, optional) - 在 attended 转移的情况下，它指定 *transfer_callid* 呼叫的参与者将与 *callid* 的 *leg* 桥接。如果缺失，必须使用 *transfer_fromtag* 和 *transfer_totag* 来识别标签。
+- *transfer_fromtag* 和 *transfer_totag* (string, optional) - 这些参数应始终一起指定，用于在 attened 转移场景中，被转移的 Bleg 对话框不是由 OpenSIPS 管理的。请注意，对于这些场景，只有 A-leg 对话框将收到有关呼叫转移的事件。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-# blind transfer to sip:agent@127.0.0.1
+# 盲转移到 sip:agent@127.0.0.1
 opensips-cli -x mi callops:transfer \
 	callid=4b664b48-5639-40bf-bff8-3a866c145c3b \
 	leg=caller \
 	destination=sip:agent@217.0.0.1
-		
+			
 ```
 
 
 ```c
-# attended transfer between two calls
+# 两个呼叫之间的 attended 转移
 opensips-cli -x mi callops:transfer \
 	callid=e8d024db-78e5-4d18-9794-5b8ba837bed4
 	leg=caller \
 	transfer_callid=559abf97-9834-4380-bba1-a036eb245450 \
 	transfer_leg=calee
-		
+			
 ```
 
 
 #### callops:hold
 
 
-Replaces obsolete MI command: *call_hold*.
+替换已弃用的 MI 命令：*call_hold*。
 
 
-MI command to put an ongoing call on hold.
+用于将进行的呼叫置于保持状态的 MI 命令。
 
 
-Command returns *OK* if any of the legs
-			of the call have been put on hold. If the call is already
-			on hold, an error is returned.
+如果呼叫的任何分支被置于保持状态，命令返回 *OK*。如果呼叫已经在保持状态，则返回错误。
 
 
-Name: *callops:hold*
+名称：*callops:hold*
 
 
-Parameters
+参数
 
 
-- *callid* (string) - the callid of the
-					dialog that is being put on hold.
-- *leg* (string, optional) - put only a
-					specific participant on hold. Possible values are
-					*caller*, *callee*
-					and *bold* and indicate the leg that
-					is being put on hold. If not used, both legs are being
-					put on hold.
-- *headers* (string or array, optional) -
-					extra headers to be added to the outgoing re-INVITE.
-					If a string is provided, the headers go to both caller
-					and callee. If a two string elements array is provided,
-					the first element represents the headers that go to the
-					caller, the second one headers that go to the callee.
-					Use empty string for no headers to be passed at caller.
+- *callid* (string) - 正在被置于保持状态的对话框的 callid。
+- *leg* (string, optional) - 仅将特定参与者置于保持状态。可能的值为 *caller*、*callee* 和 *bold*，指示正在被置于保持状态的分支。如果未使用，则两个分支都被置于保持状态。
+- *headers* (string 或 array, optional) - 要添加到传出 re-INVITE 的额外头部。如果提供字符串，头部将同时发送到呼叫者和被叫者。如果提供两个字符串元素的数组，第一个元素代表发送到呼叫者的头部，第二个代表发送到被叫者的头部。对呼叫者使用空字符串表示不传递任何头部。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
-# put a call on hold
+# 将呼叫置于保持状态
 opensips-cli -x mi callops:hold \
 	callid=921b00e4-fec0-4a36-9397-a40ab74e1893
-		
+			
 ```
 
 
 #### callops:unhold
 
 
-Replaces obsolete MI command: *call_unhold*.
+替换已弃用的 MI 命令：*call_unhold*。
 
 
-MI command to resume a call from an onhold state put by the
-			[mi hold](#mi_hold) call.
+用于从 [mi hold](#mi_hold) 呼叫放置的保持状态恢复呼叫的 MI 命令。
 
 
-Command returns *OK* if any of the legs
-			are resumed, or an error if no leg had been previously put
-			on hold.
+如果任何分支被恢复，命令返回 *OK*，如果没有分支之前被置于保持状态，则返回错误。
 
 
-Name: *callops:unhold*
+名称：*callops:unhold*
 
 
-Parameters
+参数
 
 
-- *callid* (string) - the callid of the
-					dialog that is being resumed.
-- *leg* (string, optional) - resume only a
-					specific participant on hold. Possible values are
-					*caller*, *callee*
-					and *bold* and indicate the leg that
-					is being resumed. If not used, both legs are resumed.
-- *headers* (string or array, optional) -
-					extra headers to be added to the outgoing re-INVITE.
-					If a string is provided, the headers go to both caller
-					and callee. If a two string elements array is provided,
-					the first element represents the headers that go to the
-					caller, the second one headers that go to the callee.
-					Use empty string for no headers to be passed at caller.
+- *callid* (string) - 正在被恢复的对话框的 callid。
+- *leg* (string, optional) - 仅恢复特定的保持参与者。可能的值为 *caller*、*callee* 和 *bold*，指示正在被恢复的分支。如果未使用，则两个分支都被恢复。
+- *headers* (string 或 array, optional) - 要添加到传出 re-INVITE 的额外头部。如果提供字符串，头部将同时发送到呼叫者和被叫者。如果提供两个字符串元素的数组，第一个元素代表发送到呼叫者的头部，第二个代表发送到被叫者的头部。对呼叫者使用空字符串表示不传递任何头部。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi callops:unhold \
 	callid=921b00e4-fec0-4a36-9397-a40ab74e1893
-		
+			
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_CALL_TRANSFER
 
 
-This event is triggered during a call transfer scenario.
+此事件在呼叫转移场景期间触发。
 
 
-For a specific call transfer, multiple events are triggered,
-			starting when the transfer is initiated, until the transfer
-			is completed. The *state* parameter indicates
-			the state of the call transfer.
+对于特定的呼叫转移，多个事件被触发，从转移开始到转移完成。*state* 参数指示呼叫转移的状态。
 
 
-For a blind transfer scenario, only one set of events are
-			triggered, whereas for attended transfer, you will get a set
-			of events for both dialogs involved in the transfer, as long
-			as both are proxied through OpenSIPS
+对于盲转移场景，只触发一组事件，而对于 attended 转移，如果两者都通过 OpenSIPS 代理，您将获得涉及转移的两个对话框的各一组事件。
 
 
-Parameters:
+参数：
 
 
-- *callid* - the callid of the call
-					that is being transferred.
-- *leg* - the leg (*caller* or *callee*) of the call
-					that is being transferred.
-- *transfer_callid* - the callid of the
-					new call that is transferring the old *callid* call.
-- *destination* - the URI destination
-					where the *leg* is being transferred.
-- *state* - the state of the transfer:
-				
-				*start* - triggered when the
-					REFER message is being sent out to the transferred participant.
-				*notify* - triggered when
-					a NOTIFY refer event is received from the transferred participant.
-					The *status* parameter contains extra
-					information about the status of the transferring call.
-				*ok* - triggered when
-					the transfer is completed - the call is answered by
-					the transferred participant.
-				*fail* - triggered when
-					a transfer has failed due to various reasons. If we were
-					unable to start the call transfer (i.e. send the REFER),
-					the *status* parameter is empty,
-					otherwise it contains information about the failure.
-- *status* - contains extra information about
-					the success or failure of the call.
+- *callid* - 正在被转移的呼叫的 callid。
+- *leg* - 正在被转移的呼叫的分支（*caller* 或 *callee*）。
+- *transfer_callid* - 正在转移旧 *callid* 呼叫的新呼叫的 callid。
+- *destination* - *leg* 正在被转移到的 URI 目的地。
+- *state* - 转移的状态：
+					
+				*start* - 当 REFER 消息被发送到被转移的参与者时触发。
+				*notify* - 当收到被转移参与者的 NOTIFY refer 事件时触发。*status* 参数包含有关转移呼叫状态的额外信息。
+				*ok* - 转移完成时触发 - 呼叫被被转移的参与者应答。
+				*fail* - 当转移因各种原因失败时触发。如果我们无法启动呼叫转移（即发送 REFER），*status* 参数为空，否则它包含有关失败的信息。
+- *status* - 包含有关呼叫成功或失败的额外信息。
 
 
 #### E_CALL_HOLD
 
 
-Triggered during the process of putting a call on hold, or resuming
-			a call from an on hold state.
+在将呼叫置于保持状态或从保持状态恢复呼叫的过程中触发。
 
 
-This event is triggered twice per each leg of the call - first when
-			the leg starts to be put on hold, and then when the leg accepts or
-			rejects the state.
+此事件为呼叫的每个分支触发两次 - 首先是分支开始被置于保持状态时，然后是分支接受或拒绝状态时。
 
 
-Parameters:
+参数：
 
 
-- *callid* - the callid of the call
-					that is being put on hold, or resumed.
-- *leg* - the leg (*caller* or *callee*) affected
-					by the call on hold, or resumed.
-- *action* - *hold* or
-					*unhold* action that is being performed.
-- *state* - the state of the action that
-					is being performed.
-				
-				*start* - triggered when the
-					re-INVITE is being sent out to the participant being put on hold.
-				*ok* - triggered when
-					the on hold/resume action is successfully completed.
-				*fail* - triggered when
-					the action failed.
+- *callid* - 正在被置于保持状态或恢复的呼叫的 callid。
+- *leg* - 受呼叫保持或恢复影响的分支（*caller* 或 *callee*）。
+- *action* - 正在执行的 *hold* 或 *unhold* 操作。
+- *state* - 正在执行的操作的状态。
+					
+				*start* - 当 re-INVITE 被发送到正在被置于保持状态的参与者时触发。
+				*ok* - 保持/恢复操作成功完成时触发。
+				*fail* - 操作失败时触发。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

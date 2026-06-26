@@ -1,67 +1,59 @@
 ---
-title: "mqueue Module"
-description: "The mqueue module offers a generic message queue system in shared memory for inter-process communication using the config file. One example of usage is to send time consuming operations to one or several timer processes that consumes items in the queue, without affecting SIP message handl..."
+title: "mqueue 模块"
+description: "mqueue模块在共享内存中提供了一个通用的消息队列系统，用于使用配置文件进行进程间通信。一个使用示例是将耗时的操作发送给一个或多个消费队列中的计时器进程，而不影响套接字监听进程中的SIP消息处理。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The mqueue module offers a generic message queue system in shared
-		memory for inter-process communication using the config file.
-		One example of usage is to send time consuming operations to one or
-		several timer processes that consumes items in the queue, without
-		affecting SIP message handling in the socket-listening process.
+mqueue模块在共享内存中提供了一个通用的消息队列系统，用于使用配置文件进行进程间通信。一个使用示例是将耗时的操作发送给一个或多个消费队列中的计时器进程，而不影响套接字监听进程中的SIP消息处理。
 
 
-There can be many defined queues. Access to queued values is done via
-		pseudo variables.
+可以定义多个队列。通过伪变量访问队列中的值。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *None*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行此模块加载的OpenSIPS之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (str)
 
 
-The URL to connect to database for loading values
-		in mqueue table at start up and/or saving values at shutdown.
+数据库URL，用于在启动时加载值和/或在关闭时保存值到mqueue表。
 
 
-*Default value is NULL (do not connect).*
+*默认值为NULL（不连接）。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("mqueue", "db_url", "mysql://opensips:opensipsrw@localhost/opensips")
 
-# Example of table in sqlite,
-# you have the set the fields to support the length according
-# to the data that will be present in the mqueue
+# sqlite中的表示例，
+# 您需要设置字段以根据mqueue中存在的数据支持适当的长度
 CREATE TABLE mqueue_name (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 key character varying(64) DEFAULT "" NOT NULL,
@@ -74,53 +66,47 @@ val character varying(4096) DEFAULT "" NOT NULL
 #### mqueue (string)
 
 
-Definition of a memory queue
+内存队列的定义。
 
 
-*Default value is "none".*
+*默认值为"none"。*
 
 
-Value must be a list of parameters: attr=value;...
+值必须是参数列表：attr=value;...
 
 
-- Mandatory attributes:
+- 必选属性：
 
-  - *name*: name of the queue.
-- Optional attributes:
+  - *name*：队列名称。
+- 可选属性：
 
-  - *size*: size of the queue.
-				Specifies the maximum number of items in queue.
-				If exceeded the oldest one is removed.
-				If not set the queue will be limitless.
-  - *dbmode*: If set to 1, the content of the
-				queue is written to database table when the SIP server is
-				stopped (i.e., ensure persistency over restarts).
-				If set to 2, it is written at shutdown but not read at startup.
-				If set to 3, it is read at sartup but not written at shutdown.
-				Default value is 0 (no db table interaction).
-  - *addmode*: how to add new (key,value) pairs.
+  - *size*：队列大小。
+				指定队列中的最大项目数。
+				如果超出，最早的将被移除。
+				如果未设置，队列将是无限的。
+  - *dbmode*：如果设置为1，当SIP服务器停止时，队列内容将写入数据库表（即确保重启后的持久性）。
+				如果设置为2，它在关闭时写入但在启动时不读取。
+				如果设置为3，它在启动时读取但在关闭时不写入。
+				默认值为0（无数据库表交互）。
+  - *addmode*：如何添加新的(key,value)对。
 					
 					
-						*0*:
-						Will push all new (key,value) pairs at the end of
-						the queue. (default)
+					*0*：
+					将所有新的(key,value)对推到队列末尾。（默认）
 					
 					
-						*1*:
-						Will keep oldest (key,value) pair in the queue,
-						based on the key.
+					*1*：
+					基于键保留队列中最旧的(key,value)对。
 					
 					
-						*2*:
-						Will keep newest (key,value) pair in the queue,
-						based on the key.
+					*2*：
+					基于键保留队列中最新的(key,value)对。
 
 
-The parameter can be set many times, each holding the
-		definition of one queue.
+可以多次设置此参数，每个参数持有一个队列的定义。
 
 
-```c title="Set mqueue parameter"
+```c title="设置 mqueue 参数"
 ...
 modparam("mqueue", "mqueue", "name=myq;size=20;")
 modparam("mqueue", "mqueue", "name=myq;size=10000;addmode=2")
@@ -130,19 +116,18 @@ modparam("mqueue", "mqueue", "name=qaz;addmode=1")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### mq_add(queue, key, value)
 
 
-Add a new item (key, value) in the queue. If max size of queue is
-		exceeded, the oldest one is removed.
+在队列中添加一个新项目(key, value)。如果队列超出最大大小，最早的被移除。
 
 
-```c title="mq_add usage"
+```c title="mq_add 使用示例"
 ...
-mq_add("myq", "$rU", "call from $fU");
+mq_add("myq", "$rU", "来自 $fU 的呼叫");
 ...
 ```
 
@@ -150,15 +135,13 @@ mq_add("myq", "$rU", "call from $fU");
 #### mq_fetch(queue)
 
 
-Take oldest item from queue and fill $mqk(queue) and
-		$mqv(queue) pseudo variables.
+从队列中取出最旧的项目，并填充$mqk(queue)和$mqv(queue)伪变量。
 
 
-Return: true on success (1); false on failure (-1) or
-		no item fetched (-2).
+返回：成功时为真(1)；失败时为假(-1)或未取到项目(-2)。
 
 
-```c title="mq_fetch usage"
+```c title="mq_fetch 使用示例"
 ...
 while(mq_fetch("myq"))
 {
@@ -171,11 +154,10 @@ while(mq_fetch("myq"))
 #### mq_pv_free(queue)
 
 
-Free the item fetched in pseudo-variables. It is optional,
-		a new fetch frees the previous values.
+释放伪变量中取出的项目。这是可选的，新的fetch会释放之前的值。
 
 
-```c title="mq_pv_free usage"
+```c title="mq_pv_free 使用示例"
 ...
 mq_pv_free("myq");
 ...
@@ -185,40 +167,39 @@ mq_pv_free("myq");
 #### mq_size(queue)
 
 
-Returns the current number of elements in the mqueue.
+返回mqueue中当前元素的数量。
 
 
-If the mqueue is empty, the function returns -1. If the
-		mqueue is not found, the function returns -2.
+如果mqueue为空，函数返回-1。如果未找到mqueue，函数返回-2。
 
 
-```c title="mq_size usage"
+```c title="mq_size 使用示例"
 ...
 $var(q_size) = mq_size("queue");
-xlog("L_INFO", "Size of queue is: $var(q_size)\n");
+xlog("L_INFO", "队列大小为: $var(q_size)\n");
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的MI函数
 
 
 #### mqueue:get_size
 
 
-Replaces obsolete MI command: *mq_get_size*.
+替换已废弃的MI命令：*mq_get_size*。
 
 
-Get the size of a memory queue.
+获取内存队列的大小。
 
 
-Parameters:
+参数：
 
 
 - name
 
 
-```c title="mqueue:get_size usage"
+```c title="mqueue:get_size 使用示例"
 ...
 opensips-cli -x mqueue:get_size xyz
 ...
@@ -228,21 +209,20 @@ opensips-cli -x mqueue:get_size xyz
 #### mqueue:fetch
 
 
-Replaces obsolete MI command: *mq_fetch*.
+替换已废弃的MI命令：*mq_fetch*。
 
 
-Fetch one (or up to limit) key-value pair from a memory queue.
+从内存队列中取出一个（或最多limit个）键值对。
 
 
-Parameters:
+参数：
 
 
 - name
 - limit
-limit
 
 
-```c title="mqueue:fetch usage"
+```c title="mqueue:fetch 使用示例"
 ...
 opensips-cli -x mqueue:fetch xyz
 ...
@@ -252,46 +232,43 @@ opensips-cli -x mqueue:fetch xyz
 #### mqueue:get_sizes
 
 
-Replaces obsolete MI command: *mq_get_sizes*.
+替换已废弃的MI命令：*mq_get_sizes*。
 
 
-Get the size for all memory queues.
+获取所有内存队列的大小。
 
 
-Parameters: none
+参数：无
 
 
-```c title="mqueue:get_sizes usage"
+```c title="mqueue:get_sizes 使用示例"
 ...
 opensips-cli -x mqueue:get_sizes
 ...
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $mqk(mqueue)
 
 
-The variable is read-only and returns the most recent item key
-			fetched from the specified mqueue.
+该变量是只读的，返回从指定mqueue取出的最新项目键。
 
 
 #### $mqv(mqueue)
 
 
-The variable is read-only and returns the most recent item value
-			fetched from the specified mqueue.
+该变量是只读的，返回从指定mqueue取出的最新项目值。
 
 
 #### $mq_size(mqueue)
 
 
-The variable is read-only and returns the size of the specified
-			mqueue.
+该变量是只读的，返回指定mqueue的大小。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即.md扩展名）均采用知识共享署名4.0许可证。

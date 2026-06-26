@@ -1,104 +1,93 @@
 ---
-title: "Presence Module"
-description: "The modules handles PUBLISH and SUBSCRIBE messages and generates NOTIFY messages in a general, event independent way. It allows registering events from other OpenSIPS modules. Events that can currently be added are: *presence*, *presence.winfo*, *dialog;sla* from presence_xml module *mes..."
+title: "Presence 模块"
+description: "该模块处理 PUBLISH 和 SUBSCRIBE 消息，并以通用的、事件无关的方式生成 NOTIFY 消息。它允许从其他 OpenSIPS 模块注册事件。当前可以添加的事件有：*presence*、*presence.winfo*、*dialog;sla* 来自 presence_xml 模块 *mes..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The modules handles PUBLISH and SUBSCRIBE messages and generates
-	NOTIFY messages in a general, event independent way. It allows registering 
-	events from other OpenSIPS modules. Events that can currently be added are:
+该模块处理 PUBLISH 和 SUBSCRIBE 消息，并以通用的、事件无关的方式生成
+		NOTIFY 消息。它允许从其他 OpenSIPS 模块注册事件。当前可以添加的事件有：
 
 
-- *presence*, *presence.winfo*,
-		*dialog;sla* from presence_xml module
-- *message-summary* from presence_mwi module
-- *call-info*, *line-seize* from
-		presence_callinfo module
-- *dialog* from presence_dialoginfo module
-- *xcap-diff* from presence_xcapdiff module
-- *as-feature-event* from presence_dfks module
+- *presence*、*presence.winfo*、
+		*dialog;sla* 来自 presence_xml 模块
+- *message-summary* 来自 presence_mwi 模块
+- *call-info*、*line-seize* 来自
+		presence_callinfo 模块
+- *dialog* 来自 presence_dialoginfo 模块
+- *xcap-diff* 来自 presence_xcapdiff 模块
+- *as-feature-event* 来自 presence_dfks 模块
 
 
-The module uses database storage. 
-	It has later been improved with memory caching operations to improve
-	performance. The Subscribe dialog information are stored in memory and 
-	are periodically updated in database, while for Publish only the presence
-	or absence of stored info for a certain resource is maintained in memory
-	to avoid unnecessary, costly db operations. 
-	It is possible to configure a fallback to database mode(by setting module
-	parameter "fallback2db"). In this mode, in case a searched record is not 
-	found in cache, the search is continued	in database. This is useful for
-	an architecture in which processing and memory load might be divided on 
-	more machines using the same database.
+该模块使用数据库存储。后来改进了内存缓存操作以提高性能。
+		订阅对话框信息存储在内存中，并定期更新到数据库，
+		而对于 Publish，仅在内存中维护是否存在针对某个资源的存储信息，
+		以避免不必要的、昂贵的数据库操作。
+		可以配置回退到数据库模式（通过设置模块参数 "fallback2db"）。
+		在此模式下，如果缓存中找不到搜索的记录，则继续在数据库中搜索。
+		这对于处理和内存负载可能分布在使用同一数据库的多台机器上的架构很有用。
 
 
-The module can also work only with the functionality of a library,
-	with no message processing and generation, but used only for the exported
-	functions.
-	This mode of operation is enabled if the db_url parameter is not set to any value.
+该模块也可以仅作为库的功能工作，不处理消息和生成，
+		仅用于导出的函数。
+		如果 db_url 参数未设置为任何值，则启用此操作模式。
 
 
-The server follows the specifications in: RFC3265, RFC3856, RFC3857, 
-	RFC3858.
+服务器遵循以下规范：RFC3265、RFC3856、RFC3857、RFC3858。
 
 
-### Presence clustering
+### Presence 集群
 
 
-To read and understand the presence clustering, its abilities and how to
-	implement scenarios like High-Availability, Load Balancing or Federations,
-	please refer to this article [https://blog.opensips.org/2018/03/27/clustering-presence-services-with-opensips-2-4/](https://blog.opensips.org/2018/03/27/clustering-presence-services-with-opensips-2-4/).
+要阅读和理解 presence 集群、其能力以及如何实现高可用性、负载均衡或联邦等场景，
+		请参阅此文章 [https://blog.opensips.org/2018/03/27/clustering-presence-services-with-opensips-2-4/](https://blog.opensips.org/2018/03/27/clustering-presence-services-with-opensips-2-4/)。
 
 
-As data synchronization at startup is performed when using the
-	*full-sharing* [cluster federation mode](#param_cluster_federation_mode),
-	you should define at least one "seed" node in the cluster in this case.
+由于在 using the *full-sharing* [集群联邦模式](#param_cluster_federation_mode) 时执行启动时的数据同步，
+		在这种情况下，您应在集群中定义至少一个 "seed" 节点。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *a database module*.
-- *signaling*.
-- *clusterer*, if the cluster_id 
-				module parameter is set and clustering support activated.
+- *数据库模块*。
+- *signaling*。
+- *clusterer*，如果设置了 cluster_id 模块参数并激活了集群支持。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-- *libxml-dev*.
+- *libxml-dev*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url(str)
 
 
-The database url.
+数据库 URL。
 
 
-If set, the module is a fully operational
-		presence server. Otherwise, it is used as a 'library', for 
-		its exported functions.
+如果设置，该模块是一个功能完整的 presence 服务器。
+		否则，它被用作"库"，仅用于其导出的函数。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("presence", "db_url", 
 	"mysql://opensips:opensipsrw@192.168.2.132/opensips")
@@ -109,14 +98,12 @@ modparam("presence", "db_url",
 #### fallback2db (int)
 
 
-Setting this parameter enables a fallback to db mode of operation.
-		In this mode, in case a searched record is not found in cache, 
-		the search is continued	in database. Useful for an architecture in
-		which processing and memory load might be divided on more machines
-		using the same database.
+设置此参数可启用回退到数据库操作模式。
+		在此模式下，如果缓存中找不到搜索的记录，
+		则继续在数据库中搜索。对于处理和内存负载可能分布在使用同一数据库的多台机器上的架构很有用。
 
 
-```c title="Set fallback2db parameter"
+```c title="设置 fallback2db 参数"
 ...
 modparam("presence", "fallback2db", 1)
 ...
@@ -126,29 +113,23 @@ modparam("presence", "fallback2db", 1)
 #### cluster_id (int)
 
 
-The ID of the cluster this presence server belongs to. This parameter
-		is to be used only if clustering mode is needed. In order to
-		understand th concept of a cluster ID, please see the 
-		*clusterer* module.
+此 presence 服务器所属集群的 ID。
+		仅在需要集群模式时使用此参数。
+		要了解集群 ID 的概念，请参见 *clusterer* 模块。
 
 
-This OpenSIPS cluster exposes the **"presence"**
-capability in order to mark nodes as eligible for becoming data donors during an
-arbitrary sync request. Consequently, the cluster must have *at least
-one node* marked with the **"seed"** value
-as the *clusterer.flags* column/property in order to be fully functional.
-Consult the [clusterer - Capabilities](../clusterer#capabilities)
-chapter for more details.
+此 OpenSIPS 集群公开 **"presence"** 能力，以将节点标记为在任意同步请求期间有资格成为数据贡献者。
+		因此，集群必须至少有一个节点标记为 *clusterer.flags* 列/属性中的 **"seed"** 值才能完全正常运行。
+		有关更多详细信息，请参阅 [clusterer - 能力](../clusterer#capabilities) 章节。
 
 
-For more on presence clustering see the 
-		[presence clustering](#presence_clustering) chapter.
+有关 presence 集群的更多信息，请参见 [presence 集群](#presence_clustering) 章节。
 
 
-*Default value is "None".*
+*默认值为 "None"。*
 
 
-```c title="Set cluster_id parameter"
+```c title="设置 cluster_id 参数"
 ...
 modparam("presence", "cluster_id", 2)
 ...
@@ -158,40 +139,31 @@ modparam("presence", "cluster_id", 2)
 #### cluster_federation_mode (str)
 
 
-When enabling the federation mode, nodes inside the presence
-		cluster will start broadcasting the data to other nodes via the
-		clustering support.
+启用联邦模式时，presence 集群内的节点将通过集群支持开始向其他节点广播数据。
 
 
-*Possible values:*
+*可能的值：*
 
 
-- *disabled* - federation mode is disabled
-- *on-demand-sharing* - the minimum needed information is
-				kept on each node. Replicated information for non local
-				subscribers is discarded and queries are broadcasted
-				in the cluster for new subscribers.
-- *full-sharing* - published state is kept on all presence
-				nodes even when there aren't any local subscribers.
+- *disabled* - 联邦模式被禁用
+- *on-demand-sharing* - 每个节点保留最少必要的信息。
+				非本地订阅者的复制信息被丢弃，新订阅者的查询在集群中广播。
+- *full-sharing* - 即使没有本地订阅者，也会在所有 presence 节点上保留发布的状态。
 
 
-If you don't want to use a shared database (via
-		[fallback2db](#param_fallback2db)), but still want a
-		complete data set everywhere, you may choose mode *full-sharing*.
-		This mode allows you to switch PUBLISH endpoints,
-		even for already published Event States, thus allowing
-		you to add and remove presence servers without losing
-		state.
+如果您不想使用共享数据库（通过 [fallback2db](#param_fallback2db)），
+		但仍希望各地都有完整数据集，则可以选择 *full-sharing* 模式。
+		此模式允许您切换 PUBLISH 端点，即使对于已发布的 Event States，
+		从而允许您添加和删除 presence 服务器而不会丢失状态。
 
 
-For more on presence clustering see the 
-		[presence clustering](#presence_clustering) chapter.
+有关 presence 集群的更多信息，请参见 [presence 集群](#presence_clustering) 章节。
 
 
-*Default value is "disabled".*
+*默认值为 "disabled"。*
 
 
-```c title="Set cluster_federation_mode parameter"
+```c title="设置 cluster_federation_mode 参数"
 ...
 modparam("presence", "cluster_federation_mode", "full-sharing")
 ...
@@ -201,19 +173,17 @@ modparam("presence", "cluster_federation_mode", "full-sharing")
 #### cluster_pres_events (str)
 
 
-Comma Separated Value (CSV) list with the events to considered by the
-		federated cluster - only presentities advertising one of these events
-		will be broadcasted via the cluster.
+逗号分隔值（CSV）列表，包含联邦集群要考虑的事件——只有发布这些事件之一的 presentities
+		将通过集群广播。
 
 
-For more on presence clustering see the 
-		[presence clustering](#presence_clustering) chapter.
+有关 presence 集群的更多信息，请参见 [presence 集群](#presence_clustering) 章节。
 
 
-*Default value is "empty" (meaning all).*
+*默认值为 "empty"（意味着全部）。*
 
 
-```c title="Set cluster_pres_events parameter"
+```c title="设置 cluster_pres_events 参数"
 ...
 modparam("presence", "cluster_pres_events" ,"presence, dialog;sla, message-summary")
 ...
@@ -223,30 +193,25 @@ modparam("presence", "cluster_pres_events" ,"presence, dialog;sla, message-summa
 #### cluster_be_active_shtag (str)
 
 
-The name of a cluster sharing tag to be used to indicate when this
-		node (as part of the cluster) should be active or not. If the sharing
-		tag is off (or as backup), the node will become inactive from 
-		clustering perspective, meaning not sending and not accepting any
-		presence related cluster traffic.
+集群共享标签的名称，用于指示此节点（作为集群的一部分）何时应处于活动或非活动状态。
+		如果共享标签关闭（或作为备份），该节点将从集群角度变为非活动状态，
+		意味着不发送也不接受任何 presence 相关的集群流量。
 
 
-This ability of a node to become inactive may be used when creating a
-		federated cluster where 2 nodes are acting as a local active-backup 
-		setup (for local High Availability purposes).
+节点的这种变为非活动状态的能力可用于创建联邦集群，
+		其中两个节点作为本地活动-备份设置（用于本地高可用性目的）。
 
 
-This parameter has meaning only in clustering mode. If not defined, the
-		node will be active all the time.
+此参数仅在集群模式有意义。如果未定义，节点将始终处于活动状态。
 
 
-For more on presence clustering see the 
-		[presence clustering](#presence_clustering) chapter.
+有关 presence 集群的更多信息，请参见 [presence 集群](#presence_clustering) 章节。
 
 
-*Default value is "empty" (not tag define).*
+*默认值为 "empty"（未定义标签）。*
 
 
-```c title="Set cluster_be_active_shtag parameter"
+```c title="设置 cluster_be_active_shtag 参数"
 ...
 modparam("presence", "cluster_be_active_shtag" ,"local_ha")
 ...
@@ -256,13 +221,13 @@ modparam("presence", "cluster_be_active_shtag" ,"local_ha")
 #### expires_offset (int)
 
 
-The extra time to store a subscription/publication.
+存储订阅/发布的额外时间。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set expires_offset parameter"
+```c title="设置 expires_offset 参数"
 ...
 modparam("presence", "expires_offset", 10)
 ...
@@ -272,14 +237,13 @@ modparam("presence", "expires_offset", 10)
 #### max_expires_subscribe (int)
 
 
-The the maximum admissible expires value for SUBSCRIBE
-		messages.
+SUBSCRIBE 消息的最大允许 expires 值。
 
 
-*Default value is "3600".*
+*默认值为 "3600"。*
 
 
-```c title="Set max_expires_subscribe parameter"
+```c title="设置 max_expires_subscribe 参数"
 ...
 modparam("presence", "max_expires_subscribe", 3600)
 ...
@@ -289,14 +253,13 @@ modparam("presence", "max_expires_subscribe", 3600)
 #### max_expires_publish (int)
 
 
-The the maximum admissible expires value for PUBLISH
-		messages.
+PUBLISH 消息的最大允许 expires 值。
 
 
-*Default value is "3600".*
+*默认值为 "3600"。*
 
 
-```c title="Set max_expires_publish parameter"
+```c title="设置 max_expires_publish 参数"
 ...
 modparam("presence", "max_expires_publish", 3600)
 ...
@@ -306,194 +269,176 @@ modparam("presence", "max_expires_publish", 3600)
 #### contact_user (str)
 
 
-This is the username that will be used in the Contact header for the 200 OK
-		replies to SUBSCRIBE and in the following in-dialog NOTIFY requests.
-		The IP address, port and transport for the Contact will be automatically
-		determined based on the interface where the SUBSCRIBE was received.
+这将是在 200 OK 回复中对 SUBSCRIBE 和后续同-dialog NOTIFY 请求的 Contact 头中使用的用户名。
+		Contact 的 IP 地址、端口和传输将根据接收 SUBSCRIBE 的接口自动确定。
 
 
-If set to an empty string, no username will be added to the contact and
-		the contact will be built just out of the IP, port and transport.
+如果设置为空字符串，则不会向 contact 添加用户名，
+		contact 将仅由 IP、端口和传输构建。
 
 
-*Default value is "presence".*
+*默认值为 "presence"。*
 
 
-```c title="Set contact_user parameter"
+```c title="设置 contact_user 参数"
 ...
 modparam("presence", "contact_user", "presence")
 ...
-		
+			
 ```
 
 
 #### enable_sphere_check (int)
 
 
-This parameter is a flag that should be set if permission rules 
-		include sphere checking. The sphere information is expected to be 
-		present in the RPID body published by the presentity. The flag is 
-		introduced as this check requires extra processing that should be 
-		avoided if this feature is not supported by the clients.
+如果权限规则包括球体检查，则应设置此参数。
+		球体信息预计存在于 presentity 发布的 RPID 正文中。
+		引入此标志是因为此检查需要额外的处理，如果客户端不支持此功能，则应避免。
 
 
-*Default value is "0 ".*
+*默认值为 "0 "。*
 
 
-```c title="Set enable_sphere_check parameter"
+```c title="设置 enable_sphere_check 参数"
 ...
 modparam("presence", "enable_sphere_check", 1)
 ...
-	
+		
 ```
 
 
 #### waiting_subs_daysno (int)
 
 
-The number of days to keep the record of a subscription in server
-			database if the subscription is in pending or waiting state 
-			(no authorization policy was defined for it or the target user 
-			did not register sice the subscription and was not informed about
-			it).
+如果在服务器数据库中订阅处于待定或等待状态（没有为其定义授权策略，
+			或者目标用户没有注册并且没有被通知），
+			则保留订阅记录的天数。
 
 
-*Default value is "3" days. Maximum accepted
-			value is 30 days.*
+*默认值为 "3" 天。最大接受值为 30 天。*
 
 
-```c title="Set waiting_subs_daysno parameter"
+```c title="设置 waiting_subs_daysno 参数"
 ...
 modparam("presence", "waiting_subs_daysno", 2)
 ...
-	
+		
 ```
 
 
 #### mix_dialog_presence (int)
 
 
-This module parameter enables a very nice feature in the presence 
-		server - generating presence information from dialogs state. If this 
-		parameter is set, the presence server will tell you if a buddy is in 
-		a call even if his phone did not send a presence Publish with this 
-		information. You will need to load the dialoginfo modules, 
-		presence_dialoginfo, pua_dialoginfo, dialog and pua.
+此模块参数在 presence 服务器中启用了一个非常好的功能——从对话框状态生成 presence 信息。
+		如果设置此参数，presence 服务器将告诉您好友是否正在通话，
+		即使他的电话没有发送包含此信息的 presence Publish。
+		您需要加载 dialoginfo 模块、presence_dialoginfo、pua_dialoginfo、dialog 和 pua。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set mix_dialog_presence parameter"
+```c title="设置 mix_dialog_presence 参数"
 ...
 modparam("presence", "mix_dialog_presence", 1)
 ...
-	
+		
 ```
 
 
 #### bla_presentity_spec (str)
 
 
-By default the presentity uri for BLA subscribes (event=dialog;sla)
-			is computed from contact username + from domain. In some cases 
-			though, this way of computing the presentity might not be right 
-			(for example if you have a SBC in front that masquerades the 
-			contact). So we added this parameter that allows defining a custom 
-			uri to be used as presentity uri for BLA subscribes. You should 
-			set this parameter to the name of a pseudovariable and then set 
-			this pseudovariable to the desired URI before calling the
-			[handle subscribe](#func_handle_subscribe) function.
+默认情况下，BLA 订阅（event=dialog;sla）的 presentity URI 由 contact 用户名 + from domain 计算。
+		但在某些情况下，这种计算 presentity 的方式可能不正确
+		（例如，如果您有 SBC 在前面伪装 contact）。
+		所以我们添加了这个参数，允许定义自定义 URI 作为 BLA 订阅的 presentity URI。
+		您应该将此参数设置为一个伪变量的名称，然后在调用
+		[handle subscribe](#func_handle_subscribe) 函数之前将此伪变量设置为您想要的 URI。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set bla_presentity_spec parameter"
+```c title="设置 bla_presentity_spec 参数"
 ...
 modparam("presence", "bla_presentity_spec", "$var(bla_pres)")
 ...
-	
+		
 ```
 
 
 #### bla_fix_remote_target (int)
 
 
-Polycom has a bug in the bla implementation. It inserts the 
-			remote IP contact in the Notify body and when a phone picks up a 
-			call put on hold by another phone in the same BLA group, it sends 
-			an Invite directly to the remote IP. OpenSIPS BLA server tries to 
-			prevent this by replacing the IP contact with the
-			domain, when this is possible.
+Polycom 在 bla 实现中有一个错误。它在 Notify 正文中插入了远程 IP contact，
+			当电话接听由同一 BLA 组中另一部电话保持的呼叫时，
+			它会直接向远程 IP 发送 Invite。
+			OpenSIPS BLA 服务器尝试通过用域名替换 IP contact 来防止这种情况（当可能时）。
 
 
-In some cases(configurations) however this is not desirable, so 
-			this parameter was introduced to disable this behaviour when 
-			needed.
+但在某些情况（配置）下这是不可取的，
+			所以引入了此参数以便在需要时禁用此行为。
 
 
-*Default value is "1".*
+*默认值为 "1"。*
 
 
-```c title="Set bla_fix_remote_target parameter"
+```c title="设置 bla_fix_remote_target 参数"
 ...
 modparam("presence", "bla_fix_remote_target", 0)
 ...
-	
+		
 ```
 
 
 #### notify_offline_body (int)
 
 
-If this parameter is set, when no published info is found for
-			a user, the presence server will generate a dummy body with status
-			'closed' and use it when sending Notify, instead of notifying with
-			no body.
+如果设置此参数，当找不到用户的发布信息时，
+			presence 服务器将生成一个带有 'closed' 状态的虚拟正文，
+			并在发送 Notify 时使用它，而不是发送无正文的 Notify。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set notify_offline_body parameter"
+```c title="设置 notify_offline_body 参数"
 ...
 modparam("presence", "notify_offline_body", 1)
 ...
-	
+		
 ```
 
 
 #### end_sub_on_timeout (int)
 
 
-If a presence subscription should be automatically terminated 
-			(destroyed) when receiving a SIP timeout (408) for a sent
-			NOTIFY requests.
+当收到已发送 NOTIFY 请求的 SIP 超时（408）时，
+			presence 订阅是否应自动终止（销毁）。
 
 
-*Default value is "1" (enabled).*
+*默认值为 "1"（启用）。*
 
 
-```c title="Set end_sub_on_timeout parameter"
+```c title="设置 end_sub_on_timeout 参数"
 ...
 modparam("presence", "end_sub_on_timeout", 0)
 ...
-	
+		
 ```
 
 
 #### clean_period (int)
 
 
-The period at which to clean the expired subscription dialogs.
+清理过期订阅对话框的周期。
 
 
-*Default value is "100". A zero or negative 
-		value disables this activity.*
+*默认值为 "100"。零或负值禁用此活动。*
 
 
-```c title="Set clean_period parameter"
+```c title="设置 clean_period 参数"
 ...
 modparam("presence", "clean_period", 100)
 ...
@@ -503,15 +448,13 @@ modparam("presence", "clean_period", 100)
 #### db_update_period (int)
 
 
-The period at which to synchronize cached subscriber info with the
-		database.
+将缓存的订阅者信息与数据库同步的周期。
 
 
-*Default value is "100". A zero or negative 
-		value disables synchronization.*
+*默认值为 "100"。零或负值禁用同步。*
 
 
-```c title="Set db_update_period parameter"
+```c title="设置 db_update_period 参数"
 ...
 modparam("presence", "db_update_period", 100)
 ...
@@ -521,13 +464,13 @@ modparam("presence", "db_update_period", 100)
 #### presentity_table(str)
 
 
-The name of the db table where Publish information are stored.
+存储 Publish 信息的数据库表名。
 
 
-*Default value is "presentity".*
+*默认值为 "presentity"。*
 
 
-```c title="Set presentity_table parameter"
+```c title="设置 presentity_table 参数"
 ...
 modparam("presence", "presentity_table", "presentity")
 ...
@@ -537,14 +480,13 @@ modparam("presence", "presentity_table", "presentity")
 #### active_watchers_table(str)
 
 
-The name of the db table where active subscription information are 
-		stored.
+存储活动订阅信息的数据库表名。
 
 
-*Default value is "active_watchers".*
+*默认值为 "active_watchers"。*
 
 
-```c title="Set active_watchers_table parameter"
+```c title="设置 active_watchers_table 参数"
 ...
 modparam("presence", "active_watchers_table", "active_watchers")
 ...
@@ -554,13 +496,13 @@ modparam("presence", "active_watchers_table", "active_watchers")
 #### watchers_table(str)
 
 
-The name of the db table where subscription states are stored.
+存储订阅状态的数据库表名。
 
 
-*Default value is "watchers".*
+*默认值为 "watchers"。*
 
 
-```c title="Set watchers_table parameter"
+```c title="设置 watchers_table 参数"
 ...
 modparam("presence", "watchers_table", "watchers")
 ...
@@ -570,14 +512,14 @@ modparam("presence", "watchers_table", "watchers")
 #### subs_htable_size (int)
 
 
-The size of the hash table to store subscription dialogs.
-	This parameter will be used as the power of 2 when computing table size.
+存储订阅对话框的哈希表大小。
+		此参数在计算表大小时将用作 2 的幂。
 
 
-*Default value is "9 (512)".*
+*默认值为 "9 (512)"。*
 
 
-```c title="Set subs_htable_size parameter"
+```c title="设置 subs_htable_size 参数"
 ...
 modparam("presence", "subs_htable_size", 11)
 ...
@@ -588,14 +530,14 @@ modparam("presence", "subs_htable_size", 11)
 #### pres_htable_size (int)
 
 
-The size of the hash table to store publish records.
-	This parameter will be used as the power of 2 when computing table size.
+存储发布记录的哈希表大小。
+		此参数在计算表大小时将用作 2 的幂。
 
 
-*Default value is "9 (512)".*
+*默认值为 "9 (512)"。*
 
 
-```c title="Set pres_htable_size parameter"
+```c title="设置 pres_htable_size 参数"
 ...
 modparam("presence", "pres_htable_size", 11)
 ...
@@ -603,43 +545,37 @@ modparam("presence", "pres_htable_size", 11)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### handle_publish([sender_uri])
 
 
-The function handles PUBLISH requests. It stores and updates 
-		published information in database and calls functions to send 
-		NOTIFY messages when changes in the published information occur.
+该函数处理 PUBLISH 请求。它在数据库中存储和更新发布的信息，
+		并在发布的信息发生变化时调用函数发送 NOTIFY 消息。
 
 
-It may takes one optional string argument, the 'sender_uri' SIP URI.
-		The parameter was added 
-		for enabling BLA implementation. If present, Notification of
-		a change in published state is not sent to the respective uri
-		even though a subscription exists.
-		It should be taken from the Sender header. It was left at the
-		decision of the administrator whether or not to transmit the 
-		content of this header as parameter for handle_publish, to 
-		prevent security problems.
+它可以接受一个可选的字符串参数 'sender_uri' SIP URI。
+		添加此参数是为了启用 BLA 实现。如果存在，
+		不会将状态变化的通知发送到该 URI，即使存在订阅。
+		它应该从 Sender 头中获取。管理员可以决定是否将此头的内容作为参数传递给 handle_publish，
+		以防止安全问题。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-*Return code:*
+*返回码：*
 
 
-- *1 - if success*.
-- *-1 - if error*.
+- *1 - 成功*。
+- *-1 - 错误*。
 
 
-The module sends an appropriate stateless reply
-			in all cases.
+模块在所有情况下都会发送适当的无状态回复。
 
 
-```c title="handle_publish usage"
+```c title="handle_publish 使用示例"
 ...
 	if(is_method("PUBLISH"))
 	{
@@ -655,59 +591,49 @@ The module sends an appropriate stateless reply
 #### handle_subscribe([force_active] [,sharing_tag])
 
 
-This function is to be used for handling SUBSCRIBE requests. It stores
-		or updates the watcher/subscriber information in database. 
-		Additionally, in response to initial SUBSCRIBE requests (creating a 
-		new subscription session), the function also sends back the NOTIFY 
-		(with the presence information) to the wathcer/subscriber.
+此函数用于处理 SUBSCRIBE 请求。它在数据库中存储或更新 watcher/订阅者信息。
+		此外，作为对初始 SUBSCRIBE 请求的响应（创建新的订阅会话），
+		该函数还向 watcher/订阅者发送回 NOTIFY（包含 presence 信息）。
 
 
-The function may take the following parameters:
+该函数可以接受以下参数：
 
 
-- *force_active* (int, optional) - optional parameter that 
-				controls what is the default policy (of the presentity) on 
-				accepting new subscriptions (accept or reject) - of course, 
-				this parameter makes sense only when using a presence 
-				configuration with privacy rules enabled (force_active 
-				parameter in presence_xml module is not set).
-There are scenarios where the presentity (the party you 
-				subscribe to) can not upload an XCAP document with its
-				privacy rules (to control which watchers are allowed to 
-				subscribe to it). In such cases, from script level, you can
-				force the presence server to consider the current subscription
-				allowed (with Subscription-Status:active) by calling the 
-				handle_subscribe() function with the integer parameter "1".
-- *sharing_tag* (string, optional) - optional parameter telling
-				the owner tag (for the subscription) in clusetering scenarios 
-				where the subscription data is shared between multiple 
-				servers - see the [presence clustering](#presence_clustering)
-				chapter for more details.
+- *force_active* (int, optional) - 可选参数，控制
+				presentity 在接受新订阅（接受或拒绝）方面的默认策略——当然，
+				此参数仅在使用带有隐私规则的 presence 配置时有意义
+				（presence_xml 模块中的 force_active 参数未设置）。
+	有些情况下，presentity（您订阅的一方）无法上传其隐私规则的 XCAP 文档
+				（控制哪些 watcher 可以订阅它）。在这种情况下，
+				您可以从脚本级别强制 presence 服务器认为当前订阅是允许的
+				（带有 Subscription-Status:active），方法是用整数参数 "1" 调用 handle_subscribe() 函数。
+- *sharing_tag* (string, optional) - 可选参数，在集群场景中告诉
+				订阅数据在多个服务器之间共享时的所有者标签——请参阅
+				[presence 集群](#presence_clustering) 章节了解更多详情。
 
 
 ```c
-   Ex: 
+   示例： 
 	if($ru =~ "kphone@opensips.org")
 		handle_subscribe(1);
-		
+			
 ```
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-*Return code:*
+*返回码：*
 
 
-- *1 - if success*.
-- *-1 - if error*.
+- *1 - 成功*。
+- *-1 - 错误*。
 
 
-The module sends an appropriate stateless reply
-			in all cases.
+模块在所有情况下都会发送适当的无状态回复。
 
 
-```c title="handle_subscribe usage"
+```c title="handle_subscribe 使用示例"
 ...
 if($rm=="SUBSCRIBE")
     handle_subscribe();
@@ -715,38 +641,34 @@ if($rm=="SUBSCRIBE")
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### refresh_watchers
 
 
-Triggers sending Notify messages to watchers if a change in watchers
-		authorization or in published state occurred.
+在 watcher 授权或发布状态发生变化时触发向 watcher 发送通知消息。
 
 
-Name: *refresh_watchers*
+名称：*refresh_watchers*
 
 
-Parameters:
+参数：
 
 
-- presentity_uri : the uri of the user who made the change
-				and whose watchers should be informed
-- event : the event package
-- refresh type : it distinguishes between the two different types of events
-									that can trigger a refresh: 
-									
-									
-									a change in watchers authentication: refresh type= 0 ;
-									
-									
-									a statical update in published state (either through direct 
-									update in db table or by modifying the pidf manipulation document,
-									if pidf_manipulation parameter is set): refresh type!= 0.
+- presentity_uri：做出更改的用户 URI，其 watcher 应该被通知
+- event：事件包
+- refresh type：区分两种不同类型事件的刷新：
+					
+					
+				watcher 授权的更改：refresh type= 0；
+					
+					
+				发布状态的统计更新（无论是通过直接更新 db 表还是通过修改
+				pidf 操作文档，如果设置了 pidf_manipulation 参数）：refresh type!= 0。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -758,17 +680,16 @@ opensips-cli -x mi refresh_watchers sip:11@192.168.2.132 presence 1
 #### cleanup
 
 
-Manually triggers the cleanup functions for watchers and presentity tables. Useful if you
-		have set `clean_period` to zero or less.
+手动触发 watcher 和 presentity 表的清理函数。如果您将 `clean_period` 设置为零或更小，则很有用。
 
 
-Name: *cleanup*
+名称：*cleanup*
 
 
-Parameters: *none*
+参数：*无*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -780,19 +701,19 @@ opensips-cli -x mi cleanup
 #### presence:phtable_list
 
 
-Replaces obsolete MI command: *pres_phtable_list*.
+替换过时的 MI 命令：*pres_phtable_list*。
 
 
-Lists all the presentity records.
+列出所有 presentity 记录。
 
 
-Name: *presence:phtable_list*
+名称：*presence:phtable_list*
 
 
-Parameters: *none*
+参数：*无*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -804,20 +725,20 @@ opensips-cli -x mi presence:phtable_list
 #### subs_phtable_list
 
 
-Lists all the subscription records, or the subscriptions for which the "To" and "From" URIs match the given parameters.
+列出所有订阅记录，或 "To" 和 "From" URI 与给定参数匹配的订阅。
 
 
-Name: *subs_phtable_list*
+名称：*subs_phtable_list*
 
 
-Parameters
+参数
 
 
-- *from*(optional) - wildcard for "From" URI
-- *to*(optional) - wildcard for "To" URI
+- *from*(optional) - "From" URI 的通配符
+- *to*(optional) - "To" URI 的通配符
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -829,31 +750,24 @@ opensips-cli -x mi subs_phtable_list sip:222@domain2.com sip:user_1@example.com
 #### presence:expose
 
 
-Replaces obsolete MI command: *pres_expose*.
+替换过时的 MI命令：*pres_expose*。
 
 
-Exposes in the script, by rasing an
-		  *E_PRESENCE_EXPOSED* event, all the
-		  presentities of a specific event that match a specified
-		  filter.
+通过引发 *E_PRESENCE_EXPOSED* 事件，在脚本中公开匹配指定过滤器的特定事件的所有 presentities。
 
 
-Name: *presence:expose*
+名称：*presence:expose*
 
 
-Parameters:
+参数：
 
 
-- *event* - the desired presence
-			event.
-- *filter*(optional) - a regular
-			expression (REGEXP) used for filtering the presentities
-			for that event. Only the presentities that match will
-			be exposed. If not specified, all presentities for that
-			event are exposed.
+- *event* - 期望的 presence 事件。
+- *filter*(optional) - 用于过滤该事件 presentities 的正则表达式（REGEXP）。
+				只有匹配的 presentities 会被公开。如果未指定，该事件的所有 presentities 都会被公开。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -862,72 +776,64 @@ opensips-cli -x mi presence:expose presence ^sip:10\.0\.5\.[0-9]*
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_PRESENCE_PUBLISH
 
 
-This event is raised when the presence module receives
-			a PUBLISH message.
+当 presence 模块收到 PUBLISH 消息时引发此事件。
 
 
-Parameters:
+参数：
 
 
-- *user* - the AOR of the user
-- *domain* - the domain
-- *event* - the type of the
-					event published
-- *expires* - the expire value
-					of the publish
-- *etag* - the entity tag
-- *old_etag* - the entity tag to be refreshed
-- *body* - the body of the
-					PUBLISH request
+- *user* - 用户的 AOR
+- *domain* - 域
+- *event* - 发布的事件类型
+- *expires* - 发布的过期值
+- *etag* - 实体标签
+- *old_etag* - 要刷新的实体标签
+- *body* - PUBLISH 请求的正文
 
 
 #### E_PRESENCE_EXPOSED
 
 
-This event is raised for each presentity exposeed
-			by the *presence:expose*.
+对于 *presence:expose* 公开的每个 presentity 引发此事件。
 
 
-Parameters:
+参数：
 
 
-Same parameters as the
-			*E_PRESENCE_PUBLISH* event.
+与 *E_PRESENCE_PUBLISH* 事件相同的参数。
 
 
-### Installation
+### 安装
 
 
-The module requires 3 table in OpenSIPS database: presentity,
-	active_watchers and watchers tables. The SQL 
-	syntax to create them can be found in presence-create.sql 
-	script in the database directories in the opensips/scripts folder.
-	You can also find the complete database documentation on the
-	project webpage, [https://opensips.org/docs/db/db-schema-devel.html](https://opensips.org/docs/db/db-schema-devel.html).
+该模块需要在 OpenSIPS 数据库中有 3 个表：presentity、active_watchers 和 watchers 表。
+		创建它们的 SQL 语法可以在 opensips/scripts 文件夹的数据库目录中的
+		presence-create.sql 脚本中找到。
+		您也可以在项目网页上找到完整的数据库文档，
+		[https://opensips.org/docs/db/db-schema-devel.html](https://opensips.org/docs/db/db-schema-devel.html)。
 
 
-## Developer Guide
+## 开发者指南
 
 
-The module provides the following functions that can be used
-		in other OpenSIPS modules.
+该模块提供以下可在其他 OpenSIPS 模块中使用的函数。
 
 
 ### bind_presence(presence_api_t* api)
 
 
-This function binds the presence modules and fills the structure 
-				with the exported functions that represent functions adding events
-				in presence module and functions specific for Subscribe processing.
+此函数绑定 presence 模块并用导出的函数填充结构，
+			这些函数表示在 presence 模块中添加事件的函数，
+			以及用于 Subscribe 处理的特定函数。
 
 
-```c title="presence_api_t structure"
+```c title="presence_api_t 结构"
 ...
 typedef struct presence_api {
 	add_event_t add_event;
@@ -937,21 +843,20 @@ typedef struct presence_api {
 	
 	update_watchers_t update_watchers_status;
 	
-	/* subs hash table handling functions */
+	/* 订阅哈希表处理函数 */
 	new_shtable_t new_shtable;
 	destroy_shtable_t destroy_shtable;
 	insert_shtable_t insert_shtable;
 	search_shtable_t search_shtable;
 	delete_shtable_t delete_shtable;
 	update_shtable_t update_shtable;
-	/* function to duplicate a subs structure*/
+	/* 用于复制 subs 结构的函数*/
 	mem_copy_subs_t  mem_copy_subs;
-	/* function used for update in database*/
+	/* 用于更新数据库的函数*/
 	update_db_subs_t update_db_subs;
-	/* function to extract dialog information from a
-	SUBSCRIBE message */
+	/* 用于从 SUBSCRIBE 消息中提取对话框信息的函数*/
 	extract_sdialog_info_t extract_sdialog_info;
-	/* function to request sphere defition for a presentity */
+	/* 用于请求 presentity 的 sphere 定义的函数 */
 	pres_get_sphere_t get_sphere;
 	pres_contains_presence_t contains_presence;
 }presence_api_t;
@@ -962,7 +867,7 @@ typedef struct presence_api {
 ### add_event
 
 
-Field type:
+字段类型：
 
 
 ```c
@@ -972,11 +877,10 @@ typedef int (*add_event_t)(pres_ev_t* event);
 ```
 
 
-This function receives as a parameter a structure with event specific
-			information and adds it to presence event list.
+此函数接收一个包含事件特定信息的结构作为参数，并将其添加到 presence 事件列表中。
 
 
-The structure received as a parameter:
+作为参数接收的结构：
 
 
 ```c
@@ -990,36 +894,30 @@ typedef struct pres_ev
 	int type;
 	int etag_not_new;
 	/*
-	 *  0 - the standard mechanism (allocating new etag
-			for each Publish)
-	 *  1 - allocating an etag only
-			for an initial Publish 
+	 *  0 - 标准机制（为每个 Publish 分配新 etag）
+	 *  1 - 仅在初始 Publish 时分配 etag
 	*/
 	int req_auth;
 	get_rules_doc_t* get_rules_doc;
 	apply_auth_t*  apply_auth_nbody;
 	is_allowed_t*  get_auth_status;
 	
-	/* an agg_body_t function should be registered
-	 * if the event permits having multiple published
-	 * states and requires an aggregation of the information
-	 * otherwise, this field should be NULL and the last
-	 * published state is taken when constructing Notify msg
+	/* 如果事件允许有多个发布状态并需要聚合信息，
+	 * 则应注册一个 agg_body_t 函数
+	 * 否则，此字段应为 NULL，在构建 Notify 消息时使用最后发布的的状态
 	 */
 	agg_nbody_t* agg_nbody;
 	publ_handling_t  * evs_publ_handl;
 	subs_handling_t  * evs_subs_handl;
 	free_body_t* free_body;
 	
-	/* sometimes it is necessary that a module make changes for a body for each 
-	 * active watcher (e.g. setting the "version" parameter in an XML document.
-	 * If a module registers the aux_body_processing callback, it gets called for
-	 * each watcher. It either gets the body received by the PUBLISH, or the body
-	 * generated by the agg_nbody function.
-	 * The module can deceide if it makes a copy of the original body, which is then
-	 * manipulated, or if it works directly in the original body. If the module makes a
-	 * copy of the original body, it also has to register the aux_free_body() to 
-	 * free this "per watcher" body.
+	/* 有时模块需要为每个 active watcher 对正文进行更改
+	 * （例如在 XML 文档中设置 "version" 参数）。
+	 * 如果模块注册了 aux_body_processing 回调，它会为每个 watcher 调用它。
+	 * 它要么获取 PUBLISH 接收到的正文，要么获取 agg_nbody 函数生成的正文。
+	 * 模块可以决定是否复制原始正文，然后进行操作，
+	 * 或者直接处理原始正文。如果模块复制了原始正文，
+	 * 它还必须注册 aux_free_body() 来释放这个 "per watcher" 正文。
 	 */
 	aux_body_processing_t* aux_body_processing;
 	free_body_t* aux_free_body;
@@ -1035,80 +933,70 @@ typedef struct pres_ev
 ### get_rules_doc
 
 
-Filed type:
+字段类型：
 
 
 ```c
 ...
 typedef int (get_rules_doc_t)(str* user, str* domain, str** rules_doc);
 ...
-			
+				
 ```
 
 
-This function returns the authorization rules document that will be
-		used in obtaining the status of the subscription and processing the
-		notified body. A reference to the document should be put in the 
-		auth_rules_doc of the subs_t structure given as a parameter to the
-		functions described bellow.
+此函数返回将用于获取订阅状态和处理通知正文的授权规则文档。
+		应在作为参数传递给下面描述的函数的 subs_t 结构的 auth_rules_doc 字段中放置对文档的引用。
 
 
 ### get_auth_status
 
 
-This filed is a function to be called for a subscription request
-			to return the state for that subscription according to
-			authorization rules. In the auth_rules_doc field of the subs_t
-			structure received as a parameter should contain the rules 
-			document of the presentity in case, if it exists.
+此字段是一个函数，对于订阅请求调用以根据授权规则返回该订阅的状态。
+			subs_t 结构收到的 auth_rules_doc 字段应包含 presentity 的规则文档（如果存在）。
 
 
-It is called only if the req_auth field is not 0.
+仅当 req_auth 字段不为 0 时调用。
 
 
-Filed type:
+字段类型：
 
 
 ```c
 ...
 typedef int (is_allowed_t)(struct subscription* subs);
 ...
-			
+				
 ```
 
 
 ### apply_auth_nbody
 
 
-This parameter should be a function to be called for an event 
-			that requires authorization, when constructing final body. 
-			The authorization document is taken from the auth_rules_doc
-			field of the subs_t structure given as a parameter.
-			It is called only if the req_auth field is not 0.
+此参数应该是一个函数，对于需要授权的事件，在构建最终正文时调用。
+			授权文档从作为参数传递的 subs_t 结构的 auth_rules_doc 字段获取。
+			仅当 req_auth 字段不为 0 时调用。
 
 
-Filed type:
+字段类型：
 
 
 ```c
 ...
 typedef int (apply_auth_t)(str* , struct subscription*, str** );
 ...
-			
+				
 ```
 
 
 ### agg_nbody
 
 
-If present, this field marks that the events requires aggregation
-			of states. This function receives a body array and should return
-			the final body.	If not present, it is considered that the event
-			does not require aggregation and the most recent published
-			information is used when constructing Notifies.
+如果存在，此字段标记事件需要状态聚合。
+			此函数接收正文数组并应返回最终正文。
+			如果不存在，则认为事件不需要聚合，在构建 Notify 时使用最近发布的信息。
 
 
-Filed type:
+字段类型：
 
 
 ```c
@@ -1116,97 +1004,93 @@ Filed type:
 typedef str* (agg_nbody_t)(str* pres_user, str* pres_domain, 
 str** body_array, int n, int off_index);
 ..
-			
+				
 ```
 
 
 ### free_body
 
 
-This field must be field in if subsequent processing is performed
-			on the info from database before being inserted in Notify
-			message body(if agg_nbody or apply_auth_nbody fields are
-			filled in). It should match the allocation function used when
-			processing the body.
+如果需要对从数据库检索的信息进行后续处理然后插入 Notify 消息正文
+			（如果 agg_nbody 或 apply_auth_nbody 字段已填写），
+			则此字段必须填写。
+			它应该与处理正文时使用的分配函数匹配。
 
 
-Filed type:
+字段类型：
 
 
 ```c
 ...
 typedef void(free_body_t)(char* body);
 ..
-			
+				
 ```
 
 
 ### aux_body_processing
 
 
-This field must be set if the module needs to manipulate the NOTIFY body 
-			for each watcher. E.g. if the XML body includes a 'version' parameter which 
-			will be increased for each NOTIFY, on a "per watcher" basis.
-			The module can either allocate a new buffer for the new body an return it (aux_free_body
-			function must be set too) or it manipualtes the original body directly and returns NULL.
+如果模块需要为每个 watcher 操作 NOTIFY 正文，则必须设置此字段。
+			例如，如果 XML 正文中包含一个 'version' 参数，
+			该参数将为每个 NOTIFY 增加，"per watcher" 的基础上。
+			模块可以为新正文分配新缓冲区并返回它（也必须设置 aux_free_body 函数），
+			或者直接操作原始正文缓冲区并返回 NULL。
 
 
-Filed type:
+字段类型：
 
 
 ```c
 ...
 typedef str* (aux_body_processing_t)(struct subscription *subs, str* body);
 ..
-			
+				
 ```
 
 
 ### aux_free_body
 
 
-This field must be set if the module registers the aux_body_processing function
-			and allocates memory for the new modified body. Then, this function will be used
-			to free the pointer returned by the aux_body_processing function.
-			If the module does use the aux_body_processing, but does not allocate new memory, but
-			manipulates directly the original body buffer, then the aux_body_processing
-			must return NULL and this field should not be set.
+如果模块注册了 aux_body_processing 函数并为新修改的正文分配了内存，
+			则必须设置此字段。然后，此函数将用于释放 aux_body_processing 函数返回的指针。
+			如果模块确实使用了 aux_body_processing，但不分配新内存，
+			而是直接操作原始正文缓冲区，则 aux_body_processing 必须返回 NULL，
+			且不应设置此字段。
 
 
-Filed type:
+字段类型：
 
 
 ```c
 ...
 typedef void(free_body_t)(char* body);
 ..
-			
+				
 ```
 
 
 ### evs_publ_handl
 
 
-This function is called when handling Publish requests. Most contain 
-		body correctness check.
+此函数在处理 Publish 请求时调用。大多数包含正文正确性检查。
 
 
 ```c
 ...
 typedef int (publ_handling_t)(struct sip_msg*);
 ..
-			
+				
 ```
 
 
 ### evs_subs_handl
 
 
-It is not compulsory. Should contain event specific handling for
-		Subscription requests.
+这不是强制的。应包含订阅请求的事件特定处理。
 
 
-Filed type:
+字段类型：
 
 
 ```c
@@ -1219,7 +1103,7 @@ typedef int (subs_handling_t)(struct sip_msg*);
 ### contains_event
 
 
-Field type:
+字段类型：
 
 
 ```c
@@ -1230,16 +1114,15 @@ event_t* parsed_event);
 ```
 
 
-The function parses the event name received as a parameter and searches
-	the result in the list. It returns the found event or NULL, if not found. 
-	If the second argument is an allocated event_t* structure it fills it
-	with the result of the parsing.
+此函数解析作为参数接收的事件名称并在列表中搜索结果。
+		如果找到则返回找到的事件，否则返回 NULL。
+		如果第二个参数是已分配的 event_t* 结构，它用解析结果填充它。
 
 
 ### get_event_list
 
 
-Field type:
+字段类型：
 
 
 ```c
@@ -1249,14 +1132,13 @@ typedef int (*get_event_list_t) (str** ev_list);
 ```
 
 
-This function returns a string representation of the events registered
-	in presence module.( used for Allowed-Events header).
+此函数返回在 presence 模块中注册的事件的字符串表示。（用于 Allowed-Events 头）。
 
 
 ### update_watchers_status
 
 
-Field type:
+字段类型：
 
 
 ```c
@@ -1267,17 +1149,15 @@ str* rules_doc);
 ```
 
 
-This function is an external command that can be used to announce a change
-	in authorization rules for a presentity. It updates the stored status and
-	sends a Notify to the watchers whose status has changes. (used by
-	presence_xml module when notified through an MI command of a change in
-	an xcap document).
+此函数是一个外部命令，可用于宣布 presentity 授权规则的更改。
+		它更新存储的状态并向状态发生变化的 watcher 发送通知。
+		（由 presence_xml 模块在通过 MI 命令通知 XCAP 文档更改时使用）。
 
 
 ### get_sphere
 
 
-Field type:
+字段类型：
 
 
 ```c
@@ -1287,15 +1167,14 @@ typedef char* (*pres_get_sphere_t)(str* pres_uri);
 ```
 
 
-This function searches for a sphere definition in the published information
-	if this has type RPID. If not found returns NULL. (the return value is
-	allocated in private memory and should be freed)
+此函数在发布的信息中搜索 sphere 定义（如果类型为 RPID）。
+		如果未找到则返回 NULL。（返回值在私有内存中分配，应该被释放）
 
 
 ### contains_presence
 
 
-Field type:
+字段类型：
 
 
 ```c
@@ -1305,10 +1184,10 @@ typedef int (*pres_contains_presence_t)(str* pres_uri);
 ```
 
 
-This function searches is a presence uri has published any presence
-	information. It return 1 if a record is found, -1 otherwise.
+此函数搜索 presence URI 是否发布了任何 presence 信息。
+		如果找到记录则返回 1，否则返回 -1。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

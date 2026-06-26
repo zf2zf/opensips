@@ -1,110 +1,108 @@
 ---
-title: "Load Balancer Module"
-description: "The Load-Balancer module comes to provide traffic routing based on load. Shortly, when OpenSIPS routes calls to a set of destinations, it is able to keep the load status (as number of ongoing calls) of each destination and to choose to route to the less loaded destination (at that moment). ..."
+title: "负载均衡器模块"
+description: "负载均衡器模块提供基于负载的流量路由功能。简而言之，当 OpenSIPS 将呼叫路由到一组目标时，它能够跟踪每个目标的负载状态（当前通话数），并选择负载最轻的目标（当时）进行路由。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The Load-Balancer module comes to provide traffic routing based on load. 
-	Shortly, when OpenSIPS routes calls to a set of destinations, it is able 
-	to keep the load status (as number of ongoing calls) of each destination 
-	and to choose to route to the less loaded destination (at that moment). 
-	OpenSIPS is aware of the capacity of each destination - it is preconfigured 
-	with the maximum load accepted by the destinations. To be more precise, 
-	when routing, OpenSIPS will consider the less loaded destination not the 
-	destination with the smallest number of ongoing calls, but the destination 
-	with the largest available slot.
+负载均衡器模块提供基于负载的流量路由功能。
+		简而言之，当 OpenSIPS 将呼叫路由到一组目标时，它能够
+		跟踪每个目标的负载状态（当前通话数），
+		并选择负载最轻的目标（当时）进行路由。
+		OpenSIPS 知道每个目标的容量 - 它预先配置了
+		目标接受的最大负载。更准确地说，
+		在路由时，OpenSIPS 会考虑负载最轻的目标，而不是
+		当前通话数最少的目标，而是可用槽位
+		最大的目标。
 
 
-Also the module has the capability to do failover (to try a new destination
-	if the selected one does not respond), to keep state of the destinations 
-	(to remember the failed destination and avoid using them agai) and to 
-	check the health of the destination (by doing probing of the destination 
-	and auto re-enabling).
+此外，该模块还具有故障转移功能（如果选定的目标
+		无响应，则尝试新目标）、保持目标状态
+		（记住失败的目标并避免再次使用它们）以及
+		检查目标健康状况（通过对目标进行探测
+		并自动重新启用）。
 
 
-### How it works
+### 工作原理
 
 
-Please refer to the Load-Balancer tutorial from the OpenSIPS website:
-		[https://opensips.org/Documentation/Tutorials-LoadBalancing-1-9](https://opensips.org/Documentation/Tutorials-LoadBalancing-1-9).
+请参阅 OpenSIPS 网站上的负载均衡器教程：
+		[https://opensips.org/Documentation/Tutorials-LoadBalancing-1-9](https://opensips.org/Documentation/Tutorials-LoadBalancing-1-9)。
 
 
-### Probing and Disabling destinations
+### 探测和禁用目标
 
 
-The module has the capability to monitor the status of the destinations by
-	doing SIP probing (sending SIP requests like OPTIONS).
+该模块能够通过执行 SIP 探测（发送 SIP 请求如 OPTIONS）
+		来监控目标的状态。
 
 
-For each destination, you can configure what kind of probing should be 
-	done (probe_mode column):
+对于每个目标，您可以配置应该执行何种探测
+	（probe_mode 列）：
 
 
-- *(0)* - no probing at all;
-- *(1)* - probing only when the destination is
-		in disabled mode (disabling via MI command will competely stop the 
-		probing also). The destination will be automatically re-enabled
-		when the probing will succeed next time;
-- *(2)* - probing all the time. If disabled, 
-		the destination will be automatically re-enabled when the probing 
-		will succeed next time;
+- *(0)* - 完全不探测；
+- *(1)* - 仅当目标处于
+		禁用模式时才进行探测（通过 MI 命令禁用将完全停止
+		探测）。当探测下次成功时，
+		目标将自动重新启用；
+- *(2)* - 始终进行探测。如果已禁用，
+		当探测下次成功时，
+		目标将自动重新启用；
 
 
-A destination can become disabled in two ways:
+目标可以通过两种方式变为禁用状态：
 
 
-- script detection
-- MI command
+- 脚本检测
+- MI 命令
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *Dialog* - Dialog module
-*freeswitch*. - only if 
-				"fetch_freeswitch_stats" is enabled.
-- *dialog* - TM module (only if probing is
-				enabled)
-- *clusterer* - only if "cluster_id"
-				option is enabled.
-- *database* - one of the DB modules
+- *Dialog* - Dialog 模块
+*freeswitch*。- 仅在
+				启用"fetch_freeswitch_stats"时。
+- *dialog* - TM 模块（仅在启用探测时）
+- *clusterer* - 仅在启用"cluster_id"
+				选项时。
+- *database* - 某个 DB 模块
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的
+		OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-The URL pointing to the database where the load-balancing rules 
-		are stored.
+指向存储负载均衡规则的数据库的 URL。
 
 
-*Default value is "mysql://opensips:opensipsrw@localhost/opensips".*
+*默认值为 "mysql://opensips:opensipsrw@localhost/opensips"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("load_balancer", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
@@ -114,13 +112,13 @@ modparam("load_balancer", "db_url", "dbdriver://username:password@dbhost/dbname"
 #### db_table (string)
 
 
-The name of the DB table containing the load-balancing rules.
+包含负载均衡规则的数据库表的名称。
 
 
-*Default value is "load_balancer".*
+*默认值为 "load_balancer"。*
 
 
-```c title="Set db_table parameter"
+```c title="设置 db_table 参数"
 ...
 modparam("load_balancer", "db_table", "lb")
 ...
@@ -130,15 +128,15 @@ modparam("load_balancer", "db_table", "lb")
 #### probing_interval (integer)
 
 
-How often (in seconds) the probing of a destination should be done. If
-		set to 0, the probing will be disabled as functionality (for all 
-		destinations)
+对目标进行探测的频率（以秒为单位）。如果
+		设置为 0，则对所有
+		目标禁用探测功能
 
 
-*Default value is "30".*
+*默认值为 "30"。*
 
 
-```c title="Set probing_interval parameter"
+```c title="设置 probing_interval 参数"
 ...
 modparam("load_balancer", "probing_interval", 60)
 ...
@@ -148,13 +146,13 @@ modparam("load_balancer", "probing_interval", 60)
 #### probing_method (string)
 
 
-The SIP method to be used for the probing requests.
+用于探测请求的 SIP 方法。
 
 
-*Default value is ""OPTIONS"".*
+*默认值为 ""OPTIONS""。*
 
 
-```c title="Set probing_method parameter"
+```c title="设置 probing_method 参数"
 ...
 modparam("load_balancer", "probing_method", "INFO")
 ...
@@ -164,13 +162,13 @@ modparam("load_balancer", "probing_method", "INFO")
 #### probing_from (string)
 
 
-The FROM SIP URI to be advertised in the SIP probing requests.
+在 SIP 探测请求中公布的 FROM SIP URI。
 
 
-*Default value is ""sip:prober@localhost"".*
+*默认值为 ""sip:prober@localhost""。*
 
 
-```c title="Set probing_from parameter"
+```c title="设置 probing_from 参数"
 ...
 modparam("load_balancer", "probing_from", "sip:pinger@192.168.2.10")
 ...
@@ -180,15 +178,15 @@ modparam("load_balancer", "probing_from", "sip:pinger@192.168.2.10")
 #### probing_reply_codes (string)
 
 
-A comma separted list of SIP reply codes. The codes defined here 
-		will be considered as valid reply codes for probing messages,
-		apart for 200.
+SIP 回复代码的逗号分隔列表。这里
+		定义的代码，除了 200 之外，
+		将被视为探测消息的有效回复代码。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set probing_reply_codes parameter"
+```c title="设置 probing_reply_codes 参数"
 ...
 modparam("load_balancer", "probing_reply_codes", "501, 403")
 ...
@@ -198,21 +196,21 @@ modparam("load_balancer", "probing_reply_codes", "501, 403")
 #### probing_verbose (number)
 
 
-A boolean option to enable extra logging related to the 
-		enabling or disabling of the destinations based on probing
-		replies and MI commands.
+一个布尔选项，用于启用与基于探测
+		回复和 MI 命令启用或禁用目标相关的
+		额外日志记录。
 
 
-A 0 value means disabled, anything else means enabled.
+0 值表示禁用，其他任何值表示启用。
 
 
-The extra logging will be done on INFO level.
+额外日志将记录在 INFO 级别。
 
 
-*Default value is "0" (disabled).*
+*默认值为 "0"（禁用）。*
 
 
-```c title="Set probing_verbose parameter"
+```c title="设置 probing_verbose 参数"
 ...
 modparam("load_balancer", "probing_verbose", 1)
 ...
@@ -222,17 +220,17 @@ modparam("load_balancer", "probing_verbose", 1)
 #### lb_define_blacklist (string)
 
 
-Defines a blacklist based on a lb group. This list will contain the IPs
-		(no port, all protocols) of the destinations matching the given group.
+基于 lb 组定义黑名单。此列表将包含与给定组匹配的
+		目标的 IP（无端口，所有协议）。
 
 
-Multiple instances of this param are allowed.
+允许此参数的多个实例。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set the lb_define_blacklist parameter"
+```c title="设置 lb_define_blacklist 参数"
 ...
 modparam("load_balancer", "lb_define_blacklist", "list= 1,4,3")
 modparam("load_balancer", "lb_define_blacklist", "blist2= 2,10,6")
@@ -243,22 +241,22 @@ modparam("load_balancer", "lb_define_blacklist", "blist2= 2,10,6")
 #### fetch_freeswitch_stats (integer)
 
 
-If enabled, the maximum value of a resource may also consist of
-		FreeSWITCH Event Socket Layer URLs, e.g. *"channels=fs://:password@freeswitch.example.com"*
-		or *"channels=fs://user:password@127.0.0.1:8021"*. The default ESL port is 8021.
+如果启用，资源的最大值也可以包含
+		FreeSWITCH Event Socket Layer URL，例如 *"channels=fs://:password@freeswitch.example.com"*
+		或 *"channels=fs://user:password@127.0.0.1:8021"*。默认 ESL 端口为 8021。
 
 
-OpenSIPS will establish a connection with the given socket and
-		periodically update the internal maximum value of the given resource
-		using statistics pushed by the FreeSWITCH box.
+OpenSIPS 将与给定的套接字建立连接，并
+		使用 FreeSWITCH 推送的统计信息定期更新
+		给定资源的内部最大值。
 
 
-The max value of a resource is updated every *event_heartbeat_interval*
-		seconds (see the "freeswitch" OpenSIPS module for more details
-		regarding this setting), as the stats arrive from FreeSWITCH.
+资源的最大值每 *event_heartbeat_interval*
+		秒更新一次（有关此设置的更多详细信息，请参阅 OpenSIPS 的"freeswitch"模块），
+		当统计信息从 FreeSWITCH 到达时。
 
 
-Given the following format for FreeSWITCH heartbeat messages:
+给定以下 FreeSWITCH 心跳消息格式：
 
 
 ```c
@@ -274,9 +272,8 @@ Given the following format for FreeSWITCH heartbeat messages:
 ```
 
 
-, the load balancer uses the following formula in order to periodically
-		update its "max_load" values for each FreeSWITCH box (FreeSWITCH data
-		is highlighted in bold):
+，负载均衡器使用以下公式定期更新每个 FreeSWITCH 盒子的"max_load"值（FreeSWITCH 数据
+		以粗体突出显示）：
 
 
 *max_load = (**Idle-CPU** / 100)
@@ -285,10 +282,10 @@ Given the following format for FreeSWITCH heartbeat messages:
 				current_load))*
 
 
-*Default value is "0" (disabled).*
+*默认值为 "0"（禁用）。*
 
 
-```c title="Set the fetch_freeswitch_load parameter"
+```c title="设置 fetch_freeswitch_load 参数"
 ...
 modparam("load_balancer", "fetch_freeswitch_stats", 1)
 ...
@@ -298,16 +295,16 @@ modparam("load_balancer", "fetch_freeswitch_stats", 1)
 #### initial_freeswitch_load (integer)
 
 
-This parameter is only relevant for some seconds after module startup/reload,
-		when no statistics from newly loaded FreeSWITCH ESL sockets have arrived, yet the
-		routing of calls must remain unaffected. Any FreeSWITCH-enabled resource will
-		inherit this value for the entire interval mentioned above (up to 20 seconds!).
+此参数仅在模块启动/重载后的几秒钟内相关，
+		此时还没有从新加载的 FreeSWITCH ESL 套接字收到统计信息，
+		但呼叫路由必须保持不受影响。任何启用 FreeSWITCH 的资源将
+		继承上述整个间隔（最长 20 秒！）的此值。
 
 
-*Default value is "1000".*
+*默认值为 "1000"。*
 
 
-```c title="Set the initial_freeswitch_load parameter"
+```c title="设置 initial_freeswitch_load 参数"
 ...
 modparam("load_balancer", "initial_freeswitch_load", 200)
 ...
@@ -317,44 +314,41 @@ modparam("load_balancer", "initial_freeswitch_load", 200)
 #### cluster_id (integer)
 
 
-The ID of the cluster the module is part of. The clustering support is 
-		used in load-balancer module for two purposes: for sharing the status 
-		of the destinations and for controlling the pinging to destinations.
+模块所属集群的 ID。集群支持用于
+		负载均衡器模块的两个目的：共享
+		目标的状态和控制对目标的 ping。
 
 
-If clustering enbled, the module will automatically share changes
-		over the status of the destinations with the other 
-		OpenSIPS instances that are part of a cluster. Whenever such a status 
-		changes (following an MI command, a probing result, a script command),
-		the module will replicate this status change to all the nodes in this 
-		given cluster.
+如果启用集群，模块将自动与属于集群的
+		其他 OpenSIPS 实例共享
+		目标状态的更改。每当状态发生此类更改（根据 MI 命令、探测结果、脚本命令），
+		模块会将此状态更改复制到给定集群中的所有节点。
 
 
-The clustering with sharing tag support may be used to control which 
-		node in the cluster will perform the pinging/probing to 
-		destinations. See the
-		[cluster sharing tag](#param_cluster_sharing_tag) option.
+具有共享标签支持的集群可用于控制
+		集群中的哪个节点将执行对
+		目标的 ping/探测。请参阅
+		[集群共享标签](#param_cluster_sharing_tag) 选项。
 
 
-This OpenSIPS cluster exposes the **"load_balancer-status-repl"**
-capability in order to mark nodes as eligible for becoming data donors during an
-arbitrary sync request. Consequently, the cluster must have *at least
-one node* marked with the **"seed"** value
-as the *clusterer.flags* column/property in order to be fully functional.
-Consult the [clusterer - Capabilities](../clusterer#capabilities)
-chapter for more details.
+此 OpenSIPS 集群公开 **"load_balancer-status-repl"**
+功能，以便在任意同步请求中将节点标记为合格的数据捐赠者。因此，集群必须至少有
+一个节点标记有 **"seed"** 值
+作为 *clusterer.flags* 列/属性才能完全正常运行。
+有关更多详细信息，请参阅 [clusterer - Capabilities](../clusterer#capabilities)
+章节。
 
 
-For more info on how to define and populate a cluster (with OpenSIPS 
-		nodes) see the "clusterer" module.
+有关如何定义和填充（使用 OpenSIPS
+		节点）集群的更多信息，请参阅"clusterer"模块。
 
 
-*Default value is "0 (none)".*
+*默认值为 "0（无）"。*
 
 
-```c title="Set cluster_id parameter"
+```c title="设置 cluster_id 参数"
 ...
-# replicate destination status with all OpenSIPS in cluster ID 9
+# 与集群 ID 9 中的所有 OpenSIPS 复制目标状态
 modparam("load_balancer", "cluster_id", 9)
 ...
 ```
@@ -363,110 +357,107 @@ modparam("load_balancer", "cluster_id", 9)
 #### cluster_sharing_tag (string)
 
 
-The name of the sharing tag (as defined per clusterer modules) to 
-		control which node is responsible for perform the self-triggered
-		actions in the module. Such actions may be the destination probing or 
-		sharing the changes in the destination status.
-		If defined, only the node with active status of this tag will 
-		perform the actions (pinging and sharing status).
+共享标签的名称（如 clusterer 模块所定义），
+		用于控制哪个节点负责执行模块中的自我触发
+		操作。此类操作可能是目标探测或
+		共享目标状态的更改。
+		如果已定义，只有具有此标签 active 状态的节点才会
+		执行操作（ping 和共享状态）。
 
 
-The [cluster id](#param_cluster_id) must be defined for this option
-		to work.
+[cluster id](#param_cluster_id) 必须为此选项
+		定义才能工作。
 
 
-This is an optional parameter. If not set, all the nodes in the cluster
-		will individually do the probing and share the status changes.
+这是一个可选参数。如果未设置，集群中的所有节点
+		将单独进行探测并共享状态更改。
 
 
-*Default value is "empty (none)".*
+*默认值为"空（无）"。*
 
 
-```c title="Set cluster_sharing_tag parameter"
+```c title="设置 cluster_sharing_tag 参数"
 ...
-# only the node with the active "vip" sharing tag will perform pinging
-# and broadcast the status changes
+# 只有具有 active "vip" 共享标签的节点将执行 ping
+# 并广播状态更改
 modparam("load_balancer", "cluster_id", 9)
 modparam("load_balancer", "cluster_sharing_tag", "vip")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### lb_start(grp,resources[,flags],[attrs])
 
 
-The function starts a new load-balancing session over the available
-		destinations. This translates into finding the less loaded destination
-		that can provide the requested resources and belong to a requested
-		group.
+此函数在可用
+		目标上启动新的负载均衡会话。这相当于找到负载最轻的、能提供请求资源且属于请求
+		组的目標。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *grp* (int) - group id for the destinations;
-			the destination may be grouped in several groups you can you for 
-			differnet scenarios.
-- *resources* (string) - a 
-			semi-colon separated list of resources required by the current
-			call.
-- *flags* (string, optional) - various flags
-			to controll the LB algorithm ( or computing the available load on
-			the system):
+- *grp* (int) - 目标组 ID；
+			目标可以分组到多个组中，您可以将它们用于
+			不同的场景。
+- *resources* (string) - 
+			当前呼叫所需的资源的
+			分号分隔列表。
+- *flags* (string, optional) - 各种标志
+			用于控制 LB 算法（或计算
+			系统上的可用负载）：
 
-  - *n* - Negative availability  - use
-				destinations with negative availability (exceeded capacity);
-				do not ignore resources with negative availability, and thus 
-				able to select for load balancing destinations with exceeded 
-				capacity. This might be needed in scenarios where we want to 
-				limit generic calls volume and always pass 
-				important/high-priority calls.
-  - *r* - Relative value - the relative
-				available load (how many percentages are free) is used in
-				computing the load of each pear/resource; Without this flag,
-				the Absolute value is assumed - the effective
-				available load ( maximum_load - current_load) is used in
-				computing the load of each pear/resource.
-  - *s* - Pick a random destination if
-				multiple destinations with the same load are found, instead
-				of always picking first matched destination.
-				This could help to offload an excessive load from the first
-				destination and distribute load in situations when failed
-				calls always routed to first destination, since they almost
-				does not affect load counters of destinations.
-- *attrs* (var, optional) - a writable variable 
-			to be populated with the attributes of the selected destination.
+  - *n* - 负可用性  - 使用
+				具有负可用性的目标（超出容量）；
+				不忽略具有负可用性的资源，从而
+				能够选择超出容量的目标进行负载均衡。这可能在我们需要
+				限制通用呼叫量并始终传递
+				重要/高优先级呼叫的场景中需要。
+  - *r* - 相对值 - 使用相对
+				可用负载（空闲百分比）来
+				计算每个对等体/资源的负载；没有此标志，
+				则假定绝对值 - 使用有效
+				可用负载（maximum_load - current_load）来
+				计算每个对等体/资源的负载。
+  - *s* - 当找到多个具有相同负载的目标时，
+				随机选择一个目标，而不是
+				始终选择第一个匹配的目标。
+				这有助于从第一个目标卸载过多负载，
+				并在失败呼叫始终路由到第一个目标的场景中分配负载，
+				因为它们几乎不影响目标的负载计数器。
+- *attrs* (var, optional) - 一个可写变量，
+			用于填充所选目标的属性。
 
 
-The function may return:
+函数可能返回：
 
 
-- *1 (true)* - if a new destination URI is 
-			set, pointing to the selected destination. NOTE that the RURI will
-			not be changed by this function.
-- *-1 (false)* - generic internal error
-			(memory allocation, parsing)
-- *-2 (false)* - no capacity available 
-			(detinations are up and available, but they do not have any 
-			availabe channels)
-- *-3 (false)* - no destinations available 
-			(the requested resources did not match any active destination)
-- *-4 (false)* - bad resources 
-			(requested resources do not exist)
+- *1 (true)* - 如果设置了新的目标 URI，
+			指向选定的目标。注意 RURI 不会
+			被此函数更改。
+- *-1 (false)* - 通用内部错误
+			（内存分配、解析）
+- *-2 (false)* - 没有可用容量
+			（目标已启动并可用，但没有
+			可用通道）
+- *-3 (false)* - 没有可用目标
+			（请求的资源与任何活动目标不匹配）
+- *-4 (false)* - 错误的资源
+			（请求的资源不存在）
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE and
-		FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、BRANCH_ROUTE 和
+		FAILURE_ROUTE 使用。
 
 
-```c title="lb_start usage"
+```c title="lb_start 使用示例"
 ...
 if (lb_start(1,"trascoding;conference")) {
-	# dst URI points to the new destination
-	xlog("sending call to $du\n");
+	# 目标 URI 指向新目标
+	xlog("发送呼叫到 $du\n");
 	t_relay();
 	exit;
 }
@@ -477,48 +468,47 @@ if (lb_start(1,"trascoding;conference")) {
 #### lb_next([attrs])
 
 
-Function to be used to pull the next available (and less loaded)
-		destination. You need to have an ongoing LB session (started with
-		lb_start()).
+用于获取下一个可用（且负载较轻）
+		目标的函数。您需要有一个正在进行的 LB 会话（使用
+		lb_start() 启动）。
 
 
-This function is mainly used for implementing failover for the LB
-		destinations.
+此函数主要用于为 LB
+		目标实现故障转移。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *attrs* (var, optional) - a writable variable 
-			to be populated with the attributes of the selected destination.
+- *attrs* (var, optional) - 一个可写变量，
+			用于填充所选目标的属性。
 
 
-The function may return:
+函数可能返回：
 
 
-- *1 (true)* - if a new destination URI is 
-			set, pointing to the selected destination. NOTE that the RURI will
-			not be changed by this function.
-- *-1 (false)* - generic internal error
-			(memory allocation, parsing)
-- *-2 (false)* - no capacity available 
-			(detinations are up and available, but they do not have any 
-			availabe channels)
-- *-3 (false)* - no more destinations 
-			available (the requested resources did not match any active 
-			destination)
+- *1 (true)* - 如果设置了新的目标 URI，
+			指向选定的目标。注意 RURI 不会
+			被此函数更改。
+- *-1 (false)* - 通用内部错误
+			（内存分配、解析）
+- *-2 (false)* - 没有可用容量
+			（目标已启动并可用，但没有
+			可用通道）
+- *-3 (false)* - 没有更多目标可用
+			（请求的资源与活动目标不匹配）
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
-```c title="lb_next() usage"
+```c title="lb_next() 使用示例"
 ...
 if (t_check_status("(408)|(5[0-9][0-9])")) {
-	/* check next available LB destination */
+	/* 检查下一个可用的 LB 目标 */
 	if ( lb_next() ) {
 		t_on_failure("1");
-		xlog("-----------new dst is $du\n");
+		xlog("-----------新目标是 $du\n");
 		t_relay();
 		exit;
 	}
@@ -531,39 +521,39 @@ if (t_check_status("(408)|(5[0-9][0-9])")) {
 #### lb_start_or_next(grp,resources[,flags],[attrs])
 
 
-This is just a wrapper function to simplify scripting. If there is no
-		ongoing LB session, it acts as lb_start(); If there is an ongoing LB 
-		session, it acts as lb_next().
+这是一个简化脚本的包装函数。如果没有
+		正在进行的 LB 会话，它充当 lb_start()；如果有正在进行的 LB
+		会话，它充当 lb_next()。
 
 
 #### load_balance(grp,resources[,flags],[attrs])
 
 
-Old name of the lb_start_or_next() function.
+lb_start_or_next() 函数的旧名称。
 
 
-Take care, this will become obsolete.
+请注意，这将变得过时。
 
 
 #### lb_reset()
 
 
-Function to stop and flush a current LB session. To be used in 
-		failure route, if you want to stop the current LB session (not to try
-		any other destinations from this session) and to start a completly new
-		one.
+用于停止并刷新当前 LB 会话的函数。如果在
+		failure route 中使用此函数，并且您想停止当前 LB 会话（不再尝试
+		此会话中的任何其他目标）并启动一个全新的
+		会话，请使用此函数。
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
-```c title="lb_next() usage"
+```c title="lb_next() 使用示例"
 ...
 if (t_check_status("(5[0-9][0-9])")) {
-	/* check next available LB destination */
+	/* 检查下一个可用的 LB 目标 */
 	if ( lb_next() ) {
 		t_on_failure("1");
-		xlog("-----------new dst is $du\n");
+		xlog("-----------新目标是 $du\n");
 		t_relay();
 		exit;
 	}
@@ -581,35 +571,34 @@ if (t_check_status("(5[0-9][0-9])")) {
 #### lb_is_started()
 
 
-Function to check if there is any ongoing LB session. Returns true if
-		so.
+用于检查是否存在任何正在进行的 LB 会话的函数。如果有则返回 true。
 
 
-This function can be used in any type of route.
+此函数可以在任何类型的 route 中使用。
 
 
 #### lb_disable_dst()
 
 
-Marks as disabled the last destination that was used for the current
-		call. The disabling done via this function will prevent the 
-		destination to be used for usage from now on. The probing mechanism
-		can re-enable this peer (see the probing section in the beginning)
+将当前调用的最后一个使用的目标标记为禁用。通过此函数进行的
+		禁用将阻止
+		目标从现在起被使用。探测机制
+		可以重新启用此对等体（请参阅开头的探测部分）
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
-```c title="lb_disable_dst() usage"
+```c title="lb_disable_dst() 使用示例"
 ...
 if (t_check_status("(408)|(5[0-9][0-9])")) {
 	lb_disable_dst();
 	if ( lb_next() ) {
 		t_on_failure("1");
-		xlog("-----------new dst is $du\n");
+		xlog("-----------新目标是 $du\n");
 		t_relay();
 	} else {
-		t_reply(500,"Error");
+		t_reply(500,"错误");
 	}
 }
 
@@ -620,35 +609,33 @@ if (t_check_status("(408)|(5[0-9][0-9])")) {
 #### lb_is_destination(ip,port,[group],[active],[attrs]])
 
 
-Checks if the given IP and PORT belongs to a destination configured in
-		the load-balancer's list. Returns true if found and active (see the
-		"active" parameter).
+检查给定的 IP 和 PORT 是否属于负载均衡器列表中配置的目标。如果找到且处于活动状态（请参阅
+		"active" 参数），则返回 true。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		ONREPLY_ROUTE, BRANCH_ROUTE and LOCAL_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、
+		ONREPLY_ROUTE、BRANCH_ROUTE 和 LOCAL_ROUTE 使用。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *ip* (string) - IP to be checked
-- *port* (int) - PORT to be checked. 
-			A value 0 means "any" - will match any port.
-- *group* (int, optional) - in what LB group
-			the destination should be looked for; If not specified, the search
-			will be in all groups.
-- *active*  (int, optional)- if "1", the search will be
-			performed only over "active" (not disabled) destinations. If 
-			missing, the search will consider any kind of destinations.
-- *attrs* (var, optional) - a writable variable 
-			to be populated with the attributes of the identified destination.
+- *ip* (string) - 要检查的 IP
+- *port* (int) - 要检查的 PORT。
+			0 值表示"任意" - 将匹配任何端口。
+- *group* (int, optional) - 应该在哪个 LB 组中
+			查找目标；如果未指定，搜索
+			将在所有组中进行。
+- *active*  (int, optional)- 如果为"1"，则搜索将仅在"活动"（未禁用）目标中进行。如果
+			缺失，搜索将考虑任何类型的目标。
+- *attrs* (var, optional) - 一个可写变量，
+			用于填充所识别目标的属性。
 
 
-```c title="lb_is_destination usage"
+```c title="lb_is_destination 使用示例"
 ...
 if (lb_is_destination($si,$sp) ) {
-	# request from a LB destination
+	# 来自 LB 目标的请求
 }
 ...
 ```
@@ -657,52 +644,51 @@ if (lb_is_destination($si,$sp) ) {
 #### lb_count_call(ip,port,grp,resources[,undo])
 
 
-The function counts the current call as load for a given destination 
-		with some given resources. Note that this call is not going through
-		the load-balancing logic (there are not routing decision taken for the
-		call); it is simply counted by LB as ongoing call for a destination;
+此函数将当前呼叫计为给定目标
+		与某些给定资源的负载。请注意，此呼叫不会通过
+		负载均衡逻辑（不会为此呼叫做出任何路由决定）；
+		它只是被 LB 计为目标的 ongoing call；
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *ip* (string) - IP to identify the destination
-			the call has to be counted for.
-- *port* (int) - PORT to identify the destination
-			the call has to be counted for.
-- *grp* (int) - group id for the destinations; if
-			no knows, "-1" will mean all groups.
-- *resources* - (string) a semi-colon separated
-			list of resources required by the current call.
-- *undo* - (int, optional) if set to a non zero
-			value, it will force the function to un-count -
-			actually it will undo the counting of this call as load in the 
-			current LB session; this might be needed if we count call for
-			particular resources and then need to un-count it.
+- *ip* (string) - 用于识别目标
+			的 IP，呼叫将被计入该目标。
+- *port* (int) - 用于识别目标
+			的 PORT，呼叫将被计入该目标。
+- *grp* (int) - 目标组 ID；如果
+			未知，"-1"将表示所有组。
+- *resources* - (string) 当前呼叫所需的
+			资源的分号分隔列表。
+- *undo* - (int, optional) 如果设置为非零
+			值，它将强制函数取消计数 -
+			实际上是在当前 LB 会话中撤销此呼叫的计数；如果我们需要为
+			特定资源计数呼叫然后需要取消计数，可能需要这样做。
 
 
-Function returns true if the call was properly taken into consideration
-		for estimating the load on the destination.
+如果正确考虑了呼叫以估计
+		目标的负载，函数返回 true。
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE and
-		FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、BRANCH_ROUTE 和
+		FAILURE_ROUTE 使用。
 
 
-```c title="lb_count_call usage"
+```c title="lb_count_call 使用示例"
 ...
-# count as load also the calls orgininated by lb destinations
+# 也将源自 lb 目标的呼叫计为负载
 if (lb_is_destination($si,$sp) ) {
-	# inbound call from destination
+	# 来自目标的入站呼叫
 	lb_count_call($si,$sp,-1,"conference");
 } else {
-	# outbound call to destinations
+	# 到目标的出站呼叫
 	if ( !load_balance(1,"conference") ) {
-		send_reply(503,"unavailable");
+		send_reply(503,"不可用");
 		exit();
 	}
-	# dst URI points to the new destination
-	xlog("sending call to $du\n");
+	# 目标 URI 指向新目标
+	xlog("发送呼叫到 $du\n");
 	t_relay();
 	exit;
 }
@@ -710,19 +696,19 @@ if (lb_is_destination($si,$sp) ) {
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### load_balancer:reload
 
 
-Replaces obsolete MI command: *lb_reload*.
+替换过时的 MI 命令：*lb_reload*。
 
 
-Trigers the reload of the load balancing data from the DB.
+触发从数据库重新加载负载均衡数据。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -734,21 +720,21 @@ MI FIFO Command Format:
 #### load_balancer:resize
 
 
-Replaces obsolete MI command: *lb_resize*.
+替换过时的 MI 命令：*lb_resize*。
 
 
-Changes the capacity for a resource of a destination.
+更改目标的资源容量。
 
 
-Parameters:
+参数：
 
 
-- *destination_id* - the ID (as per DB) of the destination.
-- *res_name* - name of the resource you want to resize.
-- *new_capacity* - new resource capacity.
+- *destination_id* - 目标的 ID（根据数据库）。
+- *res_name* - 您要调整大小的资源名称。
+- *new_capacity* - 新的资源容量。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -760,14 +746,14 @@ MI FIFO Command Format:
 #### load_balancer:list
 
 
-Replaces obsolete MI command: *lb_list*.
+替换过时的 MI 命令：*lb_list*。
 
 
-Lists all the destinations and the maximum and current load for each 
-		resource of the destination.
+列出所有目标以及每个目标的资源和当前负载
+		的最大值。
 
 
-```c title="load_balancer:list usage"
+```c title="load_balancer:list 使用示例"
 $ opensips-cli -x mi load_balancer:list
 Destination:: sip:127.0.0.1:5100 id=1 enabled=yes auto-re=on
         Resource:: pstn max=3 load=0
@@ -783,23 +769,23 @@ Destination:: sip:127.0.0.1:5200 id=2 enabled=no auto-re=on
 #### load_balancer:status
 
 
-Replaces obsolete MI command: *lb_status*.
+替换过时的 MI 命令：*lb_status*。
 
 
-Gets or sets the status (enabled or disabled) of a destination.
+获取或设置目标的状态（启用或禁用）。
 
 
-Parameters:
+参数：
 
 
-- *destination_id* - the ID (as per DB) of the destination.
-- *new_status* (optional) - If no new status is given, the
-				function will return the current status. If a new status is given 
-				(0 - disable, 1 - enable), this status will be forced for the 
-				destination.
+- *destination_id* - 目标的 ID（根据数据库）。
+- *new_status* (optional) - 如果没有给出新状态，该
+				函数将返回当前状态。如果给出了新状态
+				（0 - 禁用，1 - 启用），则此状态将被强制用于
+				目标。
 
 
-```c title="load_balancer:status usage"
+```c title="load_balancer:status 使用示例"
 $ opensips-cli -x mi load_balancer:status 2
 enable:: no
 $ opensips-cli -x mi load_balancer:status 2 1
@@ -808,65 +794,65 @@ enable:: yes
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_LOAD_BALANCER_STATUS
 
 
-This event is raised when the module changes the state of a destination,
-			either through MI or probing.
+当模块更改目标的状态时触发此事件，
+			无论是通过 MI 还是探测。
 
 
-Parameters:
+参数：
 
 
-- *group* - the group of the destination.
-- *uri* - the URI of the destination.
-- *status* - *disabled* if
-				the destination was disabled or *enabled* if 
-				the destination is being used.
+- *group* - 目标组。
+- *uri* - 目标 URI。
+- *status* - 如果
+				目标被禁用则为 *disabled*，如果
+				目标正在使用则为 *enabled*。
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Available Functions
+### 可用函数
 
 
-NONE
+无
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Where can I find more about OpenSIPS?**
+**Q: 在哪里可以找到更多关于 OpenSIPS 的信息？**
 
 
-Take a look at [https://opensips.org/](https://opensips.org/).
+请参阅 [https://opensips.org/](https://opensips.org/)。
 
 
-**Q: Where can I post a question about this module?**
+**Q: 在哪里可以发布关于此模块的问题？**
 
 
-First at all check if your question was already answered on one of
-			our mailing lists:
+首先检查您的问题是否已在我们
+			的邮件列表中回答：
 
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
+关于任何稳定 OpenSIPS 版本的电子邮件应发送至
+			users@lists.opensips.org，关于开发版本的
+			电子邮件应发送至 devel@lists.opensips.org。
 
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
+如果您想保持邮件私密，请发送至
+			users@lists.opensips.org。
 
 
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+**Q: 如何报告错误？**
+
+
+请遵循以下指南：
+			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证授权。

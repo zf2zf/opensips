@@ -1,55 +1,46 @@
 ---
-title: "presence_dialoginfo Module"
-description: "The module enables the handling of \"Event: dialog\" (as defined in RFC 4235) inside of the presence module. This can be used distribute the dialog-info status to the subscribed watchers."
+title: "presence_dialoginfo 模块"
+description: "该模块在 presence 模块内启用对 "Event: dialog"（RFC 4235 中定义）的处理。这可用于将 dialog-info 状态分发给订阅的 watchers。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module enables the handling of "Event: dialog" (as defined 
-	      in RFC 4235) inside of the presence module. This can be used
-	      distribute the dialog-info status to the subscribed watchers.
+该模块在 presence 模块内启用对 "Event: dialog"（RFC 4235 中定义）的处理。这可用于
+将 dialog-info 状态分发给订阅的 watchers。
 
 
-The module does not currently implement any authorization
-	      rules.  It assumes that publish requests are only issued by
-	      an authorized application and subscribe requests only by
-	      authorized users.  Authorization can thus be easily done in 
-	      OpenSIPS configuration file before calling handle_publish() 
-	      and handle_subscribe() functions.
+该模块目前未实现任何授权规则。它假设 publish 请求仅由
+授权应用程序发布，而 subscribe 请求仅由
+授权用户发布。因此，可以在 OpenSIPS 配置文件中
+在调用 handle_publish() 和 handle_subscribe() 函数之前
+轻松完成授权。
 
 
-Note: This module only activates the processing of the "dialog" 
-	      in the presence module. To send dialog-info to watchers you also 
-	      need a source which PUBLISH the dialog info to the presence module.
-	      For example you can use the pua_dialoginfo module or any external
-	      component. This approach allows to have the presence server and the
-	      dialog-info aware publisher (e.g. the main proxy) on different 
-	      OpenSIPS instances.
+注意：此模块仅在 presence 模块中激活 "dialog" 的处理。要向 watchers 发送 dialog-info，
+您还需要一个向 presence 模块 PUBLISH dialog info 的源。例如，您可以使用 pua_dialoginfo
+模块或任何外部组件。这种方法允许将 presence 服务器和 dialog-info 感知的发布者
+（例如主代理）放在不同的 OpenSIPS 实例上。
 
 
-This module by default does body aggregation. That means, if the presence 
-			module received PUBLISH from multiple presentities (e.g. if the entity has
-			multiple dialogs the pua_dialoginfo will send multiple PUBLISH), the
-			module will parse all the received (and still valid, depending on the Expires 
-			header in the PUBLISH request) XML documents and generate a single 
-			XML document with multiple "dialog" elements. This is perfectly valid, but
-			unfortunately not supported by all SIP phones, e.g. Linksys SPA962 crashes
-			when it receives dialog-info with multiple dialog elements. In this case use
-			the force_single_dialog module parameter.
+该模块默认执行 body 聚合。这意味着，如果 presence 模块从多个 presentities
+收到了 PUBLISH（例如，如果实体有多个 dialog，pua_dialoginfo 将发送多个 PUBLISH），
+模块将解析所有收到的 XML 文档（根据 PUBLISH 请求中的 Expires header，仍有效的）
+并生成包含多个 "dialog" 元素的单个 XML 文档。这是完全有效的，但不幸的是
+并非所有 SIP 电话都支持此功能，例如 Linksys SPA962 在收到包含多个 dialog 元素的
+dialog-info 时会崩溃。在这种情况下，请使用 force_single_dialog 模块参数。
 
 
-To get better understanding how all the module works together please take a
-			look at the follwing figure:
+为了更好地理解所有模块如何协同工作，请查看下图：
 
 
 ```c
-    Main Proxy and Presence Server on the same Instance
+    主代理和 Presence 服务器在同一实例上
 
-   caller        proxy &      callee         watcher
+   呼叫方        代理 &      被叫方         watcher
 alice@example   presence   bob@example   watcher@example
                  server
      |             |            |               |
@@ -81,30 +72,26 @@ alice@example   presence   bob@example   watcher@example
 ```
 
 
-- The watcher subscribes the "Event: dialog" of Bob.
-- Alice calls Bob.
-- Bob replies with ringing, the dialog in the dialog module
-					transits to "early". The callback in pua_dialoginfo is executed.
-					The pua_dialoginfo module creates the XML document and uses the
-					pua module to send the PUBLISH. (pua module itself uses tm module
-					to send the PUBLISH stateful)
-- PUBLISH is received and handled by presence module. Presence
-					module updates the "presentity". Presence module checks for active watchers
-					of the presentity. It gives all the XML dcouments to presence_dialoginfo
-					module to aggregate them into a single XML document. Then it sends the 
-					NOTIFY with the aggregated XML document to all active watchers.
+- Watcher 订阅 Bob 的 "Event: dialog"。
+- Alice 呼叫 Bob。
+- Bob 回复 ringing，dialog 模块中的 dialog 转换为 "early" 状态。
+  执行 pua_dialoginfo 中的回调。pua_dialoginfo 模块创建 XML 文档并使用
+  pua 模块发送 PUBLISH。（pua 模块本身使用 tm 模块以状态方式发送 PUBLISH）
+- PUBLISH 被接收并由 presence 模块处理。Presence 模块更新 "presentity"。
+  Presence 模块检查 presentity 的活跃 watchers。它将所有 XML 文档交给
+  presence_dialoginfo 模块进行聚合，生成单个 XML 文档。然后向所有活跃
+  watchers 发送包含聚合 XML 文档的 NOTIFY。
 
 
-The presence server can also be separated from the main proxy by using a separate 
-			OpenSIPS instance as shown in the following figure. (Either set the outbound_proxy
-			parameter of pua module or make sure to route the "looped" PUBLISH requests from the 
-			main proxy to the presence server).
+presence 服务器也可以通过使用单独的 OpenSIPS 实例与主代理分离，如下图所示。
+（设置 pua 模块的 outbound_proxy 参数，或确保将主代理的 "循环" PUBLISH 请求
+路由到 presence 服务器）。
 
 
 ```c
-    Main Proxy and Presence Server use a separate Instance
+    主代理和 Presence 服务器使用单独实例
 
-   caller        proxy &   presence      callee         watcher
+   呼叫方        代理 &   presence      被叫方         watcher
 alice@example    server     server     bob@example   watcher@example
      |             |            |               |            |
      |             |<--------------------SUBSCRIBE bob-------|
@@ -128,71 +115,65 @@ alice@example    server     server     bob@example   watcher@example
 ```
 
 
-Known issues:
+已知问题：
 
 
-- The "version" attribute is increased for every NOTIFY, even 
-					if the XML document has not changed. This is of course valid,
-					but not very smart.
+- "version" 属性在每次 NOTIFY 时都会递增，即使
+  XML 文档没有更改。这当然是有效的，但不太智能。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *presence*.
+- *presence*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-None.
+无。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### force_single_dialog (int)
 
 
-By default the module aggregates all available dialog info
-			into a single dialog-info document containing multiple
-			"dialog" elements. If the phone does not support this, you
-			can activate this parameter.
+默认情况下，模块将所有可用的 dialog info 聚合到
+包含多个 "dialog" 元素的单个 dialog-info 文档中。如果您的电话不支持此功能，
+可以激活此参数。
 
 
-If this parameter is set, only the dialog element with the
-			currently most interesting dialog state will be put into the 
-			dialog-info document. Thus, the dialog-info element will contain
-			only a single "dialog" element. The algorithm chooses the state
-			based onf the following order of priority (least important first):
-			terminated, trying, proceeding, confirmed, early. Note: I consider
-			the "early" state more intersting than confirmed as often you might
-			want to pickup a call if the originall callee is already busy in a 
-			call.
+如果设置此参数，则只有具有最有趣 dialog 状态的 dialog 元素
+才会被放入 dialog-info 文档中。因此，dialog-info 元素将只包含
+一个 "dialog" 元素。算法基于以下优先级顺序选择状态（从最不重要开始）：
+terminated、trying、proceeding、confirmed、early。注意：我认为 "early" 状态
+比 confirmed 更有趣，因为通常您可能希望在原始被叫方已经在通话中时接听电话。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set parameter"
+```c title="设置参数"
 ...
 modparam("presence_dialoginfo", "force_single_dialog", 1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-None to be used in configuration file.
+配置文件中无需使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0

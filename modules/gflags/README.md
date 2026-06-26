@@ -1,17 +1,17 @@
 ---
-title: "gflags Module"
-description: "gflags module (global flags) keeps a bitmap of flags in shared memory and may be used to change behaviour of server based on value of the flags. Example: ```c if (is_gflag(1)) { t_relay(\"udp:10.0.0.1:5060\"); } else { t_relay(\"udp:10.0.0.2:5060\"); } ```"
+title: "gflags 模块"
+description: "gflags 模块（全局标志）在共享内存中维护一个位图,可用于根据标志的值更改服务器行为。示例：```c if (is_gflag(1)) { t_relay(\"udp:10.0.0.1:5060\"); } else { t_relay(\"udp:10.0.0.2:5060\"); } ```"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-gflags module (global flags) keeps a bitmap of flags in shared memory
-	and may be used to change behaviour of server based on value of the flags.
-	Example:
+gflags 模块（全局标志）在共享内存中维护一个位图,
+		可用于根据标志的值更改服务器行为。
+		示例：
 
 
 ```c
@@ -24,61 +24,59 @@ gflags module (global flags) keeps a bitmap of flags in shared memory
 ```
 
 
-The benefit of this module is the value of the switch flags
-	can be manipulated by external applications such as web interface
-	or command line tools. The size of bitmap is 32.
+此模块的好处是开关标志的值可以通过 Web 界面或命令行工具等外部应用程序进行操作。
+		位图大小为 32。
 
 
-The module exports external commands that can be used to change
-	the global flags via Management Interface. The MI commands are:
-	"set_gflag", "reset_gflag" and
-	"is_gflag".
+该模块导出外部命令,可用于通过管理接口更改全局标志。这些 MI 命令为：
+	"set_gflag"、"reset_gflag" 和
+	"is_gflag"。
 
 
-### Dependencies
+### 依赖
 
 
-The module depends on the following modules (in the other words the
-		listed modules must be loaded before this module):
+该模块依赖以下模块（换句话说,
+		以下模块必须在此模块之前加载）：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### initial (integer)
 
 
-The initial value of global flags bitmap.
+全局标志位图的初始值。
 
 
-Default value is "0".
+默认值为 "0"。
 
 
-```c title="initial parameter usage"
+```c title="initial 参数使用"
 modparam("gflags", "initial", 15)
 		
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### set_gflag(flag)
 
 
-Set the bit at the position "flag" in global flags.
+设置全局标志中位置 "flag" 处的位。
 
 
-The "flag" (int) parameter can have a value in the range of 0..31.
+"flag"（int）参数的值范围为 0..31。
 
 
-This function may be used from any route.
+此函数可用于任何路由。
 
 
-```c title="set_gflag() usage"
+```c title="set_gflag() 使用示例"
 ...
 set_gflag(4);
 ...
@@ -88,16 +86,16 @@ set_gflag(4);
 #### reset_gflag(flag)
 
 
-Reset the bit at the position "flag" in global flags.
+重置全局标志中位置 "flag" 处的位。
 
 
-The "flag" (int) parameter can have a value in the range of 0..31.
+"flag"（int）参数的值范围为 0..31。
 
 
-This function may be used from any route.
+此函数可用于任何路由。
 
 
-```c title="reset_gflag() usage"
+```c title="reset_gflag() 使用示例"
 ...
 reset_gflag(4);
 ...
@@ -107,49 +105,46 @@ reset_gflag(4);
 #### is_gflag(flag)
 
 
-Check if bit at the position "flag" in global flags is
-		set.
+检查全局标志中位置 "flag" 处的位是否已设置。
 
 
-The "flag" (int) parameter can have a value in the range of 0..31.
+"flag"（int）参数的值范围为 0..31。
 
 
-This function may be used from any route.
+此函数可用于任何路由。
 
 
-```c title="is_gflag() usage"
+```c title="is_gflag() 使用示例"
 ...
 if(is_gflag(4))
 {
-	log("global flag 4 is set\n");
+	log("全局标志 4 已设置\n");
 } else {
-	log("global flag 4 is not set\n");
+	log("全局标志 4 未设置\n");
 };
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
-Functions that check or change some flags accepts one parameter 
-			which is the flag bitmap/mask specifing the corresponding flags.
-			It is not possible to specify directly the flag position that 
-			should be changed as in the functions available in the routing 
-			script.
+检查或更改某些标志的函数接受一个参数,
+			该参数是指定相应标志的位图/掩码。
+			不能像路由脚本中可用的函数那样直接指定要更改的标志位置。
 
 
 #### set_gflag
 
 
-Set the value of some flags (specified by bitmask) to 1.
+将某些标志的值（由位掩码指定）设置为 1。
 
 
-The parameter value must be a bitmask in decimal or hexa format.
-			The bitmaks has a 32 bit size.
+参数值必须是十进制或十六进制格式的位掩码。
+			位掩码大小为 32 位。
 
 
-```c title="set_gflag usage"
+```c title="set_gflag 使用示例"
 ...
 $ opensips-cli -x mi set_gflag 1
 $ opensips-cli -x mi set_gflag 0x3
@@ -160,14 +155,14 @@ $ opensips-cli -x mi set_gflag 0x3
 #### reset_gflag
 
 
-Reset the value of some flags to 0.
+将某些标志的值重置为 0。
 
 
-The parameter value must be a bitmask in decimal or hexa format.
-			The bitmaks has a 32 bit size.
+参数值必须是十进制或十六进制格式的位掩码。
+			位掩码大小为 32 位。
 
 
-```c title="reset_gflag usage"
+```c title="reset_gflag 使用示例"
 ...
 $ opensips-cli -x mi reset_gflag 1
 $ opensips-cli -x mi reset_gflag 0x3
@@ -178,18 +173,18 @@ $ opensips-cli -x mi reset_gflag 0x3
 #### is_gflag
 
 
-Returns true if the all the flags from the bitmask are set.
+如果位掩码中的所有标志都已设置,则返回 true。
 
 
-The parameter value must be a bitmask in decimal or hexa format.
-			The bitmaks has a 32 bit size.
+参数值必须是十进制或十六进制格式的位掩码。
+			位掩码大小为 32 位。
 
 
-The function returns TRUE if all the flags from the set are set
-			and FALSE if at least one is not set.
+如果集合中的所有标志都已设置,函数返回 TRUE；
+			如果至少有一个未设置,则返回 FALSE。
 
 
-```c title="is_gflag usage"
+```c title="is_gflag 使用示例"
 ...
 $ opensips-cli -x mi set_gflag 1024
 $ opensips-cli -x mi is_gflag 1024
@@ -212,11 +207,11 @@ TRUE
 #### get_gflags
 
 
-Return the bitmap with all flags. The function gets no 
-			parameters and returns the bitmap in hexa and decimal format.
+返回包含所有标志的位图。函数不接受参数,
+			以十六进制和十进制格式返回位图。
 
 
-```c title="get_gflags usage"
+```c title="get_gflags 使用示例"
 ...
 $ opensips-cli -x mi get_gflags
 0x3039
@@ -225,6 +220,6 @@ $ opensips-cli -x mi get_gflags
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权

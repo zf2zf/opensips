@@ -1,124 +1,113 @@
 ---
-title: "httpd Module"
-description: "This module provides an HTTP transport layer for OpenSIPS."
+title: "httpd 模块"
+description: "本模块为 OpenSIPS 提供 HTTP 传输层。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides an HTTP transport layer for OpenSIPS.
+本模块为 OpenSIPS 提供 HTTP 传输层。
 
 
-Implementation of httpd module's http server is based on
-		libmicrohttpd library.
+httpd 模块的 HTTP 服务器实现基于 libmicrohttpd 库。
 
 
-### Overview
+### 概述
 
 
-TLS for the http server is enabled by setting  the `tls_cert_file`
-			and `tls_key_file` parameters. If this is enabled, support for plain
-			http is disabled.
+HTTP 服务器的 TLS 通过设置 `tls_cert_file` 和 `tls_key_file` 参数来启用。
+如果启用了 TLS，则会禁用普通 HTTP 支持。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *无其他 OpenSIPS 模块依赖*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *libmicrohttpd*, with EPOLL support. This
-					typically means a version newer than **0.9.50**.
+- *libmicrohttpd*，需要 EPOLL 支持。
+这通常意味着版本高于 **0.9.50**。
 
 
-**WARNING!**  Please be aware about an
-			EPOLL support regression in the *libmicrohttpd*
-			library and packaging which affects the OpenSIPS httpd module, which
-			was fixed according to the below timeline.  The effect of the
-			regression is that the HTTP reply body is *sometimes*
-			never written by the library, causing the client (e.g. opensips-cli)
-			to hang indefinitely waiting for it:
+**警告！** 请注意 libmicrohttpd 库及其打包中的一个 EPOLL 支持回归问题，
+它会影响 OpenSIPS httpd 模块，已按照以下时间线修复。
+回归的影响是 HTTP 响应体有时 *有时* 不会被库写入，
+导致客户端（如 opensips-cli）无限期挂起等待：
 
 
-- versions **0.9.51** - **0.9.52**
-				have been tested and work correctly
-- regression introduced in **0.9.53** (Apr 2017),
-				lasting until **0.9.71** (May 2020)
-- regression is fixed since **0.9.72** (Dec 2020)
+- **0.9.51** - **0.9.52** 版本经过测试，可以正常工作
+- 回归问题在 **0.9.53**（2017年4月）引入，持续到 **0.9.71**（2020年5月）
+- 回归问题在 **0.9.72**（2020年12月）已修复
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### ip(string)
+#### ip (string)
 
 
-The IP address used by the HTTP server to listen for incoming 
-		requests.
+HTTP 服务器监听传入请求的 IP 地址。
 
 
-*The default value is "127.0.0.1"* (binds to loopback only).
-		Use "*" to bind to all IPv6 and IPv4 interfaces.
+*默认值为 "127.0.0.1"*（仅绑定到回环接口）。
+使用 "*" 可绑定到所有 IPv6 和 IPv4 接口。
 
 
-```c title="Set ip parameter"
+```c title="设置 ip 参数"
 ...
 modparam("httpd", "ip", "127.0.0.1")
 ...
 ```
 
 
-#### port(integer)
+#### port (integer)
 
 
-The port number used by the HTTP server to listen for incoming 
-		requests.
+HTTP 服务器监听传入请求的端口号。
 
 
-*The default value is 8888.*
-		Ports lower than 1024 are not accepted.
+*默认值为 8888。*
+不接受低于 1024 的端口。
 
 
-```c title="Set port parameter"
+```c title="设置 port 参数"
 ...
 modparam("httpd", "port", 8000)
 ...
 ```
 
 
-#### conn_timeout(integer)
+#### conn_timeout (integer)
 
 
-Auto-close TCP connections which are idle for more than the designated
-		timeout, in seconds.  Set to zero to never close any connections.
+自动关闭空闲超过指定超时时间（秒）的 TCP 连接。
+设置为零则永不关闭任何连接。
 
 
-Note: the connection auto-close routine only seems to be executed
-		in an "on-demand" fashion, during an HTTPD network event (e.g. on a new
-		connection), which although not ideal, it should be good enough in
-		practical terms.
+注意：连接自动关闭程序似乎仅在"按需"模式下执行，
+在 HTTPD 网络事件期间（例如在新连接时），
+虽然不理想，但在实际使用中应该足够了。
 
 
-*The default timeout is 30 seconds.*
+*默认超时为 30 秒。*
 
 
-```c title="Set conn_timeout parameter"
+```c title="设置 conn_timeout 参数"
 ...
 modparam("httpd", "conn_timeout", 10)
 ...
@@ -128,18 +117,16 @@ modparam("httpd", "conn_timeout", 10)
 #### buf_size (integer)
 
 
-It specifies the maximum length (in bytes) of the buffer
-		used to write in the html response.
+它指定写入 HTML 响应时使用的缓冲区的最大长度（以字节为单位）。
 
 
-If the size of the buffer is set to zero, it will be automatically
-		set to a quarter of the size of the pkg memory.
+如果缓冲区大小设置为零，它将自动设置为 pkg 内存大小的四分之一。
 
 
-*The default value is 0.*
+*默认值为 0。*
 
 
-```c title="Set buf_size parameter"
+```c title="设置 buf_size 参数"
 ...
 modparam("httpd", "buf_size", 524288)
 ...
@@ -149,15 +136,14 @@ modparam("httpd", "buf_size", 524288)
 #### post_buf_size (integer)
 
 
-It specifies the length (in bytes) of the POST HTTP requests
-		processing buffer.  For large POST request, the default value
-		might require to be increased.
+它指定处理 POST HTTP 请求的缓冲区长度（以字节为单位）。
+对于大型 POST 请求，可能需要增加默认值。
 
 
-*The default value is 1024. The minumal value is 256.*
+*默认值为 1024。最小值为 256。*
 
 
-```c title="Set post_buf_size parameter"
+```c title="设置 post_buf_size 参数"
 ...
 modparam("httpd", "post_buf_size", 4096)
 ...
@@ -167,14 +153,14 @@ modparam("httpd", "post_buf_size", 4096)
 #### receive_buf_size (integer)
 
 
-It specifies the maximum length (in bytes) of the received HTTP requests.  
-		For receiving large POST request, the default value might require to be increased.
+它指定接收的 HTTP 请求的最大长度（以字节为单位）。
+对于接收大型 POST 请求，可能需要增加默认值。
 
 
-*The default value is 1024.*
+*默认值为 1024。*
 
 
-```c title="Set receive_buf_size parameter"
+```c title="设置 receive_buf_size 参数"
 ...
 modparam("httpd", "receive_buf_size", 4096)
 ...
@@ -184,13 +170,13 @@ modparam("httpd", "receive_buf_size", 4096)
 #### tls_cert_file (string)
 
 
-Public certificate file for httpd. It will be used as server-side certificate for incoming TLS connections.
+httpd 的公钥证书文件。它将用作传入 TLS 连接的服务器端证书。
 
 
-*The default value is ""*
+*默认值为 ""*
 
 
-```c title="Set tls_cert_file parameter"
+```c title="设置 tls_cert_file 参数"
 ...
 modparam("httpd", "tls_cert_file", "/etc/opensips/tls/server.pem")
 ...
@@ -200,13 +186,13 @@ modparam("httpd", "tls_cert_file", "/etc/opensips/tls/server.pem")
 #### tls_key_file (string)
 
 
-Private key of the above certificate. I must be kept in a safe place with tight permissions!
+上述证书的私钥。必须保存在安全的地方并设置严格的权限！
 
 
-*The default value is ""*
+*默认值为 ""*
 
 
-```c title="Set tls_key_file parameter"
+```c title="设置 tls_key_file 参数"
 ...
 modparam("httpd", "tls_key_file", "/etc/opensips/tls/server.key")
 ...
@@ -216,22 +202,21 @@ modparam("httpd", "tls_key_file", "/etc/opensips/tls/server.key")
 #### tls_ciphers (string)
 
 
-You can specify the list of algorithms for authentication and encryption that you allow.
-		To obtain a list of ciphers
-		and then choose, use the gnutls-cli application:
+您可以指定允许的身份验证和加密算法列表。
+要获取密码列表并选择，请使用 gnutls-cli 应用程序：
 
 
 - gnutls-cli -l
 
 
-> [!WARNING]
-> Do not use the NULL algorithms (no encryption) ... never!!!
+> [!警告]
+> 不要使用 NULL 算法（无加密）... 永远不要！！！
 
 
-*The default value is  "SECURE256:+SECURE192:-VERS-ALL:+VERS-TLS1.2"*
+*默认值为 "SECURE256:+SECURE192:-VERS-ALL:+VERS-TLS1.2"*
 
 
-```c title="Set tls_key_file parameter"
+```c title="设置 tls_key_file 参数"
 ...
 modparam("httpd", "tls_ciphers", "SECURE256:+SECURE192:-VERS-ALL:+VERS-TLS1.2")
 ...
@@ -241,16 +226,14 @@ modparam("httpd", "tls_ciphers", "SECURE256:+SECURE192:-VERS-ALL:+VERS-TLS1.2")
 #### auth_realm (string)
 
 
-The realm string to be used for HTTP Basic Authentication
-		challenges.  Only takes effect when both
-		`auth_username` and
-		`auth_password` are set.
+用于 HTTP 基本认证挑战的 realm 字符串。
+仅在同时设置了 `auth_username` 和 `auth_password` 时生效。
 
 
-*The default value is "OpenSIPS MI".*
+*默认值为 "OpenSIPS MI"。*
 
 
-```c title="Set auth_realm parameter"
+```c title="设置 auth_realm 参数"
 ...
 modparam("httpd", "auth_realm", "OpenSIPS Management")
 ...
@@ -260,16 +243,15 @@ modparam("httpd", "auth_realm", "OpenSIPS Management")
 #### auth_username (string)
 
 
-The username for HTTP Basic Authentication.  When set together
-		with `auth_password`, all HTTP requests must
-		present valid credentials.  Requests without credentials or
-		with incorrect credentials receive a 401 Unauthorized response.
+HTTP 基本认证的用户名。当与 `auth_password` 一起设置时，
+所有 HTTP 请求都必须提供有效凭证。
+没有凭证或凭证不正确的请求将收到 401 Unauthorized 响应。
 
 
-*The default value is "" (authentication disabled).*
+*默认值为 ""（认证已禁用）。*
 
 
-```c title="Set auth_username parameter"
+```c title="设置 auth_username 参数"
 ...
 modparam("httpd", "auth_username", "admin")
 ...
@@ -279,49 +261,46 @@ modparam("httpd", "auth_username", "admin")
 #### auth_password (string)
 
 
-The password for HTTP Basic Authentication.  Must be set
-		together with `auth_username`.
+HTTP 基本认证的密码。必须与 `auth_username` 一起设置。
 
 
-> [!WARNING]
-> When using HTTP Basic Authentication, it is strongly
-		recommended to also enable TLS via
-		`tls_cert_file` and
-		`tls_key_file` to prevent credentials
-		from being transmitted in plaintext.
+> [!警告]
+> 使用 HTTP 基本认证时，强烈建议同时通过
+`tls_cert_file` 和 `tls_key_file` 启用 TLS，
+以防止凭证以明文形式传输。
 
 
-*The default value is "" (authentication disabled).*
+*默认值为 ""（认证已禁用）。*
 
 
-```c title="Set auth_password parameter"
+```c title="设置 auth_password 参数"
 ...
 modparam("httpd", "auth_password", "secretpass")
 ...
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### httpd:list_root_path
 
 
-Replaces obsolete MI command: *httpd_list_root_path*.
+替换已废弃的 MI 命令：*httpd_list_root_path*。
 
 
-Lists all the registered http root paths into the httpd module.
-		When a request comes in, if the root parth is in the list,
-		the request will be sent to the module that register it.
+列出 httpd 模块中所有已注册的 HTTP 根路径。
+当请求到达时，如果根路径在列表中，
+请求将被发送到注册它的模块。
 
 
-Name: *httpd:list_root_path*
+名称：*httpd:list_root_path*
 
 
-Parameters: none
+参数：无
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -330,32 +309,28 @@ opensips-cli -x mi httpd:list_root_path
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+配置文件中没有导出可供使用的函数。
 
 
-### Known Issues
+### 已知问题
 
 
-Due to the fact that OpenSIPS is a multiprocess application,
-		the microhttpd library is used in "external select" mode.
-		This ensures that the library is not running in
-		multithread mode and the library is entirely controled
-		by OpenSIPS.  Due to this particular mode of operations,
-		for now, the entire http response is built in a pre-allocated
-		buffer (see buf_size parameter).
+由于 OpenSIPS 是一个多进程应用程序，
+microhttpd 库以"外部 select"模式使用。
+这确保库不在多线程模式下运行，
+并且库完全由 OpenSIPS 控制。
+由于这种特殊的操作模式，
+目前整个 HTTP 响应是在预分配的缓冲区中构建的（参见 buf_size 参数）。
 
 
-Future realeases of this module will address this issue.
+此模块的未来版本将解决此问题。
 
 
-Running the http daemon as non root on ports below 1024 is
-		forbidden by default in linux (kernel>=2.6.24).
-		To allow the port binding, one can use
-		*setcap* to give
-		extra privilleges to opensips binary:
+在 Linux 上，默认禁止以非 root 用户在低于 1024 的端口上运行 httpd 守护进程（kernel>=2.6.24）。
+要允许端口绑定，可以使用 *setcap* 为 opensips 二进制文件赋予额外权限：
 
 
 ```c
@@ -364,33 +339,33 @@ setcap 'cap_net_bind_service=+ep' /usr/local/sbin/opensips
 ```
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Available Functions
+### 可用函数
 
 
 #### register_httpdcb (module, root_path, httpd_acces_handler_cb, httpd_flush_data_cb, httpd_init_proc_cb)
 
 
-Register a new http root with it's associated callbacks into the httpd module.
+将新的 HTTP 根及其关联的回调注册到 httpd 模块中。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
 - *const char *mod*
-			- name of the module that register an http root path to be handled;
+- 注册要处理的 HTTP 根路径的模块名称
 - *str *root_path*
-			- the registered root path;
+- 已注册的根路径
 - *httpd_acces_handler_cb f1*
-			- handler to the callback method to be called on root path match;
+- 根路径匹配时调用的回调方法处理程序
 - *httpd_flush_data_cb f2*
-			- handler to the callback method to be called for sending extra data (at a later time);
+- 用于发送额外数据（在稍后时间）的回调方法处理程序
 - *httpd_init_proc_cb f3*
-			- handler to the callback method to be called during httpd process init;
+- 在 httpd 进程初始化期间调用的回调方法处理程序
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

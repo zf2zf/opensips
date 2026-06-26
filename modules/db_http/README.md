@@ -1,40 +1,37 @@
 ---
-title: "DB_HTTP Module"
-description: "This module provides access to a database that is implemented as a HTTP server. It may be used in special cases where traversing firewalls is a problem, or where data encryption is required."
+title: "DB_HTTP 模块"
+description: "该模块提供对实现为 HTTP 服务器的数据库的访问。当穿越防火墙成为问题或需要数据加密时，可使用此模块。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides access to a database that is implemented
-	as a HTTP server. It may be used in special cases where traversing
-	firewalls is a problem, or where data encryption is required.
+该模块提供对实现为 HTTP 服务器的数据库的访问。
+当穿越防火墙成为问题或需要数据加密时，可使用此模块。
 
 
-In order to use this module you must have a server that can communicate
-	via HTTP or HTTPS with this module that follows exactly the format 
-	decribed in the specifications section.
+要使用此模块，您必须有一台可以通过 HTTP 或 HTTPS
+与此模块通信的服务器，该服务器完全按照规格说明部分描述的格式运行。
 
 
-The module can provide SSL, authentication, and all the functionalities
-	of an opensips db as long as the server supports them ( except result_fetch).
+该模块可以提供 SSL、身份验证和 opensips 数据库的所有功能，
+只要服务器支持（除了 result_fetch）。
 
 
-There is a slight difference between the url of db_http and
-	the urls of the other db modules. The url doesn't have to contain
-	the database name. Instead, everything that is after the
-	address is considered to be a path to the db resource, it may be
-	missing.
+db_http 的 URL 与其他 db 模块的 URL 有一点不同。
+URL 不必包含数据库名称。相反，
+地址之后的所有内容都被视为指向 db 资源的路径，
+它可能缺失。
 
 
-Even if using HTTPS the url must begin with "http://" , and the
-	SSL parameter for the module must be set to 1.
+即使使用 HTTPS，URL 也必须以 "http://" 开头，
+模块的 SSL 参数必须设置为 1。
 
 
-```c title="Setting db_url for a module"
+```c title="为模块设置 db_url"
 ...
 modparam("presence", "db_url","http://user:pass@localhost:13100")
 or
@@ -43,38 +40,38 @@ modparam("presence", "db_url","http://user:pass@www.some.com/some/some")
 ```
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-This module does not depend on other modules.
+该模块不依赖其他模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-- *libcurl*.
+- *libcurl*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### SSL(int)
 
 
-Whether or not to use SSL.
+是否使用 SSL。
 
 
-If value is 1 the module will use https otherwise
-		it will use http.
+如果值为 1，模块将使用 https，否则
+将使用 http。
 
 
-*Default value is " 0 ".*
+*默认值为 "0"。*
 
 
-```c title="Set SSL parameter"
+```c title="设置 SSL 参数"
 ...
 modparam("db_http", "SSL",1)
 ...
@@ -84,13 +81,13 @@ modparam("db_http", "SSL",1)
 #### cap_raw_query(int)
 
 
-Whether or not the server supports raw queries.
+服务器是否支持原始查询。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set cap_raw_query parameter"
+```c title="设置 cap_raw_query 参数"
 ...
 modparam("db_http", "cap_raw_query", 1)
 ...
@@ -100,13 +97,13 @@ modparam("db_http", "cap_raw_query", 1)
 #### cap_replace(int)
 
 
-Whether or not the server supports replace capabilities.
+服务器是否支持替换功能。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set cap_replace parameter"
+```c title="设置 cap_replace 参数"
 ...
 modparam("db_http", "cap_replace", 1)
 ...
@@ -116,13 +113,13 @@ modparam("db_http", "cap_replace", 1)
 #### cap_insert_update(int)
 
 
-Whether or not the server supports insert_update capabilities.
+服务器是否支持 insert_update 功能。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set cap_insert_update parameter"
+```c title="设置 cap_insert_update 参数"
 ...
 modparam("db_http", "cap_insert_update", 1)
 ...
@@ -132,13 +129,13 @@ modparam("db_http", "cap_insert_update", 1)
 #### cap_last_inserted_id(int)
 
 
-Whether or not the server supports last_inserted_id capabilities.
+服务器是否支持 last_inserted_id 功能。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set cap_last_inserted_id parameter"
+```c title="设置 cap_last_inserted_id 参数"
 ...
 modparam("db_http", "cap_last_inserted_id", 1)
 ...
@@ -148,14 +145,14 @@ modparam("db_http", "cap_last_inserted_id", 1)
 #### field_delimiter (str)
 
 
-Character to be used to delimit fields in the reply.Only
-		one char may be set.
+用于分隔回复中字段的字符。只
+可以设置一个字符。
 
 
-*Default value is ";"*
+*默认值为 ";"*
 
 
-```c title="Set field_delimiter parameter"
+```c title="设置 field_delimiter 参数"
 ...
 modparam("db_http", "field_delimiter",";")
 ...
@@ -165,14 +162,14 @@ modparam("db_http", "field_delimiter",";")
 #### row_delimiter (str)
 
 
-Character to be used to delimit rows in the reply.Only
-		one char may be set.
+用于分隔回复中行的字符。只
+可以设置一个字符。
 
 
-*Default value is "\n"*
+*默认值为 "\n"*
 
 
-```c title="Set row_delimiter parameter"
+```c title="设置 row_delimiter 参数"
 ...
 modparam("db_http", "row_delimiter","\n")
 ...
@@ -182,14 +179,14 @@ modparam("db_http", "row_delimiter","\n")
 #### quote_delimiter (str)
 
 
-Character to be used to quote  fields that require quoting
-		in the reply.Only one char may be set.
+用于引用回复中需要引用的
+字段的字符。只可以设置一个字符。
 
 
-*Default value is "|"*
+*默认值为 "|"*
 
 
-```c title="Set quote_delimiter parameter"
+```c title="设置 quote_delimiter 参数"
 ...
 modparam("db_http", "quote_delimiter","|")
 ...
@@ -199,15 +196,15 @@ modparam("db_http", "quote_delimiter","|")
 #### value_delimiter (str)
 
 
-The delimiter used to separate multiple fields of a single
-		variable (see [http variables](#variables)).
-		Only one char may be set.
+用于分隔单个
+变量的多个字段的分隔符（请参阅[http 变量](#variables)）。
+只可以设置一个字符。
 
 
-*Default value is ","*
+*默认值为 ","*
 
 
-```c title="Set value_delimiter parameter"
+```c title="设置 value_delimiter 参数"
 ...
 modparam("db_http", "value_delimiter",";")
 ...
@@ -217,13 +214,13 @@ modparam("db_http", "value_delimiter",";")
 #### timeout (int)
 
 
-The maximum number of milliseconds that the HTTP ops are allowed to last
+HTTP 操作允许的最大毫秒数
 
 
-*Default value is "30000 ( 30 seconds )"*
+*默认值为 "30000（30 秒）"*
 
 
-```c title="Set timeout parameter"
+```c title="设置 timeout 参数"
 ...
 modparam("db_http", "timeout",5000)
 ...
@@ -233,98 +230,85 @@ modparam("db_http", "timeout",5000)
 #### disable_expect (int)
 
 
-Disables automatic 'Expect: 100-continue' behavior in libcurl for requests over 1024 bytes in size.
-		This can help reduce latency by saving a network round-trip for large records.
-		For more information on this behavior please seee rfc2616 section 8.2.3.
+对超过 1024 字节的请求禁用 libcurl 中的自动 'Expect: 100-continue' 行为。
+这可以通过为大记录节省一次网络往返来帮助减少延迟。
+有关此行为的更多信息，请参阅 rfc2616 第 8.2.3 节。
 
 
-*Default value is "0 (off)"*
+*默认值为 "0（关闭）"*
 
 
-```c title="Set disable_expect parameter"
+```c title="设置 disable_expect 参数"
 ...
 modparam("db_http", "disable_expect",1)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-### Server specifications
+### 服务器规格
 
 
-#### Queries
+#### 查询
 
 
-The server must accept queries as HTTP queries.
+服务器必须接受 HTTP 查询格式的查询。
 
 
-The queries are of 2 types : GET and POST.Both
-		set variables that must be interpreted by the server.
-		All values are URL-encoded.
+查询有两种类型：GET 和 POST。两者
+都设置必须由服务器解释的变量。
+所有值都是 URL 编码的。
 
 
-There are several types of queries and the server can tell
-		them apart by the query_type variable. Each type of query uses
-		specific variables simillar to those in the opensips db_api.
+有几种类型的查询，服务器可以通过 query_type 变量来区分它们。
+每种类型的查询使用与 opensips db_api 中类似的特定变量。
 
 
-```c title="Example query."
+```c title="查询示例"
 ...
 GET /presentity/?c=username,domain,event,expires HTTP/1.1
 ...
 ```
 
 
-#### Variables
+#### 变量
 
 
-A description of all the variables. Each variable can have
-		either a single value or a comma-separated list of values. Each
-		variable has a special meaning and can be used only with
-		certain queries.
+所有变量的描述。每个变量可以
+有单个值或逗号分隔的列表。每个
+变量都有特殊含义，只能与某些
+查询一起使用。
 
 
-The table on which operations will take place will be encoded
-		in the url as the end of the url ( www.some.com/users will point
-		to the users table).
+将在其上执行操作的表将编码在
+url 的末尾（www.some.com/users 将指向
+users 表）。
 
 
 - k=
-Describes the keys (columns) that will 
-				be used for comparison.Can have multiple values.
+描述将用于比较的键（列）。可以有多个值。
 - op=
-Describes the operators that will 
-				be used for comparison.Can have multiple values.
+描述将用于比较的运算符。可以有多个值。
 - v=
-Describes the values that columns will be 
-				compaired against. Can have multiple values.
+描述列将被比较的值。可以有多个值。
 - c=
-Describes the columns that will be selected
-				from the result.Can have multiple values.
+描述将从结果中选择的列。可以有多个值。
 - o=
-The column that the result will be ordered by.
-				Has a single value.
+结果将按其排序的列。只有一个值。
 - uk=
-The keys(columns) that will be updated.
-				Can have multiple values.
+将更新的键（列）。可以有多个值。
 - uv=
-The new values that will be put in the columns.
-				Can have multiple values.
+将放入列中的新值。可以有多个值。
 - q=
-Describes a raw query. Will only be used if
-				the server supports raw queries. Has a single
-				value.
+描述原始查询。仅在服务器支持原始查询时使用。只有一个值。
 - query_type=
-Describes the type of the current query.
-				Can have a single value as described in the
-				Query Types section.Has a single value.
-				Will be present in all queries except the
-				"SELECT" (normal query).
+描述当前查询的类型。可以有单个值，如查询部分所述。
+除 "SELECT"（正常查询）外，所有查询中都存在。
 
 
-```c title="Example query with variables."
+```c title="带变量的查询示例"
 ...
 GET /presentity/?c=username,domain,event,expires HTTP/1.1
 GET /version/?k=table_name&v=xcap&c=table_version HTTP/1.1 
@@ -337,43 +321,38 @@ k=id&v=100&query_type=insert
 ```
 
 
-#### Query Types
+#### 查询类型
 
 
-The types of the queries are described by the
-		query_type variable. The value of the variable
-		will be set to the exact name of the query.
+查询的类型由 query_type 变量描述。
+变量的值将设置为查询的确切名称。
 
 
-Queries for "SELECT" use GET and the rest use POST
-		(insert, update, delete, replace, insert_update).
+"SELECT" 的查询使用 GET，其余使用 POST
+（insert、update、delete、replace、insert_update）。
 
 
 - normal query
-Uses the k, op, v, c and o variables.
-				This will not set the query_type variable and
-				will use GET.
+使用 k、op、v、c 和 o 变量。这不会设置 query_type 变量，
+将使用 GET。
 - delete
-Uses the k, op and v variables.
+使用 k、op 和 v 变量。
 - insert
-Uses the k and v variables.
+使用 k 和 v 变量。
 - update
-Uses the k,op,v,uk and uv  variables.
+使用 k、op、v、uk 和 uv 变量。
 - replace
-Uses the k and v  variables. This is an optional
-				type of query. If the module is not configured to use it
-				it will not.
+使用 k 和 v 变量。这是一种可选的查询类型。
+如果模块未配置为使用它，则不会使用。
 - insert_update
-Uses the k and v  variables. This is an optional
-				type of query. If the module is not configured to use it
-				it will not.
+使用 k 和 v 变量。这是一种可选的查询类型。
+如果模块未配置为使用它，则不会使用。
 - custom
-Uses the q  variable. This is an optional
-				type of query. If the module is not configured to use it
-				it will not.
+使用 q 变量。这是一种可选的查询类型。
+如果模块未配置为使用它，则不会使用。
 
 
-```c title="More query examples."
+```c title="更多查询示例"
 ...
 POST /active_watchers HTTP/1.1
 
@@ -388,14 +367,14 @@ k=id&op=%3D&v=100&uk=id&uv=101&query_type=update
 ```
 
 
-#### NULL values in queries
+#### 查询中的 NULL 值
 
 
-NULL values in queries are represented as a string of length 1
-		containing a single character with value '\0'.
+查询中的 NULL 值表示为长度为 1 的字符串，
+其中包含一个值为 '\0' 的字符。
 
 
-```c title="NULL query example."
+```c title="NULL 查询示例"
 ...
 POST /active_watchers HTTP/1.1
 
@@ -404,38 +383,35 @@ k=id&op=%3D&v=%00&query_type=delete
 ```
 
 
-#### Server Replies
+#### 服务器回复
 
 
-If the query is ok (even if the answer is empty)
-			the server must reply with a 200 OK HTTP reply with
-			a body containing the types and values of the columns.
+如果查询正常（即使答案为空），
+服务器必须回复 200 OK HTTP 回复，
+其主体包含列的类型和值。
 
 
-The server must reply with a delimiter separated list of
-		values and columns.
+服务器必须回复由分隔符分隔的值和列的列表。
 
 
-Each element in the list must be seperated from the
-			one before it by a field delimiter that must be the same 
-			as the one set as a parameter from the script for the module.
-			The last element of each line must not be followed by
-			a field delimiter, but by a	row delimiter.
+列表中的每个元素必须与前一个元素用
+字段分隔符分隔，该分隔符必须与脚本为模块设置的参数相同。
+每一行的最后一个元素后面不能跟字段分隔符，
+而是要跟行分隔符。
 
 
-The first line of the reply must contain a list of the types
-		of values of each column. The types can be any from the list:
-		integer, string, str, blob, date.
+回复的第一行必须包含每个列的值类型列表。类型可以是以下任意一种：
+integer、string、str、blob、date。
 
 
-Each following line contains the values of each row from the result.
+接下来的每一行都包含结果中每一行的值。
 
 
-If the query produced an error the server must reply with a
-		HTTP 500 reply,	or with a corresponding error code (404, 401).
+如果查询产生错误，服务器必须回复
+HTTP 500 回复，或相应的错误代码（404、401）。
 
 
-```c title="Example Reply."
+```c title="回复示例"
 ...
 int;string;blob
 6;something=something;1000
@@ -444,24 +420,23 @@ int;string;blob
 ```
 
 
-#### Reply Quoting
+#### 回复引用
 
 
-Because the values may contain delimiters inside,
-		the server must perform quoting when necessary (there is no
-		problem if it does it even when it is not necessary).
+由于值内部可能包含分隔符，
+服务器必须在必要时执行引用（必要时执行引用是没有问题的）。
 
 
-A quote delimiter must be defined and must be the same as
-		the one set from the script ( by default it is "|" ).
+必须定义引用分隔符，并且必须与
+脚本设置的相同（默认为 "|"）。
 
 
-If a value contains a field ,  row  or a quote delimiter
-		it must be placed under quotes. A quote delimiter inside a value
-		must be preceeded by another quote delimiter.
+如果值包含字段、行或引用分隔符，
+则必须将其放在引号内。值内部的引用分隔符
+必须在前面加上另一个引用分隔符。
 
 
-```c title="Quoting Example."
+```c title="引用示例"
 ...
 int;string;blob
 6;|ana;maria|;1000
@@ -471,30 +446,26 @@ int;string;blob
 ```
 
 
-#### Last inserted id
+#### 最后插入的 ID
 
 
-This is an optional feature and may be enabled if one wants
-		to use it.
+这是一个可选功能，如果您想使用它，可以启用它。
 
 
-In order to use this feature the server must place the id
-		of the last insert in the 200 reply for each insert query.
+为了使用此功能，服务器必须在每个插入查询的 200 回复中放置最后插入的 ID。
 
 
-#### Authentication and SSL
+#### 身份验证和 SSL
 
 
-If the server supports authentication and SSL, the module
-		can be enabled to use SSL. Authentication will always be used
-		if needed.
+如果服务器支持身份验证和 SSL，可以
+启用模块使用 SSL。身份验证将在需要时始终使用。
 
 
-The module will try to use the most secure type of
-		authentication that is provided by the server from:
-		Basic, Digest,GSSNEGOTIATE and NTLM.
+模块将尝试使用服务器提供的最安全身份验证类型：
+Basic、Digest、GSSNEGOTIATE 和 NTLM。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

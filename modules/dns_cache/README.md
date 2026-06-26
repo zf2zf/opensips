@@ -1,47 +1,43 @@
 ---
-title: "dns_cache Module"
-description: "This module is an implementation of a cache system designed for DNS records. For successful DNS queries of all types, the module will store in a cache/db backend the mappings, for TTL number of seconds received in the DNS answer. Failed DNS queries will also be stored in the back-end, with ..."
+title: "dns_cache 模块"
+description: "该模块是专为 DNS 记录设计的缓存系统的实现。对于所有类型的成功 DNS 查询，模块将在缓存/数据库后端存储映射，有效期为 DNS 回答中收到的 TTL 秒数。失败的 DNS 查询也将存储在后端，TTL 可由用户指定。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of a cache system designed for DNS records.
-		For successful DNS queries of all types, the module will store in a cache/db
-		backend the mappings, for TTL number of seconds received in the DNS answer.
-		Failed DNS queries will also be stored in the back-end, with a TTL that can be
-		specified by the user.
-		The module uses the Key-Value interface exported from the core.
+该模块是专为 DNS 记录设计的缓存系统的实现。
+对于所有类型的成功 DNS 查询，模块将在缓存/数据库后端存储映射，有效期为 DNS 回答中收到的 TTL 秒数。
+失败的 DNS 查询也将存储在后端，TTL 可由用户指定。
+该模块使用从核心导出的 Key-Value 接口。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-A cachedb_* type module must be loaded before loading
-		the dns_cache module.
+在加载 dns_cache 模块之前必须加载 cachedb_* 类型的模块。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### cachedb_url (string)
 
 
-The url of the key-value back-end that will be used
-			for storing the DNS records.
+将用于存储 DNS 记录的键值后端的 URL。
 
 
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
-#use internal cachedb_local module
+# 使用内部 cachedb_local 模块
 modparam("dns_cache", "cachedb_url","local://")
-#use cachedb_memcached module with memcached server at 192.168.2.130
+# 使用 cachedb_memcached 模块，memcached 服务器位于 192.168.2.130
 modparam("dns_cache", "cachedb_url","memcached://192.168.2.130:8888/")
 ...
 		
@@ -51,13 +47,13 @@ modparam("dns_cache", "cachedb_url","memcached://192.168.2.130:8888/")
 #### blacklist_timeout (int)
 
 
-The number of seconds that a failed DNS query will be kept in cache.
-			Default is 3600.
+失败的 DNS 查询将在缓存中保留的秒数。
+默认值为 3600。
 
 
-```c title="Set blacklist_timeout parameter"
+```c title="设置 blacklist_timeout 参数"
 ...
-modparam("dns_cache", "blacklist_timeout",7200) # 2 hours
+modparam("dns_cache", "blacklist_timeout",7200) # 2 小时
 ...
 		
 ```
@@ -66,29 +62,27 @@ modparam("dns_cache", "blacklist_timeout",7200) # 2 hours
 #### min_ttl (int)
 
 
-The minimum number of seconds that a DNS record will be kept in
-			cache. If the TTL received in the DNS answer is lower than this
-			value, the record will be cached for min_ttl seconds.
+DNS 记录将在缓存中保留的最小秒数。如果 DNS 回答中收到的 TTL 低于此值，
+记录将以 min_ttl 秒缓存。
 
 
-*Default value is **0** seconds (no minimum TTL is enforced).*
+*默认值为 **0** 秒（不强制执行最小 TTL）。*
 
 
-```c title="Set min_ttl parameter"
+```c title="设置 min_ttl 参数"
 ...
-modparam("dns_cache", "min_ttl",300) # 5 minutes
+modparam("dns_cache", "min_ttl",300) # 5 分钟
 ...
 		
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-The module does not export functions to be used
-		in configuration script.
+该模块不导出供配置脚本使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

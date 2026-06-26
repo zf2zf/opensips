@@ -1,33 +1,27 @@
 ---
 title: "textops Module"
-description: "The module implements text based operations over the SIP message processed by OpenSIPS. SIP is a text based protocol and the module provides a large set of very useful functions to manipulate the message at text level, e.g., regular expression search and replace, Perl-like substitutions, ..."
+description: "该模块实现对 OpenSIPS 处理的 SIP 消息的基于文本的操作。SIP 是一个基于文本的协议，该模块提供了一组丰富的非常有用的函数来在文本级别上操作消息，例如正则表达式搜索和替换、类似 Perl 的替换等。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module implements text based operations over the SIP message
-		processed by OpenSIPS. SIP is a text based protocol and the module
-		provides a large set of very useful functions to manipulate the
-		message at text level, e.g., regular expression search and replace,
-		Perl-like substitutions, etc.
+该模块实现对 OpenSIPS 处理的 SIP 消息的基于文本的操作。SIP 是一个基于文本的协议，该模块提供了一组丰富的非常有用的函数来在文本级别上操作消息，例如正则表达式搜索和替换、类似 Perl 的替换等。
 
 
-Note: all SIP-aware functions like *insert_hf*,
-		*append_hf* or *codec*
-		operations have been moved to the *sipmsgops*
-		module.
+注意：所有 SIP 感知的函数如 *insert_hf*、
+*append_hf* 或 *codec* 操作已移至 *sipmsgops* 模块。
 
 
-#### Known Limitations
+#### 已知限制
 
 
-search ignores folded lines. For example, 
-		search("(From|f):.*@foo.bar")
-		doesn't match the following From header field:
+搜索会忽略折叠的行。例如，
+search("(From|f):.*@foo.bar")
+不会匹配以下 From 头字段：
 
 
 ```c
@@ -36,48 +30,46 @@ From: medabeda
 ```
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *无其他 OpenSIPS 模块的依赖*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### search(re)
 
 
-Searches for the re in the message.
+在消息中搜索 re。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
+- *re* (string) - 正则表达式。
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="search usage"
+```c title="search 使用示例"
 ...
 if ( search("[Ss][Ii][Pp]") ) { /*....*/ };
 ...
@@ -87,20 +79,19 @@ if ( search("[Ss][Ii][Pp]") ) { /*....*/ };
 #### search_body(re)
 
 
-Searches for the re in the body of the message.
+在消息的正文中搜索 re。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
+- *re* (string) - 正则表达式。
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="search_body usage"
+```c title="search_body 使用示例"
 ...
 if ( search_body("[Ss][Ii][Pp]") ) { /*....*/ };
 ...
@@ -110,21 +101,20 @@ if ( search_body("[Ss][Ii][Pp]") ) { /*....*/ };
 #### search_append(re, txt)
 
 
-Searches for the first match of re and appends txt after it.
+搜索 re 的第一个匹配项并在其后追加 txt。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
-- *txt* (string) - String to be appended.
+- *re* (string) - 正则表达式。
+- *txt* (string) - 要追加的字符串。
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="search_append usage"
+```c title="search_append 使用示例"
 ...
 search_append("[Oo]pen[Ss]er", " SIP Proxy");
 ...
@@ -134,22 +124,20 @@ search_append("[Oo]pen[Ss]er", " SIP Proxy");
 #### search_append_body(re, txt)
 
 
-Searches for the first match of re in the body of the message
-		and appends txt after it.
+在消息正文中搜索 re 的第一个匹配项并在其后追加 txt。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
-- *txt* (string) - String to be appended.
+- *re* (string) - 正则表达式。
+- *txt* (string) - 要追加的字符串。
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="search_append_body usage"
+```c title="search_append_body 使用示例"
 ...
 search_append_body("[Oo]pen[Ss]er", " SIP Proxy");
 ...
@@ -159,21 +147,20 @@ search_append_body("[Oo]pen[Ss]er", " SIP Proxy");
 #### replace(re, txt)
 
 
-Replaces the first occurrence of re with txt.
+用 txt 替换 re 的第一个匹配项。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
+- *re* (string) - 正则表达式。
 - *txt* (string)
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="replace usage"
+```c title="replace 使用示例"
 ...
 replace("opensips", "Open SIP Server");
 ...
@@ -183,22 +170,20 @@ replace("opensips", "Open SIP Server");
 #### replace_body(re, txt)
 
 
-Replaces the first occurrence of re in the body of the message
-		with txt.
+将消息正文中 re 的第一个匹配项替换为 txt。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
+- *re* (string) - 正则表达式。
 - *txt* (string)
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="replace_body usage"
+```c title="replace_body 使用示例"
 ...
 replace_body("opensips", "Open SIP Server");
 ...
@@ -208,21 +193,20 @@ replace_body("opensips", "Open SIP Server");
 #### replace_all(re, txt)
 
 
-Replaces all occurrence of re with txt.
+用 txt 替换 re 的所有匹配项。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* - (string) Regular expression.
+- *re* - (string) 正则表达式。
 - *txt* (string)
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="replace_all usage"
+```c title="replace_all 使用示例"
 ...
 replace_all("opensips", "Open SIP Server");
 ...
@@ -232,22 +216,20 @@ replace_all("opensips", "Open SIP Server");
 #### replace_body_all(re, txt)
 
 
-Replaces all occurrence of re in the body of the message
-		with txt. Matching is done on a per-line basis.
+将消息正文中 re 的所有匹配项替换为 txt。按行进行匹配。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
+- *re* (string) - 正则表达式。
 - *txt* (string)
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="replace_body_all usage"
+```c title="replace_body_all 使用示例"
 ...
 replace_body_all("opensips", "Open SIP Server");
 ...
@@ -257,24 +239,22 @@ replace_body_all("opensips", "Open SIP Server");
 #### replace_body_atonce(re, txt)
 
 
-Replaces all occurrence of re in the body of the message
-		with txt. Matching is done over the whole body.
+将消息正文中 re 的所有匹配项替换为 txt。对整个正文进行匹配。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *re* (string) - Regular expression.
+- *re* (string) - 正则表达式。
 - *txt* (string)
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="replace_body_atonce usage"
+```c title="replace_body_atonce 使用示例"
 ...
-# strip the whole body from the message:
+# 从消息中剥离整个正文：
 if(has_body() && replace_body_atonce("^.+$", ""))
         remove_hf("Content-Type"); 
 ...
@@ -284,30 +264,27 @@ if(has_body() && replace_body_atonce("^.+$", ""))
 #### subst('/re/repl/flags')
 
 
-Replaces re with repl (sed or perl like).
+用 repl 替换 re（sed 或 perl 风格）。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *'/re/repl/flags'* (string) - sed like regular 
-				expression. flags can be a combination of i (case insensitive),
-				g (global) or s (match newline don't treat it as end of line).
-'re' - is regular expression
-'repl' - is replacement string - may contain pseudo-variables
-'flags' - substitution flags (i - ignore case, g - global)
+- *'/re/repl/flags'* (string) - sed 风格正则表达式。flags 可以是 i（不区分大小写）、g（全局）或 s（匹配换行符，不将其视为行尾）的组合。
+'re' - 是正则表达式
+'repl' - 是替换字符串——可以包含伪变量
+'flags' - 替换标志（i - 忽略大小写，g - 全局）
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="subst usage"
+```c title="subst 使用示例"
 ...
-# replace the uri in to: with the message uri (just an example)
+# 将 to: 中的 uri 替换为消息 uri（仅作为示例）
 if ( subst('/^To:(.*)sip:[^@]*@[a-zA-Z0-9.]+(.*)$/t:\1\u\2/ig') ) {};
 
-# replace the uri in to: with the value of avp sip_address (just an example)
+/# 将 to: 中的 uri 替换为 avp sip_address 的值（仅作为示例）
 if ( subst('/^To:(.*)sip:[^@]*@[a-zA-Z0-9.]+(.*)$/t:\1$avp(sip_address)\2/ig') ) {};
 
 ...
@@ -317,33 +294,27 @@ if ( subst('/^To:(.*)sip:[^@]*@[a-zA-Z0-9.]+(.*)$/t:\1$avp(sip_address)\2/ig') )
 #### subst_uri('/re/repl/flags')
 
 
-Runs the re substitution on the message uri (like subst but works
-		 only on the uri)
+对消息 uri 运行 re 替换（如 subst，但仅对 uri 工作）
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *'/re/repl/flags'* (string) - sed like regular 
-				expression. flags can be a combination of i (case insensitive),
-				g (global) or s (match newline don't treat it as end of line).
-'re' - is regular expression
-'repl' - is replacement string - may contain pseudo-variables
-'flags' - substitution flags (i - ignore case, g - global)
+- *'/re/repl/flags'* (string) - sed 风格正则表达式。flags 可以是 i（不区分大小写）、g（全局）或 s（匹配换行符，不将其视为行尾）的组合。
+'re' - 是正则表达式
+'repl' - 是替换字符串——可以包含伪变量
+'flags' - 替换标志（i - 忽略大小写，g - 全局）
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="subst_uri usage"
+```c title="subst_uri 使用示例"
 ...
-# adds 3463 prefix to numeric uris, and save the original uri (\0 match)
-# as a parameter: orig_uri (just an example)
+# 为数字 uri 添加 3463 前缀，并将原始 uri（\0 匹配）保存为参数：orig_uri（仅作为示例）
 if (subst_uri('/^sip:([0-9]+)@(.*)$/sip:3463\1@\2;orig_uri=\0/i')){$
 
-# adds the avp 'uri_prefix' as prefix to numeric uris, and save the original
-# uri (\0 match) as a parameter: orig_uri (just an example)
+# 将 avp 'uri_prefix' 添加为数字 uri 的前缀，并将原始 uri（\0 匹配）保存为参数：orig_uri（仅作为示例）
 if (subst_uri('/^sip:([0-9]+)@(.*)$/sip:$avp(uri_prefix)\1@\2;orig_uri=\0/i')){$
 
 ...
@@ -353,32 +324,28 @@ if (subst_uri('/^sip:([0-9]+)@(.*)$/sip:$avp(uri_prefix)\1@\2;orig_uri=\0/i')){$
 #### subst_user('/re/repl/flags')
 
 
-Runs the re substitution on the message uri (like subst_uri but works
-		 only on the user portion of the uri)
+对消息 uri（如同 subst_uri，但仅对 uri 的用户部分工作）运行 re 替换
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *'/re/repl/flags'* (string) - sed like regular
-				expression. flags can be a combination of i (case insensitive),
-				g (global) or s (match newline don't treat it as end of line).
-'re' - is regular expression
-'repl' - is replacement string - may contain pseudo-variables
-'flags' - substitution flags (i - ignore case, g - global)
+- *'/re/repl/flags'* (string) - sed 风格正则表达式。flags 可以是 i（不区分大小写）、g（全局）或 s（匹配换行符，不将其视为行尾）的组合。
+'re' - 是正则表达式
+'repl' - 是替换字符串——可以包含伪变量
+'flags' - 替换标志（i - 忽略大小写，g - 全局）
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="subst usage"
+```c title="subst 使用示例"
 ...
-# adds 3463 prefix to uris ending with 3642 (just an example)
+# 为以 3642 结尾的 uri 添加 3463 前缀（仅作为示例）
 if (subst_user('/3642$/36423463/')){$
 
 ...
-# adds avp 'user_prefix' as prefix to username in r-uri ending with 3642
+# 为 r-uri 中以 3642 结尾的用户名添加 avp 'user_prefix' 作为前缀
 if (subst_user('/(.*)3642$/$avp(user_prefix)\13642/')){$
 
 ...
@@ -388,33 +355,30 @@ if (subst_user('/(.*)3642$/$avp(user_prefix)\13642/')){$
 #### subst_body('/re/repl/flags')
 
 
-Replaces re with repl (sed or perl like) in the body of the message.
+在消息正文中用 repl 替换 re（sed 或 perl 风格）。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *'/re/repl/flags'* (string) - sed like regular
-				expression. flags can be a combination of i (case insensitive),
-				g (global) or s (match newline don't treat it as end of line).
-'re' - is regular expression
-'repl' - is replacement string - may contain pseudo-variables
-'flags' - substitution flags (i - ignore case, g - global)
+- *'/re/repl/flags'* (string) - sed 风格正则表达式。flags 可以是 i（不区分大小写）、g（全局）或 s（匹配换行符，不将其视为行尾）的组合。
+'re' - 是正则表达式
+'repl' - 是替换字符串——可以包含伪变量
+'flags' - 替换标志（i - 忽略大小写，g - 全局）
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, 
-		FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
 
-```c title="subst_body usage"
+```c title="subst_body 使用示例"
 ...
 if (subst_body("/^o=([^ ]*) /o=$fU /"))
-	xlog("successfully prepared an "o" line update!\n");
+	xlog("成功准备了 "o" 行更新！\n");
 
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可协议授权。

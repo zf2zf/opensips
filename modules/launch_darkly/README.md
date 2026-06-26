@@ -1,51 +1,47 @@
 ---
-title: "launch_darkly Module"
-description: "This module implements support for the [Launch Darkly](https://launchdarkly.com/) feature management cloud. The module provide the conectivity to the cloud and the ability to query for feature flags."
+title: "Launch Darkly 模块"
+description: "此模块实现对 [Launch Darkly](https://launchdarkly.com/) 功能管理云的支持。该模块提供到云端的连接以及查询功能标志的能力。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements support for the
-		[Launch Darkly](https://launchdarkly.com/) feature
-		management cloud. The module provide the conectivity to the cloud and
-		the ability to query for feature flags.
+此模块实现对 [Launch Darkly](https://launchdarkly.com/)
+		功能管理云的支持。该模块提供到云端的连接以及查询功能标志的能力。
 
 
-OpenSIPS uses the [server side C/C++ SDK](https://launchdarkly.com/features/sdk/) provided by Launch Darkly.
+OpenSIPS 使用 Launch Darkly 提供的 [服务器端 C/C++ SDK](https://launchdarkly.com/features/sdk/)。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+加载此模块之前必须加载以下模块：
 
 
-- *none*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
 - *ldserverapi*
 
 
-*ldserverapi* must be compiled and installed
-			from the official
-			[GITHUB repository](https://github.com/launchdarkly/c-server-sdk).
+*ldserverapi* 必须从官方
+			[GITHUB 仓库](https://github.com/launchdarkly/c-server-sdk) 编译和安装。
 
 
-The instructions for a quick installations of the library (note that it has to be compiled as shared lib in order to be compatible with the OpenSIPS modules):
+库快速安装说明（注意必须编译为共享库才能与 OpenSIPS 模块兼容）：
 
 
 ```c
@@ -58,132 +54,123 @@ The instructions for a quick installations of the library (note that it has to b
 ```
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### sdk_key (string)
+#### sdk_key (字符串)
 
 
-The LaunchDarkly SDK key used to connect to the service. This
-		is a mandatory parameter.
+用于连接到服务的 LaunchDarkly SDK 密钥。这是一个必需参数。
 
 
-```c title="Set sdk_key parameter"
+```c title="设置 sdk_key 参数"
 ...
 modparam("launch_darkly", "sdk_key", "sdk-12345678-abcd-12ab-1234-0123456789abc")
 ...
 ```
 
 
-#### ld_log_level (string)
+#### ld_log_level (字符串)
 
 
-The LaunchDarkly specific log level to be used by the LD SDK/libray to
-		log its internal messages. Note that these log produced by the LD
-		library (according to this ld_log_level) will be further subject to
-		filtering according to the overall OpenSIPS log_level.
+由 LD SDK/库用于记录其内部消息的 LaunchDarkly 特定日志级别。
+		请注意，这些由 LD 库产生的日志（根据此 ld_log_level）
+		将根据整体 OpenSIPS log_level 进一步过滤。
 
 
-Accepted values are 
-		*LD_LOG_FATAL*, 
-		*LD_LOG_CRITICAL*, 
-		*LD_LOG_ERROR*, 
-		*LD_LOG_WARNING*, 
-		*LD_LOG_INFO*, 
-		*LD_LOG_DEBUG*, 
-		*LD_LOG_TRACE*.
+可接受的值有
+		*LD_LOG_FATAL*、
+		*LD_LOG_CRITICAL*、
+		*LD_LOG_ERROR*、
+		*LD_LOG_WARNING*、
+		*LD_LOG_INFO*、
+		*LD_LOG_DEBUG*、
+		*LD_LOG_TRACE*。
 
 
-If not set or set to an unsupported value, the 
-		*LD_LOG_WARNING* level will be used by default.
+如果未设置或设置为不支持的值，
+		默认使用 *LD_LOG_WARNING* 级别。
 
 
-```c title="Set log_level parameter"
+```c title="设置 log_level 参数"
 ...
 modparam("launch_darkly", "ld_log_level", "LD_LOG_CRITICAL")
 ...
 ```
 
 
-#### connect_wait (integer)
+#### connect_wait (整数)
 
 
-The time to wait (in miliseconds) when connecting to the LD service.
-		An initial failure in connecting to the LD service may be addressed 
-		by increasing this wait value.
+连接到 LD 服务时等待的时间（毫秒）。
+		初次连接 LD 服务失败可以通过增加此等待值来解决。
 
 
-The default value is 500 miliseconds.
+默认值为 500 毫秒。
 
 
-```c title="Set connect_wait parameter"
+```c title="设置 connect_wait 参数"
 ...
 modparam("launch_darkly", "connect_wait", 100)
 ...
 ```
 
 
-#### re_init_interval (integer)
+#### re_init_interval (整数)
 
 
-The minimum time interval (in seconds) to try again to init 
-		the LD client in the situation when the module was not able to init 
-		the LC connection at startup. In case of such failure, the module will 
-		automatically re-try to init its LD client on-demand, whnever the 
-		feature flag is checked from script, but not sooner than
-		`re_init_interval`. Note: if there are no flag checkings to be
-		performed, the re-init may be attempted longer than `re_init_interval`.
+当模块在启动时无法初始化 LC 连接时，
+		再次尝试初始化 LD 客户端的最小时间间隔（秒）。
+		如果初始化失败，模块将在从脚本检查功能标志时自动重试，
+		但不会早于 `re_init_interval`。
+		请注意：如果没有要执行的功能标志检查，重试可能会晚于 `re_init_interval`。
 
 
-The default value is 10 seconds.
+默认值为 10 秒。
 
 
-```c title="Set re_init_interval parameter"
+```c title="设置 re_init_interval 参数"
 ...
 modparam("launch_darkly", "re_init_interval", 30)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### ld_feature_enabled( flag, user, [user_extra], [fallback])
 
 
-Function to evaluate a LaunchDarkly boolean feature flag
+用于评估 LaunchDarkly 布尔功能标志的函数。
 
 
-Returns *1* if the flag was found TRUE
-			or *-1* otherwise.
+如果标志被确定为 TRUE 则返回 *1*，否则返回 *-1*。
 
 
-In case of error, the fallback (TRUE or FALSE) value will be
-			returned  In such cases, a "fallback" TRUE is returned as 2 and a
-			fallback FALSE as -2, so you can may a difference between a real
-			TRUE (returned by the LD service) and a fallback TRUE due to an
-			error.
+发生错误时，将返回回退（TRUE 或 FALSE）值。
+		在这种情况下，回退 TRUE 返回为 2，回退 FALSE 返回 -2，
+		因此您可以区分真正的 TRUE（由 LD 服务返回）和因错误而返回的回退 TRUE。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-The function has the following parameters:
+函数具有以下参数：
 
 
-- *flag* (string) - the key of the flag
-					to evaluate. May not be NULL or empty.
-- *user* (string) - the user to evaluate
-					the flag against. May not be NULL or empty.
-- *user_extra* (AVP, optional) - an AVP
-					holding one or multiple key-value attributes to be 
-					attached to the user. The format of the AVP value is
-					"key=value".
-- *fallback* (int, optional) - the value
-					to be returned on error. By default FALSE will be returned.
+- *flag* (字符串) - 要评估的标志的键。
+					不能为 NULL 或空。
+- *user* (字符串) - 要评估标志的用户。
+					不能为 NULL 或空。
+- *user_extra* (AVP，可选) - 一个 AVP，
+					包含要附加到用户的一个或多个键值属性。
+					AVP 值的格式为 "key=value"。
+- *fallback* (整数，可选) - 错误时返回的值。
+					默认返回 FALSE。
 
 
-```c title="ld_feature_enabled() function usage"
+```c title="ld_feature_enabled() 函数用法"
 	...
 	$avp(extra) = "domainId=123456";
 	if (ld_feature_enabled("my-flag","opensips", $avp(extra), false))
@@ -195,6 +182,6 @@ The function has the following parameters:
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

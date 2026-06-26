@@ -1,64 +1,52 @@
 ---
-title: "SST Module (SIP Session Timer)"
-description: "The sst module provides a way to update the dialog expire timer based on the SIP INVITE/200 OK Session-Expires header value. You can use the sst module in an OpenSIPS proxy to allow freeing of local resources of dead (expired) calls."
+title: "SST 模块 (SIP 会话计时器)"
+description: "sst 模块提供了一种根据 SIP INVITE/200 OK Session-Expires 头值更新对话过期计时器的方法。您可以在 OpenSIPS 代理中使用 sst 模块来释放已死亡（过期）呼叫的本地资源。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The sst module provides a way to update the
-		dialog expire timer based on the SIP INVITE/200 OK
-		Session-Expires header value. You can use the sst
-		module in an OpenSIPS proxy to allow freeing of local
-		resources of dead (expired) calls.
+sst 模块提供了一种根据 SIP INVITE/200 OK
+		Session-Expires 头值更新对话过期计时器的方法。您可以在
+		OpenSIPS 代理中使用 sst 模块来释放已死亡（过期）呼叫的本地资源。
 
 
-You can also use the sst module to validate the
-		MIN_SE header value and reply to any request with a
-		"422 - Session Timer Too Small" if the value is too
-		small for your OpenSIPS configuration.
+您还可以使用 sst 模块验证 MIN_SE 头值，
+		如果值对于您的 OpenSIPS 配置太小，则以 "422 - Session Timer Too Small"
+		回复任何请求。
 
 
-### How it works
+### 工作原理
 
 
-The sst module uses the dialog module to be notified of
-	any new or updated dialogs. It will then look for and extract
-	the session-expire: header value (if there is one) and
-	override the dialog expire timer value for the current context
-	dialog.
+sst 模块使用 dialog 模块来接收任何新对话或更新对话的通知。
+		然后它将查找并提取 session-expire: 头值（如果存在），
+		并覆盖当前上下文对话的对话过期计时器值。
 
 
-You flag any call setup INVITE that you want to cause a
-	timed session to be established. This will cause OpenSIPS to
-	request the use of session times if the UAC does not request
-	it.
+您可以标记任何您希望建立定时会话的呼叫设置 INVITE。
+		这将导致 OpenSIPS 请求使用会话时间（如果 UAC 未请求）。
 
 
-All of this happens with a properly configured dialog
-	and sst module and setting the dialog flag and the sst flag at
-	the time any INVITE sip message is seen. There is no
-	opensips.cfg script function call required to set the dialog
-	expire timeout value. See the dialog module users guide for
-	more information.
+所有这些都通过正确配置的 dialog 和 sst 模块发生，
+		并在看到任何 INVITE sip 消息时设置 dialog 标志和 sst 标志。
+		无需调用 opensips.cfg 脚本函数来设置对话过期超时值。
+		有关更多信息，请参阅 dialog 模块用户指南。
 
 
-The sstCheckMin() script function can be used to varify
-	the Session-expires / MIN-SE header field values are not too
-	small for a proxy. If the SST min_se parameter value is
-	smaller then the messages Session-Expires / MIN-SE values, the
-	test will return true. You can also configure the function to
-	send the 422 response for you.
+sstCheckMin() 脚本函数可用于验证 Session-expires / MIN-SE
+		头字段值对于代理来说是否不太小。如果 SST min_se 参数值小于
+		消息的 Session-Expires / MIN-SE 值，则测试将返回 true。
+		您还可以将函数配置为为您发送 422 响应。
 
 
-The following was taken from the RFC as a call flow
-	example:
+以下是从 RFC 中获取的呼叫流程示例：
 
 
-```c title="Session timer call flow"
+```c title="会话计时器呼叫流程"
 +-------+    +-------+       +-------+
 | UAC-1 |    | PROXY |       | UAC-2 |
 +-------+    +-------+       +-------+
@@ -97,50 +85,47 @@ The following was taken from the RFC as a call flow
     |            |-------------->|
     |            |               |
  ...
-     			
+
 ```
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded
-		before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *dialog* - dialog module and its decencies. (tm)
-- *sl* - stateless module.
+- *dialog* - dialog 模块及其依赖项。(tm)
+- *sl* - 无状态模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-	OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### enable_stats (integer)
 
 
-If the statistics support should be enabled or
-		not. Via statistic variables, the module provide
-		information about the dialog processing. Set it to zero to
-		disable or to non-zero to enable it.
+是否应启用统计支持。通过统计变量，
+		该模块提供有关对话处理的信息。将其设置为零以禁用，
+		或设置为非零以启用。
 
 
-*Default value is "1" (enabled).*
+*默认值为 "1"（启用）。*
 
 
-```c title="Set enable_stats parameter"
+```c title="设置 enable_stats 参数"
 ...
 modparam("sst", "enable_stats", 0)
 ...
@@ -150,22 +135,20 @@ modparam("sst", "enable_stats", 0)
 #### min_se (integer)
 
 
-The value is used to set the proxies MIN-SE
-		value and is used in the 422 reply as the proxies
-		MIN-SE: header value if the sstCheckMin() flag is set
-		to true and the check fails.
+该值用于设置代理的 MIN-SE 值，
+		如果 sstCheckMin() 标志设置为 true 且检查失败，
+		则在 422 回复中用作代理的 MIN-SE: 头值。
 
 
-If not set and sstCheckMin() is called with the
-		send-reply flag set to true, the default 1800 seconds
-		will be used as the compare and the MIN-SE: header
-		value if the 422 reply is sent.
+如果未设置且使用 send-reply 标志调用 sstCheckMin()，
+		则默认 1800 秒将用作比较值，
+		如果发送 422 回复，也将用作 MIN-SE: 头值。
 
 
-*Default value is "1800" seconds.*
+*默认值为 "1800" 秒。*
 
 
-```c title="Set min_se parameter"
+```c title="设置 min_se 参数"
 ...
 modparam("sst", "min_se", 2400)
 ...
@@ -175,18 +158,18 @@ modparam("sst", "min_se", 2400)
 #### sst_interval (integer)
 
 
-The sst minimum interval in Session-Expires header if OpenSIPS
-		request the use of session times. The used value will be the
-		maximum value between OpenSIPS minSE, UAS minSE and this value.
+如果 OpenSIPS 请求使用会话时间，
+		则这是 Session-Expires 头中的最小间隔。
+		使用的值将是 OpenSIPS minSE、UAS minSE 和此值之间的最大值。
 
 
-Per default the interval used will be the min_se value
+默认情况下，使用的间隔将是 min_se 值
 
 
-*Default value is "0" seconds.*
+*默认值为 "0" 秒。*
 
 
-```c title="Set sst_interval parameter"
+```c title="设置 sst_interval 参数"
 ...
 modparam("sst", "sst_interval", 2400)
 ...
@@ -196,25 +179,22 @@ modparam("sst", "sst_interval", 2400)
 #### reject_to_small (integer)
 
 
-In the initial INVITE if the UAC has requested a
-		Session-Expire: and it's value is smaller then our
-		local policies Min-SE (see min_se above), then the
-		PROXY has the right to reject the call by replying to
-		the message with a 422 Session Timer Too Small and
-		state our local Min-SE: value. The INVITE is NOT
-		forwarded on through the PROXY.
+在初始 INVITE 中，如果 UAC 请求了 Session-Expire:
+		且其值小于我们本地策略的 Min-SE（见上面的 min_se），
+		则代理有权通过回复消息 "422 Session Timer Too Small"
+		并说明我们的本地 Min-SE: 值来拒绝呼叫。
+		INVITE 不会通过代理转发。
 
 
-This flag if true will tell the SST module to
-		reject the INVITE with a 422 response. If false, the
-		INVITE is forwarded through the PROXY with out any
-		modifications.
+如果此标志为 true，则告诉 SST 模块
+		使用 422 响应拒绝 INVITE。如果为 false，
+		则 INVITE 通过代理转发，不做任何修改。
 
 
-*Default value is "1" (true/on).*
+*默认值为 "1"（true/on）。*
 
 
-```c title="Set reject_to_small parameter"
+```c title="设置 reject_to_small 参数"
 ...
 modparam("sst", "reject_to_small", 0)
 ...
@@ -224,84 +204,74 @@ modparam("sst", "reject_to_small", 0)
 #### sst_flag (string)
 
 
-Keeping with OpenSIPS, the module will not do
-		anything to any message unless instructed to do so via
-		the opensips.cfg script. You must set the sst_flag
-		value in the setflag() call of the INVITE you want the
-		sst module to process. But before you can do that, you
-		need to tell the sst module which flag value you are
-		assigning to sst.
+与 OpenSIPS 保持一致，该模块不会对任何消息执行任何操作，
+		除非通过 opensips.cfg 脚本指示。
+		您必须在要处理的 INVITE 的 setflag() 调用中设置 sst_flag 值。
+		但在此之前，您需要告诉 sst 模块您分配给 sst 的标志值是多少。
 
 
-In most cases when ever you create a new dialog
-		via create_dialog() function,you will want to set the sst flag. 
-		If create_dialog() is not called and the sst flag is set, 
-		it will not have any effect.
+在大多数情况下，每当您通过 create_dialog() 函数创建新对话时，
+		您会想要设置 sst 标志。如果未调用 create_dialog() 
+		且设置了 sst 标志，则不会有任何效果。
 
 
-This parameter must be set of the module will
-		not load.
+必须设置此参数，否则模块将不会加载。
 
 
-*Default value is "Not set!".*
+*默认值为 "未设置！"*
 
 
-```c title="Set sst_flag parameter"
+```c title="设置 sst_flag 参数"
 ...
 modparam("sst", "sst_flag", "SST_FLAG")
 ...
 route {
   ...
   if ($rm=="INVITE") {
-    setflag(SST_FLAG); # Set the sst flag
-    create_dialog(); # and then create the dialog
+    setflag(SST_FLAG); # 设置 sst 标志
+    create_dialog(); # 然后创建对话
   }
   ...
 }
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### sstCheckMin(send_reply_flag)
 
 
-Check the current Session-Expires / MIN-SE values
-		against the sst_min_se parameter value. If the
-		Session-Expires or MIN_SE header value is less then
-		modules minimum value, this function will return
-		true.
+根据 sst_min_se 参数值检查当前的 Session-Expires / MIN-SE 值。
+		如果 Session-Expires 或 MIN_SE 头值小于模块的最小值，
+		此函数将返回 true。
 
 
-If the fuction is called with the
-		send_reply_flag set to true (1) and the requested
-		Session-Expires / MIN-SE values are too small, a 422
-		reply will be sent for you. The 422 will carry a
-		MIN-SE: header with the sst min_se parameter value
-		set.
+如果使用 send_reply_flag 设置为 true (1) 调用该函数，
+		且请求的 Session-Expires / MIN-SE 值太小，
+		则将为您发送 422 回复。422 将携带一个 MIN-SE: 头，
+		其中包含设置的 sst min_se 参数值。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *min_allowed* (int, optional) - The value
-			to compare the MIN_SE header value to.
+- *min_allowed* (int, 可选) - 用于与 MIN_SE 头值比较的值。
 
 
-```c title="sstCheckMin usage"
+```c title="sstCheckMin 使用示例"
 ...
 modparam("sst", "sst_flag", "SST_FLAG")
-modparam("sst", "min_se", 2400) # Must be >= 90
+modparam("sst", "min_se", 2400) # 必须 >= 90
 ...
 
 route {
   if ($rm=="INVITE") {
 	if (sstCheckMin(1)) {
-		xlog("L_ERR", "422 Session Timer Too Small reply sent.\n");
+		xlog("L_ERR", "422 Session Timer Too Small 回复已发送。\n");
 		exit;
 	}
-	# track the session timers via the dialog module
+	# 通过 dialog 模块跟踪会话计时器
 	setflag(SST_FLAG);
 	create_dialog();
   }
@@ -311,15 +281,15 @@ route {
 ```
 
 
-### Exported Statistics
+### 导出的统计
 
 
 #### expired_sst
 
 
-Number of dialogs which got expired session timer.
+获得过期会话计时器的对话数量。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

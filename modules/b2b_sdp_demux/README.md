@@ -1,163 +1,100 @@
 ---
-title: "B2B SDP De-Multiplexer Module"
-description: "This module provides the logic to convert a multi-stream SDP call, to multiple calls, each containing a subset of streams from the initial call. The module only handles the SIP signalling part of the call, without interfering with the media of the call, which will flow end-to-end. The onl..."
+title: "B2B SDP 去复用模块"
+description: "此模块提供将多流 SDP 呼叫转换为多个呼叫的逻辑，每个呼叫包含初始呼叫中流的子集。该模块仅处理呼叫的 SIP 信令部分，不干扰呼叫的媒体，媒体将端到端流动。它唯一做的操作是在 SDP 层面禁用下游未使用的媒体流。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides the logic to convert a multi-stream
-		SDP call, to multiple calls, each containing a subset of
-		streams from the initial call. The module only handles the
-		SIP signalling part of the call, without interfering with
-		the media of the call, which will flow end-to-end. The only
-		manipulation it does is at the SDP level to disable the
-		media-streams that are not being used downstream.
+此模块提供将多流 SDP 呼叫转换为多个呼叫的逻辑，每个呼叫包含初始呼叫中流的子集。该模块仅处理呼叫的 SIP 信令部分，不干扰呼叫的媒体，媒体将端到端流动。它唯一做的操作是在 SDP 层面禁用下游未使用的媒体流。
 
 
-The logic is implemented on top of the B2B module, and
-		de-multiplexes a B2B server (the initial call with
-		multiple streams) to multiple B2B clients (with their own
-		streams subset). In-dialog requests that come from the
-		initial caller will be forked towards each client, and their
-		replies aggregated back to the caller. The other side
-		in-dialog requests are forwarded to the caller as if only
-		their stream had changed. When a call is terminated from 
-		the client side, the module can have different behaviors,
-		according to the [client bye mode](#param_client_bye_mode)
-		parameter.
+该逻辑基于 B2B 模块实现，将 B2B 服务器（具有多个流的初始呼叫）去复用为多个 B2B 客户端（各自具有流的子集）。来自初始呼叫者的对话框内请求将被分叉到每个客户端，其回复被聚合回呼叫者。另一侧的对话框内请求被转发给呼叫者，就好像只有它们的流发生了变化。当呼叫从客户端侧终止时，模块可以根据 [client bye mode](#param_client_bye_mode) 参数具有不同的行为。
 
 
-### Use Cases
+### 使用场景
 
 
-A common scenario where this module can become useful is
-		when configuring OpenSIPS as a SIPREC SRS proxy. Using this
-		module you can receive on one side SIPREC INVITEs, which
-		usually have two or more SDP streams (one for each
-		call/conference participants), and split/de-multiplex each
-		stream in a new call downstream, usually towards a media
-		server that is able to do call recording. This way the
-		media server will have to handle calls that contain a
-		single media stream.
+此模块变得有用的常见场景是在将 OpenSIPS 配置为 SIPREC SRS 代理时。使用此模块，您可以在一侧接收 SIPREC INVITE，通常有两个或更多 SDP 流（每个呼叫/会议参与者一个），并将每个流拆分/去复用为下游的新呼叫，通常面向能够进行呼叫录制的媒体服务器。这样，媒体服务器将只需要处理包含单个媒体流的呼叫。
 
 
-Another use case is balancing multiple streams to different
-		media servers. For example, if you are offering both audio
-		and video services, you can split a two-stream call (with
-		an audio and video stream) to two different calls, and send
-		them to be processed by different servers. This way you may
-		have separated audio-dedicated processing media servers, as
-		well as video-dedicated one. Of course, this can be achieved
-		if you can process the streams separately, for example for
-		recording.
+另一个使用场景是将多个流平衡到不同的媒体服务器。例如，如果您同时提供音频和视频服务，您可以将双流呼叫（带有音频和视频流）拆分为两个不同的呼叫，并将其发送到不同的服务器进行处理。这样，您可以拥有专用的音频处理媒体服务器以及专用的视频处理服务器。当然，如果您可以单独处理流（例如用于录制），则可以实现这一点。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *B2B_ENTITIES* - Back-2-Back module
-				used for handing server and client side calls.
+- *B2B_ENTITIES* - 背靠背模块，用于处理服务器端和客户端呼叫。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+必须在运行加载了此模块的 OpenSIPS 之前安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### client_bye_mode (string)
 
 
-This parameter indicates how a BYE coming from the
-			client side should be treated in the context of the
-			upstream call.
+此参数指示来自客户端侧的 BYE 在上游呼叫上下文中应如何处理。
 
 
-Possible values are:
+可能的值：
 			
 			
-			*disable* - when a client
-				terminates its call, the module will simply disable
-				the media streams associated with its call, resulting
-				in a re-INVITE upstream.
+			*disable* - 当客户端终止其呼叫时，模块将简单地禁用与其呼叫关联的媒体流，导致上游收到 re-INVITE。
 			
 			
-			*terminate* - when one client
-				terminates its call, the module will terminate
-				all other calls, including the upstream one.
+			*terminate* - 当一个客户端终止其呼叫时，模块将终止所有其他呼叫，包括上游呼叫。
 			
 			
-			*disable-terminate* - same as
-				disable, except that when the final stream is disabled,
-				instead of a re-INVITE with all streams disabled,
-				the module sends a BYE upstream.
-		*Default value is "disable".*
+			*disable-terminate* - 与 disable 相同，除了当最后一个流被禁用时，模块发送 BYE 上游而不是发送所有流被禁用的 re-INVITE。
+		*默认值为 "disable"。*
 
 
-```c title="Set client_bye_mode parameter"
+```c title="设置 client_bye_mode 参数"
 ...
 modparam("b2b_sdp_demux", "client_bye_mode", "terminate")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### b2b_sdp_demux(URI[, [headers][, streams]])
 
 
-Engages the B2B SDP De-Multiplexing scenario for the
-				calls it has been triggered on.
+对触发它的呼叫启用 B2B SDP 去复用场景。
 
 
-Parameters:
+参数：
 
 
-- *URI* (string) - the URI where
-					to send the newly generated calls
-- *headers* (AVP, optional) - an
-					AVP containing multiple values, each index
-					corresponding to one of the new calls generated
-					by the function. The number of values in the
-					AVP should be equal to the number of calls
-					resulted, otherwise it may lead to an unexpected
-					behavior. If missing, no extra headers will be
-					added.
-- *streams* (AVP, optional) - an
-					AVP containing multiple values, each value
-					indicating the media stream index that should be
-					used for the current client. If multiple streams
-					should be used for a single call, they should
-					be specified comma-separated (i.e.
-					*0,2*). The number of AVP
-					values represent the number of calls generated
-					downstream. If the parameter is missing,
-					a call will be generated for each stream present in
-					the initial call.
+- *URI* (string) - 发送新生成的呼叫的目标 URI
+- *headers* (AVP, optional) - 一个 AVP 包含多个值，每个索引对应于函数生成的一个新呼叫。AVP 中值的数量应等于生成的呼叫数量，否则可能导致意外行为。如果缺失，将不添加额外头部。
+- *streams* (AVP, optional) - 一个 AVP 包含多个值，每个值指示应用于当前客户端的媒体流索引。如果单个呼叫应使用多个流，它们应该用逗号分隔指定（即 *0,2*）。AVP 值数量表示下游生成的呼叫数量。如果参数缺失，将为初始呼叫中的每个流生成一个呼叫。
 
 
-This function can be used only from request route.
+此函数只能从请求路由使用。
 
 
-```c title="Use b2b_sdp_demux() to handle an audio SIPREC call"
+```c title="使用 b2b_sdp_demux() 处理音频 SIPREC 呼叫"
 ...
 if (!has_totag() && is_method("INVITE")) {
 	$avp(headers) = "X-Leg: caller\r\n");
@@ -169,6 +106,6 @@ if (!has_totag() && is_method("INVITE")) {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

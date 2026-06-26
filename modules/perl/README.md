@@ -1,39 +1,33 @@
 ---
-title: "perl Module"
-description: "The time needed when writing a new OpenSIPS module unfortunately is quite high, while the options provided by the configuration file are limited to the features implemented in the modules."
+title: "perl 模块"
+description: "编写新的 OpenSIPS 模块所需的时间非常高，而配置文件提供的选项仅限于模块中实现的功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The time needed when writing a new OpenSIPS module unfortunately is quite high, while the
-		options provided by the configuration file are limited to the features implemented in the
-		modules.
+编写新的 OpenSIPS 模块所需的时间非常高，而配置文件提供的选项仅限于模块中实现的功能。
 
 
-With this Perl module, you can easily implement your own OpenSIPS extensions in Perl. This allows
-		for simple access to the full world of CPAN modules. SIP URI rewriting could be implemented
-		based on regular expressions; accessing arbitrary data backends, e.g. LDAP or Berkeley DB files,
-		is now extremely simple.
+通过这个 Perl 模块，您可以轻松地用 Perl 实现自己的 OpenSIPS 扩展。这允许简单访问 CPAN 模块的完整世界。可以基于正则表达式实现 SIP URI 重写；访问任意数据后端，例如 LDAP 或 Berkeley DB 文件，现在变得非常简单。
 
 
-### Installing the module
+### 安装模块
 
 
-This Perl module is loaded in opensips.cfg (just like all the other modules) with
-		loadmodule("/path/to/perl.so");.
+这个 Perl 模块在 opensips.cfg 中加载（就像所有其他模块一样），使用
+		loadmodule("/path/to/perl.so");。
 
 
-For the Perl module to compile, you need a reasonably recent version of perl (tested
-		with 5.8.8) linked dynamically. It is strongly advised to use a threaded version.
-		The default binary packages from your favorite Linux distribution should work fine.
+为了编译 Perl 模块，您需要一个相当新版本的 perl（用 5.8.8 测试过）并动态链接。强烈建议使用线程版本。
+		您喜欢的 Linux 发行版的默认二进制包应该可以正常工作。
 
 
-Cross compilation is supported by the Makefile. You need to set the environment variables
-		PERLLDOPTS, PERLCCOPTS and TYPEMAP to values similar to the output of
+Makefile 支持交叉编译。您需要设置环境变量
+		PERLLDOPTS、PERLCCOPTS 和 TYPEMAP 为与以下输出类似的值：
 
 
 ```c
@@ -43,17 +37,15 @@ TYPEMAP:    echo "`perl -MConfig -e 'print $Config{installprivlib}'`/ExtUtils/ty
 ```
 
 
-The exact position of your (precompiled!) perl libraries depends on the setup of your
-		environment.
+您的（预编译的！）perl 库的确切位置取决于您环境的具体设置。
 
 
-### Using the module
+### 使用模块
 
 
-The Perl module has two interfaces: The perl side, and the OpenSIPS side. Once a Perl
-		function is defined and loaded via the module parameters (see below), it may be
-		called in OpenSIPS's configuration at an arbitary point. E.g., you could write
-		a function "ldap_alias" in Perl, and then execute
+Perl 模块有两个接口：Perl 端和 OpenSIPS 端。一旦通过模块参数定义和加载了 Perl
+		函数（见下文），就可以在 OpenSIPS 配置的任意位置调用它。例如，您可以在 Perl 中编写一个
+		"ldap_alias" 函数，然后执行
 
 
 ```c
@@ -65,51 +57,48 @@ if (perl_exec("ldap_alias")) {
 ```
 
 
-just as you would have done with the current alias_db module.
+就像您使用 alias_db 模块一样。
 
 
-The functions you can use are listed in the
-		[exported functions](#exported_functions) section below.
+您可以使用的函数列在下面的
+		[导出的函数](#exported_functions) 部分。
 
 
-On the Perl side, there are a number of functions that let you read and modify the
-		current SIP message, such as the RURI or the message flags. An introduction
-		to the Perl interface and the full reference documentation can be found below.
+在 Perl 端，有许多函数可以让您读取和修改当前 SIP 消息，例如 RURI 或消息标志。
+		下面可以找到 Perl 接口的介绍和完整的参考文档。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- The "sl" module is needed for sending replies uppon fatal errors. All other modules
-				can be accessed from the Perl module, though.
+- 需要 "sl" 模块来发送关于致命错误的回复。所有其他模块都可以从
+				Perl 模块访问。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+必须在运行加载了此模块的 OpenSIPS 之前安装以下库或应用程序：
 
 
-- *Perl 5.8.x or later*
+- *Perl 5.8.x 或更高版本*
 
 
-Additionally, a number of perl modules should be installed. The OpenSIPS::LDAPUtils package
-		relies on Net::LDAP to be installed. One of the sample scripts needs IPC::Shareable
+此外，应该安装一些 perl 模块。OpenSIPS::LDAPUtils 包依赖 Net::LDAP 的安装。其中一个示例脚本需要 IPC::Shareable
 
 
-This module has been developed and tested with Perl 5.8.8, but should work with any
-		5.8.x release. Compilation is possible with 5.6.x, but its behavior is unsupported.
-		Earlier versions do not work.
+此模块使用 Perl 5.8.8 开发和测试，但应该适用于任何
+		5.8.x 版本。可以用 5.6.x 编译，但不支持其行为。
+		早期版本不工作。
 
 
-On current Debian systems, at least the following packages should be installed:
+在当前的 Debian 系统上，至少应安装以下包：
 
 
 - perl
@@ -121,37 +110,34 @@ On current Debian systems, at least the following packages should be installed:
 - libipc-shareable-perl
 
 
-It was reported that other Debian-style distributions (such as Ubuntu) need the
-		same packages.
+据报道，其他 Debian 风格的发行版（如 Ubuntu）需要相同的包。
 
 
-On SuSE systems, at least the following packages should be installed:
+在 SuSE 系统上，至少应安装以下包：
 
 
 - perl
 - perl-ldap
-- IPC::Shareable perl module from CPAN
+- 来自 CPAN 的 IPC::Shareable perl 模块
 
 
-Although SuSE delivers a lot of perl modules, others may have to be fetched
-		from CPAN. Consider using the program "cpan2rpm" - which, in turn,
-		is available on CPAN. It creates RPM files from CPAN.
+虽然 SuSE 提供大量 perl 模块，但其他可能需要从
+		CPAN 获取。考虑使用 "cpan2rpm" 程序——它反过来可以在 CPAN 上找到。它从 CPAN 创建 RPM 文件。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### filename (string)
 
 
-This is the file name of your script. This may be set once only, but it may include an arbitary
-			number of functions and "use" as many Perl module as necessary.
+这是脚本的文件名。这只能设置一次，但可以包含任意数量的函数和 "use" 尽可能多的 Perl 模块。
 
 
-*May not be empty!*
+*不能为空！*
 
 
-```c title="Set filename parameter"
+```c title="设置 filename 参数"
 ...
 modparam("perl", "filename", "/home/john/opensips/myperl.pl")
 ...
@@ -161,44 +147,41 @@ modparam("perl", "filename", "/home/john/opensips/myperl.pl")
 #### modpath (string)
 
 
-The path to the Perl modules included (OpenSIPS.pm et.al). It is not absolutely
-			crucial to set this path,
-			as you *may* install the Modules in Perl's standard path, or update
-			the "%INC" variable from within your script. Using this module parameter
-			is the standard behavior, though.
+Perl 模块（OpenSIPS.pm 等）的路径。设置此路径不是绝对必需的，因为您*可以*
+			将模块安装到 Perl 的标准路径中，或者从脚本中更新
+			"%INC" 变量。不过，使用此模块参数是标准行为。
 
 
-```c title="Set modpath parameter"
+```c title="设置 modpath 参数"
 ...
 modparam("perl", "modpath", "/usr/local/lib/opensips/perl/")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### perl_exec_simple(func, [param])
 
 
-Calls a perl function *without* passing it the current SIP message.
-			May be used for very simple simple requests that do not have to fiddle with the message
-			themselves, but rather return information values about the environment.
+调用 perl 函数，*不*传递当前 SIP 消息。
+			可用于处理非常简单的请求，这些请求不需要自己处理消息，而是返回有关环境的信息值。
 
 
-The first parameter is the function to be called.
-			An arbitrary string may optionally be passed as a parameter.
+第一个参数是要调用的函数。
+			可以选择传递一个任意字符串作为参数。
 
 
-The function returns *1* if the perl function was successfully called
-			or *-1* if an internal error occured. Note that it does not propagate
-			the return value of the perl function.
+如果成功调用了 perl 函数，函数返回 *1*；
+			如果发生内部错误则返回 *-1*。请注意，它不会传播
+			perl 函数的返回值。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE and BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE 和 BRANCH_ROUTE。
 
 
-```c title="perl_exec_simple() usage"
+```c title="perl_exec_simple() 使用示例"
 ...
 if ($rm=="INVITE") {
 	perl_exec_simple("dosomething", "on invite messages");
@@ -210,24 +193,24 @@ if ($rm=="INVITE") {
 #### perl_exec(func, [param])
 
 
-Calls a perl function *with* passing it the current SIP message.
-			The SIP message is reflected by a Perl module that gives you access to the information
-			in the current SIP message (OpenSIPS::Message).
+调用 perl 函数，*传递*当前 SIP 消息。
+			SIP 消息由一个 Perl 模块反映，该模块让您访问当前 SIP 消息中的信息
+			（OpenSIPS::Message）。
 
 
-The first parameter is the function to be called.
-			An arbitrary string may be passed as a parameter.
+第一个参数是要调用的函数。
+			可以传递一个任意字符串作为参数。
 
 
-The function returns back to the OpenSIPS script the value returned by the perl function.
-			Note that if this value is *0* the script execution
-			will be stoped, similarly to calling *exit*.
+函数将 perl 函数返回的值返回给 OpenSIPS 脚本。
+			请注意，如果此值为 *0*，脚本执行将
+			停止，类似于调用 *exit*。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE and BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE 和 BRANCH_ROUTE。
 
 
-```c title="perl_exec() usage"
+```c title="perl_exec() 使用示例"
 ...
 if (perl_exec("ldapalias")) {
 	...
@@ -242,16 +225,16 @@ if (perl_exec("ldapalias")) {
 ### OpenSIPS
 
 
-This module provides access to a limited number of OpenSIPS core
-      functions. As the most interesting functions deal with SIP messages,
-      they are located in the OpenSIPS::Message class below.
+此模块提供对有限数量的 OpenSIPS 核心函数的访问。
+      由于最有趣的函数处理 SIP 消息，它们位于下面的
+      OpenSIPS::Message 类中。
 
 
 #### log(level,message)
 
 
-Logs the message with OpenSIPS's logging facility. The logging level
-	is one of the following:
+使用 OpenSIPS 的日志设施记录消息。日志级别
+	是以下之一：
 
 
 ```c
@@ -265,10 +248,8 @@ Logs the message with OpenSIPS's logging facility. The logging level
 ```
 
 
-Please note that this method is *NOT* automatically exported, as it collides
-	with the perl function log (which calculates the logarithm). Either
-	explicitly import the function (via `use OpenSIPS qw ( log );`), or call
-	it with its full name:
+请注意，此方法*不会*自动导出，因为它与 perl 函数 log（计算对数）冲突。
+	要么显式导入函数（通过 `use OpenSIPS qw ( log );`），要么使用其全名调用：
 
 
 ```c
@@ -279,74 +260,69 @@ OpenSIPS::log(L_INFO, "foobar");
 ### OpenSIPS::Message
 
 
-This package provides access functions for an OpenSIPS `sip_msg` structure and its
-      sub-components. Through its means it is possible to fully configure
-      alternative routing decisions.
+此包提供对 OpenSIPS `sip_msg` 结构及其子组件的访问函数。通过其方法，
+      可以完全配置替代路由决策。
 
 
 #### getType()
 
 
-Returns one of the constants SIP_REQUEST, SIP_REPLY, SIP_INVALID
-	stating the type of the current message.
+返回以下常量之一：SIP_REQUEST、SIP_REPLY、SIP_INVALID，
+      表示当前消息的类型。
 
 
 #### getStatus()
 
 
-Returns the status code of the current Reply message. This function
-	is invalid in Request context!
+返回当前回复消息的状态码。此函数在请求上下文中无效！
 
 
 #### getReason()
 
 
-Returns the reason of the current Reply message. This function is
-	invalid in Request context!
+返回当前回复消息的原因。此函数在请求上下文中无效！
 
 
 #### getVersion()
 
 
-Returns the version string of the current SIP message.
+返回当前 SIP 消息的版本字符串。
 
 
 #### getRURI()
 
 
-This function returns the recipient URI of the present SIP message:
+此函数返回当前 SIP 消息的接收方 URI：
 
 
 `my $ruri =
 	$m->getRURI();`
 
 
-getRURI returns a string. See ["getParsedRURI()"](#getparsedruri)
-	below how to receive a parsed structure.
+getRURI 返回一个字符串。关于如何接收解析后的结构，请参见下面的 ["getParsedRURI()"](#getparsedruri)。
 
 
-This function is valid in request messages only.
+此函数仅在请求消息中有效。
 
 
 #### getMethod()
 
 
-Returns the current method, such as `INVITE`, `REGISTER`, `ACK` and so on.
+返回当前方法，例如 `INVITE`、`REGISTER`、`ACK` 等。
 
 
 `my $method =
 	$m->getMethod();`
 
 
-This function is valid in request messages only.
+此函数仅在请求消息中有效。
 
 
 #### getFullHeader()
 
 
-Returns the full message header as present in the current message.
-	You might use this header to further work with it with your
-	favorite MIME package.
+返回当前消息中存在的完整消息头。
+	您可以使用此头使用您喜欢的 MIME 包进一步处理它。
 
 
 `my $hdr =
@@ -356,19 +332,19 @@ Returns the full message header as present in the current message.
 #### getBody()
 
 
-Returns the message body.
+返回消息体。
 
 
 #### getMessage()
 
 
-Returns the whole message including headers and body.
+返回包含头和体的完整消息。
 
 
 #### getHeader(name)
 
 
-Returns the body of the first message header with this name.
+返回具有此名称的第一个消息头的内容。
 
 
 `print
@@ -382,22 +358,20 @@ Returns the body of the first message header with this name.
 #### getHeaderNames()
 
 
-Returns an array of all header names. Duplicates possible!
+返回所有头名称的数组。可能存在重复！
 
 
 #### moduleFunction(func,string1,string2)
 
 
-Search for an arbitrary function in module exports and call it with
-	the parameters self, string1, string2.
+在模块导出中搜索任意函数并使用参数 self、string1、string2 调用它。
 
 
-`string1` and/or `string2` may be omitted.
+`string1` 和/或 `string2` 可以省略。
 
 
-As this function provides access to the functions that are exported
-	to the OpenSIPS configuration file, it is autoloaded for unknown
-	functions. Instead of writing
+由于此函数提供对导出到 OpenSIPS 配置文件的函数的访问，因此对于未知
+		函数它是自动加载的。不必写
 
 
 ```c
@@ -406,7 +380,7 @@ $m->moduleFunction("xlog", "L_INFO", "foo");
 ```
 
 
-you may as well write
+您也可以这样写
 
 
 ```c
@@ -415,15 +389,14 @@ $m->xlog("L_INFO", "foo");
 ```
 
 
-WARNING
+警告
 
 
-In OpenSIPS 1.2, only a limited subset of module functions is
-	available. This restriction will be removed in a later version.
+在 OpenSIPS 1.2 中，只有有限的一组模块函数可用。
+		此限制将在更高版本中移除。
 
 
-Here is a list of functions that are expected to be working (not
-	claiming completeness):
+以下是预期可用的函数列表（不声称完整）：
 
 
 ```c
@@ -444,12 +417,12 @@ Here is a list of functions that are expected to be working (not
 * is_uri_host_local
 * dp_can_connect
 * dp_apply_policy
-* enum_query (without parameters)
-* enum_fquery (without parameters)
-* is_from_user_enum (without parameters)
-* i_enum_query (without parameters)
+* enum_query (无参数)
+* enum_fquery (无参数)
+* is_from_user_enum (无参数)
+* i_enum_query (无参数)
 * imc_manager
-* jab_* (all functions from the jabber module)
+* jab_* (jabber 模块的所有函数)
 * sdp_mangle_ip
 * sdp_mangle_port
 * encode_contact
@@ -476,10 +449,10 @@ Here is a list of functions that are expected to be working (not
 * reportospusage
 * mangle_pidf
 * mangle_message_cpim
-* add_path (without parameters)
-* add_path_received (without parameters)
+* add_path (无参数)
+* add_path_received (无参数)
 * prefix2domain
-* allow_routing (without parameters)
+* allow_routing (无参数)
 * allow_trusted
 * pike_check_req
 * handle_publish
@@ -497,11 +470,11 @@ Here is a list of functions that are expected to be working (not
 * sd_lookup
 * sstCheckMin
 * append_time
-* has_body (without parameters)
+* has_body (无参数)
 * is_peer_verified
 * t_newtran
 * t_release
-* t_relay (without parameters)
+* t_relay (无参数)
 * t_flush_flags
 * t_check_trans
 * t_was_cancelled
@@ -512,16 +485,15 @@ Here is a list of functions that are expected to be working (not
 * check_to
 * check_from
 * radius_does_uri_exist
-* ul_* (All functions exported by the usrloc module for user access)
+* ul_* (usrloc 模块导出的用于用户访问的所有函数)
 * xmpp_send_message
 ```
 
 
-#### log(level,message) (deprecated type)
+#### log(level,message)（已弃用的类型）
 
 
-Logs the message with OpenSIPS's logging facility. The logging level
-	is one of the following:
+使用 OpenSIPS 的日志设施记录消息。日志级别是以下之一：
 
 
 ```c
@@ -535,15 +507,14 @@ Logs the message with OpenSIPS's logging facility. The logging level
 ```
 
 
-The logging function should be accessed via the OpenSIPS module
-	variant. This one, located in OpenSIPS::Message, is deprecated.
+日志函数应通过 OpenSIPS 模块变体访问。
+		位于 OpenSIPS::Message 中的这个是已弃用的。
 
 
 #### rewrite_ruri(newruri)
 
 
-Sets a new destination (recipient) URI. Useful for rerouting the
-	current message/call.
+设置新的目标（接收方）URI。用于重新路由当前消息/呼叫。
 
 
 ```c
@@ -556,206 +527,200 @@ if ($m->getRURI() =~ m/\@somedomain.net/) {
 #### setFlag(flag)
 
 
-Sets a message flag. The constants as known from the C API may be
-	used, when Constants.pm is included.
+设置消息标志。包含 Constants.pm 时可以使用 C API 中已知的常量。
 
 
 #### resetFlag(flag)
 
 
-Resets a message flag.
+重置消息标志。
 
 
 #### isFlagSet(flag)
 
 
-Returns whether a message flag is set or not.
+返回消息标志是否已设置。
 
 
 #### pseudoVar(string)
 
 
-Returns a new string where all pseudo variables are substituted by
-	their values. Can be used to receive the values of single
-	variables, too.
+返回一个所有伪变量都被其值替换的新字符串。
+		也可用于接收单个变量的值。
 
 
-**Please remember that you need to escape the
-	'$' sign in perl strings!**
+**请记住，您需要在 perl 字符串中转义
+		'$' 符号！**
 
 
 #### append_branch(branch,qval)
 
 
-Append a branch to current message.
+向当前消息追加一个分支。
 
 
 #### serialize_branches(clean_before, keep_order)
 
 
-Serialize branches.
+序列化分支。
 
 
 #### next_branches()
 
 
-Next branches.
+下一个分支。
 
 
 #### getParsedRURI()
 
 
-Returns the current destination URI as an OpenSIPS::URI object.
+将当前目标 URI 作为 OpenSIPS::URI 对象返回。
 
 
 ### OpenSIPS::URI
 
 
-This package provides functions for access to sip_uri structures.
+此包提供对 sip_uri 结构访问的函数。
 
 
 #### user()
 
 
-Returns the user part of this URI.
+返回此 URI 的 user 部分。
 
 
 #### host()
 
 
-Returns the host part of this URI.
+返回此 URI 的 host 部分。
 
 
 #### passwd()
 
 
-Returns the passwd part of this URI.
+返回此 URI 的 passwd 部分。
 
 
 #### port()
 
 
-Returns the port part of this URI.
+返回此 URI 的 port 部分。
 
 
 #### params()
 
 
-Returns the params part of this URI.
+返回此 URI 的 params 部分。
 
 
 #### headers()
 
 
-Returns the headers part of this URI.
+返回此 URI 的 headers 部分。
 
 
 #### transport()
 
 
-Returns the transport part of this URI.
+返回此 URI 的 transport 部分。
 
 
 #### ttl()
 
 
-Returns the ttl part of this URI.
+返回此 URI 的 ttl 部分。
 
 
 #### user_param()
 
 
-Returns the user_param part of this URI.
+返回此 URI 的 user_param 部分。
 
 
 #### maddr()
 
 
-Returns the maddr part of this URI.
+返回此 URI 的 maddr 部分。
 
 
 #### method()
 
 
-Returns the method part of this URI.
+返回此 URI 的 method 部分。
 
 
 #### lr()
 
 
-Returns the lr part of this URI.
+返回此 URI 的 lr 部分。
 
 
 #### r2()
 
 
-Returns the r2 part of this URI.
+返回此 URI 的 r2 部分。
 
 
 #### transport_val()
 
 
-Returns the transport_val part of this URI.
+返回此 URI 的 transport_val 部分。
 
 
 #### ttl_val()
 
 
-Returns the ttl_val part of this URI.
+返回此 URI 的 ttl_val 部分。
 
 
 #### user_param_val()
 
 
-Returns the user_param_val part of this URI.
+返回此 URI 的 user_param_val 部分。
 
 
 #### maddr_val()
 
 
-Returns the maddr_val part of this URI.
+返回此 URI 的 maddr_val 部分。
 
 
 #### method_val()
 
 
-Returns the method_val part of this URI.
+返回此 URI 的 method_val 部分。
 
 
 #### lr_val()
 
 
-Returns the lr_val part of this URI.
+返回此 URI 的 lr_val 部分。
 
 
 #### r2_val()
 
 
-Returns the r2_val part of this URI.
+返回此 URI 的 r2_val 部分。
 
 
 ### OpenSIPS::AVP
 
 
-This package provides access functions for OpenSIPS's AVPs. These
-      variables can be created, evaluated, modified and removed through
-      this package.
+此包提供对 OpenSIPS AVP 的访问函数。这些变量可以通过此包创建、评估、修改和删除。
 
 
-Please note that these functions do NOT support the notation used in
-      the configuration file, but directly work on strings or numbers. See
-      documentation of add method below.
+请注意，这些函数*不*支持配置文件使用的表示法，而是直接处理字符串或数字。
+      有关详细信息，请参见下面的 add 方法文档。
 
 
 #### add(name,val)
 
 
-Add an AVP.
+添加一个 AVP。
 
 
-Add an OpenSIPS AVP to its environment. name and val may both be
-	integers or strings; this function will try to guess what is
-	correct. Please note that
+向其环境添加一个 OpenSIPS AVP。name 和 val 可以都是整数或字符串；
+		此函数将尝试猜测正确的是什么。请注意
 
 
 ```c
@@ -763,7 +728,7 @@ OpenSIPS::AVP::add("10", "10")
 ```
 
 
-is something different than
+与
 
 
 ```c
@@ -771,17 +736,16 @@ OpenSIPS::AVP::add(10, 10)
 ```
 
 
-due to this evaluation: The first will create _string_ AVPs with
-	the name 10, while the latter will create a numerical AVP.
+不同，因为此求值：第一个将创建名称为 10 的 _string_ AVP，而第二个将创建一个数值 AVP。
 
 
-You can modify/overwrite AVPs with this function.
+您可以使用此函数修改/覆盖 AVP。
 
 
 #### get(name)
 
 
-get an OpenSIPS AVP:
+获取一个 OpenSIPS AVP：
 
 
 ```c
@@ -793,7 +757,7 @@ my $stravp = OpenSIPS::AVP::get("foo");
 #### destroy(name)
 
 
-Destroy an AVP.
+销毁一个 AVP。
 
 
 ```c
@@ -805,8 +769,7 @@ OpenSIPS::AVP::destroy("foo");
 ### OpenSIPS::Utils::PhoneNumbers
 
 
-OpenSIPS::Utils::PhoneNumbers - Functions for canonical forms of phone
-      numbers.
+OpenSIPS::Utils::PhoneNumbers - 电话号码规范形式的函数。
 
 
 ```c
@@ -826,38 +789,31 @@ $number    = $phonenumbers->dialNumber("+497612034567");
 ```
 
 
-A telphone number starting with a plus sign and containing all dial
-      prefixes is in canonical form. This is usally not the number to dial
-      at any location, so the dialing number depends on the context of the
-      user/system.
+以加号开头并包含所有拨号前缀的电话号码处于规范形式。
+      这通常不是在任何位置拨打的号码，因此拨号号码取决于用户/系统的上下文。
 
 
-The idea to canonicalize numbers were taken from hylafax.
+规范号码的想法来自 hylafax。
 
 
-Example: +497614514829 is the canonical form of my phone number, 829
-      is the number to dial at Pyramid, 4514829 is the dialing number from
-      Freiburg are and so on.
+示例：+497614514829 是我的电话号码的规范形式，829 是 Pyramid 拨打的号码，
+      4514829 是从弗赖堡地区拨打的号码，以此类推。
 
 
-To canonicalize any number, we strip off any dial prefix we find and
-      then add the prefixes for the location. So, when the user enters the
-      number 04514829 in context pyramid, we remove the publicAccessPrefix
-      (at Pyramid this is 0) and the  pbxPrefix (4514 here). The result is
-      829. Then we add all the general dial prefixes - 49 (country) 761
-      (area) 4514 (pbx) and 829, the number itself => +497614514829
+为了规范任何号码，我们剥离我们找到的任何拨号前缀，然后添加该位置的 prefixes。
+      因此，当用户在 pyramid 上下文中输入号码 04514829 时，我们删除 publicAccessPrefix
+      （在 Pyramid 这是 0）和 pbxPrefix（这里为 4514）。结果是 829。
+      然后我们添加所有通用拨号前缀 - 49（国家）、761（地区）、4514（pbx）和 829，号码本身 => +497614514829
 
 
-To get the dialing number from a canonical phone number, we substract
-      all general prefixes until we have something
+要从规范电话号码获取拨号号码，我们减去所有通用前缀，直到得到某个数字
 
 
-As said before, the interpretation of a phone number depends on the
-      context of the location. For the functions in this package, the
-      context is created through the `new` operator.
+如前所述，电话号码的解释取决于位置上下文。
+      对于此包中的函数，上下文是通过 `new` 运算符创建的。
 
 
-The following fields should be set:
+应设置以下字段：
 
 
 ```c
@@ -870,40 +826,34 @@ The following fields should be set:
 ```
 
 
-This module exports the following functions when `use`ed:
+当 `use` 此模块时，它导出以下函数：
 
 
 #### new(publicAccessPrefix,internationalPrefix,longDistancePrefix,countryCode,areaCode,pbxCode)
 
 
-The new operator returns an object of this type and sets its
-	locational context according to the passed parameters. See
-	
-	OpenSIPS::Utils::PhoneNumbers
-	 above.
+new 运算符返回此类型的对象，并根据传递的参数设置其位置上下文。参见上方的
+		OpenSIPS::Utils::PhoneNumbers。
 
 
 #### canonicalForm( number [, context] )
 
 
-Convert a phone number (given as first argument) into its canonical
-	form. When no context is passed in as the second argument, the
-	default context from the systems configuration file is used.
+将电话号码（作为第一个参数）转换为其规范形式。
+		当没有上下文作为第二个参数传递时，使用系统配置文件中的默认上下文。
 
 
 #### dialNumber( number [, context] )
 
 
-Convert a canonical phone number (given in the first argument) into
-	a number to to dial.  WHen no context is given in the second
-	argument, a default context from the systems configuration is used.
+将规范电话号码（作为第一个参数）转换为一个要拨打的号码。
+		当没有上下文作为第二个参数传递时，使用系统配置文件中的默认上下文。
 
 
 ### OpenSIPS::LDAPUtils::LDAPConf
 
 
-OpenSIPS::LDAPUtils::LDAPConf - Read openldap config from standard
-      config files.
+OpenSIPS::LDAPUtils::LDAPConf - 从标准配置文件读取 openldap 配置。
 
 
 ```c
@@ -912,88 +862,82 @@ my $conf = new OpenSIPS::LDAPUtils::LDAPConf();
 ```
 
 
-This module may be used to retrieve the global LDAP configuration as
-      used by other LDAP software, such as `nsswitch.ldap` and `pam-ldap`. The configuration is
-      usualy stored in `/etc/openldap/ldap.conf`
+此模块可用于检索其他 LDAP 软件使用的全局 LDAP 配置，例如 `nsswitch.ldap` 和 `pam-ldap`。
+      配置通常存储在 `/etc/openldap/ldap.conf` 中。
 
 
-When used from an account with sufficient privilegs (e.g. root), the
-      ldap manager passwort is also retrieved.
+当从具有足够权限的账户使用时（例如 root），
+      也会检索 ldap manager 密码。
 
 
-#### Constructor new()
+#### 构造函数 new()
 
 
-Returns a new, initialized `OpenSIPS::LDAPUtils::LDAPConf`
-	object.
+返回一个新的、初始化的 `OpenSIPS::LDAPUtils::LDAPConf` 对象。
 
 
-#### Method base()
+#### 方法 base()
 
 
-Returns the servers base-dn to use when doing queries.
+返回执行查询时要使用的服务器 base-dn。
 
 
-#### Method host()
+#### 方法 host()
 
 
-Returns the ldap host to contact.
+返回要联系的 ldap 主机。
 
 
-#### Method port()
+#### 方法 port()
 
 
-Returns the ldap servers port.
+返回 ldap 服务器的端口。
 
 
-#### Method uri()
+#### 方法 uri()
 
 
-Returns an uri to contact the ldap server. When there is no
-	ldap_uri in the configuration file, an `ldap:` uri is constucted from host
-	and port.
+返回要联系的 ldap 服务器的 uri。
+		当配置文件中没有 ldap_uri 时，从 host 和 port 构造一个 `ldap:` uri。
 
 
-#### Method rootbindpw()
+#### 方法 rootbindpw()
 
 
-Returns the ldap "root" password.
+返回 ldap "root" 密码。
 
 
-Note that the `rootbindpw`
-	is only available when the current account has sufficient privilegs
-	to access `/etc/openldap/ldap.secret`.
+请注意，`rootbindpw`
+		仅在当前账户有足够权限访问 `/etc/openldap/ldap.secret` 时可用。
 
 
-#### Method rootbinddn()
+#### 方法 rootbinddn()
 
 
-Returns the DN to use for "root"-access to the ldap server.
+返回用于 "root" 访问 ldap 服务器的 DN。
 
 
-#### Method binddn()
+#### 方法 binddn()
 
 
-Returns the DN to use for authentication to the ldap server. When
-	no bind dn has been specified in the configuration file, returns
-	the `rootbinddn`.
+返回用于向 ldap 服务器进行身份验证的 DN。
+		当配置文件中没有指定 bind dn 时，返回 `rootbinddn`。
 
 
-#### Method bindpw()
+#### 方法 bindpw()
 
 
-Returns the password to use for authentication to the ldap server.
-	When no bind password has been specified, returns the `rootbindpw` if any.
+返回用于向 ldap 服务器进行身份验证的密码。
+		当没有指定 bind 密码时，如果存在则返回 `rootbindpw`。
 
 
 ### OpenSIPS::LDAPUtils::LDAPConnection
 
 
-OpenSIPS::LDAPUtils::LDAPConnection - Perl module to perform simple
-      LDAP queries.
+OpenSIPS::LDAPUtils::LDAPConnection - 执行简单 LDAP 查询的 Perl 模块。
 
 
-OO-Style interface:
+OO 风格接口：
 
 
 ```c
@@ -1003,7 +947,7 @@ my @rows = $ldap-search("uid=andi","ou=people,ou=coreworks,ou=de");
 ```
 
 
-Procedural interface:
+过程式接口：
 
 
 ```c
@@ -1013,245 +957,215 @@ my @rows = $ldap->search(
 ```
 
 
-This perl module offers a somewhat simplified interface to the
-      `Net::LDAP` functionality.
-      It is intended for cases where just a few attributes should be
-      retrieved without the overhead of the full featured `Net::LDAP`.
+此 perl 模块提供了 `Net::LDAP` 功能的简化接口。
+      它适用于只应检索少量属性而不需要完整 `Net::LDAP` 开销的情况。
 
 
-#### Constructor new( [config, [authenticated]] )
+#### 构造函数 new( [config, [authenticated]] )
 
 
-Set up a new LDAP connection.
+设置一个新的 LDAP 连接。
 
 
-The first argument, when given, should be a hash reference pointing
-	to to the connection parameters, possibly an `OpenSIPS::LDAPUtils::LDAPConfig`
-	object. This argument may be `undef` in which case a new
-	(default) `OpenSIPS::LDAPUtils::LDAPConfig`
-	object is used.
+第一个参数（如果给定）应该是一个哈希引用，指向连接参数，
+		可能是一个 `OpenSIPS::LDAPUtils::LDAPConfig` 对象。
+		此参数可能是 `undef`，在这种情况下，使用新的（默认的）
+		`OpenSIPS::LDAPUtils::LDAPConfig` 对象。
 
 
-When the optional second argument is a true value, the connection
-	will be authenticated. Otherwise an anonymous bind is done.
+当可选的第二个参数为真值时，连接将被认证。
+		否则执行匿名绑定。
 
 
-On success, a new `LDAPConnection` object is
-	returned, otherwise the result is `undef`.
+成功时，返回一个新的 `LDAPConnection` 对象，
+		否则结果为 `undef`。
 
 
-#### Function/Method search( conf, filter, base, [requested_attributes ...])
+#### 函数/方法 search( conf, filter, base, [requested_attributes ...])
 
 
-perform an ldap search, return the dn of the first matching
-	directory entry, unless a specific attribute has been requested, in
-	wich case the values(s) fot this attribute are returned.
+执行 ldap 搜索，返回第一个匹配目录条目的 dn，
+		除非请求了特定属性，在这种情况下返回该属性的值。
 
 
-When the first argument (conf) is a `OpenSIPS::LDAPUtils::LDAPConnection`,
-	it will be used to perform the queries. You can pass the first
-	argument implicitly by using the "method" syntax.
+当第一个参数（conf）是一个 `OpenSIPS::LDAPUtils::LDAPConnection` 时，
+		它将用于执行查询。您可以使用 "方法" 语法隐式传递第一个参数。
 
 
-Otherwise the `conf`
-	argument should be a reference to a hash containing the connection
-	setup parameters as contained in a `OpenSIPS::LDAPUtils::LDAPConf`
-	object. In this mode, the `OpenSIPS::LDAPUtils::LDAPConnection`
-	from previous queries will be reused.
+否则 `conf` 参数应该是一个哈希引用的引用，
+		包含连接设置参数，如 `OpenSIPS::LDAPUtils::LDAPConf` 对象中所包含的。
+		在这种模式下，将重用先前查询的 `OpenSIPS::LDAPUtils::LDAPConnection`。
 
 
-##### Arguments:
+##### 参数：
 
 
 **conf**
 
 
-configuration object, used to find host,port,suffix and
-		  use_ldap_checks
+配置对象，用于查找 host、port、suffix 和 use_ldap_checks
 
 
 **filter**
 
 
-ldap search filter, eg '(mail=some@domain)'
+ldap 搜索过滤器，例如 '(mail=some@domain)'
 
 
 **base**
 
 
-search base for this query. If undef use default suffix,
-		  concat base with default suffix if the last char is a ','
+此查询的搜索基础。如果为 undef 使用默认后缀，
+		如果最后一个字符是 ','，则将 base 与默认后缀连接
 
 
 **requested_attributes**
 
 
-retrieve the given attributes instead of the dn from the
-		  ldap directory.
+从 ldap 目录检索给定属性而不是 dn
 
 
-##### Result:
+##### 结果：
 
 
-Without any specific `requested_attributes`, return
-	  the dn of all matching entries in the LDAP directory.
+没有任何特定的 `requested_attributes`，返回 LDAP 目录中所有匹配条目的 dn。
 
 
-When some `requested_attributes` are given,
-	  return an array with those attibutes. When multiple entries match
-	  the query, the attribute lists are concatenated.
+当给出一些 `requested_attributes` 时，
+		返回一个包含这些属性的数组。当多个条目匹配查询时，属性列表会被连接起来。
 
 
 ### OpenSIPS::VDB
 
 
-This package is an (abstract) base class for all virtual databases.
-      Derived packages can be configured to be used by OpenSIPS as a
-      database.
+此包是所有虚拟数据库的（抽象）基类。派生包可以配置为由 OpenSIPS 用作数据库。
 
 
-The base class itself should NOT be used in this context, as it does
-      not provide any functionality.
+基类本身不应在此上下文中使用，因为它不提供任何功能。
 
 
 ### OpenSIPS::Constants
 
 
-This package provides a number of constants taken from enums and
-      defines of OpenSIPS header files. Unfortunately, there is no mechanism
-      for updating the constants automatically, so check the values if you
-      are in doubt.
+此包提供从 OpenSIPS 头文件的枚举和定义中获取的大量常量。
+      不幸的是，没有自动更新常量的机制，所以如有疑问请检查值。
 
 
 ### OpenSIPS::VDB::Adapter::Speeddial
 
 
-This adapter can be used with the speeddial module.
+此适配器可用于 speeddial 模块。
 
 
 ### OpenSIPS::VDB::Adapter::Alias
 
 
-This package is intended for usage with the alias_db module. The
-      query VTab has to take two arguments and return an array of two
-      arguments (user name/domain).
+此包旨在与 alias_db 模块一起使用。
+		查询 VTab 需要两个参数并返回两个参数（用户名/域名）的数组。
 
 
 #### query(conds,retkeys,order)
 
 
-Queries the vtab with the given arguments for request conditions,
-	keys to return and sort order column name.
+使用给定的参数查询 vtab 以获取请求条件、返回键和排序列名。
 
 
 ### OpenSIPS::VDB::Adapter::AccountingSIPtrace
 
 
-This package is an Adapter for the acc and tracer modules,
-      featuring only an insert operation.
+此包是 acc 和 tracer 模块的适配器，只提供插入操作。
 
 
 ### OpenSIPS::VDB::Adapter::Describe
 
 
-This package is intended for debug usage. It will print information
-      about requested functions and operations of a client module.
+此包用于调试目的。它将打印有关客户端模块请求的函数和操作的信息。
 
 
-Use this module to request schema information when creating new
-      adapters.
+在创建新适配器时使用此模块请求模式信息。
 
 
 ### OpenSIPS::VDB::Adapter::Auth
 
 
-This adapter is intended for usage with the auth_db module. The VTab
-      should take a username as an argument and return a (plain text!)
-      password.
+此适配器旨在与 auth_db 模块一起使用。
+		VTab 应该接受一个用户名作为参数并返回一个（纯文本！）密码。
 
 
 ### OpenSIPS::VDB::ReqCond
 
 
-This package represents a request condition for database access,
-      consisting of a column name, an operator (=, <, >, ...), a data
-      type and a value.
+此包表示数据库访问的请求条件，由列名、运算符（=、<、>、...）、
+		数据类型和值组成。
 
 
-This package inherits from OpenSIPS::VDB::Pair and thus includes its
-      methods.
+此包继承自 OpenSIPS::VDB::Pair，因此包含其方法。
 
 
 #### new(key,op,type,name)
 
 
-Constructs a new Column object.
+构造一个新的列对象。
 
 
 #### op()
 
 
-Returns or sets the current operator.
+返回或设置当前运算符。
 
 
 ### OpenSIPS::VDB::Pair
 
 
-This package represents database key/value pairs, consisting of a
-      key, a value type, and the value.
+此包表示数据库键/值对，由键、值类型和值组成。
 
 
-This package inherits from OpenSIPS::VDB::Value and thus has the same
-      methods.
+此包继承自 OpenSIPS::VDB::Value，因此具有相同的方法。
 
 
 #### new(key,type,name)
 
 
-Constructs a new Column object.
+构造一个新的列对象。
 
 
 #### key()
 
 
-Returns or sets the current key.
+返回或设置当前键。
 
 
 ### OpenSIPS::VDB::VTab
 
 
-This package handles virtual tables and is used by the OpenSIPS::VDB
-      class to store information about valid tables. The package is not
-      inteded for end user access.
+此包处理虚拟表，由 OpenSIPS::VDB 类用来存储有关有效表的信息。
+		此包不适用于最终用户访问。
 
 
 #### new()
 
 
 ```c
-Constructs a new VTab object
+构造一个新的 VTab 对象
 ```
 
 
 #### call(op,[args])
 
 
-Invokes an operation on the table (insert, update, ...) with the
-	given arguments.
+使用给定参数调用表上的操作（插入、更新、...）。
 
 
 ### OpenSIPS::VDB::Value
 
 
-This package represents a database value. Additional to the data
-      itself, information about its type is stored.
+此包表示数据库值。除数据本身外，还存储有关其类型的信息。
 
 
-#### stringification
+#### 字符串化
 
 
-When accessing a OpenSIPS::VDB::Value object as a string, it simply
-	returns its data regardless of its type. =cut
+当将 OpenSIPS::VDB::Value 对象作为字符串访问时，它只返回其数据而不管其类型。=cut
 
 
 use strict;
@@ -1275,35 +1189,31 @@ our @ISA = qw ( OpenSIPS::Utils::Debug );
 #### new(type,data)
 
 
-Constructs a new Value object. Its data type and the data are
-	passed as parameters.
+构造一个新的值对象。其数据类型和数据作为参数传递。
 
 
 #### type()
 
 
-Returns or sets the current data type. Please consider using the
-	constants from OpenSIPS::Constants
+返回或设置当前数据类型。请考虑使用 OpenSIPS::Constants 中的常量
 
 
 #### data()
 
 
-Returns or sets the current data.
+返回或设置当前数据。
 
 
 ### OpenSIPS::VDB::Column
 
 
-This package represents database column definition, consisting of a
-      column name and its data type.
+此包表示数据库列定义，由列名及其数据类型组成。
 
 
-#### Stringification
+#### 字符串化
 
 
-When accessing a OpenSIPS::VDB::Column object as a string, it simply
-	returns its column name regardless of its type. =cut
+当将 OpenSIPS::VDB::Column 对象作为字符串访问时，它只返回其列名而不管其类型。=cut
 
 
 package OpenSIPS::VDB::Column;
@@ -1324,45 +1234,40 @@ our @ISA = qw ( OpenSIPS::Utils::Debug );
 #### new(type,name)
 
 
-Constructs a new Column object. Its type and the name are passed as
-	parameters.
+构造一个新的列对象。其类型和名称作为参数传递。
 
 
 #### type( )
 
 
-Returns or sets the current type. Please consider using the
-	constants from OpenSIPS::Constants
+返回或设置当前类型。请考虑使用 OpenSIPS::Constants 中的常量
 
 
 #### name()
 
 
-Returns or sets the current column name.
+返回或设置当前列名。
 
 
 #### OpenSIPS::VDB::Result
 
 
-This class represents a VDB result set. It contains a column
-	definition, plus an array of rows. Rows themselves are simply
-	references to arrays of scalars.
+此类表示 VDB 结果集。它包含列定义，加上一系列行。
+		行本身就是对标量数组的引用。
 
 
 #### new(coldefs,[row, row, ...])
 
 
-The constructor creates a new Result object. Its first parameter is
-	a reference to an array of OpenSIPS::VDB::Column objects. Additional
-	parameters may be passed to provide initial rows, which are
-	references to arrays of scalars.
+构造函数创建一个新的 Result 对象。它的第一个参数是对 OpenSIPS::VDB::Column 对象数组的引用。
+		可以传递其他参数以提供初始行，这些行是对标量数组的引用。
 
 
 #### coldefs()
 
 
 ```c
-Returns or sets the column definition of the object.
+返回或设置对象的列定义。
 ```
 
 
@@ -1370,192 +1275,185 @@ Returns or sets the column definition of the object.
 
 
 ```c
-Returns or sets the rows of the object.
+返回或设置对象的行。
 ```
 
 
-## Perl samples
+## Perl 示例
 
 
-### sample directory
+### 示例目录
 
 
-There are a number of example scripts in the "samples/". They are
-		documented well. Read them, it will explain a lot to you :)
+"samples/" 中有许多示例脚本。它们有很好的文档。
+		阅读它们，它会向您解释很多：)
 
 
-If you want to use any of these scripts directly in your implementation, you
-		can use Perl's "require" mechanism to import them (just remember
-		that you need to use quotes when require'ing .pl files).
+如果您想在自己的实现中直接使用这些脚本中的任何一个，
+		您可以使用 Perl 的 "require" 机制导入它们（请记住，
+		require .pl 文件时需要使用引号）。
 
 
-#### Script descriptions
+#### 脚本描述
 
 
-The included sample scripts are described below:
+下面描述了包含的示例脚本：
 
 
 ##### branches.pl
 
 
-The minimal function in branches.pl demonstrates that you can access the "append_branch"
-				function from within perl, just as you would have done from your normal configuration file.
-				You'll find documentation on the concepts of branching in the OpenSIPS documentation.
+branches.pl 中的最小函数演示了您可以从 perl 中访问 "append_branch" 函数，
+				就像您从正常配置文件中执行操作一样。您可以在 OpenSIPS 文档中找到有关分支概念的文档。
 
 
 ##### firstline.pl
 
 
-Message's first_line structure may be evaluated. Message can be either of
-				SIP_REQUEST or SIP_REPLY. Depending on that, different information can be received.
-				This script demonstrates these functions.
+可以评估消息的 first_line 结构。消息可以是 SIP_REQUEST 或 SIP_REPLY。
+				根据不同，可以接收不同的信息。此脚本演示了这些函数。
 
 
 ##### flags.pl
 
 
-The perl module provides access to OpenSIPS's flagging mechanism. The flag names available
-				for OpenSIPS modules are made available through the OpenSIPS::Constants package, so you can
-				flag messages as "green", "magenta" etc.
+perl 模块提供对 OpenSIPS 标志机制的访问。OpenSIPS 模块可用的标志名称通过 OpenSIPS::Constants 包提供，
+				因此您可以将消息标记为 "green"、"magenta" 等。
 
 
-The first function, setflag, demonstrates how the "green" flag is set. In the second function,
-				readflag, the "green" and "magenta" flags are evaluated.
+第一个函数 setflag 演示了如何设置 "green" 标志。在第二个函数 readflag 中，
+				评估 "green" 和 "magenta" 标志。
 
 
 ##### functions.pl
 
 
-This sample script demonstrates different things related to calling functions from within perl,
-				and the different types of functions you can offer for OpenSIPS access.
+此示例脚本演示了从 perl 内部调用函数以及您可以为 OpenSIPS 访问提供的不同类型函数的相关内容。
 
 
-"exportedfuncs" simply demonstrates that you can use the moduleFunction method
-				to call functions offered by other modules. The results are equivalent to calling these
-				functions from your config file. In the demonstrated case, telephone calls with a destination
-				number beginning with 555... are rejected with an internal server error. Other destination
-				addresses are passed to the alias_db module.
+"exportedfuncs" 简单地演示了您可以使用 moduleFunction 方法调用其他模块提供的函数。
+				结果等同于从配置文件中调用这些函数。在演示的例子中，
+				以 555... 开头的目标号码的电话被内部服务器错误拒绝。
+				其他目标地址被传递给 alias_db 模块。
 
 
-Please note that the moduleFunction method is not fully available in OpenSIPS 1.2. See the method's
-				documentation for details.
+请注意，moduleFunction 方法在 OpenSIPS 1.2 中不完全可用。
+				有关详细信息，请参见该方法的文档。
 
 
-"paramfunc" shows that you can pass arbitrary strings to perl functions. Do with
-				them whatever you want :)
+"paramfunc" 显示您可以将任意字符串传递给 perl 函数。
+				用它们做你想做的：)
 
 
-"autotest" demonstrates that unknown functions in OpenSIPS::Message objects are
-				automatically transformed into calls to module functions.
+"autotest" 演示了 OpenSIPS::Message 对象中的未知函数会自动转换为对模块函数的调用。
 
 
-The "diefunc"s show that dying perl scripts - by "manual" dying, or because of script
-				errors - are handled by the OpenSIPS package. The error message is logged through OpenSIPS's logging
-				mechanism. Please note that this only works correctly if you do NOT overwrite the default die handler.
-				Oh, yes, that works for warnings, too.
+"diefuncs" 显示 perl 脚本的消亡——通过 "手动" 消亡，或因为脚本错误——由 OpenSIPS 包处理。
+				错误消息通过 OpenSIPS 的日志机制记录。
+				请注意，这仅在您不覆盖默认 die 处理程序时才能正常工作。
+				哦，是的，警告也一样。
 
 
 ##### headers.pl
 
 
-Header extraction is among the most crucial functionalities while processing SIP messages. This
-				sample script demonstrates access to header names and values within two sample functions.
+在处理 SIP 消息时，头提取是最关键的功能之一。
+				此示例脚本演示了在两个示例函数中访问头名称和值。
 
 
-"headernames" extracts all header names and logs their names.
+"headernames" 提取所有头名称并记录它们的名称。
 
 
-"someheaders" logs the contents of the two headers, "To" and
-				"WWW-Contact". As you can see, headers that occur more than once are retrieved
-				as an array, which may be accessed by Perl's array accessing methods.
+"someheaders" 记录两个头 "To" 和 "WWW-Contact" 的内容。
+				如您所见，出现多次的头作为数组检索，
+				可以通过 Perl 的数组访问方法访问。
 
 
 ##### logging.pl
 
 
-For debugging purposes, you probably want to write messages to the syslog. The "logdemo"
-				shows three ways to access the OpenSIPS log function: it is available through the OpenSIPS class as well
-				as through the OpenSIPS::Message class.
+为了调试目的，您可能希望将消息写入 syslog。
+				"logdemo" 展示了三种访问 OpenSIPS 日志函数的方式：
+				它可以通过 OpenSIPS 类以及 OpenSIPS::Message 类访问。
 
 
-Remember that you can use exported functions from other modules. You may thus as well use the
-				"xlog" module and it's xlog function.
+请记住，您可以使用其他模块导出的函数。
+				因此您也可以使用 "xlog" 模块及其 xlog 函数。
 
 
-The L_INFO, L_DBG, L_ERR, L_CRIT... constants are available through the OpenSIPS::Constants package.
+L_INFO、L_DBG、L_ERR、L_CRIT... 常量可通过 OpenSIPS::Constants 包获得。
 
 
 ##### messagedump.pl
 
 
-This script demonstrates how to access the whole message header of the current message. Please note that
-				modifications on the message made by earlier function calls in your configuration script may NOT be
-				reflected in this dump.
+此脚本演示了如何访问当前消息的整个消息头。
+				请注意，早期函数调用在配置脚本中对消息所做的修改可能不会反映在此转储中。
 
 
 ##### persistence.pl
 
 
-When processing SIP messages, you may want to use persistent data across multiple calls to your
-				Perl functions. Your first option is to use global variables in your script. Unfortunately,
-				these globals are not visible from the mulitple instances of OpenSIPS. You may want to use a
-				mechanism such as the IPC::Shareable shared memory access package to correct this.
+在处理 SIP 消息时，您可能希望在多次调用 Perl 函数时使用持久数据。
+				您的第一个选择是在脚本中使用全局变量。
+				不幸的是，这些全局变量在 OpenSIPS 的多个实例中不可见。
+				您可能希望使用 IPC::Shareable 共享内存访问包来纠正这一点。
 
 
 ##### phonenumbers.pl
 
 
-The OpenSIPS::Utils::PhoneNumbers package provides two methods for the transformation of local to
-				canonical telephone numbers, and vice versa. This script demonstrates it's use.
+OpenSIPS::Utils::PhoneNumbers 包提供了将本地电话号码转换为规范形式的方法，反之亦然。
+				此脚本演示了它的用法。
 
 
 ##### pseudovars.pl
 
 
-This script demonstrates the Perl module's "pseudoVar" method. It may be used to
-				retrieve the values of current pseudo variables.
+此脚本演示了 Perl 模块的 "pseudoVar" 方法。
+				它可用于检索当前伪变量的值。
 
 
-You might notice that there is no particular function for setting pseudo variables; you may use
-				the exported functions from the sqlops module, though.
+您可能注意到没有设置伪变量的特定函数；
+				不过您可以使用 sqlops 模块导出的函数。
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Are there known bugs in the Perl module?**
+**Q：Perl 模块是否有已知错误？**
 
 
-The Perl module does have a few shortcomings that may be regarded as bugs.
+Perl 模块确实有一些可以被视为错误的缺点。
 
 
-**Q: Where can I find more about OpenSIPS?**
+**Q：在哪里可以找到更多关于 OpenSIPS 的信息？**
 
 
-Take a look at [https://opensips.org/](https://opensips.org/).
+请查看 [https://opensips.org/](https://opensips.org/)。
 
 
-**Q: Where can I post a question about this module?**
+**Q：在哪里可以发布关于此模块的问题？**
 
 
-First at all check if your question was already answered on one of
-			our mailing lists:
-
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
-
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
+首先检查您的问题是否已在我们某个邮件列表上得到解答：
 
 
-**Q: How can I report a bug?**
+关于任何稳定 OpenSIPS 版本的电子邮件应发送到 
+			users@lists.opensips.org，关于开发版本的电子邮件应发送到 devel@lists.opensips.org。
 
 
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+如果您想保密邮件，请发送至 
+			users@lists.opensips.org。
+
+
+**Q：如何报告错误？**
+
+
+请遵循以下指南：
+			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

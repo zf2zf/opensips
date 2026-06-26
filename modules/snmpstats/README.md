@@ -1,29 +1,27 @@
 ---
-title: "SNMPStats Module (Simple Network Management Protocal Statistic Module)"
-description: "The SNMPStats module provides an SNMP management interface to OpenSIPS. Specifically, it provides general SNMP queryable scalar statistics, table representations of more complicated data such as user and contact information, and alarm monitoring capabilities."
+title: "SNMPStats 模块（简单网络管理协议统计模块）"
+description: "SNMPStats 模块提供到 OpenSIPS 的 SNMP 管理接口。具体来说，它提供通用的 SNMP 可查询标量统计、更复杂数据（如用户和联系人信息）的表表示，以及告警监控功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The SNMPStats module provides an SNMP management interface
-		to OpenSIPS.  Specifically, it provides general SNMP queryable
-		scalar statistics, table representations of more complicated data
-		such as user and contact information, and alarm monitoring
-		capabilities.
+SNMPStats 模块提供到 OpenSIPS 的 SNMP 管理接口。
+具体来说，它提供通用的 SNMP 可查询标量统计、
+更复杂数据（如用户和联系人信息）的表表示，
+以及告警监控功能。
 
 
-#### General Scalar Statistics
+#### 通用标量统计
 
 
-The SNMPStats module provides a number of general scalar
-			statistics.
-			Details are available in OPENSER-MIB, OPENSER-REG-MIB,
-			OPENSER-SIP-COMMON-MIB, and OPENSER-SIP-SERVER-MIB.  But briefly,
-			these scalars are:
+SNMPStats 模块提供许多通用标量统计。
+详细信息可在 OPENSER-MIB、OPENSER-REG-MIB、
+OPENSER-SIP-COMMON-MIB 和 OPENSER-SIP-SERVER-MIB 中找到。
+但简要地说，这些标量如下：
 
 
 openserSIPProtocolVersion, openserSIPServiceStartTime,
@@ -44,7 +42,7 @@ openserSIPProtocolVersion, openserSIPServiceStartTime,
 			openserCurNumDialogsInSetup, openserTotalNumFailedDialogSetups
 
 
-There are also scalars associated with alarms. They are as follows:
+还有一些与告警相关的标量。它们如下：
 
 
 openserMsgQueueMinorThreshold, openserMsgQueueMajorThreshold,
@@ -55,11 +53,11 @@ openserMsgQueueMinorThreshold, openserMsgQueueMajorThreshold,
 			openserDialogLimitMajorAlarm
 
 
-#### SNMP Tables
+#### SNMP 表
 
 
-The SNMPStats module provides several tables, containing more
-			complicated data.  The current available tables are:
+SNMPStats 模块提供多个表，包含更复杂的数据。
+当前可用的表如下：
 
 
 openserSIPPortTable, openserSIPMethodSupportedTable,
@@ -67,427 +65,379 @@ openserSIPPortTable, openserSIPMethodSupportedTable,
 			openserSIPContactTable, openserSIPRegUserLookupTable
 
 
-#### Alarm Monitoring
+#### 告警监控
 
 
-If enabled, the SNMPStats module will monitor for alarm conditions.
-			Currently, there are two alarm types defined.
+如果启用，SNMPStats 模块将监控告警条件。
+当前定义了两类告警类型。
 
 
-1. The number of active dialogs has passed a minor or major
-				threshold. The idea is that a network operation centre can
-				be made aware that their SIP servers may be overloaded,
-				without having to explicitly check for this condition.
-If a minor or major condition has occurred, then a
-				openserDialogLimitMinorEvent trap or a
-				openserDialogLimitMajorEvent trap will be generated,
-				respectively. The minor and major thresholds are
-				described in the parameters section below.
-2. The number of bytes waiting to be consumed across all of
-				OpenSIPS's listening ports has passed a minor or major
-				threshold.  The idea is that a network operation centre can
-				be made aware that a machine hosting a SIP server may be
-				entering a degraded state, and to investigate why this is so.
-If the number of bytes to be consumed passes a minor or major
-				threshold, then a openserMsgQueueDepthMinorEvent or
-				openserMsgQueueDepthMajorEvent trap will be sent out,
-				respectively.
+1. 活动对话框的数量已超过次要或主要阈值。
+				其理念是网络运营中心可以意识到其 SIP 服务器可能过载，
+				而无需明确检查此条件。
+如果发生次要或主要条件，
+				将分别生成 openserDialogLimitMinorEvent 陷阱或
+				openserDialogLimitMajorEvent 陷阱。
+				次要和主要阈值在下面的参数部分中描述。
+2. 在所有 OpenSIPS 监听端口上等待被使用的字节数已超过次要或主要阈值。
+				其理念是网络运营中心可以意识到托管 SIP 服务器的机器可能进入降级状态，
+				并调查原因。
+如果等待使用的字节数超过次要或主要阈值，
+				将分别发送 openserMsgQueueDepthMinorEvent 或
+				openserMsgQueueDepthMajorEvent 陷阱。
 
 
-Full details of these traps can be found in the distributions
-			OPENSER-MIB file.
+这些陷阱的完整详细信息可在发行版的 OPENSER-MIB 文件中找到。
 
 
-### How it works
+### 工作原理
 
 
-#### How the SNMPStats module gets its data
+#### SNMPStats 模块如何获取其数据
 
 
-The SNMPStats module uses OpenSIPSs internal statistic framework to
-	collect most of its data. However, there are two exceptions.
+SNMPStats 模块使用 OpenSIPS 内部统计框架来收集其大部分数据。
+但有两个例外。
 
 
-1. The openserSIPRegUserTable and openserSIPContactTable rely on the
-			usrloc modules callback system.  Specifically, the SNMPStats
-			module will receive callbacks whenever a user/contact is added to
-			the system.
-2. The SNMPStats modules openserSIPMsgQueueDepthMinorEvent and
-			openserSIPMsgQueueDepthMajorEvent alarms rely on the OpenSIPS
-			core to find out what interfaces, ports, and transports OpenSIPS
-			is listening on.  However,the module will actually query the proc
-			file system to find out the number of bytes waiting to be consumed.
-			(Currently, this will only work on systems providing the proc file
-			system).
+1. openserSIPRegUserTable 和 openserSIPContactTable 依赖于
+				usrloc 模块的回调系统。
+				具体来说，SNMPStats 模块将在用户/联系人添加到系统时接收回调。
+2. SNMPStats 模块的 openserSIPMsgQueueDepthMinorEvent 和
+				openserSIPMsgQueueDepthMajorEvent 告警依赖于 OpenSIPS
+				核心来了解 OpenSIPS 正在监听哪些接口、端口和传输。
+				但是，该模块实际上会查询 proc 文件系统来了解等待使用的字节数。
+				（目前，这仅适用于提供 proc 文件系统的系统）。
 
 
-#### How data is moved from the SNMPStats module to a NOC
+#### 数据如何从 SNMPStats 模块移动到 NOC
 
 
-We have now explained how the SNMPStats module gathers its data. We still
-	have not explained how it exports this data to a NOC (Network Operations
-	Centre) or administrator.
+我们已经解释了 SNMPStats 模块如何收集其数据。
+我们仍然没有解释它如何将此数据导出到 NOC（网络运营中心）或管理员。
 
 
-The SNMPStats module expects to connect to a
-	*Master Agent*.  This would be a SNMP daemon running
-	either on the same system as the OpenSIPS instance, or on another system.
-	(Communication can take place over TCP, so there is no restriction
-	that this daemon need be on the same system as OpenSIPS).
+SNMPStats 模块希望连接到 *Master Agent*。
+这将是一个 SNMP 守护进程，运行在与 OpenSIPS 实例相同的系统上，或在另一个系统上。
+（通信可以通过 TCP 进行，因此此守护进程不必与 OpenSIPS 在同一系统上，没有限制）。
 
 
-If the master agent is unavailable when OpenSIPS first starts up, the
-	SNMPStats module will continue to run.  However, you will not be able to
-	query it.  Thankfully, the SNMPStats module continually looks for its
-	master agent.  So even if the master agent is started late,
-	or if the link to the SNMPStats module is severed due to a temporary
-	hardware failure or crashed and restarted master agent, the link will
-	eventually be re-established.  No data should be lost, and querying can
-	begin again.
+如果主代理在 OpenSIPS 首次启动时不可用，SNMPStats 模块将继续运行。
+但是，您将无法查询它。
+值得庆幸的是，SNMPStats 模块会持续查找其主代理。
+因此，即使主代理启动较晚，或者到 SNMPStats 模块的链接因临时硬件故障或主代理崩溃和重启而中断，
+链接最终也会重新建立。
+不应丢失任何数据，可以再次开始查询。
 
 
-To request for this data, you will need to query the master agent. The
-	master agent will then redirect the request to the SNMPStats module, which
-	will respond to the master agent, which will in turn respond to
-	your request.
+要请求此数据，您需要查询主代理。
+主代理将重定向请求到 SNMPStats 模块，
+SNMPStats 模块将响应主代理，
+主代理将依次响应您的请求。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The SNMPStats module provides a plethora of statistics, some of which
-		are collected by other modules.  If the dependent modules are not
-		loaded then those specific statistics will still be returned, but with
-		zeroed values.  All other statistics will continue to function
-		normally.  This means that the SNMPStats module has no
-		*hard/mandatory* dependencies on other modules.
-		There are however, *soft* dependencies, as follows:
+SNMPStats 模块提供了大量统计信息，其中一些由其他模块收集。
+如果依赖模块未加载，那些特定统计信息仍会返回，但值为零。
+所有其他统计信息将正常运行。
+这意味着 SNMPStats 模块对其他模块没有*硬/强制*依赖。
+但是，存在*软*依赖，如下：
 
 
-- *usrloc* - all scalars and tables relating to users
-		and contacts are dependent on the usrloc module.  If the module is
-		not loaded, the respective tables will be empty.
-- *dialog* - all scalars relating to the number of
-		dialogs are dependent on the presence of the dialog module.
-		Furthermore, if the module is not loaded, then the
-		openserDialogLimitMinorEvent, and openserDialogLimitMajorEvent
-		alarm will be disabled.
+- *usrloc* - 所有与用户和联系人相关的标量和表都依赖于 usrloc 模块。
+		如果该模块未加载，相应的表将为空。
+- *dialog* - 所有与对话框数量相关的标量都依赖于 dialog 模块的存在。
+		此外，如果该模块未加载，
+		openserDialogLimitMinorEvent 和 openserDialogLimitMajorEvent 告警将被禁用。
 
 
-The contents of the openserSIPMethodSupportedTable change depending
-		on which modules are loaded.
+openserSIPMethodSupportedTable 的内容取决于加载的模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-	OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载此模块之前必须安装以下库或应用程序：
 
 
-- *Net SNMP DEV (libsnmp-dev on debian)* - SNMP
-			library (development files) must
-			be installed at the time of compilation.  Furthermore, there are
-			several shared objects that must be loadable at the time SNMPStats
-			is loaded.  This means that SNMP lib must be installed (but not
-			necessarily running) on the system that has loaded the SNMPStats
-			module.  (Details can be found in the compilation section below).
-- *SNMP tools(snmp on debian)* - SNMP
-			tools package to provide the snmpget command (internally used by
-			the SNMPStats module.
+- *Net SNMP DEV (Debian 上的 libsnmp-dev)* - SNMP
+			库（开发文件）必须在编译时安装。
+			此外，在加载 SNMPStats 时必须加载多个共享对象。
+			这意味着 SNMP lib 必须安装在加载 SNMPStats 模块的系统上（但不一定运行）。
+			（详细信息可在下面的编译部分找到）。
+- *SNMP 工具 (Debian 上的 snmp)* - SNMP
+			工具包，用于提供 snmpget 命令（SNMPStats 模块内部使用）。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### sipEntityType (String)
 
 
-This parameter describes the entity type for this OpenSIPS instance,
-		and will be used in determining what is returned for the
-		openserSIPEntityType scalar. Valid parameters are:
+此参数描述此 OpenSIPS 实例的实体类型，
+		将用于确定返回给 openserSIPEntityType 标量的内容。
+		有效参数如下：
 
 
 *registrarServer, redirectServer, proxyServer, userAgent, other*
 
 
-```c title="Setting the sipEntityType parameter"
+```c title="设置 sipEntityType 参数"
 ...
 modparam("snmpstats", "sipEntityType", "registrarServer")
 modparam("snmpstats", "sipEntityType", "proxyServer")
 ...
-		
+
 ```
 
 
-Note that as the above example shows, you can define this parameter
-		more than once.  This is of course because a given OpenSIPS instance
-		can take on more than one role.
+请注意，如上面的示例所示，您可以多次定义此参数。
+当然，这是因为给定的 OpenSIPS 实例可以承担多个角色。
 
 
 #### MsgQueueMinorThreshold (Integer)
 
 
-The SNMPStats module monitors the number of bytes waiting to be
-		consumed by OpenSIPS.  If the number of bytes waiting to be consumed
-		exceeds a minor threshold, the SNMPStats module will send out an
-		openserMsgQueueDepthMinorEvent trap to signal that an alarm condition
-		has occurred.  The minor threshold is set with the
-		MsgQueueMinorThreshold parameter.
+SNMPStats 模块监控等待 OpenSIPS 使用的字节数。
+如果等待使用的字节数超过次要阈值，
+SNMPStats 模块将发出 openserMsgQueueDepthMinorEvent 陷阱以发出告警条件已发生的信号。
+次要阈值通过 MsgQueueMinorThreshold 参数设置。
 
 
-```c title="Setting the MsgQueueMinorThreshold parameter"
+```c title="设置 MsgQueueMinorThreshold 参数"
 ...
 modparam("snmpstats", "MsgQueueMinorThreshold", 2000)
 ...
-		
+
 ```
 
 
-If this parameter is not set, then there will be no minor alarm
-		monitoring.
+如果未设置此参数，则不会有次要告警监控。
 
 
 #### MsgQueueMajorThreshold (Integer)
 
 
-The SNMPStats module monitors the number of bytes waiting to be
-		consumed by OpenSIPS.  If the number of bytes waiting to be consumed
-		exceeds a major threshold, the SNMPStats module will send out an
-		openserMsgQueueDepthMajorEvent trap to signal that an alarm condition
-		has occurred.  The major threshold is set with the
-		MsgQueueMajorThreshold parameter.
+SNMPStats 模块监控等待 OpenSIPS 使用的字节数。
+如果等待使用的字节数超过主要阈值，
+SNMPStats 模块将发出 openserMsgQueueDepthMajorEvent 陷阱以发出告警条件已发生的信号。
+主要阈值通过 MsgQueueMajorThreshold 参数设置。
 
 
-```c title="Setting the MsgQueueMajorThreshold parameter"
+```c title="设置 MsgQueueMajorThreshold 参数"
 ...
 modparam("snmpstats", "MsgQueueMajorThreshold", 5000)
 ...
-		
+
 ```
 
 
-If this parameter is not set, then there will be no major alarm
-		monitoring.
+如果未设置此参数，则不会有主要告警监控。
 
 
 #### dlg_minor_threshold (Integer)
 
 
-The SNMPStats module monitors the number of active dialogs.  If the
-		number of active dialogs exceeds a minor threshold, the SNMPStats
-		module will send out an openserDialogLimitMinorEvent trap to signal
-		that an alarm condition has occurred.  The minor threshold is set with
-		the dlg_minor_threshold parameter.
+SNMPStats 模块监控活动对话框的数量。
+如果活动对话框的数量超过次要阈值，
+SNMPStats 模块将发出 openserDialogLimitMinorEvent 陷阱以发出告警条件已发生的信号。
+次要阈值通过 dlg_minor_threshold 参数设置。
 
 
-```c title="Setting the dlg_minor_threshold parameter"
+```c title="设置 dlg_minor_threshold 参数"
 ...
   modparam("snmpstats", "dlg_minor_threshold", 500)
 ...
-		
+
 ```
 
 
-If this parameter is not set, then there will be no minor alarm
-		monitoring.
+如果未设置此参数，则不会有次要告警监控。
 
 
 #### dlg_major_threshold (Integer)
 
 
-The SNMPStats module monitors the number of active dialogs.  If
-		the number of active dialogs exceeds a major threshold, the SNMPStats
-		module will send out an openserDialogLimitMajorEvent trap to signal
-		that an alarm condition has occurred.  The major threshold is set
-		with the dlg_major_threshold parameter.
+SNMPStats 模块监控活动对话框的数量。
+如果活动对话框的数量超过主要阈值，
+SNMPStats 模块将发出 openserDialogLimitMajorEvent 陷阱以发出告警条件已发生的信号。
+主要阈值通过 dlg_major_threshold 参数设置。
 
 
-```c title="Setting the dlg_major_threshold parameter"
+```c title="设置 dlg_major_threshold 参数"
 ...
   modparam("snmpstats", "dlg_major_threshold", 750)
 ...
-		
+
 ```
 
 
-If this parameter is not set, then there will be no major alarm
-		monitoring.
+如果未设置此参数，则不会有主要告警监控。
 
 
 #### snmpgetPath (String)
 
 
-The SNMPStats module provides the openserSIPServiceStartTime scalar.
-		This scalar requires the SNMPStats module to perform a snmpget query
-		to the master agent.  You can use this parameter to set the path to
-		your instance of SNMP's snmpget program.
+SNMPStats 模块提供 openserSIPServiceStartTime 标量。
+此标量需要 SNMPStats 模块对主代理执行 snmpget 查询。
+您可以使用此参数设置 SNMP 的 snmpget 程序的路径。
 
 
-*Default value is "/usr/local/bin/".*
+*默认值为 "/usr/local/bin/"。*
 
 
-```c title="Setting the snmpgetPath parameter"
+```c title="设置 snmpgetPath 参数"
 ...
 modparam("snmpstats", "snmpgetPath",     "/my/custom/path/")
 ...
-		
+
 ```
 
 
 #### snmpCommunity (String)
 
 
-The SNMPStats module provides the openserSIPServiceStartTime scalar.
-		This scalar requires the SNMPStats module to perform a snmpget query
-		to the master agent.  If you have defined a custom community string
-		for the snmp daemon, you need to specify it with this parameter.
+SNMPStats 模块提供 openserSIPServiceStartTime 标量。
+此标量需要 SNMPStats 模块对主代理执行 snmpget 查询。
+如果您为 snmp 守护进程定义了自定义社区字符串，您需要使用此参数指定它。
 
 
-*Default value is "public".*
+*默认值为 "public"。*
 
 
-```c title="Setting the snmpCommunity parameter"
+```c title="设置 snmpCommunity 参数"
 ...
 modparam("snmpstats", "snmpCommunity", "customCommunityString")
 ...
-		
+
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-Currently, there are no exported functions.
+目前没有导出的函数。
 
 
-### Installation and Running
+### 安装和运行
 
 
-There are several things that need to be done to get the SNMPStats module
-	compiled and up and running.
+需要做几件事来让 SNMPStats 模块编译和运行。
 
 
-#### Compiling the SNMPStats Module
+#### 编译 SNMPStats 模块
 
 
-In order for the SNMPStats module to compile, you will need to have
-	installed the packages providing SNMP (Simple Network Management
-	Protocol) libray and development files.
+为了编译 SNMPStats 模块，您需要安装提供 SNMP（简单网络管理协议）库和开发文件的包。
 
 
-The SNMPStats modules makefile requires that the SNMP script
-	"net-snmp-config" can run.
+SNMPStats 模块的 makefile 要求 SNMP 脚本
+"net-snmp-config" 可以运行。
 
 
-IMPORTANT: By default, SNMP loads *mibs* from
-	*/var/lib/mibs/ietf/*.Keep in mind that you have to copy OpenSIPS
-	*mibs* wherevere your mibs folder is.
+重要提示：默认情况下，SNMP 从 */var/lib/mibs/ietf/* 加载 *mibs*。
+请记住将 OpenSIPS *mibs* 复制到您的 mibs 文件夹。
 
 
-#### Configuring SNMP daemon to allow connections from the SNMPStats module.
+#### 配置 SNMP 守护进程以允许来自 SNMPStats 模块的连接。
 
 
-The SNMPStats module will communicate with the SNMP Master Agent.  This
-	communication happens over a protocol known as AgentX. This means you
-	need to have an SMP daemon (acting as Master Agent) running - it can
-	be on the same machine or on a different one.
+SNMPStats 模块将通过称为 AgentX 的协议与 SNMP Master Agent 通信。
+这意味着您需要运行一个 SMP 守护进程（充当 Master Agent）——它可以在同一台机器上，也可以在另一台机器上。
 
 
-First you need to turn on AgentX support.  The exact location of
-	the configuration file (snmpd.conf) may vary depending on your system.
-	By default, via a package installation, it is located in:
+首先您需要开启 AgentX 支持。
+配置文件 (snmpd.conf) 的确切位置可能因系统而异。
+默认情况下，通过包安装，它位于：
 
 
 ```c
     /etc/snmp/snmpd.conf.
-	
+
 ```
 
 
-At the very end of the file add the following line:
+在文件末尾添加以下行：
 
 
 ```c
     master agentx
-	
+
 ```
 
 
-The line tells SNMP daemon to act as an AgentX master agent, so that it
-	can accept connections from sub-agents such as the SNMPStats module.
+该行告诉 SNMP 守护进程充当 AgentX 主代理，
+以便它可以接受来自 SNMPStats 模块等子代理的连接。
 
 
-There is still one last step.  Even though we have configured
-	SNMP to have AgentX support, we still need to tell the daemon which
-	interface and port to listen to for AgentX connections. This is done also
-	via the configuration file (snmpd.conf) :
+还有最后一步。
+即使我们已经配置了 SNMP 具有 AgentX 支持，
+我们仍然需要告诉守护进程监听 AgentX 连接的接口和端口。
+这也通过配置文件 (snmpd.conf) 完成：
 
 
 ```c
     agentXSocket    tcp:localhost:705
-	
+
 ```
 
 
-This tells SNMP daemon to act as a master agent, listening on the
-	localhost UDP interface at port 705.
+这告诉 SNMP 守护进程充当主代理，
+在 localhost UDP 接口的端口 705 上监听。
 
 
-#### Configuring the SNMPStats module for communication with a Master Agent
+#### 配置 SNMPStats 模块与 Master Agent 通信
 
 
-The previous section explained how to set up a SNMP master agent to accept
-	AgentX connections.  We now need to tell the SNMPStats module how to
-	communicate with this master agent.  This is done by giving the
-	SNMPStats module its own SNMP configuration file.  The file must be named
-	"snmpstats.conf", and must be in the same folder as the "snmpd.conf" file
-	that was configured above. By default this would be:
+上一节说明了如何设置 SNMP 主代理以接受 AgentX 连接。
+我们现在需要告诉 SNMPStats 模块如何与此主代理通信。
+这是通过给 SNMPStats 模块自己的 SNMP 配置文件来完成的。
+该文件必须命名为 "snmpstats.conf"，并且必须位于上面配置的 "snmpd.conf" 文件的同一文件夹中。
+默认情况下，这将是：
 
 
 ```c
     /etc/snmp/snmpstats.conf
-	
+
 ```
 
 
-The default configuration file included with the distribution can be used,
-	and contains the following:
+发行版中包含的默认配置文件可以使用，内容如下：
 
 
 ```c
     agentXSocket tcp:localhost:705
-	
+
 ```
 
 
-The above line tells the SNMPStats module to register with the master
-	agent on the localhost, port 705.  The parameters should match up with
-	the snmpd process.
-	Note that the master agent (snmpd) does not need to be present on the same
-	machine as OpenSIPS. The localhost could be replaced with any other
-	machine.
+上述行告诉 SNMPStats 模块在 localhost 的端口 705 上向主代理注册。
+参数应与 snmpd 进程匹配。
+请注意，主代理 (snmpd) 不必与 OpenSIPS 在同一台机器上。
+localhost 可以替换为任何其他机器。
 
 
-#### Testing for a proper Configuration
+#### 测试配置是否正确
 
 
-As a quick test to make sure that the SNMPStats module sub-agent can
-	successfully connect to the SNMP Master agent, be sure the snmpd service
-	is stopped (/etc/init.d/snmpd stop) and manually start snmpd with the
-	following:
+作为快速测试以确保 SNMPStats 模块子代理可以成功连接到 SNMP Master Agent，
+请确保 snmpd 服务已停止 (/etc/init.d/snmpd stop)，
+并使用以下命令手动启动 snmpd：
 
 
 ```c
     snmpd -f -Dagentx -x tcp:localhost:705 2>&1 | less
-	
+
 ```
 
 
-You should see something similar to the following:
+您应该看到类似以下内容：
 
 
 ```c
@@ -498,12 +448,12 @@ You should see something similar to the following:
     agentx/master: initializing...
     agentx/master: initializing...   DONE
     NET-SNMP version 5.3.1
-	
+
 ```
 
 
-Now, start up OpenSIPS in another window.  In the snmpd window, you should
-	see a bunch of:
+现在，在另一个窗口中启动 OpenSIPS。
+在 snmpd 窗口中，您应该会看到一堆：
 
 
 ```c
@@ -512,97 +462,94 @@ Now, start up OpenSIPS in another window.  In the snmpd window, you should
     agentx/master: opened 0x814bbe0 = 6 with flags = a0
     agentx/master: send response, stat 0 (req=0x2c58ebd4,trans=0x0,sess=0x0)
     agentx_build: packet built okay
-	
+
 ```
 
 
-The messages beginning with "agentx" are debug messages stating that
-	something is happening with an AgentX sub-agent, appearing because of
-	the -Dagentx snmpd switch.  The large number of debug messages appear at
-	startup as the SNMPStats module registers all of its scalars
-	and tables with the Master Agent.  If you receive these messages, then
-	SNMPStats module and SNMP daemon have both been configured correctly.
+以 "agentx" 开头的消息是调试消息，表明子代理发生了某些事情，
+由于 -Dagentx snmpd 开关而出现。
+大量调试消息在启动时出现，因为 SNMPStats 模块向 Master Agent 注册其所有标量和表。
+如果您收到这些消息，则 SNMPStats 模块和 SNMP 守护进程都已正确配置。
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Where can I find more about SNMP?**
+**问：在哪里可以找到更多关于 SNMP 的信息？**
 
 
-There are many websites that explain SNMP at all levels of detail.
-			A great general introduction can be found at http://en.wikipedia.org/wiki/SNMP
+有许多网站以各种详细程度解释 SNMP。
+			可以在 http://en.wikipedia.org/wiki/SNMP 找到一个很好的通用介绍。
 
-			If you are interested in the nitty gritty details of the protocol,
-			then please look at RFC 3410.  RFC 3410 maps out the many other RFCs
-			that define SNMP, and can be found at http://www.rfc-archive.org/getrfc.php?rfc=3410
+			如果您对协议的细节感兴趣，
+			请查看 RFC 3410。
+			RFC 3410 概述了定义 SNMP 的许多其他 RFC，
+			可以在 http://www.rfc-archive.org/getrfc.php?rfc=3410 找到。
 
-			INFO: Also if you want a nice tutorial for setting up snmpstats with OpenSIPS try
-			[this one](http://saevolgo.blogspot.ro/2012/09/opensips-monitoring-using-snmp-part-i.html).
-
-
-**Q: Where can I find more about NetSNMP?**
+			另外，如果您想要一个很好的关于在 OpenSIPS 中设置 snmpstats 的教程，请尝试
+			[这个](http://saevolgo.blogspot.ro/2012/09/opensips-monitoring-using-snmp-part-i.html)。
 
 
-NetSNMP source code, documentation, FAQs, and tutorials can all be found at
-			http://net-snmp.sourceforge.net/.
+**问：在哪里可以找到更多关于 NetSNMP 的信息？**
 
 
-**Q: Where can I find out more about AgentX?**
+NetSNMP 源代码、文档、FAQ 和教程都可以在
+			http://net-snmp.sourceforge.net/ 找到。
 
 
-The full details of the AgentX protocol are explained in RFC 2741,
-			available at: http://www.rfc-archive.org/getrfc.php?rfc=2741
+**问：在哪里可以找到更多关于 AgentX 的信息？**
 
 
-**Q: Why am I not receiving any SNMP Traps?**
+AgentX 协议的完整详细信息在 RFC 2741 中解释，
+			可在此处获取：http://www.rfc-archive.org/getrfc.php?rfc=2741
 
 
-Assuming you've configured the trap thresholds in opensips.cfg with something similar to:
-
-Then either OpenSIPS is not reaching these thresholds (which is a good thing),
-		or you haven't set up the trap monitor correctly.  To prove this to yourself,
-		you can start NetSNMP with:
-
-The -f tells the NetSNMP process to not daemonize, and the -Dtrap enables trap
-		debug logs.  You should see something similar to the following:
-
-If the two lines above did not appear, then you probably have not included
-		the following in your snmpd.conf file.
-
-When a trap has been received by snmpd, the following will appear in the
-		above output:
-
-You'll also need a program to collect the traps and do something with them
-		(such as sending them to syslog).  NetSNMP provides snmptrapd for this.  Other
-		solutions exist as well.  Google is your friend.
+**问：为什么我没有收到任何 SNMP 陷阱？**
 
 
-**Q: OpenSIPS refuses to load the SNMPStats module.  Why is it displaying "load_module: could not open module snmpstats.so"?**
+假设您已使用类似以下内容在 opensips.cfg 中配置了陷阱阈值：
+
+那么要么 OpenSIPS 没有达到这些阈值（这是好事），
+		要么您没有正确设置陷阱监控。
+		为了向自己证明这一点，您可以使用以下命令启动 NetSNMP：
+
+-f 告诉 NetSNMP 进程不要守护化，-Dtrap 启用陷阱调试日志。
+		您应该看到类似以下内容：
+
+如果上述两行没有出现，那么您可能没有在 snmpd.conf 文件中包含以下内容。
+
+当 snmpd 收到陷阱时，上述输出中将出现以下内容：
+
+您还需要一个程序来收集陷阱并对其进行处理（如将它们发送到 syslog）。
+NetSNMP 为此提供 snmptrapd。
+也存在其他解决方案。
+Google 是您的朋友。
 
 
-On some systems, you may receive the following error at stdout or the log files
-		depending on the configuration.
-
-This means one of two things:
-
-In the second case, the fix is as follows:
-
-Alternatively, you may prefix your startup command with:
-
-For example, on my system I ran:
+**问：OpenSIPS 拒绝加载 SNMPStats 模块。为什么显示 "load_module: could not open module snmpstats.so"？**
 
 
-**Q: How can I learn what all the scalars and tables are?**
+在某些系统上，您可能会在 stdout 或日志文件中收到以下错误（取决于配置）。
+
+这意味着两种情况之一：
+
+在第二种情况下，修复如下：
+
+或者，您可以在启动命令前加上：
+
+例如，在我的系统上，我运行了：
 
 
-All scalars and tables are named in the SNMPStats module overview.  The files
-		OPENSER-MIB, OPENSER-REG-MIB, OPENSER-SIP-COMMON-MIB and OPENSER-SIP-SERVER-MIB
-		contain the full definitions and descriptions.  Note however, that the MIBs
-		may actually contain scalars and tables which are currently not provided by the
-		SNMPStats module.  Therefore, it is better to use NetSNMP's snmptranslate
-		as an alternative. Take the openserSIPEntityType scalar as an example. You can
-		invoke snmptranslate as follows:
+**问：如何了解所有标量和表？**
+
+
+所有标量和表的名称都在 SNMPStats 模块概述中给出。
+		OPENSER-MIB、OPENSER-REG-MIB、OPENSER-SIP-COMMON-MIB 和 OPENSER-SIP-SERVER-MIB 文件
+		包含完整的定义和描述。
+		但请注意，MIB 实际上可能包含 SNMPStats 模块当前未提供的标量和表。
+		因此，最好使用 NetSNMP 的 snmptranslate 作为替代。
+		以 openserSIPEntityType 标量为例。
+		您可以如下调用 snmptranslate：
 
 		
 ```c
@@ -611,7 +558,7 @@ All scalars and tables are named in the SNMPStats module overview.  The files
 ```
 
 
-		Which would result in something similar to the following:
+		结果将类似于以下内容：
 
 		
 ```c
@@ -634,20 +581,20 @@ All scalars and tables are named in the SNMPStats module overview.  The files
 ```
 
 
-**Q: Why do snmpget, snmpwalk, and snmptable always time out?**
+**问：为什么 snmpget、snmpwalk 和 snmptable 总是超时？**
 
 
-If your snmp operations are always returning with: "Timeout: No Response
-		from localhost", then chances are that you are making the query with the wrong
-		community string.  Default installs will most likely use "public" as their
-		default community strings. Grep your snmpd.conf file for the string
-		"rocommunity", and use the result as your community string in your queries.
+如果您的 snmp 操作总是返回："Timeout: No Response from localhost"，
+		那么很可能您使用了错误的社区字符串进行查询。
+		默认安装最可能使用 "public" 作为其默认社区字符串。
+		请在 snmpd.conf 文件中搜索字符串 "rocommunity"，
+		并将结果作为查询中的社区字符串使用。
 
 
-**Q: How do I use snmpget?**
+**问：如何使用 snmpget？**
 
 
-NetSNMP's snmpget is used as follows:
+NetSNMP 的 snmpget 使用如下：
 
 		
 ```c
@@ -656,9 +603,9 @@ NetSNMP's snmpget is used as follows:
 ```
 
 
-		For example, consider an snmpget on the openserSIPEntityType scalar,
-		run on the same machine running the OpenSIPS instance, with the default
-		"public" community string.  The command would be:
+		例如，考虑在 openserSIPEntityType 标量上执行 snmpget，
+		在与 OpenSIPS 实例相同的机器上运行，使用默认的 "public" 社区字符串。
+		命令将是：
 
 		
 ```c
@@ -667,7 +614,7 @@ NetSNMP's snmpget is used as follows:
 ```
 
 
-		Which would result in something similar to:
+		结果将类似于：
 
 		
 ```c
@@ -678,10 +625,10 @@ NetSNMP's snmpget is used as follows:
 ```
 
 
-**Q: How do I use snmptable?**
+**问：如何使用 snmptable？**
 
 
-NetSNMP's snmptable is used as follows:
+NetSNMP 的 snmptable 使用如下：
 
 		
 ```c
@@ -690,9 +637,10 @@ NetSNMP's snmptable is used as follows:
 ```
 
 
-		For example, consider the openserSIPRegUserTable.  If we run the snmptable
-		command on the same machine as the running OpenSIPS instance, configured with
-		the default "public" community string.  The command would be:
+		例如，考虑 openserSIPRegUserTable。
+		如果在与运行 OpenSIPS 实例相同的机器上运行 snmptable 命令，
+		配置了默认的 "public" 社区字符串。
+		命令将是：
 
 		
 ```c
@@ -701,7 +649,7 @@ NetSNMP's snmptable is used as follows:
 ```
 
 
-		Which would result in something similar to:
+		结果将类似于：
 
 		
 ```c
@@ -713,33 +661,30 @@ NetSNMP's snmptable is used as follows:
 ```
 
 
-**Q: Where can I find more about OpenSIPS?**
+**问：在哪里可以找到更多关于 OpenSIPS 的信息？**
 
 
-Take a look at [https://opensips.org/](https://opensips.org/).
+请查看 [https://opensips.org/](https://opensips.org/)。
 
 
-**Q: Where can I post a question about this module?**
+**问：在哪里可以发布关于此模块的问题？**
 
 
-First at all check if your question was already answered on one of
-			our mailing lists:
+首先检查您的问题是否已在我们的邮件列表中回答：
 
-E-mails regarding any stable OpenSIPS release should be sent to
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
+与任何稳定 OpenSIPS 版本相关的电子邮件应发送至
+			users@lists.opensips.org，开发版本相关的电子邮件应发送至 devel@lists.opensips.org。
 
-If you want to keep the mail private, send it to
-			users@lists.opensips.org.
+如果您想保持邮件私密，请发送至 users@lists.opensips.org。
 
 
-**Q: How can I report a bug?**
+**问：如何报告错误？**
 
 
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+请按照以下指南操作：
+			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0 版授权

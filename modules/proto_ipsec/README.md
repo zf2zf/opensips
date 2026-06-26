@@ -1,117 +1,95 @@
 ---
-title: "proto_ipsec Module"
-description: "The **proto_ipsec** module provides IPSec sockets for establishing secure communication channels. It relies on RFC 3329 (Security Mechanism Agreement for the Session Initiation Protocol (SIP)) to establish the IPSec parameters necessary for creating dynamic Security Associations (SAs) for..."
+title: "proto_ipsec 模块"
+description: "**proto_ipsec** 模块提供用于建立安全通信通道的 IPSec 套接字。它依赖 RFC 3329(Session Initiation Protocol (SIP) 的安全机制协议)来建立创建动态安全关联(SA)所需的 IPSec 参数,用于每个连接。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The **proto_ipsec** module provides
-		IPSec sockets for establishing secure communication channels.
-		It relies on RFC 3329 (Security Mechanism Agreement for the Session
-		Initiation Protocol (SIP)) to establish the IPSec parameters necessary
-		for creating dynamic Security Associations (SAs) for each connection.
+**proto_ipsec** 模块提供用于建立安全通信通道的 IPSec 套接字。
+		它依赖 RFC 3329(Session Initiation Protocol (SIP) 的安全机制协议)来建立创建动态安全关联(SA)所需的 IPSec 参数,用于每个连接。
 
 
-This module has been developed to fully comply with the VoLTE
-		specification (GSMA PRD IR.92) and implements the extensions defined
-		in TS 33.203 (3G Security: Access Security for IP-based Services).
+此模块完全符合 VoLTE 规范(GSMA PRD IR.92)开发,并实现了 TS 33.203(3G 安全:基于 IP 服务的接入安全)中定义的扩展。
 
 
-It allows creation of both UDP and TCP secure connections on the same
-		IP:port pair, defined as sockets. Essentially, when defining a socket
-		using the *proto_ipsec* protocol, two new
-		internal/hidden sockets are created on the specified port.
-		For example, defining the following socket:
-	```c
+它允许在相同的 IP:port 对上创建 UDP 和 TCP 安全连接,定义为套接字。本质上,当使用 *proto_ipsec* 协议定义套接字时,会在指定端口上创建两个新的内部/隐藏套接字。
+例如,定义以下套接字:
+```c
 
 ...
 socket=ipsec:127.0.0.1:5100
 ...
 ```
-		Internally, two different sockets are created:
-	```c
+		内部创建两个不同的套接字:
+```c
 
 ...
 socket=udp:127.0.0.1:5100
 socket=tcp:127.0.0.1:5100
 ...
 ```
-		Communication through these sockets should be done over IPSec,
-		thus appropriate security associations (SAs) should be made prior
-		to using these listeners, as defined in RFC 3329.
+		通过这些套接字的通信应通过 IPSec 进行,因此在使用这些监听器之前应按照 RFC 3329 的定义建立适当的安全关联(SA)。
 
 
-*NOTE* that this means that you can no longer
-		define these sockets in your config, otherwise they will overlap
-		with the internally defined ones.
+*注意* 这意味着你不能再在配置中定义这些套接字,否则它们会与内部定义的套接字重叠。
 
 
-IPSec communication requires each participant to define at least two
-		ports for each connection: one when the entity behaves as a client and
-		another when it behaves as a server. Consequently, it's typically
-		necessary to define at least two IPSec sockets for the module to
-		function correctly.
+IPSec 通信要求每个参与者为每个连接定义至少两个端口:一个在实体作为客户端时,另一个在实体作为服务器时。因此,通常需要定义至少两个 IPSec 套接字才能使模块正常工作。
 
 
-The module implements the entire logic of keeping track of the
-		registration status by hooking into the usrloc module and listening
-		for contact changes updates. It also ensures the persistency of the
-		tunnels by restoring them after a restart.
+该模块实现了通过挂接到 usrloc 模块并监听联系变更更新来跟踪注册状态的全部逻辑。它还通过在重启后恢复隧道来确保隧道的持久性。
 
 
-When a request is received over an IPSec tunnel, the module provides
-		two variables, [ipsec](#pv_ipsec) and
-		[ipsec ue](#pv_ipsec_ue) to inspect details about it.
+当通过 IPSec 隧道收到请求时,模块提供两个变量 [ipsec](#pv_ipsec) 和
+		[ipsec ue](#pv_ipsec_ue) 来检查其详情。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
-- *tm* - used to keep track of IPSec
-				SA context between requests and replies.
-- *usrloc* - used to identify when
-				a successful registration/de-registration happens.
-- *proto_udp* - used for handling
-				IPSec UDP connections operations.
-- *proto_tcp* - used for handling
-				IPSec TCP connections operations.
+- *tm* - 用于跟踪请求和回复之间的 IPSec
+				SA 上下文。
+- *usrloc* - 用于识别
+				注册/注销何时成功发生。
+- *proto_udp* - 用于处理
+				IPSec UDP 连接操作。
+- *proto_tcp* - 用于处理
+				IPSec TCP 连接操作。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前,必须安装以下库或应用程序:
 
 
-- *libmnl* - Minimalistic Netlink Library
-				used to create IPSec SA using the XFRM kernel interface.
+- *libmnl* - 最小化 Netlink 库,
+				用于使用 XFRM 内核接口创建 IPSec SA。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### port (integer)
 
 
-Default IPSec port used when no prot is being specified in the
-			*socket* global parameter.
+当 *socket* 全局参数中未指定端口时使用的默认 IPSec 端口。
 
 
-*Default value is 5062.*
+*默认值为 5062。*
 
 
-```c title="Set port parameter"
+```c title="设置 port 参数"
 ...
 modparam("proto_ipsec", "port", 5100)
 ...
@@ -121,17 +99,15 @@ modparam("proto_ipsec", "port", 5100)
 #### min_spi (integer)
 
 
-This parameter represents the minimum value for the Security
-			Association's (SA) SPI parameter. In conjunction with the
-			*max_spi* setting, it defines the SPI
-			range *[min_spi, max_spi]* that must be
-			unique within the system.
+此参数表示安全关联(SA)SPI 参数的最小值。与
+			*max_spi* 设置结合,它定义 SPI
+			范围 *[min_spi, max_spi]*,该范围在系统内必须是唯一的。
 
 
-*Default value is 65536.*
+*默认值为 65536。*
 
 
-```c title="Set min_spi parameter"
+```c title="设置 min_spi 参数"
 ...
 modparam("proto_ipsec", "min_spi", 10000)
 ...
@@ -141,17 +117,15 @@ modparam("proto_ipsec", "min_spi", 10000)
 #### max_spi (integer)
 
 
-This parameter represents the maximum value for the Security
-			Association's (SA) SPI parameter. In conjunction with the
-			*min_spi* setting, it defines the SPI
-			range *[min_spi, max_spi]* that must be
-			unique within the system.
+此参数表示安全关联(SA)SPI 参数的最大值。与
+			*min_spi* 设置结合,它定义 SPI
+			范围 *[min_spi, max_spi]*,该范围在系统内必须是唯一的。
 
 
-*Default value is 262144.*
+*默认值为 262144。*
 
 
-```c title="Set max_spi parameter"
+```c title="设置 max_spi 参数"
 ...
 modparam("proto_ipsec", "max_spi", 20000)
 ...
@@ -161,22 +135,17 @@ modparam("proto_ipsec", "max_spi", 20000)
 #### temporary_timeout (integer)
 
 
-Sets the timeout (in seconds) a temporary security association
-			can be stored in memory until in is confirmed (or used) by the
-			remote endpoint.
+设置临时安全关联可以存储在内存中直到被远程端点确认(或使用)的超时时间(秒)。
 
 
-The timeout signifies the duration elapsed after sending the
-			Security Association's (SA) parameters in the 401 reply and
-			when the User Equipment (UE) transmits the initial message
-			over the new secure channel.
+超时表示在 401 回复中发送安全关联(SA)参数之后,以及用户设备(UE)通过新的安全通道传输初始消息之间经过的时间。
 
 
-*Default value is 30.*
+*默认值为 30。*
 
 
-```c title="Set temporary_timeout variable"
-param("proto_ipsec", "temporary_timeout", 10) # number of seconds
+```c title="设置 temporary_timeout 变量"
+param("proto_ipsec", "temporary_timeout", 10) # 秒数
 
 			
 ```
@@ -185,15 +154,13 @@ param("proto_ipsec", "temporary_timeout", 10) # number of seconds
 #### default_client_port (integer)
 
 
-Default port value to be used when we act as clients in the
-			IPSec communication.
+当我们在 IPSec 通信中充当客户端时使用的默认端口值。
 
 
-*Default value is not defined - a random socket is being used,
-			but needs to be different from the server socket.*
+*默认值为未定义 - 使用随机套接字,但需要与服务器套接字不同。*
 
 
-```c title="Set default_client_port parameter"
+```c title="设置 default_client_port 参数"
 ...
 modparam("proto_ipsec", "default_client_port", 5100)
 ...
@@ -203,15 +170,13 @@ modparam("proto_ipsec", "default_client_port", 5100)
 #### default_server_port (integer)
 
 
-Default port value to be used when we act as server in the
-			IPSec communication.
+当我们在 IPSec 通信中充当服务器时使用的默认端口值。
 
 
-*Default value is not defined - a random socket is being used,
-			but needs to be different from the client socket.*
+*默认值为未定义 - 使用随机套接字,但需要与客户端套接字不同。*
 
 
-```c title="Set default_server_port parameter"
+```c title="设置 default_server_port 参数"
 ...
 modparam("proto_ipsec", "default_server_port", 6100)
 ...
@@ -221,37 +186,36 @@ modparam("proto_ipsec", "default_server_port", 6100)
 #### allowed_algorithms (string)
 
 
-Whitelists the authentication and encryption algorithms
-			that can be used for IPSec.
+白名单允许用于 IPSec 的认证和加密算法。
 
 
-Its format is: *alg|ealg|alg=ealg*
+其格式为: *alg|ealg|alg=ealg*
 
 
-Multiple algorithms pairs can be specified separated by comma.
+多个算法对可用逗号分隔指定。
 
 
-Currently supported algorithms are:
+当前支持的算法:
 
 
-- Authentication algorithms:
-				
-					hmac-md5-96 - deprecated by TS 33.203 V13
-					hmac-sha-1-96 - not recommended by TS 33.203 V17
+- 认证算法:
+					
+					hmac-md5-96 - 被 TS 33.203 V13 弃用
+					hmac-sha-1-96 - 不推荐由 TS 33.203 V17
 					aes-gmac
-					null - must only be used with aes-gcm encryption
-- Encryption algorithms:
-				
-					des-ede3-cbc - not recommended
-					aes-cbc - not recommended by TS 33.203 V17
+					null - 必须仅与 aes-gcm 加密一起使用
+- 加密算法:
+					
+					des-ede3-cbc - 不推荐
+					aes-cbc - 不推荐由 TS 33.203 V17
 					aes-gcm
-					null - no encryption
+					null - 无加密
 
 
-*Default value is none - this means that all algorithms can be used.*
+*默认值为无 - 这意味着可以使用所有算法。*
 
 
-```c title="Set allowed_algorithms parameter"
+```c title="设置 allowed_algorithms 参数"
 ...
 modparam("proto_ipsec", "allowed_algorithms", "null")
 modparam("proto_ipsec", "allowed_algorithms", "hmac-sha-1-96=null")
@@ -263,68 +227,51 @@ modparam("proto_ipsec", "allowed_algorithms", "hmac-sha-1-96=null,aes-gmac=aes-g
 #### disable_deprecated_algorithms (integer)
 
 
-Indicates whether we should ignore deprecated algorithms,
-			as defined in TS 33.203 (3G Security: Access Security for
-			IP-based Services). At the moment, this disables the
-			following algorithms:
+指示我们是否应忽略已弃用的算法,
+			如 TS 33.203(3G 安全:基于 IP 服务的接入安全)所定义。目前,这禁用以下算法:
 
 
-- *hmac-md5-96* and *hmac-sha-1-96* authentication algorithms
-- *des-ede3-cbc* and *aes-cbc* encryption algorithms
+- *hmac-md5-96* 和 *hmac-sha-1-96* 认证算法
+- *des-ede3-cbc* 和 *aes-cbc* 加密算法
 
 
-*Default value is false - all algorithms can be used.*
+*默认值为 false - 可以使用所有算法。*
 
 
-```c title="Set disable_deprecated_algorithms parameter"
+```c title="设置 disable_deprecated_algorithms 参数"
 ...
 modparam("proto_ipsec", "disable_deprecated_algorithms", yes)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### ipsec_create([port_server], [port_client], [algos])
 
 
-Creates an IPSec SA/tunnel according to the
-			*Security-Client* header and the AKA information
-			received in the 401 reply.
+根据 *Security-Client* 头和 401 回复中收到的 AKA 信息创建 IPSec SA/隧道。
 
 
-This function should only be called on a 401 reply for a REGISTER message.
+此函数只应在 REGISTER 消息的 401 回复上调用。
 
 
-Upon successful creation of the IPSec tunnel, it builds the
-			*Security-Server* header and appends it to the reply.
+成功创建 IPSec 隧道后,它会构建 *Security-Server* 头并将其附加到回复中。
 
 
-Meaning of the parameters is as follows:
+参数含义如下:
 
 
-- *port_server (integer, optional)* - the server
-				port to be used in the IPSec communication. It should be an existing
-				IPSec port and is advertised in the
-				*Security-Server* header. If missing, the
-				[default client port](#param_default_client_port) is considered.
-- *port_client (integer, optional)* - the client
-				port to be used in the IPSec communication. It should be an existing
-				IPSec port and is advertised in the
-				*Security-Server* header. If missing, the
-				[default server port](#param_default_server_port) is considered.
-- *algos (string, optional)* - a list of
-				algorithms that should be used for creating this security association.
-				It has the same format as [allowed algorithms](#param_allowed_algorithms)
-				and overwrites its value when used. If missing, the
-				[allowed algorithms](#param_allowed_algorithms) is considered.
+- *port_server (integer, 可选)* - IPSec 通信中使用的服务器端口。它应该是一个现有的 IPSec 端口,并在 *Security-Server* 头中公布。如果缺失,则考虑 [default client port](#param_default_client_port)。
+- *port_client (integer, 可选)* - IPSec 通信中使用的客户端端口。它应该是一个现有的 IPSec 端口,并在 *Security-Server* 头中公布。如果缺失,则考虑 [default server port](#param_default_server_port)。
+- *algos (string, 可选)* - 用于创建此安全关联的算法列表。它具有与 [allowed algorithms](#param_allowed_algorithms) 相同的格式,使用时覆盖其值。如果缺失,则考虑 [allowed algorithms](#param_allowed_algorithms)。
 
 
-This function can be used from REPLY_ROUTE.
+此函数可用于 REPLY_ROUTE。
 
 
-```c title="ipsec_create() usage"
+```c title="ipsec_create() 使用示例"
 ...
 onreply_route[ipsec] {
 	if ($T_reply_code == 401)
@@ -334,41 +281,30 @@ onreply_route[ipsec] {
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $ipsec
 
 
-Populated for a request that is being received over
-				an IPSec tunnel, it contains information about the
-				local IPSec endpoint.
+对于通过 IPSec 隧道接收的请求填充,它包含有关本地 IPSec 端点的信息。
 
 
-The following fields can be retrieved:
+可以检索以下字段:
 
 
-- *ik* - integrity key
-					being used by the IPSec tunnel.
-- *ck* - confidentiality key
-					being used by the IPSec tunnel.
-- *alg* - authentication
-					algorithm being used.
-- *ealg* - encryption
-					algorithm being used.
-- *ip* - local IP bound
-					for this tunnel.
-- *spi-c* - local SPI
-					chosen for receiving messages through the client channel.
-- *spi-s* - local SPI
-					chosen for receiving messages through the server channel.
-- *port-c* - local port
-					chosen for communicating through the client channel.
-- *port-c* - local port
-					chosen for communicating through the server channel.
+- *ik* - IPSec 隧道使用的完整性密钥。
+- *ck* - IPSec 隧道使用的保密密钥。
+- *alg* - 使用的认证算法。
+- *ealg* - 使用的加密算法。
+- *ip* - 绑定到此隧道的本地 IP。
+- *spi-c* - 为通过客户端通道接收消息而选择的本地 SPI。
+- *spi-s* - 为通过服务器通道接收消息而选择的本地 SPI。
+- *port-c* - 为通过客户端通道通信而选择的本地端口。
+- *port-c* - 为通过服务器通道通信而选择的本地端口。
 
 
-```c title="$ipsec(field) usage"
+```c title="$ipsec(field) 使用示例"
 ...
 xlog("Using $ipsec(ip):$ipsec(port-c) and $ipsec(ip):$ipsec(port-s) socket\n");
 ...
@@ -378,41 +314,30 @@ xlog("Using $ipsec(ip):$ipsec(port-c) and $ipsec(ip):$ipsec(port-s) socket\n");
 #### $ipsec_ue
 
 
-Populated for a request that is being received over
-				an IPSec tunnel, it contains information about the
-				remote IPSec endpoint.
+对于通过 IPSec 隧道接收的请求填充,它包含有关远程 IPSec 端点的信息。
 
 
-The following fields can be retrieved:
+可以检索以下字段:
 
 
-- *ik* - integrity key
-					being used by the IPSec tunnel.
-- *ck* - confidentiality key
-					being used by the IPSec tunnel.
-- *alg* - authentication
-					algorithm being used.
-- *ealg* - encryption
-					algorithm being used.
-- *ip* - remote IP of
-					the UE that uses this tunnel.
-- *spi-c* - remote SPI
-					chosen for sending messages through the client channel.
-- *spi-s* - remote SPI
-					chosen for sending messages through the server channel.
-- *port-c* - remote port
-					chosen for communicating through the client channel.
-- *port-c* - remote port
-					chosen for communicating through the server channel.
+- *ik* - IPSec 隧道使用的完整性密钥。
+- *ck* - IPSec 隧道使用的保密密钥。
+- *alg* - 使用的认证算法。
+- *ealg* - 使用的加密算法。
+- *ip* - 使用此隧道的 UE 的远程 IP。
+- *spi-c* - 为通过客户端通道发送消息而选择的远程 SPI。
+- *spi-s* - 为通过服务器通道发送消息而选择的远程 SPI。
+- *port-c* - 为通过客户端通道通信而选择的远程端口。
+- *port-c* - 为通过服务器通道通信而选择的远程端口。
 
 
-```c title="$ipsec_ue(field) usage"
+```c title="$ipsec_ue(field) 使用示例"
 ...
 xlog("Using $ipsec_ue(ip):$ipsec_ue(port-c) and $ipsec_ue(ip):$ipsec_ue(port-s) socket\n");
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)采用 Creative Common License 4.0 授权

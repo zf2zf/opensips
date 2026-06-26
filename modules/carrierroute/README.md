@@ -1,121 +1,96 @@
 ---
-title: "carrierroute"
-description: "A module which provides routing, balancing and blacklisting capabilities."
+title: "运营商路由模块"
+description: "提供路由、负载均衡和黑名单功能的模块。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-A module which provides routing, balancing and blacklisting capabilities.
+提供路由、负载均衡和黑名单功能的模块。
 
 
-The module provides routing, balancing and blacklisting capabilities.
-		It reads routing entries from a database source or from a config file at OpenSIPS
-		startup. It can uses one routing tree (for one carrier), or if needed for every user
-		a different routing tree (unique for each carrier) for number prefix based routing.
-		It supports several route tree domains,	e.g. for failback routes or different routing
-		rules for VoIP and PSTN targets.
+该模块提供路由、负载均衡和黑名单功能。
+		它在 OpenSIPS 启动时从数据库源或配置文件读取路由条目。它可以使用一个路由树（为一个运营商），或者在需要时为每个用户使用不同的路由树（每个运营商唯一）进行基于号码前缀的路由。
+		它支持多个路由树域，例如用于故障转移路由或 VoIP 和 PSTN 目标的不同路由规则。
 
 
-Based on the tree, the module decides which number prefixes are forwarded to which
-		gateway. It can also distribute the traffic by ratio parameters. Furthermore, the
-		requests can be distributed by a hash funcion to predictable destinations. The hash
-		source is configurable, two different hash functions are available.
+基于路由树，该模块决定哪些号码前缀被转发到哪些网关。它还可以通过比率参数分发流量。此外，可以通过哈希函数将请求分发到可预测的目标。哈希源是可配置的，有两种不同的哈希函数可用。
 
 
-This modules scales up to more than a few million users, and is able to handle
-		more than several hundred thousand routing table entries. It should be able to handle
-		more, but this is not that much tested at the moment. In load balancing scenarios the
-		usage of the config file mode is recommended, to avoid the additional complexity that
-		the database driven routing creates.
+此模块可扩展到数百万用户，并且能够处理数十万条路由表条目。它应该能够处理更多，但目前尚未经过充分测试。在负载均衡场景中，建议使用配置文件模式，以避免数据库驱动路由带来的额外复杂性。
 
 
-Routing tables can be reloaded and edited (in config file mode) with the MI 
-		interface, the config file is updated according the changes. This is not 
-		implemented for the db interface, because its easier to do the changes 
-		directly on the db. But the reload and dump functions works of course here 
-		too.
+路由表可以通过 MI 接口重新加载和编辑（在配置文件模式下），配置文件将根据更改进行更新。数据库接口未实现此功能，因为直接在数据库上进行更改更容易。但重新加载和转储功能当然在这里也可以使用。
 
 
-Some module functionality is not fully available in the config file mode, as
-		it is not possible to specify all information that can be stored in the database
-		tables in the config file. Further information about these limitations is given
-		in later sections. For user based routing or LCR you should use the database mode.
+在配置文件模式下，某些模块功能不可完全使用，因为在配置文件中无法指定数据库表中可以存储的所有信息。这些限制的更多信息将在后面的章节中提供。对于基于用户的路由或 LCR，您应该使用数据库模式。
 
 
-Basically this module could be used as an replacement for the lcr and the 
-		dispatcher module, if you have certain performance, flexibility and/or 
-		integration requirements that these modules don't handle properly. But for 
-		small installations it probably make more sense to use the lcr and dispatcher
-		module.
+基本上，此模块可以替代 lcr 和调度器模块，如果您有这些模块无法妥善处理的特定性能、灵活性和/或集成要求。但对于小型安装，使用 lcr 和调度器模块可能更有意义。
 
 
-If you want to use this module in failure routes, then you need to call
-		"append_branch()" after rewriting the request URI in order to
-		relay the message to the new target. Its also supportes the usage of database
-		derived failure routing descisions with the carrierfailureroute table.
+如果您想在故障路由中使用此模块，则需要在重写请求 URI 后调用"append_branch()"以将消息中继到新目标。它还支持使用 carrierfailureroute 表进行数据库派生的故障路由决策。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following module must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *a database module*, when a database is used as configuration data source.
-				Only SQL based databases are supported, as this module needs the capability to
-				issue raw queries. Its not possible to use the dbtext or db_berkeley module at the moment.
-- The *tm module*, when you want to use the $T_reply_code pseudo-variable in
-				the "cr_next_domain" function.
+- *数据库模块*，当使用数据库作为配置数据源时。
+				仅支持基于 SQL 的数据库，因为此模块需要能够
+				发出原始查询。目前无法使用 dbtext 或 db_berkeley 模块。
+- 当您想在"cr_next_domain"函数中使用 $T_reply_code 伪变量时的 *tm 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+		加载了此模块的 OpenSIPS 之前安装：
 
 
-- *libconfuse*, a configuration file parser library.
-				( http://www.nongnu.org/confuse/ )
+- *libconfuse*，一个配置文件解析器库。
+				(http://www.nongnu.org/confuse/)
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-Url to the database containing the routing data.
+包含路由数据的数据库的 URL。
 
 
-*Default value is "mysql://opensipsro:opensipsro@localhost/opensips".*
+*默认值为 "mysql://opensipsro:opensipsro@localhost/opensips"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("carrierroute", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
-		
+			
 ```
 
 
 #### db_table (string)
 
 
-Name of the table where the routing data is stored.
+存储路由数据的表名。
 
 
-*Default value is "carrierroute".*
+*默认值为 "carrierroute"。*
 
 
-```c title="Set db_table parameter"
+```c title="设置 db_table 参数"
 ...
 modparam("carrierroute", "db_table", "carrierroute")
 ...
@@ -126,13 +101,13 @@ modparam("carrierroute", "db_table", "carrierroute")
 #### id_column (string)
 
 
-Name of the column containing the id identifier.
+包含 ID 标识符的列名。
 
 
-*Default value is "id".*
+*默认值为 "id"。*
 
 
-```c title="Set id_column parameter"
+```c title="设置 id_column 参数"
 ...
 modparam("carrierroute", "id_column", "id")
 ...
@@ -143,13 +118,13 @@ modparam("carrierroute", "id_column", "id")
 #### carrier_column (string)
 
 
-Name of the column containing the  carrier id.
+包含运营商 ID 的列名。
 
 
-*Default value is "carrier".*
+*默认值为 "carrier"。*
 
 
-```c title="Set carrier_column parameter"
+```c title="设置 carrier_column 参数"
 ...
 modparam("carrierroute", "carrier_column", "carrier")
 ...
@@ -160,18 +135,16 @@ modparam("carrierroute", "carrier_column", "carrier")
 #### scan_prefix_column (string)
 
 
-Name of column containing the scan prefixes. Scan prefixes define
-		    the matching portion of a phone number, e.g. when we have the scan
-		    prefixes 49721 and 49, the called number is 49721913740, it matches
-		    49721, because the longest match is taken. If no prefix matches,
-			the number is not routed. To prevent this, an empty prefix value
-			of "" could be added.
+包含扫描前缀的列名。扫描前缀定义
+		    电话号码的匹配部分，例如当扫描前缀为 49721 和 49，被叫号码为 49721913740 时，它匹配
+		    49721，因为采用最长匹配。如果没有前缀匹配，
+			则不对该号码进行路由。为防止这种情况，可以添加空前缀值""。
 
 
-*Default value is "scan_prefix".*
+*默认值为 "scan_prefix"。*
 
 
-```c title="Set scan_prefix_column parameter"
+```c title="设置 scan_prefix_column 参数"
 ...
 modparam("carrierroute", "scan_prefix_column", "scan_prefix")
 ...
@@ -182,15 +155,14 @@ modparam("carrierroute", "scan_prefix_column", "scan_prefix")
 #### domain_column (string)
 
 
-Name of column containing the rule domain. You can define several routing
-		    domains to have different routing rules. Maybe you use domain 0 for normal
-		    routing and domain 1 if domain 0 failed.
+包含规则域的列名。您可以定义多个路由
+		    域以使用不同的路由规则。也许您将域 0 用于正常路由，域 1 用于域 0 失败时。
 
 
-*Default value is "domain".*
+*默认值为 "domain"。*
 
 
-```c title="Set domain_column parameter"
+```c title="设置 domain_column 参数"
 ...
 modparam("carrierroute", "domain_column", "domain")
 ...
@@ -201,13 +173,13 @@ modparam("carrierroute", "domain_column", "domain")
 #### flags_column (string)
 
 
-Name of the column containing the flags.
+包含标志的列名。
 
 
-*Default value is "flags".*
+*默认值为 "flags"。*
 
 
-```c title="Set flags_column parameter"
+```c title="设置 flags_column 参数"
 ...
 modparam("carrierroute", "flags_column", "flags")
 ...
@@ -218,13 +190,13 @@ modparam("carrierroute", "flags_column", "flags")
 #### mask_column (string)
 
 
-Name of the column containing the flags mask.
+包含标志掩码的列名。
 
 
-*Default value is "mask".*
+*默认值为 "mask"。*
 
 
-```c title="Set mask_column parameter"
+```c title="设置 mask_column 参数"
 ...
 modparam("carrierroute", "mask_column", "mask")
 ...
@@ -235,24 +207,17 @@ modparam("carrierroute", "mask_column", "mask")
 #### prob_column (string)
 
 
-Name of column containing probability. The probability value is used to 
-		    distribute the traffic between several gateways. Let's say 70 % of the 
-		    traffic shall be routed to gateway A, the other 30 % shall be routed to 
-		    gateway B, we define a rule for gateway A with a prob value of 0.7 and a 
-		    rule for gateway B with a prob value of 0.3.
+包含概率的列名。概率值用于在多个网关之间分配流量。假设 70% 的流量将被路由到网关 A，其余 30% 将被路由到网关 B，我们为网关 A 定义 prob 值为 0.7 的规则，网关 B 定义 prob 值为 0.3 的规则。
 
 
-If all probabilities for a given prefix, tree and domain don't add to 100%,
-			the prefix values will be adjusted according the given prob values. E.g. if
-			three hosts with prob values of 0.5, 0.5 and 0.4 are defined, the resulting
-			probabilities are 35.714, 35.714 and 28.571%. But its better to choose meaningful
-			values in the first place because of clarity.
+如果给定前缀、树和域的所有概率加起来不到 100%，
+			则前缀值将根据给定的 prob 值进行调整。例如，如果定义了三个 prob 值为 0.5、0.5 和 0.4 的主机，结果概率为 35.714、35.714 和 28.571%。但最好从一开始就选择有意义的值以保持清晰。
 
 
-*Default value is "prob".*
+*默认值为 "prob"。*
 
 
-```c title="Set prob_column parameter"
+```c title="设置 prob_column 参数"
 ...
 modparam("carrierroute", "prob_column", "prob")
 ...
@@ -263,15 +228,13 @@ modparam("carrierroute", "prob_column", "prob")
 #### rewrite_host_column (string)
 
 
-Name of column containing rewrite host value. An empty field represents a
-		    blacklist entry, anything else is put as domain part into the Request URI
-		    of the SIP message.
+包含重写主机值的列名。空字段表示黑名单条目，其他任何内容都作为 SIP 消息请求 URI 的域部分放入。
 
 
-*Default value is "rewrite_host".*
+*默认值为 "rewrite_host"。*
 
 
-```c title="Set rewrite_host_column parameter"
+```c title="设置 rewrite_host_column 参数"
 ...
 modparam("carrierroute", "rewrite_host_column", "rewrite_host")
 ...
@@ -282,14 +245,13 @@ modparam("carrierroute", "rewrite_host_column", "rewrite_host")
 #### strip_column (string)
 
 
-Name of the column containing the number of digits to be stripped of the
-		    userpart of an URI before prepending rewrite_prefix.
+包含在 URI 的用户部分 prepend rewrite_prefix 之前要剥离的位数的列名。
 
 
-*Default value is "strip".*
+*默认值为 "strip"。*
 
 
-```c title="Set strip_column parameter"
+```c title="设置 strip_column 参数"
 ...
 modparam("carrierroute", "strip_column", "strip")
 ...
@@ -300,15 +262,14 @@ modparam("carrierroute", "strip_column", "strip")
 #### comment_column (string)
 
 
-Name of the column containing an optional comment (useful in large routing tables)
-		    The comment is also displayed by the MI command
-		    "carrierroute:dump_routes".
+包含可选注释的列名（在大型路由表中很有用）。
+		    注释也由 MI 命令"carrierroute:dump_routes"显示。
 
 
-*Default value is "description".*
+*默认值为 "description"。*
 
 
-```c title="Set comment_column parameter"
+```c title="设置 comment_column 参数"
 ...
 modparam("carrierroute", "comment_column", "description")
 ...
@@ -319,14 +280,13 @@ modparam("carrierroute", "comment_column", "description")
 #### carrier_table (string)
 
 
-The name of the table containing the existing carriers, consisting
-			of the ids and corresponding names.
+包含现有运营商的表名，由 ID 和相应名称组成。
 
 
-*Default value is "route_tree".*
+*默认值为 "route_tree"。*
 
 
-```c title="Set carrier_table parameter"
+```c title="设置 carrier_table 参数"
 ...
 modparam("carrierroute", "carrier_table", "route_tree")
 ...
@@ -337,14 +297,13 @@ modparam("carrierroute", "carrier_table", "route_tree")
 #### rewrite_prefix_column (string)
 
 
-Name of column containing rewrite prefixes. Here you can define a rewrite
-		    prefix for the localpart of the SIP URI.
+包含重写前缀的列名。这里您可以为 SIP URI 的本地部分定义重写前缀。
 
 
-*Default value is "rewrite_prefix".*
+*默认值为 "rewrite_prefix"。*
 
 
-```c title="Set rewrite_prefix_column parameter"
+```c title="设置 rewrite_prefix_column 参数"
 ...
 modparam("carrierroute", "rewrite_prefix_column", "rewrite_prefix")
 ...
@@ -355,14 +314,13 @@ modparam("carrierroute", "rewrite_prefix_column", "rewrite_prefix")
 #### rewrite_suffix_column (string)
 
 
-Name of column containing rewrite suffixes. Here you can define a rewrite
-		    suffix for the localpart of the SIP URI.
+包含重写后缀的列名。这里您可以为 SIP URI 的本地部分定义重写后缀。
 
 
-*Default value is "rewrite_suffix".*
+*默认值为 "rewrite_suffix"。*
 
 
-```c title="Set rewrite_suffix_column parameter"
+```c title="设置 rewrite_suffix_column 参数"
 			    ...
 modparam("carrierroute", "rewrite_suffix_column", "rewrite_suffix")
 			    ...
@@ -373,13 +331,13 @@ modparam("carrierroute", "rewrite_suffix_column", "rewrite_suffix")
 #### carrier_id_col (string)
 
 
-The name of the column in the carrier table containing the carrier id.
+运营商表中包含运营商 ID 的列名。
 
 
-*Default value is "id".*
+*默认值为 "id"。*
 
 
-```c title="Set id_col parameter"
+```c title="设置 id_col 参数"
 ...
 modparam("carrierroute", "carrier_id_col", "id")
 ...
@@ -390,13 +348,13 @@ modparam("carrierroute", "carrier_id_col", "id")
 #### carrier_name_col (string)
 
 
-The name of the column in the carrier table containing the carrier name.
+运营商表中包含运营商名称的列名。
 
 
-*Default value is "carrier".*
+*默认值为 "carrier"。*
 
 
-```c title="Set carrier_name_col parameter"
+```c title="设置 carrier_name_col 参数"
 ...
 modparam("carrierroute", "carrier_name_col", "carrier")
 ...
@@ -407,13 +365,13 @@ modparam("carrierroute", "carrier_name_col", "carrier")
 #### subscriber_table (string)
 
 
-The name of the table containing the subscribers
+包含订户的表名。
 
 
-*Default value is "subscriber".*
+*默认值为 "subscriber"。*
 
 
-```c title="Set subscriber_table parameter"
+```c title="设置 subscriber_table 参数"
 ...
 modparam("carrierroute", "subscriber_table", "subscriber")
 ...
@@ -424,13 +382,13 @@ modparam("carrierroute", "subscriber_table", "subscriber")
 #### subscriber_user_col (string)
 
 
-The name of the column in the subscriber table containing the usernames.
+订户表中包含用户名的列名。
 
 
-*Default value is "username".*
+*默认值为 "username"。*
 
 
-```c title="Set subscriber_user_col parameter"
+```c title="设置 subscriber_user_col 参数"
 ...
 modparam("carrierroute", "subscriber_user_col", "username")
 ...
@@ -441,14 +399,12 @@ modparam("carrierroute", "subscriber_user_col", "username")
 #### subscriber_domain_col (string)
 
 
-The name of the column in the subscriber table containing the domain of 
-		    the subscriber.
+订户表中包含订户域的列名。
+		    
+*默认值为 "domain"。*
 
 
-*Default value is "domain".*
-
-
-```c title="Set subscriber_domain_col parameter"
+```c title="设置 subscriber_domain_col 参数"
 ...
 modparam("carrierroute", "subscriber_domain_col", "domain")
 ...
@@ -459,14 +415,13 @@ modparam("carrierroute", "subscriber_domain_col", "domain")
 #### subscriber_carrier_col (string)
 
 
-The name of the column in the subscriber table containing the carrier id
-		    of the subscriber.
+订户表中包含订户首选运营商 ID 的列名。
 
 
-*Default value is "cr_preferred_carrier".*
+*默认值为 "cr_preferred_carrier"。*
 
 
-```c title="Set subscriber_carrier_col parameter"
+```c title="设置 subscriber_carrier_col 参数"
 ...
 modparam("carrierroute", "subscriber_carrier_col", "cr_preferred_carrier")
 ...
@@ -477,14 +432,13 @@ modparam("carrierroute", "subscriber_carrier_col", "cr_preferred_carrier")
 #### config_source (string)
 
 
-Specifies whether the module loads its config data from a file or from a
-		    database. Possible values are file or db.
+指定模块是从文件还是从数据库加载其配置数据。可能的值是 file 或 db。
 
 
-*Default value is "file".*
+*默认值为 "file"。*
 
 
-```c title="Set config_source parameter"
+```c title="设置 config_source 参数"
 ...
 modparam("carrierroute", "config_source", "file")
 ...
@@ -495,13 +449,13 @@ modparam("carrierroute", "config_source", "file")
 #### config_file (string)
 
 
-Specifies the path to the config file.
+指定配置文件的路径。
 
 
-*Default value is "/etc/opensips/carrierroute.conf".*
+*默认值为 "/etc/opensips/carrierroute.conf"。*
 
 
-```c title="Set config_file parameter"
+```c title="设置 config_file 参数"
 ...
 modparam("carrierroute", "config_file", "/etc/opensips/carrierroute.conf")
 ...
@@ -512,14 +466,13 @@ modparam("carrierroute", "config_file", "/etc/opensips/carrierroute.conf")
 #### default_tree (string)
 
 
-The name of the carrier tree used per default (if the current
-		    subscriber has no preferred tree)
+默认使用的运营商树名称（如果当前订户没有首选树）。
 
 
-*Default value is "default".*
+*默认值为 "default"。*
 
 
-```c title="Set default_tree parameter"
+```c title="设置 default_tree 参数"
 ...
 modparam("carrierroute", "default_tree", "default")
 ...
@@ -530,14 +483,13 @@ modparam("carrierroute", "default_tree", "default")
 #### use_domain (boolean)
 
 
-When using tree lookup per user, this parameter specifies whether
-		    to use the domain part for user matching or not.
+当使用按用户的树查找时，此参数指定是否使用域部分进行用户匹配。
 
 
-*Default value is *true*.*
+*默认值为 *true*。*
 
 
-```c title="Set use_domain parameter"
+```c title="设置 use_domain 参数"
 ...
 modparam("carrierroute", "use_domain", true)
 ...
@@ -548,16 +500,13 @@ modparam("carrierroute", "use_domain", true)
 #### fallback_default (int)
 
 
-This parameter defines the behaviour when using user-based tree
-		    lookup. If the user has a non-existing tree set and fallback_default
-		    is set to 1, the default tree is used. Otherwise, cr_user_rewrite_uri
-		    returns an error.
+此参数定义使用基于用户的树查找时的行为。如果用户设置了不存在的树且 fallback_default 设置为 1，则使用默认树。否则，cr_user_rewrite_uri 返回错误。
 
 
-*Default value is "1".*
+*默认值为 "1"。*
 
 
-```c title="Set fallback_default parameter"
+```c title="设置 fallback_default 参数"
 ...
 modparam("carrierroute", "fallback_default", 1)
 ...
@@ -568,13 +517,13 @@ modparam("carrierroute", "fallback_default", 1)
 #### db_failure_table (string)
 
 
-Name of the table where the failure routing data is stored.
+存储故障路由数据的表名。
 
 
-*Default value is "carrierfailureroute".*
+*默认值为 "carrierfailureroute"。*
 
 
-```c title="Set db_failure_table parameter"
+```c title="设置 db_failure_table 参数"
 ...
 modparam("carrierroute", "db_failure_table", "carrierfailureroute")
 ...
@@ -585,13 +534,13 @@ modparam("carrierroute", "db_failure_table", "carrierfailureroute")
 #### failure_id_column (string)
 
 
-Name of the column containing the id identifier.
+包含 ID 标识符的列名。
 
 
-*Default value is "id".*
+*默认值为 "id"。*
 
 
-```c title="Set failure_id_column parameter"
+```c title="设置 failure_id_column 参数"
 ...
 modparam("carrierroute", "failure_id_column", "id")
 ...
@@ -602,13 +551,13 @@ modparam("carrierroute", "failure_id_column", "id")
 #### failure_carrier_column (string)
 
 
-Name of the column containing the carrier id.
+包含运营商 ID 的列名。
 
 
-*Default value is "carrier".*
+*默认值为 "carrier"。*
 
 
-```c title="Set failure_carrier_column parameter"
+```c title="设置 failure_carrier_column 参数"
 ...
 modparam("carrierroute", "failure_carrier_column", "carrier")
 ...
@@ -619,18 +568,15 @@ modparam("carrierroute", "failure_carrier_column", "carrier")
 #### failure_scan_prefix_column (string)
 
 
-Name of column containing the scan prefixes. Scan prexies
-        define the matching portion of a phone number, e.g. we have the
-        scan prefixes 49721 and 49, the called number is 49721913740,
-        it matches 49721, because the longest match is taken. If no
-        prefix matches, the number is not failure routed. To prevent
-        this, an empty prefix value of "" could be added.
+包含扫描前缀的列名。扫描前缀定义
+        电话号码的匹配部分，例如当扫描前缀为 49721 和 49，被叫号码为 49721913740 时，它匹配
+        49721，因为采用最长匹配。如果没有前缀匹配，则不对该号码进行故障路由。为防止这种情况，可以添加空前缀值""。
 
 
-*Default value is "scan_prefix".*
+*默认值为 "scan_prefix"。*
 
 
-```c title="Set failure_scan_prefix_column parameter"
+```c title="设置 failure_scan_prefix_column 参数"
 ...
 modparam("carrierroute", "failure_scan_prefix_column", "scan_prefix")
 ...
@@ -641,16 +587,14 @@ modparam("carrierroute", "failure_scan_prefix_column", "scan_prefix")
 #### failure_domain_column (string)
 
 
-Name of column containing the rule domain. You can define
-        several routing domains to have different routing rules. Maybe
-        you use domain 0 for normal routing and domain 1 if domain 0
-        failed.
+包含规则域的列名。您可以定义
+        多个路由域以使用不同的路由规则。也许您将域 0 用于正常路由，域 1 用于域 0 失败时。
 
 
-*Default value is "domain".*
+*默认值为 "domain"。*
 
 
-```c title="Set failure_domain_column parameter"
+```c title="设置 failure_domain_column 参数"
 ...
 modparam("carrierroute", "failure_domain_column", "domain")
 ...
@@ -661,14 +605,13 @@ modparam("carrierroute", "failure_domain_column", "domain")
 #### failure_host_name_column (string)
 
 
-Name of the column containing the host name of the last routing
-        destination.
+包含上次路由目标主机名的列名。
 
 
-*Default value is "host_name".*
+*默认值为 "host_name"。*
 
 
-```c title="Set failure_host_name_column parameter"
+```c title="设置 failure_host_name_column 参数"
 ...
 modparam("carrierroute", "failure_host_name_column", "host_name")
 ...
@@ -679,13 +622,13 @@ modparam("carrierroute", "failure_host_name_column", "host_name")
 #### failure_reply_code_column (string)
 
 
-Name of the column containing the reply code.
+包含回复代码的列名。
 
 
-*Default value is "reply_code".*
+*默认值为 "reply_code"。*
 
 
-```c title="Set failure_reply_code_column parameter"
+```c title="设置 failure_reply_code_column 参数"
 ...
 modparam("carrierroute", "failure_reply_code_column", "reply_code")
 ...
@@ -696,13 +639,13 @@ modparam("carrierroute", "failure_reply_code_column", "reply_code")
 #### failure_flags_column (string)
 
 
-Name of the column containing the flags.
+包含标志的列名。
 
 
-*Default value is "flags".*
+*默认值为 "flags"。*
 
 
-```c title="Set failure_flags_column parameter"
+```c title="设置 failure_flags_column 参数"
 ...
 modparam("carrierroute", "failure_flags_column", "flags")
 ...
@@ -713,13 +656,13 @@ modparam("carrierroute", "failure_flags_column", "flags")
 #### failure_mask_column (string)
 
 
-Name of the column containing the flags mask.
+包含标志掩码的列名。
 
 
-*Default value is "mask".*
+*默认值为 "mask"。*
 
 
-```c title="Set failure_mask_column parameter"
+```c title="设置 failure_mask_column 参数"
 ...
 modparam("carrierroute", "failure_mask_column", "mask")
 ...
@@ -730,13 +673,13 @@ modparam("carrierroute", "failure_mask_column", "mask")
 #### failure_next_domain_column (string)
 
 
-Name of the column containing the next routing domain.
+包含下一个路由域的列名。
 
 
-*Default value is "next_domain".*
+*默认值为 "next_domain"。*
 
 
-```c title="Set failure_next_domain_column parameter"
+```c title="设置 failure_next_domain_column 参数"
 ...
 modparam("carrierroute", "failure_next_domain_column", "next_domain")
 ...
@@ -747,13 +690,13 @@ modparam("carrierroute", "failure_next_domain_column", "next_domain")
 #### failure_comment_column (string)
 
 
-Name of the column containing an optional comment.
+包含可选注释的列名。
 
 
-*Default value is "description".*
+*默认值为 "description"。*
 
 
-```c title="Set failure_comment_column parameter"
+```c title="设置 failure_comment_column 参数"
 ...
 modparam("carrierroute", "failure_comment_column", "description")
 ...
@@ -761,12 +704,10 @@ modparam("carrierroute", "failure_comment_column", "description")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-Previous versions of carrierroute had some more function. All the
-    old semantics can be achieved by using the few new functions
-    like this:
+carrierroute 的先前版本有一些更多的函数。所有旧语义都可以通过使用几个新函数来实现，如下所示：
 
 
 ```c
@@ -801,338 +742,266 @@ cr_tree_rewrite_uri(tree, domain)
 #### cr_user_carrier(user, domain, dst_avp)
 
 
-This function loads the carrier and stores it in an AVP.
-      It cannot be used in the config file mode, as it needs a mapping of the
-	  given user to a certain carrier. The is derived from a database entry
-	  belonging to the user parameter. This mapping must be available in the
-	  table that is specified in the "subscriber_table" variable.
-	  This data is not cached in memory, that means for every execution of this
-	  function a database query will be done.
+此函数加载运营商并将其存储在 AVP 中。它不能用于配置文件模式，因为需要一个从给定用户到特定运营商的映射。这是从属于用户参数的数据库条目派生的。此映射必须存在于"subscriber_table"变量指定的表中。此数据不会缓存在内存中，这意味着每次执行此函数都会进行数据库查询。
 
 
-Parameters:
+参数：
 
 
-- *user (string)* - Name of the user for the
-			carrier tree lookup
-- *domain (string)* - Name of the routing
-				domain to be used
-- *dst_avp (var)* - Name of an AVP where to
-				  store the carrier id
+- *user (string)* - 用于
+			运营商树查找的用户名
+- *domain (string)* - 要使用的路由域名称
+- *dst_avp (var)* - 用于存储运营商 ID 的 AVP 名称
 
 
 #### cr_route(carrier, domain, prefix_matching, rewrite_user, hash_source, [dst_avp])
 
 
-This function searches for the longest match for the user given
-        in prefix_matching at the given domain in the given carrier tree.
-        The Request URI is rewritten using rewrite_user and the given
-        hash source and algorithm. Returns -1 if there is no data found
-        or an empty rewrite host on the longest match is found. Otherwise
-				the rewritten host is stored in the given AVP (if obmitted, the
-				host is not stored in an AVP).
-        This function is only usable with rewrite_user and prefix_matching
-        containing a valid numerical only string. It uses the standard crc32 algorithm
-		to calculate the hash values.
+此函数在给定运营商树的给定域中搜索 prefix_matching 中给定用户的最长匹配。使用 rewrite_user 和给定的哈希源和算法重写请求 URI。如果未找到数据或找到最长匹配中的空重写主机，则返回 -1。否则，重写的主机存储在给定的 AVP 中（如果省略，则不存储在 AVP 中）。此函数仅适用于包含仅数字字符串的 rewrite_user 和 prefix_matching。它使用标准 crc32 算法计算哈希值。
 
 
-Parameters:
+参数：
 
 
-- *carrier (string)* - The routing tree to
-				be used
-- *domain (string)* - Name of the routing
-				domain to be used
-- *prefix_matching (string)* - User name
-				to be used for prefix matching in the routing tree
-- *rewrite_user (string)* - The user name
-				to be used for applying the rewriting rule.  Usually, this is
-				the user part of the request URI
-- *hash_source (string)* - The hash values
-				of the destination set must be a contiguous range starting at 1,
-				limited by the configuration parameter max_targets. Possible
-				values for hash_source are: call_id, from_uri, from_user, to_uri
-				and to_user.
-- *dst_avp (var, optional)* - Optional AVP
-				where to store the rewritten host
+- *carrier (string)* - 要使用的路由树
+- *domain (string)* - 要使用的路由域名称
+- *prefix_matching (string)* - 在路由树中用于前缀匹配的用户名
+- *rewrite_user (string)* - 要用于应用重写规则的用户名。通常，这是请求 URI 的用户部分
+- *hash_source (string)* - 目标集的哈希值必须是连续范围，从 1 开始，由配置参数 max_targets 限制。hash_source 的可能值为：call_id、from_uri、from_user、to_uri 和 to_user。
+- *dst_avp (var, optional)* - 可选的 AVP，用于存储重写的主机
 
 
 #### cr_prime_route(carrier, domain, prefix_matching, rewrite_user, hash_source, [dst_avp])
 
 
-This function searches for the longest match for the user given
-        in prefix_matching at the given domain in the given carrier tree.
-        The Request URI is rewritten using rewrite_user and the given
-        hash source and algorithm. Returns -1 if there is no data found
-        or an empty rewrite host on the longest match is found. Otherwise
-				the rewritten host is stored in the given AVP (if obmitted, the
-				host is not stored in an AVP).
-        This function is only usable with rewrite_user and prefix_matching
-        containing a valid numerical only string. It uses the prime hash algorithm
-		to calculate the hash values.
+此函数在给定运营商树的给定域中搜索 prefix_matching 中给定用户的最长匹配。使用 rewrite_user 和给定的哈希源和算法重写请求 URI。如果未找到数据或找到最长匹配中的空重写主机，则返回 -1。否则，重写的主机存储在给定的 AVP 中（如果省略，则不存储在 AVP 中）。此函数仅适用于包含仅数字字符串的 rewrite_user 和 prefix_matching。它使用素数哈希算法计算哈希值。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *carrier (string)* - The routing tree to
-				be used
-- *domain (string)* - Name of the routing
-				domain to be used
-- *prefix_matching (string)* - User name
-				to be used for prefix matching in the routing tree
-- *rewrite_user (string)* - The user name
-				to be used for applying the rewriting rule.  Usually, this is
-				the user part of the request URI
-- *hash_source (string)* - The hash values
-				of the destination set must
-            be a contiguous range starting at 1, limited by the
-            configuration parameter max_targets. Possible values for
-            hash_source are: call_id, from_uri, from_user, to_uri
-            and to_user.
-- *dst_avp (var, optional)* - Optional AVP
-				where to store the rewritten host
+- *carrier (string)* - 要使用的路由树
+- *domain (string)* - 要使用的路由域名称
+- *prefix_matching (string)* - 在路由树中用于前缀匹配的用户名
+- *rewrite_user (string)* - 要用于应用重写规则的用户名。通常，这是请求 URI 的用户部分
+- *hash_source (string)* - 目标集的哈希值必须
+            是连续范围，从 1 开始，由
+            配置参数 max_targets 限制。hash_source 的可能值为：call_id、from_uri、from_user、to_uri
+            和 to_user。
+- *dst_avp (var, optional)* - 可选的 AVP，用于存储重写的主机
 
 
 #### cr_next_domain(carrier, domain, prefix_matching, host, reply_code, dst_avp)
 
 
-This function searches for the longest match for the user given
-        in prefix_matching at the given domain in the given carrier
-        failure tree. It tries to find a next domain matching the given
-        host, reply_code and the message flags. The matching is done in this order:
-        host, reply_code and then flags. The more wildcards in reply_code
-        and the more bits used in flags, the lower the priority.
-        Returns -1 if there is no data found or an empty next_domain on
-        the longest match is found. Otherwise the next domain is stored
-        in the given AVP.
-        This function is only usable with prefix_matching containing a
-        valid numerical only string.
+此函数在给定运营商故障树的给定域中搜索 prefix_matching 中给定用户的最长匹配。它尝试找到与给定主机、reply_code 和消息标志匹配的下一个域。匹配按以下顺序进行：主机、reply_code，然后是标志。reply_code 中通配符越多，标志中使用的位数越多，优先级越低。如果未找到数据或找到最长匹配中的空 next_domain，则返回 -1。否则，下一个域存储在给定的 AVP 中。此函数仅适用于包含仅数字字符串的 prefix_matching。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *carrier (string)* - The routing tree to be used
-            any pseudo-variable could be used as input.
-- *domain (string)* - Name of the routing domain to be used
-- *prefix_matching (string)* - User name to be used for prefix matching
-            in the routing tree
-- *host (string)* - The host name to be used for failure route rule
-            matching. Usually, this is the last tried routing destination
-            stored in an avp by cr_route
-- *reply_code (string)* - The reply code to be used for failure route rule
-            matching
-- *dst_avp (var)* - AVP where to store the next routing domain.
+- *carrier (string)* - 要使用的路由树，任何伪变量都可以用作输入。
+- *domain (string)* - 要使用的路由域名称
+- *prefix_matching (string)* - 在路由树中用于前缀匹配的用户名
+- *host (string)* - 用于故障路由规则匹配的主机名。通常，这是存储在由 cr_route 填充的 avp 中的上次尝试的路由目标
+- *reply_code (string)* - 用于故障路由规则匹配的回复代码
+- *dst_avp (var)* - 用于存储下一个路由域的 AVP。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
-All commands understand the "-?" parameter to print a short help message.
-		The options have to be quoted as one string to be passed to MI interface.
-		Each option except host and new host can be wildcarded by * (but only * and not things
-		like "-d prox*").
+所有命令都理解"-?"参数以打印简短的帮助消息。
+		选项必须作为字符串引用才能传递到 MI 接口。
+		除主机和新主机外的每个选项都可以用 * 进行通配符（但只能是 * 而不是类似"-d prox*"的内容）。
 
 
 #### carrierroute:reload_routes
 
 
-Replaces obsolete MI command: *cr_reload_routes*.
+替换过时的 MI 命令：*cr_reload_routes*。
 
 
-This command reloads the routing data from the data source.
+此命令从数据源重新加载路由数据。
 
 
-Important: When new domains have been added, a restart of the server must be
-		done, because the mapping of the ids used in the config script cannot be
-		updated at runtime at the moment. So a reload could result in a wrong routing
-		behaviour, because the ids used in the script could differ from the one used
-		internally from the server. Modifying of already existing domains is no problem.
+重要提示：当添加新域时，必须重启服务器，因为配置脚本中使用的 ID 映射目前无法在运行时更新。因此，重新加载可能导致错误的路由行为，因为脚本中使用的 ID 可能与服务器内部使用的 ID 不同。修改已存在的域没有问题。
 
 
 #### carrierroute:dump_routes
 
 
-Replaces obsolete MI command: *cr_dump_routes*.
+替换过时的 MI 命令：*cr_dump_routes*。
 
 
-This command prints the route rules on the command line.
+此命令在命令行上打印路由规则。
 
 
 #### carrierroute:replace_host
 
 
-Replaces obsolete MI command: *cr_replace_host*.
+替换过时的 MI 命令：*cr_replace_host*。
 
 
-This command can replace the rewrite_host of a route rule, it is only
-		usable in file mode. Following options are possible:
+此命令可以替换路由规则的重写主机，仅适用于文件模式。可能的选项如下：
 
 
-- *-d* - the domain containing the host
-- *-p* - the prefix containing the host
-- *-h* - the host to be replaced
-- *-t* - the new host
+- *-d* - 包含主机的域
+- *-p* - 包含主机的前缀
+- *-h* - 要替换的主机
+- *-t* - 新主机
 
 
-Use the "null" prefix to specify an empty prefix.
+使用"null"前缀指定空前缀。
 
 
-```c title="carrierroute:replace_host usage"
+```c title="carrierroute:replace_host 使用示例"
 ...
 opensips-cli -x mi carrierroute:replace_host "-d proxy -p 49 -h proxy1 -t proxy2"
 ...
-		
+			
 ```
 
 
 #### carrierroute:deactivate_host
 
 
-Replaces obsolete MI command: *cr_deactivate_host*.
+替换过时的 MI 命令：*cr_deactivate_host*。
 
 
-This command deactivates the specified host, i.e. it sets its status to 0.
-		    It is only usable in file mode. Following options are possible:
+此命令停用指定的主机，即将其状态设置为 0。仅适用于文件模式。可能的选项如下：
 
 
-- *-d* - the domain containing the host
-- *-p* - the prefix containing the host
-- *-h* - the host to be deactivated
-- *-t* - the new host used as backup
+- *-d* - 包含主机的域
+- *-p* - 包含主机的前缀
+- *-h* - 要停用的主机
+- *-t* - 用作备份的新主机
 
 
-When -t (new_host) is specified, the portion of traffic for the deactivated host
-		is routed to the host given by -t. This is indicated in the output of dump_routes.
-		The backup route is deactivated if the host is activated again.
+当指定 -t (new_host) 时，停用主机的流量部分将路由到 -t 指定的主机。这在 dump_routes 的输出中指示。当主机再次激活时，备份路由被停用。
 
 
-Use the "null" prefix to specify an empty prefix.
+使用"null"前缀指定空前缀。
 
 
-```c title="carrierroute:deactivate_host usage"
+```c title="carrierroute:deactivate_host 使用示例"
 ...
 opensips-cli -x mi carrierroute:deactivate_host "-d proxy -p 49 -h proxy1"
 ...
-		
+			
 ```
 
 
 #### carrierroute:activate_host
 
 
-Replaces obsolete MI command: *cr_activate_host*.
+替换过时的 MI 命令：*cr_activate_host*。
 
 
-This command activates the specified host, i.e. it sets its status to 1.
-		    It is only usable in file mode. Following options are possible:
+此命令激活指定的主机，即将其状态设置为 1。仅适用于文件模式。可能的选项如下：
 
 
-- *-d* - the domain containing the host
-- *-p* - the prefix containing the host
-- *-h* - the host to be activated
+- *-d* - 包含主机的域
+- *-p* - 包含主机的前缀
+- *-h* - 要激活的主机
 
 
-Use the "null" prefix to specify an empty prefix.
+使用"null"前缀指定空前缀。
 
 
-```c title="carrierroute:activate_host usage"
+```c title="carrierroute:activate_host 使用示例"
 ...
 opensips-cli -x mi carrierroute:activate_host "-d proxy -p 49 -h proxy1"
 ...
-		
+			
 ```
 
 
 #### carrierroute:add_host
 
 
-Replaces obsolete MI command: *cr_add_host*.
+替换过时的 MI 命令：*cr_add_host*。
 
 
-This command adds a route rule, it is only usable in file mode. Following options
-		    are possible:
+此命令添加路由规则，仅适用于文件模式。可能的选项如下：
 
 
-- *-d* - the domain containing the host
-- *-p* - the prefix containing the host
-- *-h* - the host to be added
-- *-w* - the weight of the rule
-- *-P* - an optional rewrite prefix
-- *-S* - an optional rewrite suffix
-- *-i* - an optional hash index
-- *-s* - an optional strip value
+- *-d* - 包含主机的域
+- *-p* - 包含主机的前缀
+- *-h* - 要添加的主机
+- *-w* - 规则的权重
+- *-P* - 可选的重写前缀
+- *-S* - 可选的重写后缀
+- *-i* - 可选的哈希索引
+- *-s* - 可选的剥离值
 
 
-Use the "null" prefix to specify an empty prefix.
+使用"null"前缀指定空前缀。
 
 
-```c title="carrierroute:add_host usage"
+```c title="carrierroute:add_host 使用示例"
 ...
 opensips-cli -x mi carrierroute:add_host "-d proxy -p 49 -h proxy1 -w 0.25"
 ...
-		
+			
 ```
 
 
 #### carrierroute:delete_host
 
 
-Replaces obsolete MI command: *cr_delete_host*.
+替换过时的 MI 命令：*cr_delete_host*。
 
 
-This command delete the specified hosts or rules, i.e. remove 
-		    them from the route tree. It is only usable in file mode.
-		    Following options are possible:
+此命令删除指定的主机或规则，即从路由树中删除它们。仅适用于文件模式。可能的选项如下：
 
 
-- *-d* - the domain containing the host
-- *-p* - the prefix containing the host
-- *-h* - the host to be added
-- *-w* - the weight of the rule
-- *-P* - an optional rewrite prefix
-- *-S* - an optional rewrite suffix
-- *-i* - an optional hash index
-- *-s* - an optional strip value
+- *-d* - 包含主机的域
+- *-p* - 包含主机的前缀
+- *-h* - 要添加的主机
+- *-w* - 规则的权重
+- *-P* - 可选的重写前缀
+- *-S* - 可选的重写后缀
+- *-i* - 可选的哈希索引
+- *-s* - 可选的剥离值
 
 
-Use the "null" prefix to specify an empty prefix.
+使用"null"前缀指定空前缀。
 
 
-```c title="carrierroute:delete_host usage"
+```c title="carrierroute:delete_host 使用示例"
 ...
 opensips-cli -x mi carrierroute:delete_host "-d proxy -p 49 -h proxy1 -w 0.25"
 ...
-		
+			
 ```
 
 
-### Examples
+### 示例
 
 
-```c title="Configuration example - Routing to default tree"
+```c title="配置示例 - 路由到默认树"
 ...
 route {
-	# route calls based on hash over callid
-	# choose route domain 0 of the default carrier
+	# 基于 callid 哈希进行路由呼叫
+	# 选择默认运营商的域 0
 	
 	if(!cr_route("default", "0", "$rU", "$rU", "call_id", "crc32")){
-		sl_send_reply(403, "Not allowed");
+		sl_send_reply(403, "不允许");
 	} else {
-		# In case of failure, re-route the request
+		# 如果失败，重新路由请求
 		t_on_failure("1");
-		# Relay the request to the gateway
+		# 将请求中继到网关
 		t_relay();
 	}
 }
 
 failure_route[1] {
-	# In case of failure, send it to an alternative route:
+	# 如果失败，发送到备用路由：
 	if (t_check_status("408|5[0-9][0-9]")) {
-		#choose route domain 1 of the default carrier
+		#选择默认运营商的域 1
 	if(!cr_route("default", "1", "$rU", "$rU", "call_id", "crc32")){
-			t_reply(403, "Not allowed");
+			t_reply(403, "不允许");
 		} else {
 			t_on_failure("2");
 			t_relay();
@@ -1141,47 +1010,47 @@ failure_route[1] {
 }
 
 failure_route[2] {
-	# further processing
+	# 进一步处理
 }
 
 		
 ```
 
 
-```c title="Configuration example - Routing to user tree"
+```c title="配置示例 - 路由到用户树"
 ...
 route[1] {
 	cr_user_carrier("$fU", "$fd", "$avp(carrier)");
 
-	# just an example domain
+	# 只是一个示例域
 	$avp(domain)="start";
 	if (!cr_route("$avp(carrier)", "$avp(domain)", "$rU", "$rU",
 			"call_id", "$avp(host)")) {
-		xlog("L_ERR", "cr_route failed\n");
+		xlog("L_ERR", "cr_route 失败\n");
 		exit;
 	}
 	t_on_failure("1");
 		if (!t_relay()) {
 			sl_reply_error();
-	};
+		};
 }
 
 failure_route[1] {
 	revert_uri();
 	if (!cr_next_domain("$avp(carrier)", "$avp(domain)", "$rU",
-			"$avp(host)", "$T_reply_code", "$avp(domain)")) {
-		xlog("L_ERR", "cr_next_domain failed\n");
+		"$avp(host)", "$T_reply_code", "$avp(domain)")) {
+		xlog("L_ERR", "cr_next_domain 失败\n");
 		exit;
 	}
 	if (!cr_route("$avp(carrier)", "$avp(domain)", "$rU", "$rU",
-			"call_id", "$avp(host)")) {
-		xlog("L_ERR", "cr_route failed\n");
+		"call_id", "$avp(host)")) {
+		xlog("L_ERR", "cr_route 失败\n");
 		exit;
 	}
 	t_on_failure("1");
 	append_branch();
 	if (!t_relay()) {
-		xlog("L_ERR", "t_relay failed\n");
+		xlog("L_ERR", "t_relay 失败\n");
 		exit;
 	};
 }
@@ -1190,26 +1059,16 @@ failure_route[1] {
 ```
 
 
-The following config file specifies within the default carrier two
-			domains, each with an prefix that contains two hosts. It is not possible
-			to specify another carrier if you use the config file as data source.
+以下配置文件在默认运营商中指定了两个域，每个域包含两个主机的前缀。它不可能在使用配置文件作为数据源时指定另一个运营商。
 
 
-All traffic will be equally distributed between the hosts, both are
-			active. The hash algorithm will working over the [1,2] set, messages
-			hashed to one will go to the first host, the other to the second one.
-			Don't use a hash index value of zero. If you ommit the hash completly,
-			the module gives them a autogenerated value, starting from one.
+所有流量将在主机之间均匀分配，两个都处于活动状态。哈希算法将覆盖 [1,2] 集合，散列到 1 的消息将转到第一个主机，另一个转到第二个主机。不要使用零的哈希索引值。如果完全省略哈希，模块会为它们生成一个从一开始的自增值。
 
 
-Use the "NULL" prefix to specify an empty prefix in the config file.
-			Please note that the prefix is matched against the request URI (or to URI),
-			if they did not contain a valid numerical URI, no match is possible. So
-			for loadbalancing purposes e.g. for your registrars, you should use an empty
-			prefix.
+使用"NULL"前缀指定配置文件中的空前缀。请注意，前缀与请求 URI（或 to URI）匹配，如果它们不包含有效的数字 URI，则无法匹配。因此，为了负载均衡目的（例如您的注册服务器），您应该使用空前缀。
 
 
-```c title="Configuration example - module configuration"
+```c title="配置示例 - 模块配置"
 ...
 domain proxy {
    prefix 49 {
@@ -1247,37 +1106,28 @@ domain register {
    }
 }
 ...
-		
+			
 ```
 
 
-### Installation and Running
+### 安装和运行
 
 
-#### Database setup
+#### 数据库设置
 
 
-Before running OpenSIPS with carrierroute, you have to setup the database 
-			table where the module will store the routing data. For that, if 
-			the table was not created by the installation script or you choose
-			to install everything by yourself you can use the carrierroute-create.sql
-			SQL script in the database directories in the 
-			opensips/scripts folder as template. 
-			Database and table name can be set with module parameters so they 
-			can be changed, but the name of the columns must be as they are 
-			in the SQL script.
-			You can also find the complete database documentation on the
-			project webpage, https://opensips.org/docs/db/db-schema-devel.html.
-			The flags and mask columns have the same function as in the
-			carrierfailureroute table. A zero value in the flags and mask
-			column means that any message flags will match this rule.
+在运行带有 carrierroute 的 OpenSIPS 之前，您必须设置模块将存储路由数据的数据库表。如果表不是由安装脚本创建的，或者您选择自己安装所有内容，您可以使用
+			opensips/scripts 文件夹中的数据库目录中的 carrierroute-create.sql
+			SQL 脚本作为模板。
+			数据库和表名可以通过模块参数设置，因此可以更改，但列名必须与 SQL 脚本中的列名相同。
+			您还可以在项目网页上找到完整的数据库文档，https://opensips.org/docs/db/db-schema-devel.html。
+			flags 和 mask 列的功能与 carrierfailureroute 表中的相同。flags 和 mask 列中的零值意味着任何消息标志都将匹配此规则。
 
 
-For a minimal configuration either use the config file given above, or
-			insert some data into the tables of the module.
+对于最小配置，您可以使用的配置文件如上，或者将一些数据插入模块的表中。
 
 
-```c title="Example database content - carrierroute table"
+```c title="示例数据库内容 - carrierroute 表"
 ...
 +----+---------+--------+-------------+-------+------+---------------+
 | id | carrier | domain | scan_prefix | flags | prob | rewrite_host  |
@@ -1297,29 +1147,17 @@ For a minimal configuration either use the config file given above, or
 | 13 |       3 |  start |             |     0 |    1 | gw.default    |
 +----+---------+--------+-------------+-------+------+---------------+
 ...
-		
+			
 ```
 
 
-This table contains three routes to two gateways for the "49" prefix,
-			and a default route for other prefixes over carrier 2 and carrier 1. The
-			gateways for the default carrier will be used for functions that don't
-			support the user specific carrier lookup. The routing rules for carrier 1
-			and carrier 2 for the "49" prefix contains a additional rule
-			with the domain 1, that can be used for example as fallback if the gateways
-			in domain 0 are not reachable. Two more fallback rules (domain 2 and 3) for 
-			carrier 1 are also supplied to support the functionality of the carrierfailureroute
-			table example that is provided in the next section. The usage of strings
-			for the domains is also possible, for example at carrier 3.
+此表包含两个网关的"49"前缀的三条路由，以及运营商 2 和运营商 1 的默认路由。默认运营商的网关将用于不支持用户特定运营商查找的函数。运营商 1 和运营商 2"49"前缀的路由规则包含一个额外的域 1 规则，可用作域 0 中的网关无法到达时的备用路由。还为运营商 1 提供了另外两个备用路由（域 2 和 3）以支持下一节中提供的 carrierfailureroute 表功能示例。字符串也可用于域，例如运营商 3。
 
 
-This table provides also a "carrier1" routing rule for the
-			"49" prefix, that is only choosen if some message flags are set.
-			If this flags are not set, the other two rules are used. The "strip",
-			"mask" and "comment" colums are omitted for brevity.
+此表还为"49"前缀提供"carrier1"路由规则，仅在设置某些消息标志时选择。如果未设置这些标志，则使用其他两条规则。为简洁起见，省略了"strip"、"mask"和"comment"列。
 
 
-```c title="Example database content - simple carrierfailureroute table"
+```c title="示例数据库内容 - 简单 carrierfailureroute 表"
 ...
 +----+---------+--------+---------------+------------+-------------+
 | id | carrier | domain | host_name     | reply_code | next_domain |
@@ -1331,19 +1169,13 @@ This table provides also a "carrier1" routing rule for the
 ```
 
 
-This table contains two failure routes for the "gw.carrier1-1" and
-			"-2" gateways. For any (failure) reply code the respective next
-			domain is choosen. After that no more failure routes are available, an error will
-			be returned from the "cr_next_domain" function. Not all table
-			colums are show here for brevity.
+此表包含"gw.carrier1-1"和"-2"网关的两个故障路由。对于任何（故障）回复代码，选择各自的下一个域。之后没有更多的故障路由可用，cr_next_domain 函数将返回错误。为简洁起见，此处未显示所有表列。
 
 
-For each failure route domain and carrier that is added to the carrierfailureroute
-			table there must be at least one corresponding entry in the carrierroute table,
-			otherwise the module will not load the routing data.
+对于添加到 carrierfailureroute 表的每个故障路由域和运营商，该表中必须至少有一个对应的 carrierroute 表条目，否则模块将不会加载路由数据。
 
 
-```c title="Example database content - more complex carrierfailureroute table"
+```c title="示例数据库内容 - 更复杂的 carrierfailureroute 表"
 ...
 +----+---------+-----------+------------+--------+-----+-------------+
 | id | domain  | host_name | reply_code | flags | mask | next_domain |
@@ -1357,20 +1189,10 @@ For each failure route domain and carrier that is added to the carrierfailurerou
 ```
 
 
-This table contains four failure routes that shows the usage of more
-			advanced features. The first route matches to a 408, and to some flag
-			for example that indicates that ringing has happened. If this flag is set,
-			there will be no further forwarding, because next_domain is empty. In the
-			second and third routes are certain gateway errors matched, if this errors
-			have occurred, then the next domain will be chosen. The last route does
-			forwarding according some flags, e.g. the customer came from a certain carrier,
-			and has call-forwarding deactivated. In order to use the routing that is
-			specified above, a matching carrierroute table must be provided, that holds
-			domain entries for this routing rules. Not all table colums are show here for
-			brevity.
+此表包含四个故障路由，展示了更高级功能的使用。第一个路由匹配 408 和某些标志，例如表示已发生振铃的标志。如果设置了此标志，将不会进一步转发，因为 next_domain 为空。第二和第三个路由匹配某些网关错误，如果发生这些错误，则会选择下一个域。最后一个路由根据某些标志进行转发，例如客户来自某个运营商并取消了呼叫转移。为使用上述路由，必须提供匹配 carrierroute 表，其中包含此路由规则的域条目。为简洁起见，此处未显示所有表列。
 
 
-```c title="Example database content - route_tree table"
+```c title="示例数据库内容 - route_tree 表"
 ...
 +----+----------+
 | id | carrier  |
@@ -1380,29 +1202,27 @@ This table contains four failure routes that shows the usage of more
 |  3 | default  |
 +----+----------+
 ...
-		
+			
 ```
 
 
-This table contains the mapping of the carrier id to actual names.
+此表包含运营商 ID 到实际名称的映射。
 
 
-For a functional routing the "cr_preferred_carrier" column must
-			be added to the subscriber table (or to the table and column that you specified
-			as modul parameter) to choose the actual carrier for the users.
+对于功能性路由，必须将"cr_preferred_carrier"列添加到订户表（或您指定为模块参数的表和列）中，以选择用户的实际运营商。
 
 
-Suggested changes:
+建议的更改：
 
 
-```c title="Necessary extensions for the user table"
+```c title="用户表的必要扩展"
 ...
 ALTER TABLE subscriber ADD cr_preferred_carrier int(10) default NULL; 
 ...
-		
+			
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证授权。

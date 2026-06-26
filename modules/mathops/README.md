@@ -1,100 +1,94 @@
 ---
-title: "mathops Module"
-description: "The mathops module provides a series of functions which enable various floating point operations at OpenSIPS script level."
+title: "mathops 模块"
+description: "mathops模块提供了一系列函数，使OpenSIPS脚本层面能够执行各种浮点运算。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The mathops module provides a series of functions which enable various
-		floating point operations at OpenSIPS script level.
+mathops模块提供了一系列函数，使OpenSIPS脚本层面能够执行各种浮点运算。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules.*.
+- *不依赖其他OpenSIPS模块。*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行此模块加载的OpenSIPS之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### decimal_digits (integer)
 
 
-The precision of the results returned by all the module functions.
-		The higher the "decimal_digits" value, the more decimal
-		digits the results will have.
+所有模块函数返回结果的精度。decimal_digits值越高，结果将具有越多的小数位数。
 
 
-Default value is "6".
+默认值为"6"。
 
 
-```c title="Setting the decimal_digits module parameter"
+```c title="设置 decimal_digits 模块参数"
 modparam("mathops", "decimal_digits", 10)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### math_eval(expression, result_var)
 
 
-The function evaluates a given expression and writes the result in the
-		output pseudo-variable. Evaluation uses tinyexpr (see https://github.com/codeplea/tinyexpr).
+此函数评估给定的表达式并将结果写入输出伪变量。评估使用tinyexpr（见https://github.com/codeplea/tinyexpr）。
 
 
-Currently allowed syntax for specifying an expression:
+当前允许的表达式语法如下：
 
 
-- Nested parentheses
-- addition (+), subtraction/negation (-), multiplication (*), division (/), exponentiation (^) and modulus (%) with the normal operator precedence (the one exception being that exponentiation is evaluated left-to-right)
-- C math functions: abs (calls to fabs), acos, asin, atan, ceil, cos, cosh, exp, floor, ln (calls to log), log (calls to log10), sin, sinh, sqrt, tan, tanh
+- 嵌套括号
+- 加法(+)、减法/取负(-)、乘法(*)、除法(/)、幂运算(^)和取模(%)，具有正常的运算符优先级（一个例外是幂运算从左到右求值）
+- C数学函数：abs（调用fabs）、acos、asin、atan、ceil、cos、cosh、exp、floor、ln（调用log）、log（调用log10）、sin、sinh、sqrt、tan、tanh
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *expression* (string) - a mathematical expression.
-- *result_var* (var) - variable which will
-			hold the result of the evaluation.
+- *expression* (string) - 一个数学表达式。
+- *result_var* (var) - 将保存评估结果的变量。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_eval usage"
+```c title="math_eval 使用示例"
 ...
-# Compute some random math expression
+# 计算一些随机数学表达式
 
 $avp(1) = "3.141592";
 $avp(2) = "2.71828";
 $avp(3) = "123.45678";
 
 if (math_eval("$avp(1) * ($avp(3) - ($avp(1) - $avp(2))) / $avp(3)", $avp(result))) {
-	xlog("Result of expression: $avp(result)\n");
+	xlog("表达式结果: $avp(result)\n");
 } else {
-	xlog("Math eval failed!\n");
+	xlog("数学评估失败！\n");
 }
 
 ...
@@ -104,78 +98,72 @@ if (math_eval("$avp(1) * ($avp(3) - ($avp(1) - $avp(2))) / $avp(3)", $avp(result
 #### math_rpn(expression, result_var)
 
 
-The function evaluates a given RPN expression and writes the result in the
-		output variable.
+此函数评估给定的RPN表达式并将结果写入输出变量。
 
 
-The expression is specified in Reverse Polish Notation. Values are pushed
-    onto a stack, while operations are executed on that stack. The following operations
-    are supported:
+表达式以逆波兰表示法指定。值被推入堆栈，而操作在堆栈上执行。支持以下操作：
 
 
-- binary operators: + - / * mod pow
-- unary functions: neg exp ln log10 abs sqrt cbrt floor ceil round nearbyint trunc
-neg will change the sign of the top of the stack
-ln is natural logarithm; abs is absolute value; other functions are standard C functions
-- constants: e pi
-- stack manipulations commands: drop dup swap
+- 二元运算符：+ - / * mod pow
+- 一元函数：neg exp ln log10 abs sqrt cbrt floor ceil round nearbyint trunc
+neg将改变堆栈顶部的符号
+ln是自然对数；abs是绝对值；其他函数是标准C函数
+- 常量：e pi
+- 堆栈操作命令：drop dup swap
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *expression* (string) - a RPN expression.
-- *result_var* (var) - variable which will
-			hold the result of the evaluation.
+- *expression* (string) - 一个RPN表达式。
+- *result_var* (var) - 将保存评估结果的变量。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_rpn usage"
+```c title="math_rpn 使用示例"
 $avp(1) = "3";
 
 if (math_rpn("1 $avp(1) swap swap dup drop / exp ln 1 swap /", $avp(result))) {
-	xlog("Result of expression: $avp(result)\n");
+	xlog("表达式结果: $avp(result)\n");
 } else {
-	xlog("RPN eval failed!\n");
+	xlog("RPN评估失败！\n");
 }
 
-/* This example RPN script will push 1 then 3 onto the stack, then do a couple no-ops
-(exchange the two values twice, duplicate one of them then drop the duplicate),
-compute the division of 1 by 3, then do another no-op (exponentiation then logarithm), and
-finally compute 1 divided by the result, giving 3 as the result. */
+/* 此RPN脚本示例将1然后3推入堆栈，然后做几个空操作
+（两次交换两个值，复制其中一个然后删除副本），
+计算1除以3，然后再做一次空操作（幂运算然后对数），
+最后计算1除以结果，得到3作为结果。 */
 ```
 
 
 #### math_trunc(number, result_var)
 
 
-Truncation of a number towards zero. This means that trunc(3.7) = 3.0 and
-		trunc(-2.9) = -2.0.
+将数字向零截断。这意味着trunc(3.7) = 3.0，trunc(-2.9) = -2.0。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *number* (string) - Number to be truncated.
-- *result_var* (var) - variable which will
-			hold the result of the evaluation.
+- *number* (string) - 要截断的数字。
+- *result_var* (var) - 将保存评估结果的变量。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_trunc usage"
+```c title="math_trunc 使用示例"
 ...
-# Truncate a random number
+# 截断一个随机数
 
 $avp(1) = "3.141492";
 
 if (math_trunc($avp(1), $avp(result))) {
-	xlog("Truncate result: $avp(result)\n");
+	xlog("截断结果: $avp(result)\n");
 } else {
-	xlog("Truncate failed!\n");
+	xlog("截断失败！\n");
 }
 ...
 ```
@@ -184,31 +172,29 @@ if (math_trunc($avp(1), $avp(result))) {
 #### math_floor(number, result_var)
 
 
-Truncates a number, always towards -infinity. This means that floor(3.7) = 3.0
-		and floor(-2.9) = -3.0
+将数字向下（向负无穷）截断。这意味着floor(3.7) = 3.0，floor(-2.9) = -3.0
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *number* (string) - Number to be truncated.
-- *result_var* (var) - variable which will
-			hold the result of the evaluation.
+- *number* (string) - 要截断的数字。
+- *result_var* (var) - 将保存评估结果的变量。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_floor usage"
+```c title="math_floor 使用示例"
 ...
-# Truncate a random number
+# 截断一个随机数
 
 $avp(1) = "3.141492";
 
 if (math_floor($avp(1), $avp(result))) {
-	xlog("Floor result: $avp(result)\n");
+	xlog("Floor结果: $avp(result)\n");
 } else {
-	xlog("Floor operation failed!\n");
+	xlog("Floor操作失败！\n");
 }
 ...
 ```
@@ -217,31 +203,29 @@ if (math_floor($avp(1), $avp(result))) {
 #### math_ceil(number, result_var)
 
 
-Truncates a number, always towards +infinity. This means that ceil(3.2) = 4.0
-		and ceil(-2.9) = -2.0
+将数字向上（向正无穷）截断。这意味着ceil(3.2) = 4.0，ceil(-2.9) = -2.0
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *number* (string) - Number to be truncated.
-- *result_var* (var) - variable which will
-			hold the result of the evaluation.
+- *number* (string) - 要截断的数字。
+- *result_var* (var) - 将保存评估结果的变量。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_ceil usage"
+```c title="math_ceil 使用示例"
 ...
-# Truncate a random number
+# 截断一个随机数
 
 $avp(1) = "3.141492";
 
 if (math_ceil($avp(1), $avp(result))) {
-	xlog("Ceil result: $avp(result)\n");
+	xlog("Ceil结果: $avp(result)\n");
 } else {
-	xlog("Ceil operation failed!\n");
+	xlog("Ceil操作失败！\n");
 }
 ...
 ```
@@ -250,51 +234,45 @@ if (math_ceil($avp(1), $avp(result))) {
 #### math_round(number, result_var[, decimals])
 
 
-The round function returns the nearest integer, and tie-breaking is done away
-		from zero. Examples: round(1.2) = 1.0, round(0.5) = 1.0, round(-0.5) = -1.0
+四舍五入函数返回最接近的整数，平局时向远离零的方向取舍。示例：round(1.2) = 1.0，round(0.5) = 1.0，round(-0.5) = -1.0
 
 
-By default, the function returns an integer. An additional parameter controls
-		the number of decimal digits of the initial number which will be kept. The
-		rounding will then be done using the remaining decimal digits, and the result
-		will be a float value, represented as a string.
+默认情况下，函数返回一个整数。附加参数控制将保留的初始数字的小数位数。然后使用剩余的小数位数进行舍入，结果将是一个浮点值，表示为字符串。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *number* (string) - Number to be rounded.
-- *result_var* - variable which will
-			hold the result of the evaluation.
-- *decimals* (int, optional) -
-			further improves the precision of the rounding.
+- *number* (string) - 要四舍五入的数字。
+- *result_var* - 将保存评估结果的变量。
+- *decimals* (int, 可选) - 进一步提高舍入精度。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_round usage"
+```c title="math_round 使用示例"
 ...
-# Rounding PI
+# 对PI进行四舍五入
 
 $avp(1) = "3.141492";
 
 if (math_round($avp(1), $avp(result))) {
 
-	# result should be: 3
-	xlog("Round result: $avp(result)\n");
+	# 结果应为：3
+	xlog("舍入结果: $avp(result)\n");
 } else {
-	xlog("Round operation failed!\n");
+	xlog("舍入操作失败！\n");
 }
 
 ...
 
 if (math_round($avp(1), $avp(result), 4)) {
 
-	# result should be: "3.1415"
-	xlog("Round result: $avp(result)\n");
+	# 结果应为："3.1415"
+	xlog("舍入结果: $avp(result)\n");
 } else {
-	xlog("Round operation failed!\n");
+	xlog("舍入操作失败！\n");
 }
 ...
 ```
@@ -303,13 +281,10 @@ if (math_round($avp(1), $avp(result), 4)) {
 #### math_round_sf(number, result_var, figures)
 
 
-To give a simple explanation, rounding to N significant figures is done by 
-		first obtaining the number resulted from keeping N significant figures
-		(0 padded if necessary), then adjusting it if the N+1'th digit is greater
-		or equal to 5.
+简单解释一下，舍入到N位有效数字的方法是首先保留N位有效数字（必要时补零），然后如果第N+1位数字大于或等于5则进行调整。
 
 
-Some examples:
+一些示例：
 
 
 - round_sf(17892.987, 1) = 20000
@@ -321,31 +296,29 @@ round_sf(17892.987, 6) = 17893.0
 round_sf(17892.987, 7) = 17892.99
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *number* (string) - Number to be rounded.
-- *result_var* (var) - variable which will
-			hold the result of the evaluation.
-- *figures* -
-			further improves the precision of the rounding.
+- *number* (string) - 要四舍五入的数字。
+- *result_var* (var) - 将保存评估结果的变量。
+- *figures* - 进一步提高舍入精度。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_round_sf usage"
+```c title="math_round_sf 使用示例"
 ...
-# Rounding PI
+# 对PI进行四舍五入
 
 $avp(1) = "3.141492";
 
 if (math_round_sf($avp(1), $avp(result), 4)) {
 
-	# result should be: "3.141"
-	xlog("Round result: $avp(result)\n");
+	# 结果应为："3.141"
+	xlog("舍入结果: $avp(result)\n");
 } else {
-	xlog("Round operation failed!\n");
+	xlog("舍入操作失败！\n");
 }
 
 ...
@@ -355,40 +328,36 @@ if (math_round_sf($avp(1), $avp(result), 4)) {
 #### math_compare(exp1, exp2, result_var)
 
 
-Compare exp1 with exp2 and returns the comparison result in the result_var.
-		Standard comparison return codes used : If exp1 > exp2, result_var = 1.
-		Else if exp2 > exp1, result_var = -1, else (in case they are equal), 
-		0 is populated in the result_var
+比较exp1和exp2，并将比较结果返回到result_var。标准比较返回码：如果exp1 > exp2，result_var = 1；如果exp2 > exp1，result_var = -1；如果相等，result_var = 0。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *exp1* (string) - First expression to be evaluated and used for comparison.
-- *exp2* (string) - Second expression to be evaluated and used for comparison.
-- *result_var* (var) - variable which will
-			hold the result of the comparison.
+- *exp1* (string) - 第一个要评估并用于比较的表达式。
+- *exp2* (string) - 第二个要评估并用于比较的表达式。
+- *result_var* (var) - 将保存比较结果的变量。
 
 
-This function can be used from any route.
+此函数可用于任何路由。
 
 
-```c title="math_compare usage"
+```c title="math_compare 使用示例"
 ...
-# Rounding PI
+# 对PI进行四舍五入
 
 $var(exp1) = "1 + 8";
 $var(exp2) = "7/2";
 
 if (math_compare($var(exp1), $var(exp2), $var(result))) {
 
-	# $var(result) will be 1, since 9 > 3.5
+	# $var(result)将为1，因为9 > 3.5
 }
 
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即.md扩展名）均采用知识共享署名4.0许可证。

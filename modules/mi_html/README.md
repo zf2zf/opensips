@@ -1,60 +1,55 @@
 ---
-title: "mi_html Module"
-description: "This module provides a minimal web user interface for the OpenSIPS's Management Interface."
+title: "mi_html 模块"
+description: "此模块为OpenSIPS的管理接口提供了一个极简的Web用户界面。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides a minimal web user interface for the OpenSIPS's
-		Management Interface.
+此模块为OpenSIPS的管理接口提供了一个极简的Web用户界面。
 
 
-Parameters for mi commands must be given in a json array format.
-		For example, to get all statistics, the param is to be given as [["all"]].
-		To get only dialog and tm statistics, the param is to be given as [["dialog:","tm:"]].
+MI命令的参数必须以json数组格式给出。例如，要获取所有统计信息，参数应给出为[["all"]]。要仅获取dialog和tm统计信息，参数应给出为[["dialog:","tm:"]]。
 
 
-### To-do
+### 待办事项
 
 
-Features to be added in the future:
+未来要添加的功能：
 
 
-- possibility to authenticate connections.
+- 连接身份验证的可能性。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *httpd* module.
+- *httpd* 模块。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### root(string)
 
 
-Specifies the root path for the HTTP requests.
-		The link to the mi web interface must be constructed
-		using the following patern:
-		http://[opensips_IP]:[opensips_mi_port]/[root]
+指定HTTP请求的根路径。MI Web界面的链接必须使用以下模式构建：
+	http://[opensips_IP]:[opensips_mi_port]/[root]
 
 
-*The default value is "mi".*
+*默认值为"mi"。*
 
 
-```c title="Set root parameter"
+```c title="设置 root 参数"
 ...
 modparam("mi_html", "root", "opensips_mi")
 ...
@@ -64,17 +59,17 @@ modparam("mi_html", "root", "opensips_mi")
 #### http_method(integer)
 
 
-Specifies the HTTP request method to be used:
+指定要使用的HTTP请求方法：
 
 
-- 0 - use GET HTTP request
-- 1 - use POST HTTP request
+- 0 - 使用GET HTTP请求
+- 1 - 使用POST HTTP请求
 
 
-*The default value is 0.*
+*默认值为0。*
 
 
-```c title="Set http_method parameter"
+```c title="设置 http_method 参数"
 ...
 modparam("mi_html", "http_method", 1)
 ...
@@ -84,20 +79,16 @@ modparam("mi_html", "http_method", 1)
 #### trace_destination (string)
 
 
-Trace destination as defined in the tracing module. Currently
-		the only tracing module is **proto_hep**.
-		This is where traced mi messages will go.
+跟踪模块中定义的跟踪目标。目前唯一的跟踪模块是**proto_hep**。跟踪的MI消息将发送到此处。
 
 
-**WARNING:**A tracing module must be
-			loaded in order for this parameter to work. (for example
-			**proto_hep**).
+**警告：**必须加载跟踪模块此参数才能工作。（例如**proto_hep**）。
 
 
-*Default value is none(not defined).*
+*默认值为无（未定义）。*
 
 
-```c title="Set trace_destination parameter"
+```c title="设置 trace_destination 参数"
 ...
 modparam("proto_hep", "trace_destination", "[hep_dest]10.0.0.2;transport=tcp;version=3")
 
@@ -109,60 +100,47 @@ modparam("mi_html", "trace_destination", "hep_dest")
 #### trace_bwlist (string)
 
 
-Filter traced mi commands based on a blacklist or a whitelist.
-		**trace_destination** must be defined for
-		this parameter to have any purpose. Whitelists can be defined using
-		'w' or 'W', blacklists using 'b' or 'B'. The type is separate by the
-		actual blacklist by ':'. The mi commands in the list must be separated
-		by ','.
+根据黑名单或白名单过滤跟踪的MI命令。必须定义**trace_destination**此参数才有意义。白名单可以使用'w'或'W'定义，黑名单使用'b'或'B'。类型与实际黑名单之间用':'分隔。列表中的MI命令必须用','分隔。
 
 
-Defining a blacklists means all the commands that are not blacklisted
-			will be traced. Defining a whitelist means all the commands that are
-			not whitelisted will not be traced.
-			**WARNING:** One can't define both
-			a whitelist and a blacklist. Only one of them is allowed. Defining
-			the parameter a second time will just overwrite the first one.
+定义黑名单意味着所有未被列入黑名单的命令都将被跟踪。定义白名单意味着所有未被列入白名单的命令都不会被跟踪。
+**警告：**不能同时定义白名单和黑名单。只允许其中一种。第二次定义参数将覆盖第一个。
 
 
-**WARNING:**A tracing module must be
-			loaded in order for this parameter to work. (for example
-			**proto_hep)**.
+**警告：**必须加载跟踪模块此参数才能工作。（例如**proto_hep**）。
 
 
-*Default value is none(not defined).*
+*默认值为无（未定义）。*
 
 
-```c title="Set trace_destination parameter"
+```c title="设置 trace_destination 参数"
 ...
-## blacklist ps and which mi commands
-## all the other commands shall be traced
+## 黑名单ps和which MI命令
+## 所有其他命令将被跟踪
 modparam("mi_html", "trace_bwlist", "b: ps, which")
 ...
-## allow only sip_trace mi command
-## all the other commands will not be traced
+## 只允许sip_trace MI命令
+## 所有其他命令都不会被跟踪
 modparam("mi_html", "trace_bwlist", "w: sip_trace")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+没有导出到配置文件使用的函数。
 
 
-### Known Issues
+### 已知问题
 
 
-Commands with large responses (like ul_dump) will fail if the
-		configured size of the httpd buffer is to small (or if there isn't
-		enough pkg memory configured).
+响应较大的命令（如ul_dump）如果配置的httpd缓冲区太小（或没有配置足够的pkg内存）将会失败。
 
 
-Future realeases of the httpd module will address this issue.
+httpd模块的未来版本将解决此问题。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即.md扩展名）均采用知识共享署名4.0许可证。

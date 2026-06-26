@@ -1,112 +1,88 @@
 ---
 title: "sl Module"
-description: "The SL module allows OpenSIPS to act as a stateless UA server and generate replies to SIP requests without keeping state. That is beneficial in many scenarios, in which you wish not to burden server's memory and scale well."
+description: "SL 模块允许 OpenSIPS 作为无状态 UA 服务器生成对 SIP 请求的回复而不保持状态。这在许多场景中是有益的，在这些场景中你希望不增加服务器内存负担并能够良好扩展。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The SL module allows OpenSIPS to act as a stateless 
-		UA server and generate replies to SIP requests without keeping 
-		state. That is beneficial in many scenarios, in which you wish not to 
-		burden server's memory and scale well.
+SL 模块允许 OpenSIPS 作为无状态
+UA 服务器生成对 SIP 请求的回复而不保持状态。这在许多场景中是有益的，在这些场景中你不希望增加服务器内存负担并能够良好扩展。
 
 
-The SL module needs to filter ACKs sent after a 
-		local stateless reply to an INVITE was generated. To recognize such 
-		ACKs, OpenSIPS adds a special "signature" in to-tags. This signature is 
-		sought for in incoming ACKs, and if included, the ACKs are absorbed.
+SL 模块需要过滤在生成本地无状态回复到 INVITE 后发送的 ACK。为了识别这些 ACK，OpenSIPS 在 to-tag 中添加了一个特殊的"签名"。在传入的 ACK 中寻找这个签名，如果包含，则吸收这些 ACK。
 
 
-To speed up the filtering process, the module uses a timeout 
-		mechanism. When a reply is sent, a timer is set. As time as the timeout 
-		didn't hit, the incoming ACK requests will be checked using TO tag 
-		value. Once the timer expires, all the ACK are let through - a long
-		time passed till it sent a reply, so it does not expect any ACK that 
-		have to be blocked.
+为了加快过滤过程，该模块使用超时机制。当发送回复时，设置一个计时器。只要超时未到达，传入的 ACK 请求将使用 TO tag 值进行检查。一旦计时器到期，所有 ACK 都被放行——因为已经过了很长时间才发送回复，所以不期望有需要阻止的 ACK。
 
 
-The ACK filtering may fail in some rare cases. If you think these 
-		matter to you, better use stateful processing (tm module) for INVITE 
-		processing. Particularly, the problem happens when a UA sends an 
-		INVITE which already has a to-tag in it (e.g., a re-INVITE)
-		and OpenSIPS want to reply to it. Than, it will keep the current to-tag, 
-		which will be mirrored in ACK. OpenSIPS will not see its signature and 
-		forward the ACK downstream. Caused harm is not bad--just a useless 
-		ACK is forwarded.
+ACK 过滤在某些罕见情况下可能会失败。如果你认为这些对你很重要，最好使用有状态处理（tm 模块）进行 INVITE 处理。特别地，问题发生在 UA 发送已包含 to-tag 的 INVITE（例如 re-INVITE）而 OpenSIPS 想要回复它时。然后，它将保持当前的 to-tag，这将在 ACK 中被镜像。OpenSIPS 不会看到其签名并向下游转发 ACK。造成的损害并不大——只是一个无用的 ACK 被转发。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *无其他 OpenSIPS 模块的依赖*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### enable_stats (integer)
 
 
-If the module should generate and export statistics to the core
-		manager. A zero value means disabled.
+模块是否应生成统计信息并导出到核心管理器。零值表示禁用。
 
 
-SL module provides statistics about how many replies were sent (
-		splitted per code classes) and how many local ACKs were filtered out.
+SL 模块提供有关发送了多少回复（按代码类别分）和过滤了多少本地 ACK 的统计信息。
 
 
-Default value is 1 (enabled).
+默认值为 1（启用）。
 
 
-```c title="enable_stats example"
+```c title="enable_stats 示例"
 modparam("sl", "enable_stats", 0)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### sl_send_reply(code, reason)
 
 
-For the current request, a reply is sent back having the given code 
-		and text reason. The reply is sent stateless, totally independent of 
-		the Transaction module and with no retransmission for the INVITE's 
-		replies. 'code' and 'reason' can contain pseudo-variables that are
-		replaced at runtime.
+对于当前请求，发送一个具有给定代码和文本原因的回复。回复是无状态发送的，完全独立于事务模块，并且 INVITE 回复不会重传。'code' 和 'reason' 可以包含在运行时替换的伪变量。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *code (int)* - Return code.
-- *reason (string)* - Reason phrase.
+- *code (int)* - 返回码。
+- *reason (string)* - 原因短语。
 
 
-This function can be used from REQUEST_ROUTE, ERROR_ROUTE.
+此函数可以从 REQUEST_ROUTE、ERROR_ROUTE 使用。
 
 
-```c title="sl_send_reply usage"
+```c title="sl_send_reply 使用示例"
 ...
 sl_send_reply(404, "Not found");
 ...
@@ -118,78 +94,76 @@ sl_send_reply($err.rcode, $err.rreason);
 #### sl_reply_error()
 
 
-Sends back an error reply describing the nature of the last internal 
-		error.  Usually this function should be used after a script function 
-		that returned an error code.
+发送一个描述最后一个内部错误性质的错误回复。通常此函数应在返回错误代码的脚本函数之后使用。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可以从 REQUEST_ROUTE 使用。
 
 
-```c title="sl_reply_error usage"
+```c title="sl_reply_error 使用示例"
 ...
 sl_reply_error();
 ...
 ```
 
 
-### Exported Statistics
+### 导出的统计信息
 
 
 #### 1xx_replies
 
 
-The number of 1xx_replies.
+1xx_replies 的数量。
 
 
 #### 2xx_replies
 
 
-The number of 2xx_replies.
+2xx_replies 的数量。
 
 
 #### 3xx_replies
 
 
-The number of 3xx_replies.
+3xx_replies 的数量。
 
 
 #### 4xx_replies
 
 
-The number of 4xx_replies.
+4xx_replies 的数量。
 
 
 #### 5xx_replies
 
 
-The number of 5xx_replies.
+5xx_replies 的数量。
 
 
 #### 6xx_replies
 
 
-The number of 6xx_replies.
+6xx_replies 的数量。
 
 
 #### sent_replies
 
 
-The number of sent_replies.
+sent_replies 的数量。
 
 
 #### sent_err_replies
 
 
-The number of sent_err_replies.
+sent_err_replies 的数量。
 
 
 #### received_ACKs
 
 
-The number of received_ACKs.
+received_ACKs 的数量。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享署名 4.0 国际许可协议授权。

@@ -1,43 +1,43 @@
 ---
-title: "TCP Management Module (tcp_mgm)"
-description: "This module provides optional, SQL-based support for fine-grained management of all TCP connections taking place on OpenSIPS."
+title: "TCP 管理模块 (tcp_mgm)"
+description: "此模块提供可选的、基于 SQL 的支持，用于对 OpenSIPS 上发生的所有 TCP 连接进行细粒度管理。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides optional, SQL-based support for fine-grained
-		management of all TCP connections taking place on OpenSIPS.
+此模块提供可选的、基于 SQL 的支持，
+		用于对 OpenSIPS 上发生的所有 TCP 连接进行细粒度管理。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-At least one SQL database module must be loaded (e.g. "db_xxx").
+必须至少加载一个 SQL 数据库模块（例如 "db_xxx"）。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-None.
+无。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-Mandatory URL to the SQL database.
+SQL 数据库的强制性 URL。
 
 
-```c title="Setting the db_url parameter"
+```c title="设置 db_url 参数"
 modparam("tcp_mgm", "db_url", "mysql://opensips:opensipsrw@localhost/opensips")
 ```
 
@@ -45,13 +45,13 @@ modparam("tcp_mgm", "db_url", "mysql://opensips:opensipsrw@localhost/opensips")
 #### db_table (string)
 
 
-The name of the table holding the TCP paths (rules).
+保存 TCP 路径（规则）的表名称。
 
 
-Default value is *"tcp_mgm"*.
+默认值为 *"tcp_mgm"*。
 
 
-```c title="Setting the db_table parameter"
+```c title="设置 db_table 参数"
 modparam("tcp_mgm", "db_table", "tcp_mgm")
 ```
 
@@ -59,40 +59,40 @@ modparam("tcp_mgm", "db_table", "tcp_mgm")
 #### [column-name]_col (string)
 
 
-Use a different name for column *"column-name"*.
+使用不同名称表示 *"column-name"* 列。
 
 
-```c title="Setting the [column-name]_col parameter"
+```c title="设置 [column-name]_col 参数"
 modparam("tcp_mgm", "connect_timeout_col", "connect_to")
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### tcp_mgm:reload
 
 
-Replaces obsolete MI command: *tcp_reload*.
+替换已弃用的 MI 命令：*tcp_reload*。
 
 
-Reload all TCP paths from the *tcp_mgm* table
-		without disrupting ongoing traffic.  Note that the reloaded rules will
-		NOT immediately apply to existing TCP connections, rather only to
-		newly established ones.
+重新加载 *tcp_mgm* 表中的所有 TCP 路径，
+		而不会中断正在进行的流量。请注意，
+		重新加载的规则不会立即应用于现有 TCP 连接，
+		而只会应用于新建立的连接。
 
 
-Example:
+示例：
 
 
 ```c
-# reload all TCP paths
+# 重新加载所有 TCP 路径
 $ opensips-cli -x mi tcp_mgm:reload
 $ "OK"
-		
+
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

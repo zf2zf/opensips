@@ -1,76 +1,67 @@
 ---
-title: "group Module"
-description: "This module provides functionalities for different methods of group membership checking."
+title: "group 模块"
+description: "本模块提供多种用户组成员资格检查功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides functionalities for different methods of group
-		membership checking.
+本模块提供多种用户组成员资格检查功能。
 
 
-#### Strict membership checking
+#### 严格成员资格检查
 
 
-There is a database table that contains list of users and groups
-			they belong to. The module provides the possibility to check if a
-			specific user belongs to a specific group.
+数据库表中包含用户及其所属组的列表。该模块提供检查特定用户是否属于特定组的功能。
 
 
-There is no DB caching support, each check involving a DB query.
+不支持数据库缓存，每次检查都需要执行数据库查询。
 
 
-#### Regular Expression based checking
+#### 基于正则表达式的检查
 
 
-Another database table contains list of regular expressions and
-			group IDs. A matching occurs if the user URI match the regular
-			expression. This type of matching may be used to fetch the
-			group ID(s) the user belongs to (via RE matching) .
+另一个数据库表包含正则表达式和组ID的列表。当用户URI匹配正则表达式时进行匹配。这种匹配类型可用于获取用户所属的组ID（通过正则表达式匹配）。
 
 
-Due performance reasons (regular expression evaluation), DB cache
-			support is available: the table content is loaded into memory at
-			startup and all regular expressions are compiled.
+由于性能原因（正则表达式评估），支持数据库缓存：表内容在启动时加载到内存中，所有正则表达式都会被编译。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- A database module, like mysql, postgres or dbtext.
-- An AAA module, like radius or diameter.
+- 数据库模块，如 mysql、postgres 或 dbtext。
+- AAA 模块，如 radius 或 diameter。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-URL of the database table to be used.
+要使用的数据库表的 URL。
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("group", "db_url", "mysql://username:password@dbhost/opensips")
 ...
@@ -80,14 +71,13 @@ modparam("group", "db_url", "mysql://username:password@dbhost/opensips")
 #### table (string)
 
 
-Name of the table holding strict definitions of groups and
-		their members.
+保存组成员严格定义的表名。
 
 
-*Default value is "grp".*
+*默认值为 "grp"。*
 
 
-```c title="Set table parameter"
+```c title="设置 table 参数"
 ...
 modparam("group", "table", "grp_table")
 ...
@@ -97,13 +87,13 @@ modparam("group", "table", "grp_table")
 #### user_column (string)
 
 
-Name of the "table" column holding usernames.
+保存用户名的"表"列名。
 
 
-*Default value is "username".*
+*默认值为 "username"。*
 
 
-```c title="Set user_column parameter"
+```c title="设置 user_column 参数"
 ...
 modparam("group", "user_column", "user")
 ...
@@ -113,13 +103,13 @@ modparam("group", "user_column", "user")
 #### domain_column (string)
 
 
-Name of the "table" column holding domains.
+保存域名的"表"列名。
 
 
-*Default value is "domain".*
+*默认值为 "domain"。*
 
 
-```c title="Set domain_column parameter"
+```c title="设置 domain_column 参数"
 ...
 modparam("group", "domain_column", "realm")
 ...
@@ -129,13 +119,13 @@ modparam("group", "domain_column", "realm")
 #### group_column (string)
 
 
-Name of the "table" column holding groups.
+保存组的"表"列名。
 
 
-*Default value is "grp".*
+*默认值为 "grp"。*
 
 
-```c title="Set group_column parameter"
+```c title="设置 group_column 参数"
 ...
 modparam("group", "group_column", "grp")
 ...
@@ -145,15 +135,13 @@ modparam("group", "group_column", "grp")
 #### use_domain (boolean)
 
 
-If enabled, the domain part of the URI will also be used in the lookup,
-		for a stricter group matching.  Otherwise, only the username part
-		will be used.
+如果启用，URI 的域名部分也将用于查找，以进行更严格的组匹配。否则，仅使用用户名部分。
 
 
-*Default value is *true* (enabled).*
+*默认值为 *true*（启用）。*
 
 
-```c title="Set use_domain parameter"
+```c title="设置 use_domain 参数"
 ...
 modparam("group", "use_domain", 1)
 ...
@@ -163,15 +151,13 @@ modparam("group", "use_domain", 1)
 #### re_table (string)
 
 
-Name of the table holding definitions for regular-expression
-		based groups. If no table is defined, the regular-expression
-		support is disabled.
+保存基于正则表达式的组定义的表名。如果未定义表，则正则表达式支持被禁用。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set re_table parameter"
+```c title="设置 re_table 参数"
 ...
 modparam("group", "re_table", "re_grp")
 ...
@@ -181,14 +167,13 @@ modparam("group", "re_table", "re_grp")
 #### re_exp_column (string)
 
 
-Name of the "re_table" column holding the regular
-		expression used for user matching.
+"re_table" 中保存用于用户匹配的正则表达式的列名。
 
 
-*Default value is "reg_exp".*
+*默认值为 "reg_exp"。*
 
 
-```c title="Set re_exp_column parameter"
+```c title="设置 re_exp_column 参数"
 ...
 modparam("group", "re_exp_column", "re")
 ...
@@ -198,13 +183,13 @@ modparam("group", "re_exp_column", "re")
 #### re_gid_column (string)
 
 
-Name of the "re_table" column holding the group IDs.
+"re_table" 中保存组ID的列名。
 
 
-*Default value is "group_id".*
+*默认值为 "group_id"。*
 
 
-```c title="Set re_gid_column parameter"
+```c title="设置 re_gid_column 参数"
 ...
 modparam("group", "re_gid_column", "grp_id")
 ...
@@ -214,15 +199,13 @@ modparam("group", "re_gid_column", "grp_id")
 #### multiple_gid (integer)
 
 
-If enabled (non zero value) the regular-expression matching will
-		return all group IDs that match the user; otherwise only the first
-		will be returned.
+如果启用（非零值），正则表达式匹配将返回所有匹配的用户组ID；否则仅返回第一个。
 
 
-*Default value is "1".*
+*默认值为 "1"。*
 
 
-```c title="Set multiple_gid parameter"
+```c title="设置 multiple_gid 参数"
 ...
 modparam("group", "multiple_gid", 0)
 ...
@@ -232,55 +215,53 @@ modparam("group", "multiple_gid", 0)
 #### aaa_url (string)
 
 
-This is the url representing the AAA protocol used and the location of the configuration file of this protocol.
+这是表示所使用的 AAA 协议及其配置文件位置的 URL。
 
 
-```c title="Set aaa_url parameter"
+```c title="设置 aaa_url 参数"
 ...
 modparam("group", "aaa_url", "radius:/etc/radiusclient-ng/radiusclient.conf")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### db_is_user_in(uri, group)
 
 
-This function is to be used for script group membership. The function
-		returns true if username in the given URI is member of the given
-		group and false if not.
+此函数用于脚本中的组成员资格检查。如果给定 URI 中的用户名是给定组的成员则返回 true，否则返回 false。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *uri (string)* - a SIP URI whose
-				username and optionally domain to be used.  Possible values:
+- *uri (string)* - SIP URI，其
+				用户名和可选域名用于检查。可选值：
 			
-				
-				"Request-URI" - Use Request-URI username and
-				(optionally) domain.
-				
-				
-				"To" - Use To username and (optionally) domain.
-				
-				
-				"From" - Use From username and (optionally) domain.
-				
-				
-				"Credentials" - Use digest credentials username.
-				
-				
-				(default) - parse the given input as a SIP URI
-- *group (string)* - the group to check
+					
+				"Request-URI" - 使用 Request-URI 的用户名和
+				（可选）域名。
+					
+					
+				"To" - 使用 To 用户名和（可选）域名。
+					
+					
+				"From" - 使用 From 用户名和（可选）域名。
+					
+					
+				"Credentials" - 使用 digest 凭证用户名。
+					
+					
+				（默认）- 将给定输入解析为 SIP URI
+- *group (string)* - 要检查的组
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
-```c title="db_is_user_in usage"
+```c title="db_is_user_in 使用示例"
 ...
 if (db_is_user_in("Request-URI", "ld")) {
 	...
@@ -298,46 +279,40 @@ if (db_is_user_in("Credentials", $avp(grouptocheck))) {
 #### db_get_user_group(uri, output_avp)
 
 
-This function is to be used for regular expression based group
-		membership, using DB support.  The function returns true if the username in
-		the given "uri" belongs to at least one group.
+此函数用于基于正则表达式的组成员资格检查，使用数据库支持。如果给定"uri"中的用户名属于至少一个组，则返回 true。
 
 
-All matching group IDs
-		shall be returned in "output_avp" if [multiple gid](#param_multiple_gid)
-		is enabled, otherwise only the first one to match (the records are
-		attempted in reversed order of the results returned by the RDBMS).
+所有匹配的组ID
+		将在"output_avp"中返回（如果启用了 [multiple gid](#param_multiple_gid)），
+		否则仅返回第一个匹配的（记录按 RDBMS 返回结果的逆序尝试）。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *uri (string)* - a SIP URI to be matched
-				against the regular expressions:
-			
-				
-				"Request-URI" - Use Request-URI
+- *uri (string)* - 要与正则表达式匹配的 SIP URI
 				
 				
-				"To" - Use To URI.
+				"Request-URI" - 使用 Request-URI
 				
 				
-				"From" - Use From URI
+				"To" - 使用 To URI。
 				
 				
-				"Credentials" - Use digest credentials username
-				and realm.
+				"From" - 使用 From URI
 				
 				
-				(default) - parse the given input as a SIP URI
-- *output_avp (var)* - a list of matched
-				group IDs
+				"Credentials" - 使用 digest 凭证用户名和域。
+				
+				
+				（默认）- 将给定输入解析为 SIP URI
+- *output_avp (var)* - 匹配的组 ID 列表
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
-```c title="db_get_user_group usage"
+```c title="db_get_user_group 使用示例"
 ...
 if (db_get_user_group("Request-URI", $avp(10))) {
     xdbg("User $ru belongs to the following groups: $(avp(10)[*])\n");
@@ -350,36 +325,34 @@ if (db_get_user_group("Request-URI", $avp(10))) {
 #### aaa_is_user_in(uri, group)
 
 
-This function checks group membership, using AAA support.
-		The function returns true if username in the given "uri" is member of
-		the given group and false if not.
+此函数使用 AAA 支持检查组成员资格。如果给定"uri"中的用户名是给定组的成员则返回 true，否则返回 false。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *uri (string)* - a SIP URI whose
-				username and optionally domain to be used, this can be one of:
+- *uri (string)* - SIP URI，其
+				用户名和可选域名用于检查，可选值包括：
 			
-				
-				"Request-URI" - Use Request-URI username and
-				(optionally) domain.
-				
-				
-				"To" - Use To username and (optionally) domain.
-				
-				
-				"From" - Use From username and (optionally) domain.
-				
-				
-				"Credentials" - Use digest credentials username.
-- *group (string)* - Name of the group to check.
+					
+				"Request-URI" - 使用 Request-URI 的用户名和
+				（可选）域名。
+					
+					
+				"To" - 使用 To 用户名和（可选）域名。
+					
+					
+				"From" - 使用 From 用户名和（可选）域名。
+					
+					
+				"Credentials" - 使用 digest 凭证用户名。
+- *group (string)* - 要检查的组名称。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可以从 REQUEST_ROUTE 使用。
 
 
-```c title="aaa_is_user_in usage"
+```c title="aaa_is_user_in 使用示例"
 ...
 if (aaa_is_user_in("Request-URI", "ld")) {
 	...
@@ -388,6 +361,6 @@ if (aaa_is_user_in("Request-URI", "ld")) {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证。

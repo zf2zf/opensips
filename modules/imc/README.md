@@ -1,176 +1,163 @@
 ---
-title: "imc Module"
-description: "This module offers support for instant message conference. It follows the architecture of IRC channels, you can send commands embedded in MESSAGE body, because there are no SIP UA clients which have GUI for IM conferencing."
+title: "IMC 模块"
+description: "此模块提供即时消息会议支持。它遵循 IRC 频道的架构，您可以发送嵌入在 MESSAGE 主体中的命令，因为没有用于 IM 会议的 SIP UA 客户端 GUI。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module offers support for instant message conference. It
-		follows the architecture of IRC channels, you can send commands
-		embedded in MESSAGE body, because there are no SIP UA clients
-		which have GUI for IM conferencing.
+此模块提供即时消息会议支持。它
+		遵循 IRC 频道的架构，您可以发送嵌入在
+		MESSAGE 主体中的命令，因为没有用于 IM 会议的 SIP UA 客户端。
 
 
-You have to define an URI corresponding to im conferencing manager, where
-	user can send commands to create a new conference room. Once the conference
-	room is created, users can send commands directly to conferece's URI.
+您需要定义一个与 IM 会议管理器对应的 URI，用户可以在其中发送命令来创建新的会议室。一旦会议室创建，用户可以直接向会议室的 URI 发送命令。
 
 
-To ease the integration in the configuration file, the interpreter of
-	the IMC commands are embeded in the module, from configuration poin of
-	view, there is only one function which has to be executed for both
-	messages and commands.
+为了便于集成到配置文件中，IMC 命令的解释器嵌入在模块中，
+		从配置的角度来看，对于消息和命令都只需要执行一个函数。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+加载此模块之前必须加载以下模块：
 
 
-- *mysql*.
-- *tm*.
+- *mysql*。
+- *tm*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### db_url (str)
+#### db_url (字符串)
 
 
-The database url.
+数据库 URL。
 
 
-*The default value is "mysql://opensips:opensipsrw@localhost/opensips".*
+*默认值为 "mysql://opensips:opensipsrw@localhost/opensips"*。
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("imc", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
 ```
 
 
-#### rooms_table (str)
+#### rooms_table (字符串)
 
 
-The name of the table storing IMC rooms.
+存储 IMC 会议室的表名。
 
 
-*The default value is "imc_rooms".*
+*默认值为 "imc_rooms"*。
 
 
-```c title="Set rooms_table parameter"
+```c title="设置 rooms_table 参数"
 ...
 modparam("imc", "rooms_table", "rooms")
 ...
 ```
 
 
-#### members_table (str)
+#### members_table (字符串)
 
 
-The name of the table storing IMC members.
+存储 IMC 成员的表名。
 
 
-*The default value is "imc_members".*
+*默认值为 "imc_members"*。
 
 
-```c title="Set members_table parameter"
+```c title="设置 members_table 参数"
 ...
 modparam("imc", "rooms_table", "members")
 ...
 ```
 
 
-#### hash_size (integer)
+#### hash_size (整数)
 
 
-The power of 2 to get the size of the hash table used for storing
-		members and rooms.
+用于存储成员和会议室的哈希表大小，以 2 的幂次计算。
 
 
-*The default value is 4 (resultimg in hash size 16).*
+*默认值为 4（结果哈希大小为 16）*。
 
 
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("imc", "hash_size", 8)
 ...
 ```
 
 
-#### imc_cmd_start_char (str)
+#### imc_cmd_start_char (字符串)
 
 
-The character which indicates that the body of the message is a command.
+指示消息主体是命令的字符。
 
 
-*The default value is "#".*
+*默认值为 "#"*。
 
 
-```c title="Set imc_cmd_start_char parameter"
+```c title="设置 imc_cmd_start_char 参数"
 ...
 modparam("imc", "imc_cmd_start_char", "#")
 ...
 ```
 
 
-#### outbound_proxy (str)
+#### outbound_proxy (字符串)
 
 
-The SIP address used as next hop when sending the message. Very
-   useful when using OpenSIPS with a domain name not in DNS, or
-   when using a separate OpenSIPS instance for imc processing. If
-   not set, the message will be sent to the address in destination
-   URI.
+发送消息时用作下一跳的 SIP 地址。当使用不在 DNS 中的域名的 OpenSIPS，或使用单独的 OpenSIPS 实例进行 imc 处理时非常有用。如果未设置，消息将发送到目标 URI 中的地址。
 
 
-*Default value is NULL.*
+*默认值为 NULL。*
 
 
-```c title="Set outbound_proxy parameter"
+```c title="设置 outbound_proxy 参数"
 ...
 modparam("imc", "outbound_proxy", "sip:opensips.org;transport=tcp")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### imc_manager()
 
 
-Handles Message method.It detects if the body of the message is a
-		conference command.If so it executes it, otherwise it sends the
-		message to all the members in the room.
+处理 Message 方法。它检测消息主体是否为会议命令。
+		如果是，则执行它；否则，将消息发送到房间中的所有成员。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="Usage of imc_manager() function"
+```c title="imc_manager() 函数用法"
 ...
-# the rooms will be named chat-xyz to avoid overlapping
-# with usernames
+# 会议室将命名为 chat-xyz 以避免与用户名重叠
 if(is_method("MESSAGE)
         && ($ru=~ "sip:chat-[0-9]+@" || ($ru=~ "sip:chat-manager@")
     imc_manager();
@@ -178,25 +165,25 @@ if(is_method("MESSAGE)
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### imc:list_rooms
 
 
-Replaces obsolete MI command: *imc_list_rooms*.
+替换已弃用的 MI 命令：*imc_list_rooms*。
 
 
-Lists of the IM Conferencing rooms.
+列出 IM 会议室。
 
 
-Name: *imc:list_rooms*
+名称：*imc:list_rooms*
 
 
-Parameters: none
+参数：无
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -208,22 +195,22 @@ MI FIFO Command Format:
 #### imc:list_members
 
 
-Replaces obsolete MI command: *imc_list_members*.
+替换已弃用的 MI 命令：*imc_list_members*。
 
 
-Listing of the members in IM Conferencing rooms.
+列出 IM 会议室中的成员。
 
 
-Name: *imc:list_members*
+名称：*imc:list_members*
 
 
-Parameters:
+参数：
 
 
-- *room* : the room for which you want to list the members
+- *room*：您要列出成员的会议室
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -232,110 +219,103 @@ MI FIFO Command Format:
 ```
 
 
-### Exported Statistics
+### 导出的统计
 
 
 #### active_rooms
 
 
-Number of active IM Conferencing rooms.
+活跃的 IM 会议室数量。
 
 
-### IMC Commands
+### IMC 命令
 
 
-A command is identified by the starting character. A command must be
-		written in one line. By default, the starting character is '#'. You
-		can change it via "imc_cmd_start_char" parameter.
+命令由起始字符标识。命令必须写在一行中。默认情况下，起始字符是 '#'。
+		您可以通过 "imc_cmd_start_char" 参数更改它。
 
 
-Next picture presents the list of commands and their parameters.
+下图展示了命令及其参数列表。
 
 
-```c title="List of commands"
+```c title="命令列表"
 ...
 
 1.create
-  -creates a conference room
-  -takes 2 parameters:
-     1) the name of the room
-     2)optional- "private" -if present the created room is private
-	   and new members can be added only though invitations
-  -the user is added as the first member and owner of the room
-  -eg:  #create chat-000 private
+  -创建一个会议室
+  -需要 2 个参数：
+     1) 会议室名称
+     2)可选-"private" -如果存在，创建的会议室是私有的
+	   新成员只能通过邀请添加
+  -用户作为第一个成员和房间所有者添加
+  -例如：#create chat-000 private
 
 2.join
-  -makes the user member of a room
-  -takes one optional parameter - the address of the room -if not
-    present it will be considered to be the address in the To
-    header of the message
-  -if the room does not exist the command is treated as create
-  -eg:join sip:chat-000@opensips.org,
-      or just, #join, sent to sip:chat-000@opensips.org
+  -使用户成为房间的成员
+  -需要一个可选参数 - 房间地址 -如果不存在
+    将被视为消息 To 头中的地址
+  -如果房间不存在，命令被视为 create
+  -例如：join sip:chat-000@opensips.org,
+      或仅发送 #join 到 sip:chat-000@opensips.org
 
 3.invite
-  -invites a user to become a member of a room
-  -takes 2 parameters:
-     1)the complete address of the user
-     2)the address of the room -if not present it will be considered
-	   to be the address in the To header of the message
-  -only certain users have the right to invite other user: the owner
-    and the administrators
-  -eg: #invite sip:john@opensips.org sip:chat-000@opensips.org
-    or  #invite john@opensips.org sent to sip:chat-000@opensips.org
+  -邀请用户成为房间成员
+  -需要 2 个参数：
+     1)用户的完整地址
+     2)房间地址 -如果不存在，将被视为
+	   消息 To 头中的地址
+  -只有某些用户有权邀请其他用户：所有者和管理员
+  -例如：#invite sip:john@opensips.org sip:chat-000@opensips.org
+    或 #invite john@opensips.org 发送到 sip:chat-000@opensips.org
 
 4.accept
-  -accepting an invitation
-  -takes one optional parameter - the address of the room - if not
-    present it will be considered to be the address in the To header
-    of the message
-  -eg: #accept sip:john@opensips.org
+  -接受邀请
+  -需要一个可选参数 - 房间地址 - 如果不存在，
+    将被视为消息 To 头中的地址
+  -例如：#accept sip:john@opensips.org
 
 5.deny
-  -rejects an invitation
-  -the parameter is the same as for accept
+  -拒绝邀请
+  -参数与 accept 相同
 
 6.remove
-  -deletes a member from a room
-  -takes 2 parameters:
-    1)the complete address of the member
-    2)the address of the room -if not present it will be considered
-	  to be the address in the To header of the message
-  -only certain members have the right to remove other members
-  -eg: #remove sip:john@opensips.org, sent to sip:chat-000@opensips.org
+  -从房间中删除成员
+  -需要 2 个参数：
+    1)成员的完整地址
+    2)房间地址 -如果不存在，将被视为
+	  消息 To 头中的地址
+  -只有某些成员有权删除其他成员
+  -例如：#remove sip:john@opensips.org，发送到 sip:chat-000@opensips.org
 
 7.exit
-  -leaving a room
-  -takes one optional parameter - the address of the room - if not
-    present it will be considered to be the address in the To header
-    of the message
-  -if the user is the owner of the room, the room will be destroyed
+  -离开房间
+  -需要一个可选参数 - 房间地址 - 如果不存在，
+    将被视为消息 To 头中的地址
+  -如果用户是房间所有者，房间将被销毁
 
 8.destroy
-  -removing a room
-  -the parameter is the same as for exit
-  -only the owner of a room has the right to destroy it
+  -删除房间
+  -参数与 exit 相同
+  -只有房间所有者有权销毁它
 
 9.list
-  -list members in a room
+  -列出房间中的成员
 
 ...
 ```
 
 
-### Installation
+### 安装
 
 
-Before running OpenSIPS with IMC, you have to setup the database 
-		tables where the module will store the data. For that, if the 
-		tables were not created by the installation script or you choose
-		to install everything by yourself you can use the imc-create.sql
-		SQL script in the database directories in the 
-		opensips/scripts folder as template. 
-		You can also find the complete database documentation on the
-		project webpage, [https://opensips.org/docs/db/db-schema-devel.html](https://opensips.org/docs/db/db-schema-devel.html).
+在运行带有 IMC 的 OpenSIPS 之前，您必须设置模块将存储数据的数据库表。
+		如果表不是由安装脚本创建的，或者您选择自己安装一切，
+		可以使用 opensips/scripts 文件夹中数据库目录下的 imc-create.sql
+		SQL 脚本作为模板。
+		您还可以在项目网页上找到完整的数据库文档，
+		[https://opensips.org/docs/db/db-schema-devel.html](https://opensips.org/docs/db/db-schema-devel.html)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

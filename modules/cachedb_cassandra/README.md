@@ -1,96 +1,81 @@
 ---
-title: "cachedb_cassandra Module"
-description: "This module is an implementation of a cache system designed to work with Cassandra servers. It uses the Key-Value interface exported from the core."
+title: "cachedb_cassandra 模块"
+description: "本模块是缓存系统的实现，旨在与 Cassandra 服务器配合工作。它使用了 OpenSIPS 核心导出的 Key-Value 接口。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of a cache system designed to work with
-		Cassandra servers.
-		It uses the Key-Value interface exported from the core.
+本模块是缓存系统的实现，旨在与 Cassandra 服务器配合工作。它使用了 OpenSIPS 核心导出的 Key-Value 接口。
 
 
-The underlying client library is compatible with Cassandra versions 2.1+.
+底层客户端库兼容 Cassandra 2.1+ 版本。
 
 
-### Advantages
+### 优势
 
 
-- *memory costs are no longer on the server*
-- *many servers can be used inside a cluster, so the memory
-				is virtually unlimited*
-- *the cache is 100% persistent. A restart
-					of OpenSIPS server will not affect the DB. The Cassandra DB is also
-				persistent so it can also be restarted without loss of information.*
-- *Cassandra is an open-source project so
-				it can be used to exchange data
-				 with various other applications*
-- *By creating a Cassandra Cluster, multiple OpenSIPS
-				instances can easily share key-value information*
+- *内存成本不再由服务器承担*
+- *可以在集群内使用多台服务器，因此内存实际上是无限的*
+- *缓存是 100% 持久化的。OpenSIPS 服务器的重启不会影响 DB。Cassandra DB 也是持久化的，因此也可以在不失数据的情况下重启。*
+- *Cassandra 是开源项目，因此可用于与各种其他应用程序交换数据*
+- *通过创建 Cassandra 集群，多个 OpenSIPS 实例可以轻松共享键值信息*
 
 
-### Limitations
+### 限制
 
 
-- *keys (in key:value pairs) may not contain spaces or control characters*
+- *键（键值对中的键）不能包含空格或控制字符*
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None.
+无。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载本模块之前，必须安装以下库或应用程序：
 
 
 - *libuv*
 - *cassandra-cpp-driver*
 
 
-The DataStax C/C++ driver for Cassandra and the libuv dependency
-				can be downloaded from: [http://downloads.datastax.com/cpp-driver/](http://downloads.datastax.com/cpp-driver/).
+DataStax C/C++ driver for Cassandra 和 libuv 依赖可从以下地址下载：[http://downloads.datastax.com/cpp-driver/](http://downloads.datastax.com/cpp-driver/)。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### cachedb_url (string)
+#### cachedb_url (字符串)
 
 
-The urls of the server groups that OpenSIPS will connect to in order
-			to use the from script cache_store,cache_fetch, etc operations.
-			It can be set more than one time.
-			The prefix part of the URL will be the identifier that will be used
-			from the script.
+OpenSIPS 将连接到的服务器组 URL，以便在脚本中使用 cache_store、cache_fetch 等操作。
+可以多次设置此参数。
+URL 的前缀部分将是脚本中使用的标识符。
 
 
-Cassandra does not support regular columns in a table that contains any
-		counter columns so in order to use the add()/sub()/get_counter() methods
-		in the Key-Value Interface you can specify an extra table reserved
-		only for counters.
+Cassandra 不支持在包含 counter 列的表中使用常规列，因此为了在 Key-Value 接口中使用 add()/sub()/get_counter() 方法，您可以指定一个额外的表专门用于 counter。
 
 
-The database part of the URL needs to be in the format *Keyspace.Table[.CountersTable]*.
+URL 的数据库部分格式为 *Keyspace.Table[.CountersTable]*。
 
 
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 modparam("cachedb_cassandra", "cachedb_url",
 	"cassandra:group1://localhost:9042/keyspace1.users.counters")
 
-# Defining multiple contact points for a Cassandra cluster
+# 为 Cassandra 集群定义多个连接点
 modparam("cachedb_cassandra", "cachedb_url",
 	"cassandra:cluster1://10.0.0.10,10.0.0.15/keyspace2.keys.counters")
 ...
@@ -98,7 +83,7 @@ modparam("cachedb_cassandra", "cachedb_url",
 ```
 
 
-```c title="Use Cassandra servers"
+```c title="使用 Cassandra 服务器"
 ...
 cache_store("cassandra:group1","key","$ru value");
 cache_fetch("cassandra:cluster1","key",$avp(10));
@@ -108,16 +93,16 @@ cache_remove("cassandra:cluster1","key");
 ```
 
 
-#### connect_timeout (int)
+#### connect_timeout (整数)
 
 
-The timeout in ms that will be triggered in case a connection attempt fails.
+连接尝试失败时触发的超时时间（毫秒）。
 
 
-*Default value is "5000".*
+*默认值为 "5000"。*
 
 
-```c title="Set connect_timeout parameter"
+```c title="设置 connect_timeout 参数"
 ...
 modparam("cachedb_cassandra", "connect_timeout",1000);
 ...
@@ -125,16 +110,16 @@ modparam("cachedb_cassandra", "connect_timeout",1000);
 ```
 
 
-#### query_timeout (int)
+#### query_timeout (整数)
 
 
-The timeout in ms that will be triggered in case a Cassandra query takes too long.
+Cassandra 查询时间过长时触发的超时时间（毫秒）。
 
 
-*Default value is "5000".*
+*默认值为 "5000"。*
 
 
-```c title="Set query_timeout parameter"
+```c title="设置 query_timeout 参数"
 ...
 modparam("cachedb_cassandra", "query_timeout",1000);
 ...
@@ -142,28 +127,27 @@ modparam("cachedb_cassandra", "query_timeout",1000);
 ```
 
 
-#### wr_consistency_level (int)
+#### wr_consistency_level (整数)
 
 
-The consistency level desired for write operations.
-			Options are :
+写操作所需的一致性级别。选项包括：
 
 
-- *all* - A write must be written to the commit log and memtable on all replica nodes in the cluster for that partition.
-- *each_quorum* - Strong consistency. A write must be written to the commit log and memtable on a quorum of replica nodes in each datacenter.
-- *quorum* - A write must be written to the commit log and memtable on a quorum of replica nodes across all datacenters.
-- *local_quorum* - Strong consistency. A write must be written to the commit log and memtable on a quorum of replica nodes in the same datacenter as the coordinator. Avoids latency of inter-datacenter communication.
-- *one* - A write must be written to the commit log and memtable of at least one replica node.
-- *two* - A write must be written to the commit log and memtable of at least two replica node.
-- *three* - A write must be written to the commit log and memtable of at least three replica node.
-- *local_one* - A write must be sent to, and successfully acknowledged by, at least one replica node in the local datacenter.
-- *any* - A write must be written to at least one node. If all replica nodes for the given partition key are down, the write can still succeed after a hinted handoff has been written. If all replica nodes are down at write time, an ANY write is not readable until the replica nodes for that partition have recovered.
+- *all* - 写操作必须写入该分区所有副本节点的 commit log 和 memtable。
+- *each_quorum* - 强一致性。写操作必须写入每个数据中心中法定数量副本节点的 commit log 和 memtable。
+- *quorum* - 写操作必须写入所有数据中心中法定数量副本节点的 commit log 和 memtable。
+- *local_quorum* - 强一致性。写操作必须写入与协调器相同数据中心的法定数量副本节点的 commit log 和 memtable。避免数据中心间通信延迟。
+- *one* - 写操作必须写入至少一个副本节点的 commit log 和 memtable。
+- *two* - 写操作必须写入至少两个副本节点的 commit log 和 memtable。
+- *three* - 写操作必须写入至少三个副本节点的 commit log 和 memtable。
+- *local_one* - 写操作必须发送到本地数据中心至少一个副本节点并成功收到确认。
+- *any* - 写操作必须写入至少一个节点。如果给定分区密钥的所有副本节点都宕机，写操作仍可以在写入 hinted handoff 后成功。如果在写入时所有副本节点都宕机，ANY 写入在副本节点恢复之前是不可读的。
 
 
-Default value is *one*.
+默认值为 *one*。
 
 
-```c title="Set wr_consistency_level parameter"
+```c title="设置 wr_consistency_level 参数"
 ...
 modparam("cachedb_cassandra", "wr_consistency_level", "each_quorum");
 ...
@@ -171,28 +155,27 @@ modparam("cachedb_cassandra", "wr_consistency_level", "each_quorum");
 ```
 
 
-#### rd_consistency_level (int)
+#### rd_consistency_level (整数)
 
 
-The consistency level desired for write operations.
-			Options are :
+读操作所需的一致性级别。选项包括：
 
 
-- *all* - Returns the record after all replicas have responded. The read operation will fail if a replica does not respond.
-- *quorum* - Returns the record after a quorum of replicas from all datacenters has responded.
-- *local_quorum* - Returns the record after a quorum of replicas in the current datacenter as the coordinator has reported. Avoids latency of inter-datacenter communication.
-- *one* - Returns a response from the closest replica, as determined by the snitch. By default, a read repair runs in the background to make the other replicas consistent.
-- *two* - Returns the most recent data from two of the closest replicas.
-- *three* - Returns the most recent data from three of the closest replicas.
-- *local_one* - Returns a response from the closest replica in the local datacenter.
-- *serial* - Allows reading the current (and possibly uncommitted) state of data without proposing a new addition or update. If a SERIAL read finds an uncommitted transaction in progress, it will commit the transaction as part of the read. Similar to QUORUM.
-- *local_serial* - Same as SERIAL, but confined to the datacenter. Similar to LOCAL_QUORUM.
+- *all* - 在所有副本响应后返回记录。如果副本未响应，读操作将失败。
+- *quorum* - 在所有数据中心的法定数量副本响应后返回记录。
+- *local_quorum* - 在当前数据中心作为协调器的法定数量副本报告后返回记录。避免数据中心间通信延迟。
+- *one* - 从最近的副本返回响应（由 snitch 确定）。默认情况下，读修复在后台运行以使其他副本保持一致。
+- *two* - 从两个最近的副本返回最新数据。
+- *three* - 从三个最近的副本返回最新数据。
+- *local_one* - 从本地数据中心最近的副本返回响应。
+- *serial* - 允许读取数据的当前（可能是未提交的）状态，而不提议新的添加或更新。如果 SERIAL 读发现未提交的事务正在进行，它将作为读的一部分提交该事务。类似于 QUORUM。
+- *local_serial* - 与 SERIAL 相同，但限制在数据中心内。类似于 LOCAL_QUORUM。
 
 
-Default value is *one*.
+默认值为 *one*。
 
 
-```c title="Set rd_consistency_level parameter"
+```c title="设置 rd_consistency_level 参数"
 ...
 modparam("cachedb_cassandra", "rd_consistency_level", "quorum");
 ...
@@ -200,22 +183,19 @@ modparam("cachedb_cassandra", "rd_consistency_level", "quorum");
 ```
 
 
-#### exec_threshold (int)
+#### exec_threshold (整数)
 
 
-A cassandra cache query that lasts more than this threshold will
-			trigger a warning message to the log.
+超过此阈值的 Cassandra 缓存查询将触发日志中的警告消息。
 
 
-This value, if set, only makes sense to be lower than the
-			[query timeout](#param_query_timeout) since any query taking longer
-			than that value will be dropped anyway.
+此值（如果设置）仅在低于[查询超时](#param_query_timeout)时才有意义，因为超过该值的任何查询都将被丢弃。
 
 
-*Default value is "0 ( unlimited - no warnings )".*
+*默认值为 "0（无限制 - 无警告）"。*
 
 
-```c title="Set exec_threshold parameter"
+```c title="设置 exec_threshold 参数"
 ...
 modparam("cachedb_cassandra", "exec_threshold", 100000)
 ...
@@ -223,32 +203,29 @@ modparam("cachedb_cassandra", "exec_threshold", 100000)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-The module does not export functions to be used
-		in configuration script.
+本模块不导出在配置脚本中使用的函数。
 
 
-### Table Schema
+### 表结构
 
 
-The table required for supporting the cache_store()/cache_fetch()/cache_remove()
-		functions of the Key-Value interface needs to have at least the following columns:
+支持 Key-Value 接口的 cache_store()/cache_fetch()/cache_remove() 函数所需的表至少需要以下列：
 
 
-- *opensipskey* - as the primary key with type "text"
-- *opensipsval* - with type "text"
+- *opensipskey* - 作为主键，类型为 "text"
+- *opensipsval* - 类型为 "text"
 
 
-The table required for supporting the cache_add()/cache_sub()/cache_counter_fetch()
-		functions of the Key-Value interface needs to have at least the following columns:
+支持 Key-Value 接口的 cache_add()/cache_sub()/cache_counter_fetch() 函数所需的表至少需要以下列：
 
 
-- *opensipskey* - as the primary key with type "text"
-- *opensipsval* - with type "counter"
+- *opensipskey* - 作为主键，类型为 "text"
+- *opensipsval* - 类型为 "counter"
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享许可证 4.0 版授权

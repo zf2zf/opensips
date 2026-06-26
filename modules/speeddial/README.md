@@ -1,224 +1,159 @@
 ---
-title: "SpeedDial Module"
-description: "This module provides on-server speed dial facilities. An user can store records consisting of pairs short numbers (2 digits) and SIP addresses into a table of OpenSIPS. Then it can dial the two digits whenever it wants to call the SIP address associated with them."
+title: "快速拨号模块"
+description: "此模块提供服务器端快速拨号功能。用户可以将由短号码（2位数字）和 SIP 地址组成的记录存储到 OpenSIPS 的表中。然后，他可以在想要呼叫关联的 SIP 地址时拨打这两位数字。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+此模块提供服务器端快速拨号功能。用户可以将由短号码（2位数字）和 SIP 地址组成的记录存储到 OpenSIPS 的表中。然后，他可以在想要呼叫关联的 SIP 地址时拨打这两位数字。
 
+### 依赖
 
-This module provides on-server speed dial facilities. An user can store
-		records consisting of pairs short numbers (2 digits) and SIP addresses
-		into a table of OpenSIPS. Then it can dial the two digits whenever it
-		wants to call the SIP address associated with them.
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载：
 
-### Dependencies
+- *数据库模块（mysql、dbtext 等）*
 
+#### 外部库或应用程序
 
-#### OpenSIPS Modules
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
+- *无*
 
-The following modules must be loaded before this module:
-
-
-- *database module (mysql, dbtext, ...)*.
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
-
-
-- *None*.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### db_url (string)
 
+包含快速拨号记录的数据库 URL。
 
-The URL of database where the table containing speed dial records.
+*默认值为 mysql://opensipsro:opensipsro@localhost/opensips*
 
-
-*Default value is mysql://opensipsro:opensipsro@localhost/opensips.*
-
-
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("speeddial", "db_url", "mysql://user:xxx@localhost/db_name")
 ...
 ```
 
-
 #### user_column (string)
 
+存储快速拨号记录所有者用户名的列名。
 
-The name of column storing the user name of the owner of the speed dial
-		record.
+*默认值为 "username"*
 
-
-*Default value is "username".*
-
-
-```c title="Set user_column parameter"
+```c title="设置 user_column 参数"
 ...
 modparam("speeddial", "user_column", "userid")
 ...
 ```
 
-
 #### domain_column (string)
 
+存储快速拨号记录所有者域名的列名。
 
-The name of column storing the domain of the owner of the speed dial
-		record.
+*默认值为 "domain"*
 
-
-*Default value is  "domain".*
-
-
-```c title="Set domain_column parameter"
+```c title="设置 domain_column 参数"
 ...
 modparam("speeddial", "domain_column", "userdomain")
 ...
 ```
 
-
 #### sd_user_column (string)
 
+存储短拨号地址用户部分的列名。
 
-The name of the column storing the user part of the short dial address.
+*默认值为 "sd_username"*
 
-
-*Default value is  "sd_username".*
-
-
-```c title="Set sd_user_column parameter"
+```c title="设置 sd_user_column 参数"
 ...
 modparam("speeddial", "sd_user_column", "short_user")
 ...
 ```
 
-
 #### sd_domain_column (string)
 
+存储短拨号地址域名的列名。
 
-The name of the column storing the domain of the short dial address.
+*默认值为 "sd_domain"*
 
-
-*Default value is  "sd_domain".*
-
-
-```c title="Set sd_domain_column parameter"
+```c title="设置 sd_domain_column 参数"
 ...
 modparam("speeddial", "sd_domain_column", "short_domain")
 ...
 ```
 
-
 #### new_uri_column (string)
 
+包含将用于替换短拨号 URI 的 URI 的列名。
 
-The name of the column containing the URI that will be use to replace
-		the short dial URI.
+*默认值为 "new_uri"*
 
-
-*Default value is "new_uri".*
-
-
-```c title="Set new_uri_column parameter"
+```c title="设置 new_uri_column 参数"
 ...
 modparam("speeddial", "new_uri_column", "real_uri")
 ...
 ```
 
-
 #### domain_prefix (string)
 
+如果所有者域名（From URI）以此参数的值开头，则在执行短号码查找之前会将其剥离。
 
-If the domain of the owner (From URI) starts with the value of this parameter, then
-		it is stripped before performing the lookup of the short number.
+*默认值为 NULL*
 
-
-*Default value is NULL.*
-
-
-```c title="Set domain_prefix parameter"
+```c title="设置 domain_prefix 参数"
 ...
 modparam("speeddial", "domain_prefix", "tel.")
 ...
 ```
 
-
 #### use_domain (int)
 
+该参数指定搜索快速拨号记录时是否使用域名（0 - 不使用域名，1 - 使用 From URI 中的域名，2 - 同时使用 From URI 和请求 URI 中的域名）。
 
-The parameter specifies wheter or not to use the domain when searching a
-		speed dial record (0 - no domain, 1 - use domain from From URI,
-		2 - use both domains, from From URI and from request URI).
+*默认值为 0*
 
-
-*Default value is 0.*
-
-
-```c title="Set use_domain parameter"
+```c title="设置 use_domain 参数"
 ...
 modparam("speeddial", "use_domain", 1)
 ...
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### sd_lookup(table [, owner])
 
+该函数从"表"中的 R-URI 查找短拨号号码，并用关联的地址替换 R-URI。
 
-The function lookups the short dial number from R-URI in 'table' and replaces the R-URI with associated address.
+参数的含义如下：
 
+- *table* (string) - 存储快速拨号记录的表名。
+- *owner* (string) - 短拨号代码所有者的 SIP URI。如果不存在，则使用 From 头的 URI。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE 使用。
 
-
-- *table* (string) - The name of the table storing the
-			speed dial records.
-- *owner* (string) - The SIP URI of the owner of
-			short dialing codes. If not pressent, URI of From header is used.
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="sd_lookup usage"
+```c title="sd_lookup 用法"
 ...
-# 'speed_dial' is the default table name created by opensips db script
+# 'speed_dial' 是 opensips db 脚本创建的默认表名
 if($ru=~"sip:[0-9]{2}@.*")
 	sd_lookup("speed_dial");
-# use auth username
+# 使用认证用户名
 if($ru=~"sip:[0-9]{2}@.*")
 	sd_lookup("speed_dial", "sip:$au@$fd");
 ...
 ```
 
+### 安装和运行
 
-### Installation and Running
+#### OpenSIPS 配置文件
 
+下一张图片显示 speeddial 的示例用法。
 
-#### OpenSIPS config file
-
-
-Next picture displays a sample usage of speeddial.
-
-
-[OpenSIPS config script - sample speeddial usage](./samples.md "include")
+[OpenSIPS 配置文件 - speeddial 用法示例](./samples.md "include")
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

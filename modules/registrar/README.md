@@ -1,558 +1,281 @@
 ---
-title: "registrar Module"
-description: "The module contains SIP REGISTER request processing logic, per RFC 3261. On top of this support, several extensions are available:"
+title: "registrar 模块"
+description: "registrar 模块包含 SIP REGISTER 请求处理逻辑,按照 RFC 3261 标准。在此基础上,还提供了多个扩展功能:"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+registrar 模块包含 SIP REGISTER 请求处理逻辑,按照 RFC 3261 标准。在此基础上,还提供了多个扩展功能:
 
+#### Path 支持 (RFC 3327)
 
-The module contains SIP REGISTER request processing logic, per RFC
-	3261.  On top of this support, several extensions are available:
+registrar 模块包括 SIP Path 首部字段支持,根据
+[RFC 3327](https://tools.ietf.org/html/rfc3327),
+用于注册商和家庭代理。
 
+如果 path 支持在 registrar 模块中启用,调用 *save()* 会将 Path
+首部的值与 Contact 信息一起存储到 usrloc 中。对于包含一个或多个 Path 首部字段的 REGISTER 消息的回复构建,有三种模式:
 
-#### Path Support (RFC 3327)
+- *off* - 将 Path 首部的值存储到 usrloc 中,但不将其传回给
+UAC 的回复中。
+- *lazy* - 存储 Path 首部,但只有当 Supported 首部中的
+"path" 参数表示支持 Path 时,才将其传回给 UAC。
+- *strict* - 如果存在 Path 首部但 UAC 没有表示支持,
+则使用"420 Bad Extension"拒绝注册。否则将其存储并传回给 UAC。
 
+调用 *lookup()* 时,如果找到 Path 首部,始终使用它,
+并将其作为 Route 首部插入到第一个 Route 首部之前,
+或者如果没有 Route,则插入到最后一个 Via 首部之后。它还将目标 URI 设置为第一个 Path URI,
+从而覆盖收到的 URI,因为 NAT 必须由 UAC 的出站代理处理(客户端 NAT 之后的下一跳)。
 
-The registrar module includes SIP Path header field support
-		according to
-		[RFC 3327](https://tools.ietf.org/html/rfc3327),
-		for usage in registrars and home-proxies.
+整个过程对用户是透明的,因此除了在调用 *save()* 时启用"p0"/"p1"/"p2"标志之一外,不需要更改配置。
 
+#### GRUU 支持 (RFC 5627)
 
-A call to *save()* stores, if path support is enabled
-		in the registrar module, the values of the Path
-		Header(s) along with the Contact information into usrloc. There are
-		three modes for building the reply to a REGISTER message which
-		includes one or more Path header fields:
+registrar 模块包括对全局可路由用户代理 URI 的支持,根据 [RFC 5627](https://tools.ietf.org/html/rfc5627)。
 
+如果电话支持 GRUU,调用 *save()* 会将 SIP Instance 的值与 contact 一起存储到 usrloc 中。模块将生成两种类型的 GRUU:
 
-- *off* - stores the value of the
-				Path headers into usrloc without passing it back to
-				the UAC in the reply.
-- *lazy* - stores the Path header and
-				passes it back to the UAC if Path-support is indicated
-				by the "path" param in the Supported HF.
-- *strict* - rejects the registration
-				with "420 Bad Extension" if there's a Path
-				header but no support for it is indicated by the UAC.
-				Otherwise it's stored and passed back to the UAC.
+- *public* - 公开底层 AOR,只需将 SIP Instance 作为 ;gr 参数值附加即可构建。这些是持久化的,只要 contact 注册有效就有效。
+- *temporary* - 隐藏底层 AOR。每次新的 Register 请求都会生成一个新的临时 GRUU,而具有不同 Call-ID 的 Register 请求会使所有先前生成的临时 GRUU 失效。
 
+调用 *lookup()* 将尝试检测 R-URI 是否包含 GRUU。如果是,它将仅路由到该特定 AOR 所属的 Contact,而不附加任何其他分支。
 
-A call to *lookup()* always uses the Path header if
-		found, and inserts it as Route HF either in front of
-		the first Route HF, or after the last Via HF if no
-		Route is present. It also sets the destination URI to
-		the first Path URI, thus overwriting the received-URI,
-		because NAT has to be handled at the outbound-proxy of
-		the UAC (the first hop after client's NAT).
+即使 GRUU 在注册过程中的处理对用户是透明的,不需要配置更改,但在处理会话中请求时需要注意 GRUU 的具体细节。
 
+由于 GRUU 会出现在 GRUU 启用设备生成的初始请求的 contact 首部中,您在收到带有 RURI 中 GRUU 指示的会话中请求时也需要执行 lookup()。
 
-The whole process is transparent to the user, so no
-		config changes are required besides enabling one of the
-		"p0" / "p1" / "p2" flags when calling *save()*.
+#### SIP 推送通知支持 (RFC 8599)
 
+registrar 模块包括对基于标准的 SIP 推送通知的支持,按照
+[RFC 8599](https://tools.ietf.org/html/rfc8599)。
+可以通过将 [pn enable](#param_pn_enable) 设置为 *true* 来启用草案基本版本的支持。该模块还包括在长期会话中发送推送通知的可选支持([见 RFC 第 6 节](https://tools.ietf.org/html/rfc8599#page-23)),
+通过 [pn enable purr](#param_pn_enable_purr) 开关。
 
-#### GRUU Support (RFC 5627)
+推送通知(PN)支持的核心机制:
 
+- PN 支持与现有逻辑完全兼容,启用它不会带来任何限制,因为 registrar 可以同时处理 SIP PN 兼容和标准 SIP 用户代理
+- OpenSIPS 会在任何时候向 PN 启用的 contact 发送推送通知时引发 [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH) 事件。该事件包含 contact 的 PN 坐标 -- 可以从 Contact URI('uri' 事件参数)中找到,并可以使用 {uri.param,name} 转换提取。从此以后,由脚本开发者决定如何触发推送通知(例如可能通过发送带有 [rest_client](../rest_client) 模块的 HTTP POST),从而强制设备重新注册。
+- REGISTER 处理保持不变 -- PN 启用的 UA 与常规 UA 一样保存,前者额外在 contact 的"Flags"字段中设置 *4* 标志位,以便区分
+- 初始 INVITE 处理几乎不变,但如果找到的 contact 只有 PN 启用的 contact,所有这些都需要推送通知,则 *lookup()* 函数现在额外返回 **2**。这意味着已为每个 contact 触发了 PN,并且不需要 t_relay(),因为在它们重新注册之前无法联系!
+- 使用 event_routing 模块,OpenSIPS 将透明地从当前 INVITE 在这些 contact 在接受的 [pn refresh timeout](#param_pn_refresh_timeout) 内重新注册时派生一个新分支
+- 会话中请求:在某些情况下(例如长期会话),在能够路由会话中请求到 SIP UA 之前可能需要 PN。[afunc pn process purr](#afunc_pn_process_purr) 异步函数将负责触发 PN 事件,并在收到相关 contact 的重新注册后恢复脚本。
 
-The registrar module includes support for Globally Routable User
-		Agent URIs according to [RFC 5627](https://tools.ietf.org/html/rfc5627).
+有关更多信息或示例,请参阅"pn_xxx"模块参数的文档或 OpenSIPS 关于"SIP 推送通知"主题的博客文章。
 
+### 依赖
 
-A call to *save()* stores, if the phone supports GRUU,
-		the values of the SIP Instance along with the contact into usrloc.
-		The module will generate two types of GRUUs:
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载:
 
-- *public* - exposes the underlying AOR,
-				constructed just by attaching the SIP Instance as the ;gr
-				parameter value. These are persistent, valid as long as the
-				contact registration is valid.
-- *temporary* - hides the underlying AOR
-				Each new Register request leads to the construction of a
-				new temporary GRUU, while Register requests with a different
-				Call-ID lead to the invalidation of all the previous generated
-				temporary GRUUs.
-
-
-A call to *lookup()* will try to detect if the R-URI contains a
-		GRUU.  If it does, it will route the request just for the Contact
-		that the specific AOR belongs to, without appending any other branches.
-
-
-Even if the the GRUU handling during the registration process is
-		transparent to the user, so no config changes are required, you need
-		to take care of the GRUU specifics when handling mid-dialog requests.
-
-
-As the GRUU will be present in the contact header of the initial
-		requests generated byt GRUU enabled devices, you will have to also
-		do a lookup() when receiving a mid-dialog request with the GRUU
-		indication in the RURI.
-
-
-#### SIP Push Notification Support (RFC 8599)
-
-
-The registrar module includes support for standards-based SIP Push
-		Notifications, per
-		[RFC 8599](https://tools.ietf.org/html/rfc8599).
-		Support for the basic version of the draft can be enabled by switching
-		[pn enable](#param_pn_enable) to *true*.  The
-		module also includes optional support for sending Push Notifications
-		during long-lived dialogs ([see RFC section 6](https://tools.ietf.org/html/rfc8599#page-23)),
-		through the [pn enable purr](#param_pn_enable_purr) switch.
-
-
-Essential mechanics behind the Push Notification (PN) support:
-
-
-- the PN support is fully compatible with the existing logic and
-				enabling it does not impose any limitations, as the
-				registrar can simultaneously handle both SIP PN compliant
-				and standard SIP User Agents
-- OpenSIPS will raise a
-				[E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH)
-				event any time a Push Notification needs to be sent to a
-				PN-enabled contact.  The event includes the PN coordinates of
-				the contact -- they may be found in the Contact URI ('uri'
-				event parameter) and may be extracted using the {uri.param,name}
-				transformation. From here onwards, it is up to the script
-				developer to trigger the Push Notification (e.g. possibly by
-				sending an HTTP POST with the
-				[rest_client](../rest_client) module), thus forcing
-				a re-registration from the device.
-- REGISTER processing is unchanged -- PN-enabled UAs are saved
-				just as regular UAs, with the former ones additionally having
-				the *4* bitflag set in the "Flags" field of
-				any MI listing of contacts, for differentiation purposes
-- initial INVITE processing is barely changed, with the *lookup()*
-				function now additionally returning a value of
-				**2** if the only
-				found contacts were PN-enabled contacts, all which required a
-				Push Notification.  This means that PNs have been triggered for
-				each of them and t_relay() is not required, since they are not
-				reachable until they re-register!
-Using the event_routing module, OpenSIPS will transparently
-				fork a new branch from the current INVITE on each
-				re-registration from these contacts within the accepted
-				[pn refresh timeout](#param_pn_refresh_timeout)
-- mid-dialog requests: In some cases (e.g. long-lived dialogs),
-				a PN may be required before being able to route a mid-dialog
-				request to a SIP UA.  The [afunc pn process purr](#afunc_pn_process_purr)
-				async function will take care of triggering the PN event and
-				resuming the script as soon as a re-registration from the
-				concerned contact is received.
-
-
-For more information or examples, refer to the documentation of the
-		"pn_xxx" module parameters or the OpenSIPS blog posts around the
-		"SIP Push Notification" topic.
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-The following modules must be loaded before this module:
-
-
-- *usrloc - User Location Module*.
-- *signaling - Signaling module*.
+- *usrloc - 用户位置模块*。
+- *signaling - 信令模块*。
 - *event_routing*,
-				if [pn enable](#param_pn_enable) is set to *true*.
+如果 [pn enable](#param_pn_enable) 设置为 *true*。
 
+#### 外部库或应用程序
 
-#### External Libraries or Applications
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序:
 
+- *无*。
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+### 导出的参数
 
+#### default_expires (整数)
 
-- *None*.
+如果处理的消息既不包含 Expires 首部也不包含 expires contact 参数,则此值将用于新创建的 usrloc 记录。该参数包含过期秒数(例如,使用 3600 表示一小时)。
 
+*默认值为 3600。*
 
-### Exported Parameters
-
-
-#### default_expires (integer)
-
-
-If the processed message contains neither Expires
-		HFs nor expires contact parameters, this value
-		will be used for newly created usrloc records. The parameter contains
-		number of second to expire (for example use 3600 for one hour).
-
-
-*Default value is 3600.*
-
-
-```c title="Set default_expires parameter"
+```c title="设置 default_expires 参数"
 ...
 modparam("registrar", "default_expires", 1800)
 ...
 ```
 
+#### min_expires (整数)
 
-#### min_expires (integer)
+Contact 的最小过期值,低于此最小值的值将自动设置为最小值。值 0 禁用检查。
 
+*默认值为 60。*
 
-The minimum expires value of a Contact, values lower than this
-		minimum will be automatically set to the minimum. Value 0 disables
-		the checking.
-
-
-*Default value is 60.*
-
-
-```c title="Set min_expires parameter"
+```c title="设置 min_expires 参数"
 ...
 modparam("registrar", "min_expires", 60)
 ...
 ```
 
+#### max_expires (整数)
 
-#### max_expires (integer)
+Contact 的最大过期值,高于此最大值的值将自动设置为最大值。值 0 禁用检查。
 
+*默认值为 0。*
 
-The maximum expires value of a Contact, values higher than this
-		maximum will be automatically set to the maximum. Value 0 disables
-		the checking.
-
-
-*Default value is 0.*
-
-
-```c title="Set max_expires parameter"
+```c title="设置 max_expires 参数"
 ...
 modparam("registrar", "max_expires", 120)
 ...
 ```
 
+#### default_q (整数)
 
-#### default_q (integer)
+该参数表示新 contact 的默认 q 值。因为 OpenSIPS 不支持浮点参数类型,所以参数中的值除以 1000 并存储为浮点。例如,如果您希望 default_q 为 0.38,请在此使用值 380。
 
+*默认值为 0。*
 
-The parameter represents default q value for new contacts. Because
-		OpenSIPS doesn't support float parameter types, the value in the parameter
-		is divided by 1000 and stored as float. For example, if you want
-		default_q to be 0.38, use value 380 here.
-
-
-*Default value is 0.*
-
-
-```c title="Set default_q parameter"
+```c title="设置 default_q 参数"
 ...
 modparam("registrar", "default_q", 1000)
 ...
 ```
 
+#### tcp_persistent_flag (字符串)
 
-#### tcp_persistent_flag (string)
+该参数指定用于控制模块关于 TCP 连接行为的消息标志。如果通过 TCP 包含 TCP contact 的 REGISTER 设置了该标志,则模块通过"save()"函数将 TCP 连接的生命周期设置为 contact 过期值。通过这样做,只要 contact 有效,TCP 连接就会保持开启。
 
+*默认值为 -1(禁用)。*
 
-The parameter specifies the message flag to be used to control the
-		module behaviour regarding TCP connections. If the flag is set for a
-		REGISTER via TCP containing a TCP contact, the module, via the
-		"save()" function, will set the lifetime of the TCP
-		connection to the contact expire value. By doing this, the TCP
-		connection will stay on as long as the contact is valid.
-
-
-*Default value is -1 (disabled).*
-
-
-```c title="Set tcp_persistent_flag parameter"
+```c title="设置 tcp_persistent_flag 参数"
 ...
 modparam("registrar", "tcp_persistent_flag", "TCP_PERSIST_DURATION")
 ...
 ```
 
+#### realm_prefix (字符串)
 
-#### realm_prefix (string)
+要从 realm 中自动剥离的前缀。作为 SRV 记录的替代方案(并非所有 SIP 客户端都支持 SRV 查找),可以为 SIP 目的定义主域的子域(例如 sip.mydomain.net 指向与 mydomain.net 的 SRV 记录相同的 IP 地址)。通过忽略 realm_prefix"sip.",在注册时,sip.mydomain.net 将等同于 mydomain.net。
 
+*默认值为 NULL(无)。*
 
-Prefix to be automatically strip from realm. As an alternative to
-		 SRV records (not all SIP clients support SRV lookup), a subdomain of
-		 the master domain can be defined for SIP purposes (like
-		 sip.mydomain.net pointing to same IP address as the SRV record for
-		 mydomain.net). By ignoring the realm_prefix "sip.", at registration,
-		 sip.mydomain.net will be equivalent to mydomain.net .
-
-
-*Default value is NULL (none).*
-
-
-```c title="Set realm_prefix parameter"
+```c title="设置 realm_prefix 参数"
 ...
 modparam("registrar", "realm_prefix", "sip.")
 ...
 ```
 
+#### case_sensitive (整数)
 
-#### case_sensitive (integer)
+如果设置为 1,则 AOR 比较将区分大小写(按照 RFC3261 的指示),如果设置为 0,则 AOR 比较将不区分大小写。
 
+*默认值为 1。*
 
-If set to 1 then AOR comparison will be case
-		sensitive (as RFC3261 instructs), if set to 0 then
-		AOR comparison will be case insensitive.
-
-
-*Default value is 1.*
-
-
-```c title="Set case_sensitive parameter"
+```c title="设置 case_sensitive 参数"
 ...
 modparam("registrar", "case_sensitive", 0)
 ...
 ```
 
-
 #### received_avp (str)
 
-
-Registrar will store the value of the AVP configured by this
-		parameter in the received column in the user location database.
-		It will leave the column empty if the AVP is empty. The AVP should
-		contain a SIP URI consisting of the source IP, port,
-		and protocol of the REGISTER message being processed.
-
+Registrar 将存储由该参数配置的 AVP 的值到用户位置数据库的 received 列中。如果 AVP 为空,则该列将留空。AVP 应该包含一个 SIP URI,由正在处理的 REGISTER 消息的源 IP、端口和协议组成。
 
 > [!NOTE]
-> The value of this parameter should be the same as the value of
-			corresponding parameter of nathelper module.
+> 此参数的值应与 nathelper 模块的相应参数的值相同。
 
+*默认值为"NULL"(禁用)。*
 
-*Default value is "NULL" (disabled).*
-
-
-```c title="Set received_avp parameter"
+```c title="设置 received_avp 参数"
 ...
 modparam("registrar", "received_avp", "$avp(rcv)")
 ...
 ```
 
+#### received_param (字符串)
 
-#### received_param (string)
+当 nathelper 模块设置了 received URI 时,要在 200 OK 的 Contacts 中附加的参数名称。
 
+*默认值为"received"。*
 
-The name of the parameter that will be appended to Contacts of
-		200 OK when the received URI was set by nathelper module.
-
-
-*Default value is "received".*
-
-
-```c title="Set received_param parameter"
+```c title="设置 received_param 参数"
 ...
 modparam("registrar", "received_param", "rcv")
 ...
 ```
 
+#### allow_dup_cseq (布尔值)
 
-#### allow_dup_cseq (boolean)
+某些 SIP 堆栈将使用相同的 Call-ID 和 CSeq 值重新注册。虽然拒绝此类请求符合 RFC 3261 § 10.3.7,但启用此参数会指示 registrar 接受它们,从而提高互操作性。
 
+*默认值为 *true*(接受重复的 CSeq)。*
 
-Some SIP stacks will re-REGISTER using the same Call-ID and CSeq values.
-		While rejecting such requests is consistent with RFC 3261 § 10.3.7, enabling
-		this parameter instructs the registrar to accept them instead,
-		improving interoperability.
-
-
-*Default value is *true* (duplicate CSeq is accepted).*
-
-
-```c title="Setting the allow_dup_cseq parameter"
+```c title="设置 allow_dup_cseq 参数"
 ...
-# strict RFC 3261 compliance: reject REGISTER requests with duplicate CSeq
+# 严格遵循 RFC 3261:拒绝具有重复 CSeq 的 REGISTER 请求
 modparam("
 ```
 
+#### expires_max_deviation (整数)
 
-#### expires_max_deviation (integer)
+设置此参数是为了在新建 contact 的过期时间间隔上添加一个随机 +/- 偏差,偏差值可达给定值。例如,，如果此参数设置为 *100* 并且电话注册了 1800 秒,则最终过期时间将是 [1700, 1900] 区间内的随机数。通过对 contact 的注册生命周期进行随机化,服务器能够更好地处理重启后的*注册风暴*,当所有 TCP 连接丢失并且大量 UA 将同时重新注册时。由于 contact 生命周期随机化,注册风暴只会发生一次,而不是例如每 1800 秒发生一次。
 
+*默认值为 0(无偏差)。*
 
-Set this parameter in order to add a random +/- deviation up to
-		and including the given value to the expiration interval of a
-		newly registered contact.  For example, if this parameter is set to
-		*100* and a phone registers for 1800 sec, the final
-		expiry will be a random number in the [1700, 1900] interval.
-		By randomizing the registration lifetimes of the contacts, the
-		server is better equipped to deal with a post-restart *registration
-		storm*, when all TCP connections are lost and a significant portion of
-		UAs will re-register at the same time.  Thanks to the contact lifetime
-		randomization, the registration storm will only happen once rather
-		than, e.g., every 1800 seconds following the restart.
-
-
-*Default value is 0 (no deviation).*
-
-
-```c title="Setting the expires_max_deviation parameter"
+```c title="设置 expires_max_deviation 参数"
 ...
-# add a random +/- 0-100 seconds to each registration lifetime
+# 每个注册生命周期添加 0-100 秒的随机 +/- 秒数
 modparam("
 ```
 
+#### max_contacts (整数)
 
-#### max_contacts (integer)
+该参数可用于限制用户位置数据库中每个 AOR(Address of Record)的 contact 数量。值 0 禁用检查。这是默认值,仅在未向 save() 函数传递其他 max_contacts 值时使用。也就是说 - 函数参数会覆盖此全局参数。
 
+*默认值为 0。*
 
-The parameter can be used to limit the number of contacts per
-		AOR (Address of Record) in the user location database. Value 0
-		disables the check.
-		This is the default value and will be used only if no other value
-		(for max_contacts) is passed as parameter to the save() function.
-		That's it - the function parameter overwride this global parameter.
-
-
-*Default value is 0.*
-
-
-```c title="Set max_contacts parameter"
+```c title="设置 max_contacts 参数"
 ...
-# Allow no more than 10 contacts per AOR
+# 每个 AOR 最多允许 10 个 contact
 modparam("
 ```
 
+#### retry_after (整数)
 
-#### max_username_len (integer)
+registrar 可以在多种情况下生成 5xx 回复给 REGISTER。例如,当设置了 `max_contacts` 参数并且处理 REGISTER 请求将超过限制时就会发生这种情况。在这种情况下,registrar 将生成"503 Service Unavailable"响应。
 
+如果您想在 5xx 回复中添加 Retry-After 首部字段,请将此参数设置为大于零的值(0 表示不添加该首部字段)。有关更多详细信息,请参阅 RFC3261 的第 20.33 节。
 
-The maximum length of the "username" part of an Address-of-Record SIP URI.
+*默认值为 0(禁用)。*
 
-
-Default value is **64**.
-
-
-```c title="Setting the *max_username_len* module parameter"
-modparam("
-```
-
-
-#### max_domain_len (integer)
-
-
-The maximum length of the "domain" part of an Address-of-Record SIP URI.
-
-
-Default value is **64**.
-
-
-```c title="Setting the *max_domain_len* module parameter"
-modparam("
-```
-
-
-#### max_aor_len (integer)
-
-
-The maximum length of an Address-of-Record SIP URI.
-
-
-Default value is **256**.
-
-
-```c title="Setting the *max_aor_len* module parameter"
-modparam("
-```
-
-
-#### max_contact_len (integer)
-
-
-The maximum length of a Contact header field SIP URI.
-
-
-Default value is **255**.
-
-
-```c title="Setting the *max_contact_len* module parameter"
-modparam("
-```
-
-
-#### retry_after (integer)
-
-
-The registrar can generate 5xx reply to REGISTER in various
-		situations. It can, for example, happen when the
-		`max_contacts` parameter is set and the
-		processing of REGISTER request would exceed the limit. In this case
-		the registrar would generate "503 Service Unavailable" response.
-
-
-If you want to add the Retry-After header field in 5xx replies, set
-		this parameter to a value grater than zero (0 means do not add the
-		header field). See section 20.33 of RFC3261 for more details.
-
-
-*Default value is 0 (disabled).*
-
-
-```c title="Set retry_after parameter"
+```c title="设置 retry_after 参数"
 ...
 modparam("registrar", "retry_after", 30)
 ...
-		
 ```
 
+#### sock_hdr_name (字符串)
 
-#### sock_hdr_name (string)
+包含套接字描述(proto:IP:port)的首部,用于覆盖收到的套接字信息。该首部仅在"save()"时设置's'(套接字首部)标志时才会被查找和使用。
 
+这仅在多个复制服务器场景中才有意义。
 
-Header which contains a socket description (proto:IP:port) to override
-		the received socket info. The header will be search and used only if
-		the flag 's' (Socket header) is set at "save()" time.
+*默认值为 NULL。*
 
-
-This makes sense only in multiple replicated servers scenarios.
-
-
-*Default value is NULL.*
-
-
-```c title="Set sock_hdr_namer parameter"
+```c title="设置 sock_hdr_namer 参数"
 ...
 modparam("registrar", "sock_hdr_name", "Sock-Info")
 ...
-		
 ```
 
+#### mcontact_avp (字符串)
 
-#### mcontact_avp (string)
+AVP 用于存储在缓存注册场景中设置的修改后的绑定/contact(当 REGISTER 被转发到另一个 registrar 时)。AVP 将用于提取主 registrar 返回的 200 OK 中的"expires"值。
 
+这仅在缓存注册场景中有意义,在该场景中,您的 OpenSIPS 在将注册转发到主 registrar 之前缓存注册。
 
-AVP to store the modified binding/contact that is set during cached
-		registrations scenario (when REGISTER is forwarded to another
-		registrar).  The AVP will be used to extract the "expires" value
-		returned in the 200 OK by the main registrar.
+*默认值为 NULL。*
 
-
-This makes sense only in cached registrations scenario, where your
-		OpenSIPS is caching registrations before forwarding them to the main
-		registrar.
-
-
-*Default value is NULL.*
-
-
-```c title="Set mcontact_avp parameter"
+```c title="设置 mcontact_avp 参数"
 ...
 modparam("registrar", "mcontact_avp", "$avp(orig_ct)")
 ...
 route {
    ...
-   # before forwarding the REGISTER request, save the outgoing contact.
-   # Be SURE to do it after all the possible changes over the contact,
-   # like fix_nated_contact()
+   # 在转发 REGISTER 请求之前,保存传出的 contact。
+   # 确保在完成所有可能的 contact 更改后执行此操作,
+   # 如 fix_nated_contact()
    $avp(orig_ct) = $ct.fields(uri);
    t_on_reply("do_save");
    t_relay("udp:ip:port");
@@ -564,30 +287,18 @@ onreply_route[do_save] {
 		save("location");
 }
 ...
-		
 ```
 
+#### attr_avp (字符串)
 
-#### attr_avp (string)
+AVP 用于存储每个注册的特定附加信息。此信息从 AVP 读取,并在每次 registrar 'save()' 时存储(在内存中、数据库中或两者)。当调用 registrar 'lookup()' 或 'is_registered()' 函数时,存储的信息会被推送到与 *attr_avp* 同名的消息分支属性中(参见 $msg.branch.attr() 核心变量)。
 
+在进行并行呼叫分叉时,contact 属性将被推送到相应分支的属性中。
 
-AVP to store specific additional information for each registration.
-		This information is read from the AVP and stored (in memory, db
-		or both) at every registrar 'save()'. When a registrar 'lookup()' or
-		'is_registered()' function is called, the stored information is
-		pushed into a message branch attribute with the same name as 
-		*attr_avp* (see $msg.branch.attr() core variable)
+*默认值为 NULL。*
 
-
-When doing parallel call forking, the contact attributes will be 
-		pushed to the attributes of the corresponding branch
-
-
-*Default value is NULL.*
-
-
-```c title="Set attr_avp parameter"
-# reading attributes from the attr_pvar when doing parallel forking
+```c title="设置 attr_avp 参数"
+# 从执行并行分叉时的 attr_pvar 读取属性
 ...
 modparam("registrar", "attr_avp", "$avp(attr)")
 
@@ -599,7 +310,7 @@ if (is_method("REGISTER")) {
 }
 ...
 lookup("location");
-# list all resulted branches and their attribute
+# 列出所有结果分支及其属性
 $var(i) = 0;
 while ($(msg.branch.uri[$var(i)])!=NULL) {
 	xlog("branch $var(i): $(msg.branch.uri[$var(i)]), attr=$(msg.branch.attr(attr)[$var(i)])\n");
@@ -610,615 +321,353 @@ t_on_branch("parallel_fork");
 t_relay();
 ...
 branch_route [parallel_fork] {
-	xlog("Attributes for branch $T_branch_idx: $tm.branch.attr(attr)\n");
+	xlog("Branch $T_branch_idx 的属性: $tm.branch.attr(attr)\n");
 }
-
-		
 ```
 
+#### gruu_secret (字符串)
 
-#### gruu_secret (string)
+生成临时 GRUU 时用于 XOR 操作的字符串。
 
+*如果未设置,'OpenSIPS' 是默认密钥。*
 
-The string that will be used in XORing when generating
-		temporary GRUUs.
-
-
-*If not set, 'OpenSIPS' is the default secret.*
-
-
-```c title="Set gruu_secret parameter"
+```c title="设置 gruu_secret 参数"
 ...
 modparam("registrar", "gruu_secret", "top_secret")
 ...
-		
 ```
 
+#### disable_gruu (整数)
 
-#### disable_gruu (int)
+全局禁用 GRUU 处理
 
+*默认值为 1(将不处理 GRUU)。*
 
-Globally disable GRUU handling
-
-
-*Default value is 1 ( GRUU will not be handled ).*
-
-
-```c title="Set gruu_secret parameter"
+```c title="设置 gruu_secret 参数"
 ...
 modparam("registrar", "disable_gruu", 0)
 ...
-		
 ```
 
+#### pn_enable (布尔值)
 
-#### pn_enable (boolean)
+启用 SIP 推送通知支持([RFC 8599](https://tools.ietf.org/html/rfc8599))。如果启用,包含所有 [pn ct match params](#param_pn_ct_match_params) 的 Contact 首部字段 URI 将仅使用这些参数与现有绑定进行匹配。否则,模块将尝试按常规方式匹配它们,使用当前的 usrloc [matching_mode](../usrloc#param_matching_mode)。
 
+*默认值为 **false**。*
 
-Enable SIP Push Notification support ([RFC 8599](https://tools.ietf.org/html/rfc8599)).
-			If enabled, Contact header field URIs which include all
-			[pn ct match params](#param_pn_ct_match_params) will be matched against
-			existing bindings using only these parameters.  Otherwise,
-			the module will attempt to match them as usual, using the current
-			usrloc [matching_mode](../usrloc#param_matching_mode).
-
-
-*Default value is **false**.*
-
-
-```c title="Setting the pn_enable parameter"
+```c title="设置 pn_enable 参数"
 ...
 modparam("
 ```
 
+#### pn_providers (字符串)
 
-#### pn_providers (string)
+支持的推送通知提供商列表。虽然 RFC 8599 只定义了三个可能的值("apns"、"fcm" 和"webpush"),但也可以指定非标准值。
 
+*默认值为 **NULL**
+(未设置)。*
 
-A list of supported Push Notification providers.  While only three
-		possible values are defined by RFC 8599 ("apns", "fcm" and "webpush"),
-		non-standard values may be specified as well.
-
-
-*Default value is **NULL**
-						(not set).*
-
-
-```c title="Setting the pn_providers parameter"
+```c title="设置 pn_providers 参数"
 ...
 modparam("
 ```
 
+#### pn_ct_match_params (字符串)
 
-#### pn_ct_match_params (string)
+RFC 8599 参数的最小必需列表(也接受自定义参数),这些参数必须存在于 Contact URI 中并与现有绑定完全匹配,以便在 SIP 重新 REGISTER 期间刷新绑定。如果 Contact 首部字段 URI 中缺少至少一个此类参数,模块将回退到执行常规 contact 匹配。
 
+请注意,如果所有上述 PN Contact URI 参数都与现有绑定匹配,则认为匹配成功,无论 SIP URI 的其他部分是否不匹配(例如主机名、端口、其他 URI 参数等)。
 
-The minimally required list of RFC 8599 parameters (custom ones are
-			accepted as well) which must be present in a Contact URI and
-			identically match an existing binding in order for the binding
-			to be refreshed during a SIP re-REGISTER.  If at least one such
-			parameter is missing from a Contact header field URI, the module
-			will fall back to performing regular contact matching.
+调用 *lookup()* 或 [afunc pn process purr](#afunc_pn_process_purr) 后,上述 PN 相关参数将从结果请求和 Contact URI 事件参数中自动剥离。
 
+*默认值为 **"pn-provider, pn-prid, pn-param"**。*
 
-Note that if all above PN Contact URI parameters match an existing
-			binding, the match is considered to be successful regardless if
-			other parts of the SIP URI do not match (e.g. hostname, port,
-			other URI parameters, etc.).
-
-
-After calling *lookup()* or
-			[afunc pn process purr](#afunc_pn_process_purr), the above PN-related
-			parameters will be automatically stripped from the resulting
-			Request and Contact URI event parameter, respectively.
-
-
-*Default value is **"pn-provider, pn-prid, pn-param"**.*
-
-
-```c title="Setting the pn_ct_match_params parameter"
+```c title="设置 pn_ct_match_params 参数"
 ...
 modparam("
 ```
 
+#### pn_pnsreg_interval (整数)
 
-#### pn_pnsreg_interval (integer)
+对于能够自行唤醒并刷新其绑定的设备(通过 *";+sip.pnsreg"* Contact 首部字段参数表示),此设置表示服务器在设备应该发出绑定刷新请求之前广告的距过期时间。
 
+*默认值为 **130**
+(过期前秒数)。*
 
-For devices capable of waking up and refreshing their binding on
-			their own (signified by the *";+sip.pnsreg"*
-			Contact header field parameter), this setting denotes the
-			prior-to-expiration interval advertised by the server at which the
-			device should issue its binding refresh request.
-
-
-*Default value is **130**
-						(seconds before expiry).*
-
-
-```c title="Setting the pn_pnsreg_interval parameter"
+```c title="设置 pn_pnsreg_interval 参数"
 ...
 modparam("
 ```
 
+#### pn_trigger_interval (整数)
 
-#### pn_trigger_interval (integer)
+如果来自给定 SIP 端点的绑定刷新 REGISTER 请求未在至少 [pn trigger interval](#param_pn_trigger_interval) 秒前到达(例如因为设备不支持 *";+sip.pnsreg"* 或由于其他错误条件),则将触发 [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH) usrloc 事件。
 
+一旦触发 [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH),脚本编写者应使用 Contact URI 中的 RFC 8599 参数向设备的 PN 提供商生成推送通知请求,以便唤醒设备并使其重新注册。
 
-If a binding refresh REGISTER request from a given SIP endpoint does
-			not arrive within at least [pn trigger interval](#param_pn_trigger_interval)
-			seconds prior to expiration (e.g. because the device does not
-			support *";+sip.pnsreg"* or because of other
-			error conditions), the [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH)
-			usrloc event will be triggered.
+*默认值为 **120**
+(过期前秒数)。*
 
-
-Once [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH)
-			is triggered, the script writer should use
-			the RFC 8599 parameters from the Contact URI in order to generate a
-			Push Notification request to the PN provider of the device, in
-			order to cause the device to wake up and re-register.
-
-
-*Default value is **120**
-						(seconds before expiry).*
-
-
-```c title="Setting the pn_trigger_interval parameter"
+```c title="设置 pn_trigger_interval 参数"
 ...
 modparam("
 ```
 
+#### pn_skip_pn_interval (整数)
 
-#### pn_skip_pn_interval (integer)
+在成功进行 contact 的(重新)注册后,此设置表示一个时间间隔(以秒为单位),在此期间,contact 被认为是可以到达的,因此任何推送通知都将被跳过。
 
+*默认值为 **0** 秒
+(始终生成推送通知)。*
 
-Following a successful (re)registration of a contact, this setting
-			denotes a time interval, in seconds, during which the contact is
-			assumed to be reachable, so any Push Notifications will be skipped.
-
-
-*Default value is **0** seconds
-					(always generate Push Notifications).*
-
-
-```c title="Setting the pn_skip_pn_interval parameter"
+```c title="设置 pn_skip_pn_interval 参数"
 ...
 modparam("
 ```
 
+#### pn_refresh_timeout (整数)
 
-#### pn_refresh_timeout (integer)
+此超时从触发推送通知的 *lookup()* 或 [afunc pn process purr](#afunc_pn_process_purr) 开始计时。该值表示推送通知发送所需持续时间与设备相应重新注册到达所需持续时间之和的最大允许值。
 
+一旦超过此超时的初始或会话中请求,任何与待处理推送通知匹配的重新注册都将不再产生预期效果。例如:
 
-This timeout starts counting following a *lookup()* or a
-			[afunc pn process purr](#afunc_pn_process_purr) which
-			triggers a Push Notification.  The value represents the maximum
-			allowed sum of the duration required for the Push Notification to
-			be sent and the duration required for the corresponding
-			re-registration from the device to arrive.
+- 待处理的初始 INVITE 事务将完成,不再为被叫方发送的每个 REGISTER 自动派生额外分支
+- 待处理的 BYE 消息将超时,OpenSIPS 将尝试路由它们,尽管没有收到目标设备实际可到达的确认
 
+*默认值为 **6** 秒。*
 
-Once this timeout is exceeded for an initial or a mid-dialog
-			request, any further re-registrations which match the pending Push
-			Notification will no longer cause the desired effects. For example:
-
-
-- pending initial INVITE transactions will complete and will no
-				longer auto-fork an additional branch for each REGISTER
-				sent by the callee side
-- pending BYE messages will time out and OpenSIPS will attempt to
-				route them despite not having received a confirmation that the
-				target device is actually reachable
-
-
-*Default value is **6** seconds.*
-
-
-```c title="Setting the pn_refresh_timeout parameter"
+```c title="设置 pn_refresh_timeout 参数"
 ...
 modparam("
 ```
 
+#### pn_enable_purr (布尔值)
 
-#### pn_enable_purr (boolean)
+为长期会话启用 SIP 推送通知机制。如果启用,registrar 将在对 REGISTER 请求的 200 OK 回复中包含 *"+sip.pnspurr"* Feature-Caps 首部字段标签。此标签表示注册的唯一定位符(PURR - Proxy Unique Registration Reference)。
 
+在会话建立期间,每个 UA 可以在其 Contact 首部中包含 OpenSIPS 在注册期间返回的 PURR 值。通过包含 PURR(例如";pn-purr=XXX"),代理表示期望在能够接收另一方发送的会话中请求之前首先被 PN 唤醒。
 
-Enable the SIP Push Notification mechanism for long-lived dialogs.
-			If enabled, the registrar will include a
-			*"+sip.pnspurr"*
-			Feature-Caps header field tag in 200 OK replies to REGISTER
-			requests.  This tag represents a unique identifier for the
-			registration (PURR - Proxy Unique Registration Reference).
+启用此参数时,请确保也添加 [afunc pn process purr](#afunc_pn_process_purr) 的逻辑。
 
+*默认值为 **false**。*
 
-During dialog setup, each UA may include, in its Contact header,
-			the PURR value returned by OpenSIPS during registration.  By
-			including the PURR (e.g. ";pn-purr=XXX"), an agent indicates that
-			it expects to be first awoken by a PN before being able to receive
-			a mid-dialog request sent by the other party.
-
-
-When enabling this parameter, make sure to also add logic for
-			[afunc pn process purr](#afunc_pn_process_purr).
-
-
-*Default value is **false**.*
-
-
-```c title="Setting the pn_enable_purr parameter"
+```c title="设置 pn_enable_purr 参数"
 ...
 modparam("
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### save(domain[, flags[, aor[, ownership_tag]]])
 
+该函数处理 REGISTER 消息。它可以根据 REGISTER 消息中的 Contact 和 Expires 首部添加、删除或修改 usrloc 记录。成功时,将返回 200 OK,列出当前在 usrloc 中的所有 contact。出错时,将发送带有原因短语中简短描述的错误消息。
 
-The function processes a REGISTER message. It can add, remove or
-		modify usrloc records depending on Contact and Expires HFs in the
-		REGISTER message. On success, 200 OK will be returned listing all
-		contacts that are currently in usrloc. On an error, error message
-		will be send with a short description in reason phrase.
+参数含义如下:
 
+- *domain (静态字符串)* - registrar 内的逻辑域。如果使用数据库,这是存储 contact 的表名。
+- *flags (字符串,可选)* - 由一个或多个以下标志组成的字符串,逗号分隔:
 
-Meaning of the parameters is as follows:
-
-
-- *domain (static string)* - Logical domain within
-			registrar. If database is used then this must be name of the table which
-			stores the contacts.
-- *flags (string, optional)* - string composed of
-				one or more of the following flags, comma-separated:
-
-  - *'memory-only'* - (old *m* flag)
-	save the contacts only in memory cache without no DB operation;
-  - *'no-reply'* - (old *r* flag)
-	do not generate a SIP reply to the current REGISTER request.
-  - *'max-contacts=[int]'* - (old *c*
-	flag) this flag can be used to limit the number of contacts for this
-	AOR (Address of Record) in the user location database.
-	Value 0 disables the check. This parameter overrides the
-	global "max_contacts" module parameter.
-  - *'force-registration'* - (old *f*
-	flag) this flag can be used to force the registration of NEW contacts
-	even if the maximum number of contacts is reached. In such
-	a case, older contacts will be removed to make space to the
-	new ones, without exceeding the maximum allowed number.
-	This flag makes sense only if "max-contacts" is used.
-  - *'matching-mode=[val]'* - (old *M*
-	flag) How the matching should be performed between the uploaded
-	contacts (by the currently handled REGISTER) and the
-	already know contacts (in memory or DB). This options will
-	be used only for the current operation and can be:
+  - *'memory-only'* - (旧 *m* 标志)
+	仅将 contact 保存到内存缓存中,不进行数据库操作;
+  - *'no-reply'* - (旧 *r* 标志)
+	不生成 SIP 回复到当前 REGISTER 请求。
+  - *'max-contacts=[int]'* - (旧 *c*
+	标志)此标志可用于限制此 AOR 在用户位置数据库中的 contact 数量。
+	值 0 禁用检查。此参数覆盖全局"max_contacts"模块参数。
+  - *'force-registration'* - (旧 *f*
+	标志)此标志可用于强制注册新的 contact,即使已达到最大 contact 数量。在这种情况下,将删除较旧的 contact 以便为新的 contact 腾出空间,而不会超过允许的最大数量。
+	此标志仅在使用"max-contacts"时有意义。
+  - *'matching-mode=[val]'* - (旧 *M*
+	标志)如何执行上传的 contact(通过当前处理的 REGISTER)与已知 contact(在内存或数据库中)之间的匹配。此选项仅用于当前操作,可以是:
 	
+	*'0'* - 仅 contact URI 匹配
 	
-		*'0'* - contact URI matching
-		only
+	*'1'* - contact URI 和 SIP Call-ID 匹配
 	
-	
-		*'1'* - contact URI and
-		SIP Call-ID matching
-	
-	
-		*'<param_name>'* - only
-		the value of the given URI param will be used for
-		matching (for example <rinstance>)
-  - *'path-off'* - (old *p0* flag)
-	(Path support - 'off' mode) - The Path header is saved into usrloc,
-	but is never included in the reply.
-  - *'path-lazy'* - (old *p1* flag)
-	(Path support - lazy mode) The Path header is saved into usrloc, but is only
-	included in the reply if path support is indicated in the
-	registration request by the "path" option
-	of the "Supported" header.
-  - *'path-strict'* - (old *p2* flag)
-	(Path support - strict mode) - The path header is only saved into usrloc,
-	if path support is indicated in the registration request by the
-	"path" option of the "Supported"
-	header. If no path support is indicated, the request is
-	rejected with "420 - Bad Extension" and the
-	header "Unsupported: path" is included in
-	the reply along with the received "Path"
-	header. This mode is the one recommended by RFC-3327.
-  - *'path-received'* - (old *v* flag)
-	if set, the "received" parameter of the first Path
-	URI of a registration is set as received-uri and the NAT
-	branch flag is set for this contact. This is useful if
-	the registrar is placed behind a SIP loadbalancer, which
-	passes the nat'ed UAC address as "received"
-	parameter in it's Path uri.
-  - *'only-request-contacts'* - (old *o*
-	flag) Only include the REGISTER request's Contacts in the 200 OK
-	reply, in case the registration is successful.  While this
-	is against RFC 3261, it may be useful in certain scenarios.
-  - *'socket-header'* - (old
-					*s* flag) look into REGISTER request
-					for a header which contains a socket
-					description (proto:IP:port). This socket info will be
-					stored by register instead of the received socket info.
-  - *'min-expires=[int]'* - (old
-					*e* flag) this
-					flag can be used to set minimum register expiration time.
-					Values lower than this minimum will be automatically set
-					to the minimum. Value 0 disables the checking.
-					This parameter overrides the global
-					[min expires](#param_min_expires) module parameter.
-  - *'max-expires=[int]'* - (old
-					*E* flag) this
-					flag can be used to set maximum register expiration time.
-					Values higher than this maximum will be automatically set
-					to the maximum. Value 0 disables the checking.
-					This parameter overrides the global
-					[max expires](#param_max_expires) module parameter.
-This parameter is a string composed of a set of flags.
-- *aor (string, optional)* - a custom AOR; if missing,
-			the AOR will be taken from the default place - the TO header URI.
-- *ownership_tag (string, optional)* - a cluster-shared
-			tag (see the clusterer module documentation for more details) which
-			will be attached to each contact saved from the current request.
-			This tag is only relevant in clustered user location scenarios and
-			helps determine the current logical owner node of a contact.  This,
-			in turn, is useful in order to restrict nodes which are not
-			currently responsible for this contact from performing certain
-			actions (for example: incorrectly originating pings from a
-			non-owned virtual IP address in highly-available setups).
+	*'<param_name>'* - 仅使用给定 URI 参数的值进行匹配(例如 <rinstance>)
+  - *'path-off'* - (旧 *p0* 标志)
+	(Path 支持 - 'off' 模式) - Path 首部保存到 usrloc,但从不包含在回复中。
+  - *'path-lazy'* - (旧 *p1* 标志)
+	(Path 支持 - lazy 模式) Path 首部保存到 usrloc,但仅当"Supported"首部的"path"选项表示支持 Path 时才包含在回复中。
+  - *'path-strict'* - (旧 *p2* 标志)
+	(Path 支持 - strict 模式) - 仅当"Supported"首部的"path"选项表示支持 Path 时,Path 首部才保存到 usrloc。如果没有表示支持 Path,请求将被拒绝,并返回"420 - Bad Extension",同时在回复中包含"Unsupported: path"首部和收到的"Path"首部。此模式是 RFC-3327 推荐的模式。
+  - *'path-received'* - (旧 *v* 标志)
+	如果设置,注册的第一个 Path URI 的"received"参数被设置为 received-uri,并为该 contact 设置 NAT 分支标志。如果 registrar 位于 SIP 负载均衡器之后,这很有用,负载均衡器将 NAT'ed UAC 地址作为"received"参数传递到其 Path URI 中。
+  - *'only-request-contacts'* - (旧 *o*
+	标志)如果注册成功,仅在 200 OK 回复中包含 REGISTER 请求的 Contact。虽然这违反 RFC 3261,但在某些场景中可能有用。
+  - *'socket-header'* - (旧
+					*s* 标志)在 REGISTER 请求中查找包含套接字
+					描述(proto:IP:port)的首部。此套接字信息将存储为收到的套接字信息。
+  - *'min-expires=[int]'* - (旧
+					*e* 标志)此
+					标志可用于设置最小注册过期时间。低于此最小值的值将自动设置为最小值。值 0 禁用检查。
+					此参数覆盖全局
+					[min expires](#param_min_expires) 模块参数。
+  - *'max-expires=[int]'* - (旧
+					*E* 标志)此
+					标志可用于设置最大注册过期时间。高于此最大值的值将自动设置为最大值。值 0 禁用检查。
+					此参数覆盖全局
+					[max expires](#param_max_expires) 模块参数。
+此参数是由一组标志组成的字符串。
+- *aor (字符串,可选)* - 自定义 AOR;如果缺失,AOR 将从默认位置获取 - To 首部 URI。
+- *ownership_tag (字符串,可选)* - 一个集群共享标签(有关更多详细信息,请参阅 clusterer 模块文档),它将附加到从当前请求保存的每个 contact。此标签仅在集群用户位置场景中相关,有助于确定 contact 的当前逻辑所有者节点。这反过来对于限制当前不负责此 contact 的节点执行某些操作很有用(例如:从不拥有的虚拟 IP 地址错误地发起 ping 的高可用性设置)。
 
+此函数可以从 REQUEST_ROUTE 和 ONREPLY_ROUTE 使用。
 
-This function can be used from REQUEST_ROUTE and ONREPLY_ROUTE.
+如果您计划在回复路由中使用"save()"函数,请参阅 [mcontact avp](#param_mcontact_avp) 模块参数。
 
-
-If you plan to use the "save()" function in reply route,
-		please refer to [mcontact avp](#param_mcontact_avp) module parameter.
-
-
-```c title="save usage"
+```c title="save 使用示例"
 ...
-# save into 'location', no flags, use default AOR (TO URI)
+# 保存到 'location',无标志,使用默认 AOR(TO URI)
 save("location");
 ...
-# save into 'location', do not update DB, max 5 contacts per AOR,
-# use default AOR (TO URI)
+# 保存到 'location',不更新数据库,每个 AOR 最多 5 个 contact,
+# 使用默认 AOR(TO URI)
 save("location","memory-only, max-contacts=5");
 ...
-# save into 'location', no flags, use as AOR the FROM URI
+# 保存到 'location',无标志,使用 FROM URI 作为 AOR
 save("location","",$fu);
 ...
-# save into 'location', no DB update, force registration, take AOR from AVP
+# 保存到 'location',不更新数据库,强制注册,从 AVP 获取 AOR
 save("location","memory-only, no-reply", $avp(aor));
 ...
-# save into 'location', mark the contacts with the "vip" ownership tag and
-# replicate these contacts to the backup node, which does not currently own "vip"
+# 保存到 'location',使用"vip"所有权标签标记 contact,并
+# 将这些 contact 复制到当前不拥有"vip"的备份节点
 save("location", , , "vip");
 ...
 ```
 
-
 #### remove(domain, AOR[, [contact][, [next_hop][, [sip_instance], [bflag]]]])
 
+显式删除给定地址记录背后的 contact。
 
-Explicitly remove contacts behind a given address-of-record.
+参数含义如下:
 
+- *domain (静态字符串* - registrar 内的逻辑域。
+		如果使用数据库,这是存储 contact 的表名。
+- *AOR (字符串)* - 要搜索的地址记录(SIP URI)
+- *contact (字符串,可选)* - 要删除的 contact 的 SIP URI 过滤器。这必须是注册时使用的完整 SIP URI。
+- *next_hop (字符串,可选)* - 返回到此 contact 路径上的下一个 SIP IP 地址/主机名。请参阅下面的部分了解如何计算下一跳。主机名在匹配之前会被解析。
+- *sip_instance (字符串,可选)* -
+			"+sip.instance" 值,用于过滤目的。
+- *blfag (字符串,可选)* -
+			用于过滤目的的分支标志。
 
-Meaning of the parameters is as follows:
+**重要:**每个 contact 的 IP 地址(用于匹配)计算如下:
 
+- a. 如果存在 Path 首部,则 Path URI 的主机名部分将被解析为 contact 的 IP 地址。
+- b. 否则,如果使用 nathelper 设置了 contact 的"Received"值(下一跳的源 IP),则这成为要解析为 contact IP 地址的主机名。
+- c. 否则,选择 Contact 首部字段 URI 的"hostname"部分解析为 contact 的 IP 地址。
 
-- *domain (static string* - Logical domain within the registrar.
-			If a database is used, then this must be name of the table which
-			stores the contacts.
-- *AOR (string)* - address-of-record to be searched (SIP URI)
-- *contact (string, optional)* - SIP URI filter
-				for the contact to be removed. This must be the full SIP URI
-				as used during registered.
-- *next_hop (string, optional)* - the next
-				SIP IP address/hostname on the way back to this contact. See
-				the section below for details on how the next hop is
-				computed. Hostnames are resolved before matching.
-- *sip_instance (string, optional)* - a
-				"+sip.instance" value to be used for filtering purposes.
-- *blfag (string, optional)* - a
-				Branch Flag to be used for filtering purposes.
+此函数可以从 REQUEST_ROUTE 和 ONREPLY_ROUTE 使用。
 
-
-**IMPORTANT:**the IP address of each
-			contact (for matching purposes) is computed as follows:
-
-
-- a. if a Path header is present, the hostname part of the
-					Path URI will be resolved as the contact's IP address.
-- b. otherwise, if by using nathelper, the "Received" value
-					(source IP of the next hop) is set for a contact, this
-					becomes the chosen hostname to be resolved as the contact's
-					IP address.
-- c. otherwise, the "hostname" part of the Contact header
-					field URI is chosen to be resolved as the contact's IP
-					address.
-
-
-This function can be used from REQUEST_ROUTE and ONREPLY_ROUTE.
-
-
-```c title="remove usage"
+```c title="remove 使用示例"
 ...
-# remove all contacts belonging to the "bob" AOR
+# 删除属于"bob" AOR 的所有 contact
 remove("location", "sip:bob@atlanta.com");
 ...
-# remove only bob's home phone contact
+# 仅删除 bob 的家庭电话 contact
 remove("location", "sip:bob@atlanta.com", "sip:bob@46.50.64.78");
 ...
-# remove all bob's phones which are behind "50.60.50.60"
-# note that "contact" parameter has to be specified with NULL value even though not used
+# 删除所有位于"50.60.50.60"之后的 bob 的电话
+# 注意,即使未使用,也必须使用 NULL 值指定"contact"参数
 $var(next_hop) = "50.60.50.60"
 remove("location", "sip:bob@atlanta.com", , $var(next_hop));
 ...
-# remove bob's phone with contact "sip:bob@46.50.64.78" that is behind "50.60.50.60"
+# 删除 contact"sip:bob@46.50.64.78"位于"50.60.50.60"之后的 bob 的电话
 remove("location", "sip:bob@atlanta.com", "sip:bob@46.50.64.78", "50.60.50.60");
 ...
-# remove all contacts behind bob's mobile device X
+# 删除 bob 移动设备 X 后面的所有 contact
 remove("location", "sip:bob@atlanta.com", , , "<urn:uuid:e5e68d40-f08a-4600-b82e-ff4d5d8c1a8f>")
 ```
 
-
 #### remove_ip_port(IP,Port, domain, [AOR])
 
+删除特定 IP 和 Port 后面的所有 contact,可按 AOR 过滤。
 
-Remove all contacts behind a specific IP and Port, optionally filtering by AOR.
+参数含义如下:
 
+- *IP (字符串)* - 要删除的 Contact 的 IP
+- *Port (整数)* - 要删除的 Contact 的 Port
+- *domain (静态字符串* - registrar 内的逻辑域。
+		如果使用数据库,这是存储 contact 的表名。
+- *AOR (字符串,可选)* - 要搜索的地址记录(SIP URI)
 
-Meaning of the parameters is as follows:
+此函数可以从所有路由使用。
 
-
-- *IP (string)* - IP of the Contact to be removed
-- *Port (integer)* - Port of the Contact to be removed
-- *domain (static string* - Logical domain within the registrar.
-			If a database is used, then this must be name of the table which
-			stores the contacts.
-- *AOR (string, optional)* - address-of-record to be searched (SIP URI)
-
-
-This function can be used from ALL ROUTES.
-
-
-```c title="remove_ip_port usage"
+```c title="remove_ip_port 使用示例"
 ...
-# remove all contacts behind 8.8.8.8 port 43213
+# 删除 8.8.8.8 port 43213 后面的所有 contact
 remove_ip_port("8.8.8.8",43213,"location");
 ...
-# remove only bob's contacts behind the 8.8.8.8:43213 host
+# 仅删除 8.8.8.8:43213 主机后面的 bob 的 contact
 remove_ip_port("8.8.8.8",43213,"location","sip:bob@atlanta.com");
 ...
 ```
 
-
 #### lookup(domain [, flags [, aor]])
 
+该函数从 Request-URI 中提取用户名,并尝试在 usrloc 中找到该用户名的所有 contact。如果没有此类 contact,将返回 -1。如果存在此类 contact,Request-URI 将被具有最高 q 值的 contact 覆盖,其余的将根据 append_branches 参数值附加到消息中。
 
-The functions extracts username from Request-URI and tries to find
-		all contacts for the username in usrloc. If there are no such
-		contacts, -1 will be returned.  If there are such contacts,
-		Request-URI will be overwritten with the contact that has
-		the highest q value and optionally the rest will be appended to
-		the message (depending on append_branches parameter value).
+如果启用了 method_filtering 选项,lookup 函数将仅返回支持处理请求方法的 contact。
 
+参数含义如下:
 
-If the method_filtering option is enabled, the lookup function
-		will return only the contacts that support the method of the
-		processed request.
+- *domain (静态字符串)* - 应该用于查找的表名。
+- *flags (字符串,可选) - 由一个或多个以下标志组成的字符串,逗号分隔:*
 
-
-Meaning of the parameters is as follows:
-
-
-- *domain (static string)* - Name of table that
-			should be used for the lookup.
-- *flags (string, optional) - string composed of one or more of
-		the following flags, comma-separated:*
-
-  - *'no-branches'* - (old *b* flag) this
-	flag controls how the *lookup()* function processes multiple contacts.
-	If there are
-	multiple contacts for the given username in usrloc and this
-	flag is not set, Request-URI will be overwritten with the
-	highest-q rated contact and the rest will be appended to
-	sip_msg structure and can be later used by tm for forking. If
-	the flag is set, only Request-URI will be overwritten
-	with the highest-q rated contact and the rest will be left
-	unprocessed.
-  - *'to-branches-only'* - (old *B* flag)
-	this flags forces all found contacts to be uploaded only as branches (in the
-	destination set) and not at all in the R-URI of the
-	current message.  Using this option allows the *lookup()* function to
-	also be used in the context of a SIP reply.
-  - *'branch'* - (old *r* flag) this flag
-	enables searching through existing branches for aor's and expanding
-	them to contacts. For example, you have got AOR A in your
-	ruri but you also want to forward your calls to AOR B. In order
-	to do this, you must put AOR B in a branch, and if this flag
-	enabled, the function will also expand AOR B to contacts,
-	which will be put back into the branches. The AOR's that were
-	in branches before the function call shall be removed.
-**WARNING:**
-	*if you want this flag activated,
-	the 'no-branches' flag must not be set, because by setting
-	that flag you won't allow *lookup()* to write in a branch.*
-  - *'method-filtering'* - (old *m* flag)
-	setting this flag will enable contact filtering based on the supported methods
-	listed in the "Allow" header field during registration.
-	Contacts which did not present an "Allow" header field during
-	registration are assumed to support all standard SIP methods.
-  - *'ua-filtering=[val]'* (old *u* flag)
-	(User-Agent filtering) - this flag enables regexp filtering by user-agent.
-	It's useful with enabled append_branches parameter. The value must use the
-	format '/regexp/'.
-  - *'case-insensitive'* (old *i* flag) -
-	this flag enables case insensitive filtering for the 'ua-filtering' flag.
-  - *'extended-regexp'* - (old *e* flag)
-	this flag enables using of extended regexp format for the 'ua-filtering' flag.
-  - *'global'* (old *g* flag) (Global
-	lookup) - this flag is only relevant with federated user location clustering.
-	If set, the *lookup()* function will not only perform the classic
-	in-memory "search-AoR-and-push-branches" operation, but will
-	also perform a metadata lookup and append an additional branch
-	for each returned result. The "in-memory branches" correspond
-	to local contacts (current location), while the "metadata
-	branches" correspond to contacts available on one or more of
-	the remaining locations of the platform.
-The AoR metadata consists of the minimally required information
-	in order for one of the VoIP platform's locations (data
-	centers) to advertise the presence of a locally registered AoR
-	for the global platform. Specifically, this consists of two
-	pieces of information:
+  - *'no-branches'* - (旧 *b* 标志)
+	此标志控制 *lookup()* 函数如何处理多个 contact。
+	如果 usrloc 中有多个给定用户名的 contact,并且未设置此标志,则 Request-URI 将被最高 q 值 rated contact 覆盖,其余的将附加到 sip_msg 结构中,稍后可由 tm 用于分叉。如果设置了该标志,仅 Request-URI 将被最高 q 值 rated contact 覆盖,其余的将保持未处理状态。
+  - *'to-branches-only'* - (旧 *B* 标志)
+	此标志强制所有找到的 contact 仅作为分支上传(在目标集中),完全不放在当前消息的 R-URI 中。使用此选项, *lookup()* 函数也可以在 SIP 回复的上下文中使用。
+  - *'branch'* - (旧 *r* 标志)此标志
+	启用搜索现有分支的 aor 并将其扩展到 contact。例如,您在 ruri 中有 AOR A,但您也想将呼叫转发到 AOR B。为此,您必须将 AOR B 放在一个分支中,如果启用此标志,该函数还将把 AOR B 扩展到 contact,这将放回分支中。函数调用之前的分支中的 AOR 将被删除。
+  - *'method-filtering'* - (旧 *m* 标志)
+	设置此标志将启用基于注册时"Allow"首部字段中列出的支持方法的 contact 过滤。在注册时未显示"Allow"首部字段的 contact 被假定为支持所有标准 SIP 方法。
+  - *'ua-filtering=[val]'* (旧 *u* 标志)
+	(用户代理过滤) - 此标志启用按用户代理的正则表达式过滤。它与启用的 append_branches 参数一起使用很有用。值必须使用 '/regexp/' 格式。
+  - *'case-insensitive'* (旧 *i* 标志) -
+	此标志为'ua-filtering'标志启用不区分大小写的过滤。
+  - *'extended-regexp'* - (旧 *e* 标志)
+	此标志为'ua-filtering'标志启用扩展正则表达式格式。
+  - *'global'* (旧 *g* 标志)(全局
+	查找) - 此标志仅与联合用户位置集群相关。如果设置, *lookup()* 函数不仅执行经典的内存"搜索-AoR-推送分支"操作,还将执行元数据查找并为每个返回结果附加一个额外分支。"内存分支"对应于本地 contact(当前位置),而"元数据分支"对应于平台其他位置上可用的 contact。
+	AoR 元数据由VoIP 平台的位置(数据中心)需要的最少信息组成,以便为全局平台广告本地注册的 AoR 的存在。具体来说,这包括两条信息:
 	
 	
-		the AoR (e.g. "vladimir@federation-cluster")
+		AoR(例如"vladimir@federation-cluster")
 	
 	
-		the home IP (e.g. "10.0.0.223")
-  - *'max-ping-latency=[int]'* - (old *y*
-	flag) maximally accepted contact pinging latency (microseconds). Contacts of an
-	AoR with a higher latency will be discarded during *lookup()*.
-  - *'sort-by-latency'* - (old *Y* flag)
-	contacts will be picked in ascending order of their last successful
-	pinging latency (fastest ping -> slowest ping). This flag may
-	work together with the "max-ping-latency" flag.
-- *AOR (string, optional)* - AOR to lookup for; if
-			missing, the RURI is used as AOR;
+		主 IP(例如"10.0.0.223")
+  - *'max-ping-latency=[int]'* - (旧 *y*
+	标志)最大可接受的 contact ping 延迟(微秒)。具有更高延迟的 AoR 的 contact 将在 *lookup()* 期间被丢弃。
+  - *'sort-by-latency'* - (旧 *Y* 标志)
+	contact 将按其上次成功 ping 延迟的升序选择(最快的 ping -> 最慢的 ping)。此标志可与"max-ping-latency"标志一起使用。
+- *AOR (字符串,可选)* - 要查找的 AOR;如果缺失,使用 RURI 作为 AOR;
 
+返回值:
 
-Return codes:
+- **1** - 找到 contact 并成功推送为分支。需要在此之前被唤醒的 contact 通过异步推送通知收到通知。
+- **2** - 成功为找到的 contact 启动了至少一个异步推送通知,但没有填充额外分支(即不需要调用 t_relay())。
+- **-1** - 未找到 contact。
+- **-2** - 找到 contact,但它们都不支持当前 SIP 方法。
+- **-3** - 处理过程中的内部错误。
 
+此函数可以从 REQUEST_ROUTE, FAILURE_ROUTE 使用。
 
-- **1** - contacts found and successfully
-	pushed as branches.  Contacts which required awakening prior to being
-	reachable are being notified via async Push Notifications.
-- **2** - successfully started at least one
-	async Push Notification for the found contacts, however no extra branches
-	were populated (i.e. there is no need to call t_relay()).
-- **-1** - no contact found.
-- **-2** - contacts found, but neither of them
-	supports the current SIP method.
-- **-3** - internal error during processing.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
-
-
-```c title="lookup usage"
+```c title="lookup 使用示例"
 ...
-lookup("location");  # simple lookup
-   #or
-lookup("location", "method-filtering"); # lookup with method filtering
-   #or
-lookup("location", "branch"); # lookup with aor branch search;
-						# all contacts except the first one shall be put
-						# in the branches
-   #or
-lookup("location", "ua-filtering=/phone/i"); # lookup with user-agent filtering
-   #or
-lookup("location", "", $var(aor)); # simple lookup with AOR from var
+lookup("location");  # 简单查找
+   # 或
+lookup("location", "method-filtering"); # 带方法过滤的查找
+   # 或
+lookup("location", "branch"); # 带 aor 分支搜索的查找;
+						# 除第一个外的所有 contact 都应放在分支中
+   # 或
+lookup("location", "ua-filtering=/phone/i"); # 带用户代理过滤的查找
+   # 或
+lookup("location", "", $var(aor)); # 使用 AOR 变量的简单查找
 switch ($retcode) {
     case -1:
     case -3:
@@ -1231,83 +680,56 @@ switch ($retcode) {
 ...
 ```
 
-
 #### is_registered(domain ,[AOR])
 
+如果 AOR 已注册则返回 true,否则返回 false。该函数不修改正在处理的消息。
 
-The function returns true if an AOR is registered, false otherwise.
-		The function does not modify the message being process.
+注意:如果为回复调用(来自 onreply_route),您必须传递一个 AOR(作为参数),否则函数将失败。
 
+参数含义如下:
 
-NOTE: if called for a reply (from onreply_route), you must pass an
-		AOR (as parameter), otherwise the function will fail.
+- *domain (静态字符串)* - 应该用于查找的表名。
+- *AOR (字符串,可选)* - 要查找的 AOR;如果缺失,AOR 的来源是 REGISTER 请求的"To"首部,其他 sip 请求的"From"首部。
 
+此函数可以从 REQUEST_ROUTE, FAILURE_ROUTE,
+			BRANCH_ROUTE, ONREPLY_ROUTE, LOCAL_ROUTE 使用。
 
-Meaning of the parameters is as follows:
-
-
-- *domain (static string)* - Name of table that
-			should be used for the lookup.
-- *AOR (string, optional)* - AOR to lookup for; if
-			missing, the source if the AOR is the "To" header for REGISTER
-			request, "From" header for any other sip request.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-			BRANCH_ROUTE, ONREPLY_ROUTE, LOCAL_ROUTE.
-
-
-```c title="is_registered usage"
+```c title="is_registered 使用示例"
 ...
 /**/
 if (is_method("REGISTER")) {
-	/* automatically uses the URI from the To header */
+	/* 自动使用 To 首部中的 URI */
 	if (is_registered("location")) {
-		xlog("this AOR is registered\n")
+		xlog("此 AOR 已注册\n")
 		...
 	}
 };
-/* check the From uri whether this aor is registered or not */
+/* 检查 From uri 无论此 aor 是否已注册 */
 if (is_registered("location",$fu)) {
-	xlog("caller is registered\n");
+	xlog("呼叫者已注册\n");
 }
 ...
 ```
 
-
 #### is_contact_registered(domain ,[AOR],[contact],[callid])
 
+如果某个 AOR 的 contact 和/或 callid 已注册则返回 true,否则返回 false。该函数不修改正在处理的消息。
 
-The function returns true if a contact and/or a callid from a certain AOR is registered, false otherwise.
-		The function does not modify the message being process.
+参数含义如下:
 
+- *domain (静态字符串)* - 应该用于查找的表名。
+- *AOR (字符串,可选)* - 要查找的 AOR;如果缺失,AOR 的来源是 REGISTER 请求的"To"首部,其他 sip 请求的"From"首部。
+- *contact (contact,可选)* (可选)- SIP
+			URI,用于检查是否有以此 URI 作为 cotact 的注册(这可以帮助您区分同一用户/AOR 的多个注册)。
+- *callid (字符串,可选)* - callid 用于检查 contact
+			是否以此 callid 注册(这可以帮助您区分新注册的 contact(之前未注册的 callid)和重新注册(已注册的 callid))。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE, FAILURE_ROUTE,
+			BRANCH_ROUTE, ONREPLY_ROUTE, LOCAL_ROUTE 使用。
 
-
-- *domain (static string)* - Name of table that should be
-			used for the lookup.
-- *AOR (string, optional)* - AOR to lookup for; if
-			missing, the source if the AOR is the "To" header for REGISTER
-			request, "From" header for any other sip request.
-- *contact (contact, optional)* (optional)- SIP
-			URI to check if there is a registration with this URI as cotact
-			(this may help you to make distinction between multiple 
-			registrations for the same user/AOR).
-- *callid (string, optional)* - callid to check if a
-			contact if registered with this callid (this may help you to
-			make distinction between newly registered contact (callid
-			not registered so far) and re-registration (callid already
-			registered).
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-			BRANCH_ROUTE, ONREPLY_ROUTE, LOCAL_ROUTE.
-
-
-```c title="is_contact_registered usage"
+```c title="is_contact_registered 使用示例"
 ...
-/* block users which are not registered... */
+/* 阻止未注册的用户... */
 if (is_method("INVITE")) {
 	if (!is_contact_registered("location")) {
 		sl_send_reply(401, "Unauthorized");
@@ -1315,128 +737,78 @@ if (is_method("INVITE")) {
 	}
 }
 
-/* ... or check whether the 2nd Contact URI is registered or not */
+/* ... 或检查第二个 Contact URI 是否已注册 */
 if (is_method("INVITE")) {
 	if (is_contact_registered("location", $fu, $(ct.fields(uri)[1])))
-		xlog("caller is registered\n");
+		xlog("呼叫者已注册\n");
 }
 ...
 ```
 
-
 #### is_ip_registered(domain ,[AOR],IPvar,[PORTvar])
 
+如果至少有从一个 IP 注册的 contact(和可选的 PORTvar 变量),则返回 true。IP 与收到的 host 匹配(如果存在),否则与 contact host 匹配。此函数不修改正在处理的消息。此函数替换旧的"is_other_contact"函数。
 
-The function returns true if there is at least one contact that has
-			been registered from the IP in the IPvar variable ( and from the optional
-			PORTvar variable ). 
-			The IP is matched against the received host, if it exists, or the contact host otherwise.
-			This function does not modify the message being process. This function
-		replaces the old "is_other_contact" function.
+参数含义如下:
 
+- *domain (静态字符串)* - 应该用于查找的表名。
+- *AOR (字符串,可选)* - 要查找的 AOR;如果缺失,AOR 的来源是 REGISTER 请求的"To"首部,其他 sip 请求的"From"首部。
+- *IPvar (var)* - 包含要与 contact host 或收到的 host 匹配的 IP 的变量(见上文)。如果 *IPvar* 是包含多个值/IP 的 AVP,则会检查所有值。
+- *PORTvar (var,可选)* - 包含要与 contact host 或收到的 host 匹配的端口的变量(见上文)。如果 *IPvar* 是包含多个值/IP 的 AVP,则 PORTvar 预计包含相同数量的条目,并且所有值都会被检查。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE, FAILURE_ROUTE,
+			BRANCH_ROUTE, ONREPLY_ROUTE, LOCAL_ROUTE 使用。
 
-
-- *domain (static string)* - Name of table that should be
-			used for the lookup.
-- *AOR (string, optional)* - AOR to lookup for; if
-			missing, the source if the AOR is the "To" header for REGISTER
-			request, "From" header for any other sip request.
-- *IPvar (var)* - the variable containing the IP matched against
-				the contact host or the received host (see above). If the
-				*IPvar* is an AVP containing multiple values/IPs,
-				then all the values are checked.
-- *PORTvar (var, optional)* - the variable containing the port to be
-			       	matched against the contact host or the received host (see above). If the
-				*IPvar* is an AVP containing multiple values/IPs, then the PORTvar
-				is expected to contain the same number of entries, and all the values are checked.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-			BRANCH_ROUTE, ONREPLY_ROUTE, LOCAL_ROUTE.
-
-
-```c title="is_ip_registered usage"
+```c title="is_ip_registered 使用示例"
 ...
-/* check the source ip  whether it is already registered */
+/* 检查源 IP 是否已注册 */
 if (is_method("REGISTER")) {
 	if (is_ip_registered("location",$tu,$si)) {
-		xlog("already registered from this ip\n");
+		xlog("从此 IP 已注册\n");
 		...
 	}
 };
 ...
 ```
 
-
 #### add_sock_hdr(hdr_name)
 
+向当前 REGISTER 请求添加一个包含收到套接字(proto:ip:port)描述的新首部"hdr_name"。
 
-Adds to the current REGISTER request a new header with
-		"hdr_name" which contains the description of the
-		received socket (proto:ip:port)
+这仅在多个复制服务器场景中才有意义。
 
+参数含义如下:
 
-This makes sense only in multiple replicated servers scenarios.
+- *hdr_name (字符串)* - 要使用的首部名称。
 
+此函数可以从 REQUEST_ROUTE 使用。
 
-Meaning of the parameters is as follows:
-
-
-- *hdr_name (string)* - header name to be used.
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="add_sock_hdr usage"
+```c title="add_sock_hdr 使用示例"
 ...
 add_sock_hdr("Sock-Info");
 ...
 ```
 
-
-### Exported Asynchronous Functions
-
+### 导出的异步函数
 
 #### pn_process_purr(domain)
 
+根据 RFC 8599 执行会话中请求处理。对于此类请求,在 R-URI 和最顶层 Route 首部字段 URI 中搜索 *";pn-purr"* 参数值,该值既匹配 OpenSIPS PURR 格式又对应于 usrloc 注册。一旦找到 usrloc contact,就触发 [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH) 事件,并将请求置于异步保持状态,最长可达 [pn refresh timeout](#param_pn_refresh_timeout) 秒,直到收到匹配的 REGISTER 请求。
 
-Perform mid-dialog request processing, according to RFC 8599.  For
-		such requests, search the R-URI and topmost Route header field URI for
-		a *";pn-purr"* parameter value that both matches the
-		OpenSIPS PURR format and corresponds to an usrloc registration. Once a
-		usrloc contact is located, trigger an [E_UL_CONTACT_REFRESH](../usrloc#event_E_UL_CONTACT_REFRESH)
-		event and place the request on async hold for at most
-		[pn refresh timeout](#param_pn_refresh_timeout) seconds, until a matching
-		REGISTER request arrives.
+如果在触发推送通知之前处理结束,请求将不再被置于异步保持状态,将立即调用恢复路由。
 
+参数含义如下:
 
-If processing ends before triggering the Push Notification, the request
-		will no longer be put on async hold, with the resume route being
-		immediately called.
+- *domain (静态字符串)* - registrar 内的逻辑域。
+		如果使用数据库,这是存储 contact 的表名。
 
+**返回值**
 
-Meaning of the parameters is as follows:
+- **1** - 成功,PN 已启动。
+- **2** - 成功,但未启动 PN(由于缺少 PURR、外部 PURR 或离线 contact)
+- **-1** - 内部错误
 
-
-- *domain (static string)* - Logical domain within
-			registrar.  If a database is used, then this must be name of the
-			table which stores the contacts.
-
-
-**Return Codes**
-
-
-- **1** - Success, PN was launched.
-- **2** - Success,
-				but PN was not launched (due to missing PURR, foreign PURR or
-				offline contact)
-- **-1** - Internal Error
-
-
-```c title="async pn_process_purr() usage"
+```c title="async pn_process_purr() 使用示例"
 route {
 	...
 	if (has_totag()) {
@@ -1460,148 +832,94 @@ route {
 
 route [resume_route] {
 	$var(rc) = $rc;
-	xlog("pn_process_purr() finished with $var(rc)\n");
+	xlog("pn_process_purr() 完成,返回码 $var(rc)\n");
 
 	...
 }
 ```
 
-
-### Exported Statistics
-
+### 导出的统计信息
 
 #### max_expires
 
-
-Value of max_expires parameter.
-
+max_expires 参数的值。
 
 #### max_contacts
 
-
-The value of max_contacts parameter.
-
+max_contacts 参数的值。
 
 #### defaults_expires
 
-
-The value of default_expires parameter.
-
+default_expires 参数的值。
 
 #### accepted_regs
 
-
-Number of accepted registrations.
-
+接受的注册数量。
 
 #### rejected_regs
 
+拒绝的注册数量。
 
-Number of rejected registrations.
+## 常见问题
 
+**Q: 旧的"append_branch"模块参数发生了什么?**
 
-## Frequently Asked Questions
+它作为全局选项被移除,因为"lookup" 函数通过"b"标志(附加分支)接受此选项
+请参阅"lookup"函数的文档。
 
+**Q: 旧的"method_filtering"模块参数发生了什么?**
 
-**Q: What happened with the old "append_branch" module parameter?**
+它作为全局选项被移除,因为"lookup" 函数通过"m"标志(方法过滤)接受此选项
+请参阅"lookup"函数的文档。
 
+**Q: 旧的"sock_flag"模块参数发生了什么?**
 
-It was removed as global option, as the "lookup" 
-			function takes this option via the flag "b" (append Branches) 
-			See the documentation of the "lookup" function.
+它作为全局选项被移除,因为"save" 函数通过"s"标志(套接字首部)接受此选项
+请参阅"save"函数的文档。
 
+**Q: 旧的"use_path"和"path_mode"模块参数发生了什么?**
 
-**Q: What happened with the old "method_filtering" module parameter?**
+它们作为全局选项被移除,因为"save" 函数通过"px"标志(path 支持)接受这些选项
+请参阅"save"函数的文档。
 
+**Q: 旧的"path_use_received"模块参数发生了什么?**
 
-It was removed as global option, as the "lookup" 
-			function takes this option via the flag "m" (Method filtering) 
-			See the documentation of the "lookup" function.
+它作为全局选项被移除,因为"save" 函数通过"v"标志(path receiVed)接受此选项
+请参阅"save"函数的文档。
 
+**Q: 旧的"nat_flag"模块参数发生了什么?**
 
-**Q: What happened with the old "sock_flag" module parameter?**
+它被移除了,因为模块从"USRLOC"模块内部加载此值(请参阅"nat_bflag" USRLOC 参数)。
 
+**Q: 旧的"use_domain"模块参数发生了什么?**
 
-It was removed as global option, as the "save" 
-			function takes this option via the flag "s" (Socket header) 
-			See the documentation of the "save" function.
+它被移除了,因为模块从"USRLOC"模块内部加载此选项。这是为了简化配置。
 
+**Q: 旧的"save_noreply"和"save_memory"函数发生了什么?**
 
-**Q: What happened with the old "use_path" and "path_mode" module parameters?**
+这些函数被合并到新的 "save(domain,flags)" 函数中。是否发送回复或是否更新数据库也通过 flags 控制。
 
+**Q: 在哪里可以找到更多关于 OpenSIPS 的信息?**
 
-They were removed as global option, as the "save" 
-			function takes these options via the flag "px" (path support) 
-			See the documentation of the "save" function.
+请查看 [https://opensips.org/](https://opensips.org/)。
 
+**Q: 在哪里可以发布关于此模块的问题?**
 
-**Q: What happened with the old "path_use_received" module parameter?**
+首先检查您的问题是否已在我们某个邮件列表中得到解答:
 
+关于任何稳定 OpenSIPS 版本的电子邮件应发送到 users@lists.opensips.org,关于开发版本的电子邮件应发送到 devel@lists.opensips.org。
 
-It was removed as global option, as the "save" 
-			function takes this option via the flag "v" (path receiVed) 
-			See the documentation of the "save" function.
+如果您想保持邮件私密,请发送至 users@lists.opensips.org。
 
+**Q: 如何报告错误?**
 
-**Q: What happened with the old "nat_flag" module parameter?**
+请遵循以下指南:
+[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 
+**Q: desc_time_order 参数发生了什么?**
 
-It was removed, as the module internally loads this value from the
-			"USRLOC" module (see the "nat_bflag"
-			USRLOC parameter).
+它被移除了,因为其功能已迁移到 usrloc 模块,在那里有一个同名的参数。
 
+### 许可证
 
-**Q: What happened with the old "use_domain" module parameter?**
-
-
-It was removed, as the module internally loads this option from the
-			"USRLOC" module. This was done in order to simplify the
-			configuration.
-
-
-**Q: What happened with the old "save_noreply" and "save_memory" functions?**
-
-
-There functions were merged into the new 
-			"save(domain,flags)" functions. If a reply should be
-			sent or if the DB should be updated also is controlled via the
-			flags.
-
-
-**Q: Where can I find more about OpenSIPS?**
-
-
-Take a look at [https://opensips.org/](https://opensips.org/).
-
-
-**Q: Where can I post a question about this module?**
-
-
-First at all check if your question was already answered on one of
-			our mailing lists:
-
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
-
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
-
-
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
-
-
-**Q: What happened to the desc_time_order parameter?**
-
-
-It was removed, as its functionality was mmigrate into usrloc
-			module, were there is a parameter with the same name.
-<!-- CONTRIBUTORS -->
-
-### License
-
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享 4.0 许可证授权。

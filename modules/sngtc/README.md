@@ -1,94 +1,86 @@
 ---
-title: "sngtc Module"
-description: "The **Sangoma transcoding module** offers the possibility of performing voice transcoding with the [D-series transcoding cards manufactured by Sangoma](https://wiki.sangoma.com/display/MTC/Media+Transcoding). The module makes use of the Sangoma Transcoding API in order to manage transcoding..."
+title: "sngtc 模块"
+description: "**Sangoma 转码模块** 提供了使用 [Sangoma 制造的 D 系列转码卡](https://wiki.sangoma.com/display/MTC/Media+Transcoding) 执行语音转码的可能性。该模块利用 Sangoma 转码 API 来管理专用设备上的转码会话。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The **Sangoma transcoding module** offers the
-	possibility of performing voice transcoding with the
-	[D-series
-		transcoding cards manufactured by Sangoma](https://wiki.sangoma.com/display/MTC/Media+Transcoding). The module makes use
-	of the Sangoma Transcoding API in order to
-	manage transcoding sessions on the dedicated equipment. For the cards
-	in the network to be detected, the Sangoma SOAP server must be up and
-	running (*sngtc_server* daemon).
+**Sangoma 转码模块** 提供了使用
+[Sangoma D 系列
+		转码卡](https://wiki.sangoma.com/display/MTC/Media+Transcoding) 执行语音转码的可能性。
+该模块利用 Sangoma 转码 API 来管理
+专用设备上的转码会话。
+为了检测网络中的卡，Sangoma SOAP 服务器必须启动并运行
+（*sngtc_server* 守护进程）。
 
 
-### How it works
+### 工作原理
 
 
-The module performs several modifications in the SDP body of SIP INVITE,
-	200 OK and ACK messages. In all transcoding scenarios, the UAC performs early
-	SDP negotiation, while the UAS does late negotiation. This way, OpenSIPS
-	becomes responsible for intersecting the codec offer and answer, together with
-	the management of transcoding sessions on the Sangoma cards.
+该模块对 SIP INVITE、200 OK 和 ACK 消息的 SDP 内容执行多项修改。
+在所有转码场景中，UAC 执行早期 SDP 协商，而 UAS 执行后期协商。
+这样，OpenSIPS 负责交叉编解码器提供的报价和回答，
+以及 Sangoma 卡上转码会话的管理。
 
 
-This scenario brings about a couple of
-	**restrictions**:
+这种情况带来了几个**限制**：
 
 
-- UACs MUST only perform early SDP negotiation
-- UASs MUST support late SDP negotiation (rfc 3261 requirement)
+- UAC 必须仅执行早期 SDP 协商
+- UAS 必须支持后期 SDP 协商（RFC 3261 要求）
 
 
-Since the *sngtc_node* library performs several memory
-	allocations with each newly created transcoding session, the module uses a
-	dedicated process, responsible for the management of the above-mentioned sessions. The
-	*sangoma_worker* process communicates with the OpenSIPS
-	UDP receivers through a series of pipes.
+由于 *sngtc_node* 库在每个新创建的转码会话时执行多次内存分配，
+该模块使用专用进程来管理上述会话。
+*sangoma_worker* 进程通过一系列管道与 OpenSIPS UDP 接收器通信。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following  modules must be loaded before this module:
+必须在此模块之前加载以下模块：
 
 
-- *dialog*.
+- *dialog*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载此模块之前必须安装以下库或应用程序：
 
 
-- *sngtc_node library - [download from Sangoma](https://wiki.freepbx.org/display/MTC/Media+Transcoding+Download),
-					unpack, make, make install (required in order to compile this module)*.
-- *sngtc_server up and running (required in order for
-					this module to properly work)*.
+- *sngtc_node 库 - [从 Sangoma 下载](https://wiki.freepbx.org/display/MTC/Media+Transcoding+Download)，
+					解压，make，make install（编译此模块需要）*。
+- *sngtc_server 启动并运行（此模块才能正常工作所需）*。
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### sngtc_offer()
 
 
-The function strips off the SDP offer from a SIP INVITE, thus
-		asking for another SDP offer from the opposite endpoint (late negotiation).
+该函数剥离 SIP INVITE 中的 SDP 报价，从而向对方端点请求另一个 SDP 报价（后期协商）。
 		
-		The following **error codes** may be returned:
+可能返回以下**错误代码**：
 
 
-- *-1* - SDP parsing error
-- *-3* - internal error / no more memory
+- *-1* - SDP 解析错误
+- *-3* - 内部错误 / 内存不足
 
 
-The function can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
+该函数可用于 REQUEST_ROUTE、ONREPLY_ROUTE。
 
 
-```c title="sngtc_offer usage"
+```c title="sngtc_offer 用法"
 ...
 	if (is_method("INVITE")) {
 		t_newtran();
@@ -102,40 +94,38 @@ The function can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
 #### sngtc_callee_answer([listen_if_A], [listen_if_B])
 
 
-Handles the SDP offer from 200 OK responses, intersects both offers with
-		the capabilities of the transcoding card and creates a new transcoding
-		session on the card **only if** necessary. It then rewrites the 200 OK SDP so that it 
-		contains the information resulted from the codec intersection.
+处理 200 OK 响应中的 SDP 报价，
+用转码卡的功能交叉两个报价，
+并在新转码会话（仅在必要时）上创建转码会话。
+然后重写 200 OK SDP，使其包含编解码器交叉的结果信息。
 
 
-**Parameters** explained:
+**参数**说明：
 
 
-Since the D-series transcoding cards are connected through either a
-		PCI slot or simply an Ethernet connector, they cannot be assigned
-		global IPs. Consequently, the module will write the local, private IP of the
-		card in the SDP answers sent to each of the endpoints. Since this will not
-		work with non-local UAs, the optional parameters force the RTP listen
-		interface for each UA. This way, the script writer can enforce a global IP
-		for the incoming RTP (which can be port forwarded to a transcoding card).
+由于 D 系列转码卡通过 PCI 插槽或以太网连接器连接，
+它们无法被分配全局 IP。
+因此，模块将在发送到每个端点的 SDP 回答中写入卡的本地私有 IP。
+由于这不适用于非本地 UA，可选参数强制为每个 UA 监听 RTP 接口。
+这样，脚本编写者可以为传入的 RTP（可以转发到转码卡）强制使用全局 IP。
 
 
-- *listen_if_A* (string) - the interface where the UAC (the caller) will send RTP after the call is established (IP from the 'c=' SDP line(s))
-- *listen_if_B* (string) - the interface where the UAS (the callee) will send RTP after the call is established (IP from the 'c=' SDP line(s))
+- *listen_if_A* (string) - UAC（主叫方）在通话建立后发送 RTP 的接口（SDP 'c=' 行中的 IP）
+- *listen_if_B* (string) - UAS（被叫方）在通话建立后发送 RTP 的接口（SDP 'c=' 行中的 IP）
 
 
-The following **error codes** may be returned:
+可能返回以下**错误代码**：
 
 
-- *-1* - SDP parsing error
-- *-2* - failed to create transcoding session
-- *-3* - internal error / no more memory
+- *-1* - SDP 解析错误
+- *-2* - 创建转码会话失败
+- *-3* - 内部错误 / 内存不足
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
+该函数可用于 REQUEST_ROUTE、ONREPLY_ROUTE。
 
 
-```c title="sngtc_callee_answer usage"
+```c title="sngtc_callee_answer 用法"
 ...
 onreply_route[1] {
 	if ($rs == 200)
@@ -148,20 +138,19 @@ onreply_route[1] {
 #### sngtc_caller_answer()
 
 
-Attaches an SDP body to the caller's ACK request, so that it matches
-		the late SDP negotiation done by the UAS.
+将 SDP 内容附加到主叫方的 ACK 请求中，以匹配 UAS 执行的后期 SDP 协商。
 
 
-The following **error codes** may be returned:
+可能返回以下**错误代码**：
 
 
-- *-3* - internal error / no more memory
+- *-3* - 内部错误 / 内存不足
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
+该函数可用于 REQUEST_ROUTE、ONREPLY_ROUTE。
 
 
-```c title="sngtc_caller_answer usage"
+```c title="sngtc_caller_answer 用法"
 ...
 	if (has_totag()) {
 		if (loose_route()) {
@@ -175,6 +164,6 @@ This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0 版授权

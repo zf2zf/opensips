@@ -1,1259 +1,734 @@
 ---
-title: "usrloc Module"
-description: "A SIP user location implementation. Its main purpose is to store, manage and provide access to SIP registration bindings (contacts) for other modules (e.g. registrar, mid-registrar, nathelper, etc.). The module exports no functions that could be directly used from the OpenSIPS script."
+title: "usrloc 模块"
+description: "SIP 用户位置实现。其主要目的是为其他模块(例如 registrar、mid-registrar、nathelper 等)存储、管理和提供 SIP 注册绑定(contact)的访问。该模块不导出可从 OpenSIPS 脚本直接使用的函数。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+SIP 用户位置实现。其主要目的是为其他模块(例如 registrar、mid-registrar、nathelper 等)存储、管理和提供 SIP 注册绑定(contact)的访问。该模块不导出可从 OpenSIPS 脚本直接使用的函数。
 
+在运行时,contact 可以驻留在内存、SQL 数据库或 NoSQL 数据库中。也可以同时使用上述两种的组合。例如,contact 可能仅直接在内存中操作以保证快速交互,同时异步同步到 SQL 数据库。后者有助于实现重启持久性。有关模块所有可能的运行时行为的更多详细信息,请参阅 **[工作模式预设](#param_working_mode_preset)** 参数。
 
-A SIP user location implementation. Its main purpose is to store,
-		manage and provide access to SIP registration bindings (contacts) for
-		other modules (e.g. registrar, mid-registrar, nathelper, etc.). The
-		module exports no functions that could be directly used from the
-		OpenSIPS script.
+OpenSIPS 用户位置实现支持集群。除了支持传统的"单实例"设置外,它还允许多个 OpenSIPS 用户位置节点形成单一的全局用户位置集群。这允许高级功能,如从随机、健康的"供体"节点启动同步(数据隧道)和均匀分布的 NAT ping 工作负载。
 
+### 分布式 SIP 用户位置
 
-At runtime, the contacts may reside in memory, in an SQL database or in
-		a NoSQL database. Combinations of two of the above are also possible.
-		For example, contacts may only be directly manipulated in memory in
-		order to guarantee fast interactions while being asynchronously
-		synchronized to an SQL database. The latter helps achieve restart
-		persistency. Consult the
-		**[working mode preset](#param_working_mode_preset)**
-		parameter for more details on all possible runtime behaviors of the
-		module.
+从 OpenSIPS 2.4 开始,用户位置模块提供了多种可选数据分发模型,每个模型针对特定的实际生产用例量身定制。这些模型建立在 OpenSIPS 集群模块之上,考虑了服务关注点,如 *高可用性、地理分布、水平可扩展性和 NAT 穿越*。
 
+根据数据局部性,分发模型分为两大类:
 
-The OpenSIPS user location implementation is cluster-enabled. On top of
-		supporting traditional "single instance" setups, it also allows multiple
-		OpenSIPS user location nodes to form a single, global user location cluster.
-		This allows high-level features such as startup synchronization (data
-		tunneling) from a random, healthy "donor" node and evenly distributed
-		NAT pinging workloads.
+#### "联邦"拓扑
 
+*联邦* 用户位置将 contact 数据保留在原始 OpenSIPS 节点的本地,contact 最初注册到该节点。为了与全局 OpenSIPS 用户位置集群共享这些 contact 的可达性,registrar 节点仅为任何可从它们到达的地址记录发布一些轻量级"元数据"条目。这些条目将导致其他节点在收到对其广告地址记录的呼叫时,也派生指向发布 registrar 的额外 SIP 分支。
 
-### Distributed SIP User Location
+**联邦**拓扑是以下核心问题的优化解决方案:
 
+- **IP 地址限制** - 在某些情况下,路由到注册 contact 的呼叫必须经过这些 contact 的原始注册节点。一个典型例子是,当 OpenSIPS registrar 位于平台边缘,直接面对 NAT 设备通往 contact 的路径时。除非从该确切的 registrar 发送呼叫,否则它们将无法穿越 NAT 设备并到达 contact。
+- **水平可扩展性** - 避免集群内的全局复制/contact 广播不仅显著提高了 contact 存储性能,而且带来了更好的服务可扩展性。不同的地理位置可以根据其本地订阅用户群进行规模调整(例如,流量可以使用 DNS SRV 权重平衡到它们),而不会失去平台范围的可达性。
 
-Starting with OpenSIPS 2.4, the user location module offers several optional
-	data distribution models, each tailoring to specific real-life production use cases.
-	Built on top of the OpenSIPS clustering module, these models take into
-	account service concerns such as *high availability, geographical
-	distribution, horizontal scalability and NAT traversal*.
+目前,元数据信息可以发布到支持键/多值列式关联的 NoSQL 数据库。已知支持这些抽象的后端示例在编写时包括 MongoDB 和 Cassandra。
 
+[联邦用户位置教程](https://docs.opensips.org/tutorials-distributed-user-location-federation) 包含关于如何实现此设置的精确细节(包括高可用性支持)。
 
-Depending on data locality, the distribution models are split in two main
-	categories:
+#### "完全共享"拓扑
 
+*完全共享* 用户位置将 contact 信息广播到所有数据节点(OpenSIPS 或 NoSQL)。此模式的主要假设是任何路由限制都已事先消除。因此,或者SIP 流量从"完全共享"
+OpenSIPS 用户位置拓扑发出时由我们平台的额外 SIP 边缘端点中介,或者根本没有出口 IP 限制(例如,如果所有 SIP UA 都有公共 IP)。在此设置中,所有 OpenSIPS 用户位置节点彼此*等价*,因为它们每个都可以访问相同的数据集且没有路由限制。
 
-#### "Federation" Topology
+**完全共享**拓扑是多层 VoIP 平台的适当解决方案,其中 OpenSIPS registrar 节点不直接与外部 SIP 端点交互。此外,可以将其配置为完全在 NoSQL 集群内存储 contact 数据(零内存存储),从而充分利用专用分布式数据处理引擎的数据共享、分片、迁移和其他能力。
 
+另外,"完全共享"拓扑可用于实现具有主动-被动 registrar 节点配置的基本"热备份"高可用性设置,两者都使用共享虚拟 IP。
 
-A *federated* user location keeps contact data local
-		to the original OpenSIPS node the contact initially registered to. In
-		order to share the reachability of these contacts with the global
-		OpenSIPS user location cluster, registrar nodes will only publish some
-		light "metadata" entries for any new Addresses-of-Record which are
-		reachable from them. These entries will cause other nodes to also fork
-		additional SIP branches pointing to the publisher registrar upon
-		receiving calls for its advertised Addresses-of-Record.
+注册可以选择性地由支持键/多值列式关联的 NoSQL 数据库完全管理。已知目前支持这些抽象的后端包括 MongoDB 和 Apache Cassandra。
 
+["完全共享"用户位置教程](https://docs.opensips.org/tutorials-distributed-user-location-full-sharing) 包含关于如何实现此设置的精确细节(包括完整的 NoSQL 存储支持)。
 
-The **federation** topology is an
-		optimized solution for the following core problems:
+#### "N Contact Pings"问题
 
+由于 contact 信息通过复制直接复制到多个 SIP registrar 实例,或间接通过全局可达的数据库复制,由此产生的长期问题。只要传统集群化的节点彼此不了解,它们将各自扫描整个 contact 数据集,从而定期发送"N 个 ping"而不是每个 contact"1 个 ping"。这种差异直接影响服务可扩展性,以及 CPU 和网络带宽等消耗资源的数量,无论是在服务端还是客户端。
 
-- **IP address restrictions** - In some
-			cases, calls routed towards registered contacts must necessarily
-			pass through the original registration nodes of these contacts. A
-			classic example of this situation is when an OpenSIPS registrar
-			sitting at the edge of the platform is directly facing a NAT device
-			on the way to the contact. Unless calls are sent out from this
-			exact registrar, they will not be able to traverse the NAT device
-			and reach the contact.
-- **horizontal scalability** - Avoiding
-			global replication/contact broadcasting within the cluster not only
-			dramatically improves contact storage performance, but also leads
-			to better service scalability. Different geographical locations can
-			be sized according to their local subscriber populations (traffic
-			may be balanced to them using DNS SRV weights, for example),
-			without losing platform-wide reachability.
+此问题通过 OpenSIPS 集群层解决,它使所有节点彼此了解。因此,分布式用户位置节点拓扑能够共同划分 ping 工作负载,并在任意给定时间点均匀地分布在当前集群节点数量上。[ping 模式](#param_pinging_mode) 模块参数更详细地描述了内置的 ping 启发式算法。
 
+### Contact 匹配
 
-Currently, the metadata information may be published to NoSQL databases
-		which support key/multi-value column-like associations. Example known
-		backends to support these abstractions at the time of writing are
-		MongoDB and Cassandra.
+Contact 匹配(针对同一地址记录 AoR)是 SIP 用户位置服务的重要方面,特别是在 NAT 穿越上下文中。后者引发了更多问题,因为来自同一用户不同电话的 contact 可能会重叠(如果具有相同的 NAT 配置),或者同一 SIP 用户代理的重新注册 Contact 可能会被视为新的(由于请求通过新的 NAT 绑定到达)。
 
+SIP RFC 3261 发布了一种匹配算法,该算法仅基于 contact 字符串,并进行 Call-ID 和 CSeq 号码额外检查(如果 Call-ID 匹配,它必须有更高的 CSeq 号码,否则注册无效)。但如上所述,在 NAT 穿越上下文中这还不够,因此 OpenSIPS 的 contact 匹配实现提供了更多算法:
 
-The [federated user location tutorial](https://docs.opensips.org/tutorials-distributed-user-location-federation)
-		contains precise details on how to achieve this setup (including High
-		Availability support).
+- *仅基于 Contact* - 严格遵循 RFC 3261
+		- contact 作为字符串匹配,并通过 Call-ID 和 CSeq 进行额外检查(如果 Call-ID 相同,它必须有更高的 CSeq 号码,否则注册无效)。
+- *基于 Contact 和 Call-ID* - 第一种情况的扩展
+		- Contact 和 Call-ID 首部字段值必须作为字符串匹配;CSeq 必须高于前一个 - 因此在这种情况下请小心处理 REGISTER 重传。
 
+有关如何控制/选择 contact 匹配算法的更多详细信息,请转到 **[匹配模式](#param_matching_mode)**。
 
-#### "Full Sharing" Topology
+### 依赖
 
+#### OpenSIPS 模块
 
-A *fully sharing* user location broadcasts contact
-		information to all data nodes (OpenSIPS or NoSQL).
-		The main assumption behind this mode is that any routing
-		restrictions have been alleviated beforehand. Consequently, either SIP
-		traffic egressing from a "full sharing"
-		OpenSIPS user location topology is being intermediated by an
-		additional SIP edge endpoint of our platform, or there are no egress IP
-		restrictions at all (for example, if all SIP UAs have public IPs). In
-		this setup, all OpenSIPS user location nodes are
-		*equivalent* to one another, as they each have
-		access to the same dataset and have no routing restrictions.
+以下模块必须在此模块之前加载:
 
+- *可选的 SQL 数据库模块*。
+- *可选的 NoSQL 数据库模块*。
+- *clusterer,如果 [集群模式](#param_cluster_mode) 与"none"不同*。
 
-The **full sharing** topology is
-		an appropriate solution for multi-layer VoIP platforms, where the
-		OpenSIPS registrar nodes do not directly interact with external SIP
-		endpoints. Moreover, it can be configured to fully store contact data
-		within a NoSQL cluster (zero in-memory storage), thus taking full
-		advantage of the data sharing, sharding, migration and other
-		capabilities of a specialized distributed data handling engine.
+#### 外部库或应用程序
 
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序:
 
-Additionally, a "full sharing" topology can be used to achieve a basic
-		"hot backup" high-availability setup with an active-passive registrar
-		nodes configuration, both of which make use of a shared virtual IP.
+- *无*。
 
+### 导出的参数
 
-Registrations may optionally be fully managed inside NoSQL
-		databases which support key/multi-value column-like associations.
-		Example known backends to currently support these abstractions are MongoDB
-		and Apache Cassandra.
+#### nat_bflag (字符串)
 
+用作 NAT 标记的分支标志名称(如果 contact 是或不是 natted)。这是一个分支标志,所有其他依赖 usrloc 模块的模块都会导入和使用它。
 
-The ["full sharing" user location tutorial](https://docs.opensips.org/tutorials-distributed-user-location-full-sharing)
-		contains precise details on how to achieve this setup (including full
-		NoSQL storage support).
+*默认值为 NULL(未设置)。*
 
-
-#### "N Contact Pings" Problem
-
-
-A long-standing problem caused by contact information being replicated
-		to multiple SIP registrar instances directly through replication or
-		indirectly through a globally reachable database. As long as
-		traditionally clusterized nodes are not aware of
-		each other, they will each scan the entire contact dataset, thus
-		periodically sending "N pings" instead of "1 ping" for each contact.
-		This difference directly affects service scalability, as well as the
-		amount of consumed resources such as CPU and network
-		bandwidth, both on the service and client side.
-
-
-This problem is solved with the help of the OpenSIPS cluster layer,
-		which makes all nodes aware of each others' presence. Thus, the
-		distributed user location node topologies are able to collectively
-		partition the pinging workload and spread it evenly across the current
-		number of cluster nodes, at any given point in time.  The
-		[pinging mode](#param_pinging_mode) module parameter describes the
-		built-in pinging heuristics in more detail.
-
-
-### Contact matching
-
-
-Contact matching (for the same Address-of-Record, AoR) is an important
-	aspect of a SIP user location service, especially in the context of NAT
-	traversal. The latter raises more problems, since contacts from different
-	phones of same users may overlap (if behind NATs with identical
-	configurations) or the re-register Contact of the same SIP User Agent may
-	be seen as a new one (due to the request arriving via a new NAT binding).
-
-
-The SIP RFC 3261 publishes a matching algorithm based only on the
-	contact string with Call-ID and CSeq number extra checking (if the Call-ID
-	matches, it must have a higher CSeq number, otherwise the registration is
-	invalid). But as argumented above, this is not enough in a NAT traversal
-	context, so the OpenSIPS implementation of contact matching offers more
-	algorithms:
-
-
-- *Contact based only* - strict RFC 3261
-			compliancy - the contact is matched as string and extra checked
-			via Call-ID and CSeq (if Call-ID is the same, it must have a
-			higher CSeq number, otherwise the registration is invalid).
-- *Contact and Call-ID based* - an extension
-			of the first case - the Contact and Call-ID header field values
-			must match as strings; the CSeq must be higher than the previous
-			one - so be careful how you deal with REGISTER retransmissions in
-			this case.
-
-
-For more details on how to control/select the contact matching algorithm,
-	please go to
-	**[matching mode](#param_matching_mode)**.
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-The following modules must be loaded before this module:
-
-
-- *Optionally an SQL database module*.
-- *Optionally a NoSQL database module*.
-- *clusterer, if [cluster mode](#param_cluster_mode)
-				is different than "none".*
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
-
-
-- *None*.
-
-
-### Exported Parameters
-
-
-#### nat_bflag (string)
-
-
-The name of the branch flag to be used as NAT marker (if the contact
-		is or not natted). This is a branch flag and it will be imported and
-		used by all other modules depending on the usrloc module.
-
-
-*Default value is NULL (not set).*
-
-
-```c title="Set nat_bflag parameter"
+```c title="设置 nat_bflag 参数"
 ...
 modparam("usrloc", "nat_bflag", "NAT_BFLAG")
 ...
 ```
 
+#### contact_id_column (字符串)
 
-#### contact_id_column (string)
+保存唯一 contact ID 的列名。
 
+*默认值为"contact_id"。*
 
-Name of the column holding the unique contact IDs.
-
-
-*Default value is "contact_id".*
-
-
-```c title="Set contact_id_column parameter"
+```c title="设置 contact_id_column 参数"
 ...
 modparam("usrloc", "contact_id_column", "ctid")
 ...
 ```
 
+#### user_column (字符串)
 
-#### user_column (string)
+包含用户名的列名。
 
+*默认值为"username"。*
 
-Name of column containing usernames.
-
-
-*Default value is "username".*
-
-
-```c title="Set user_column parameter"
+```c title="设置 user_column 参数"
 ...
 modparam("usrloc", "user_column", "username")
 ...
 ```
 
+#### domain_column (字符串)
 
-#### domain_column (string)
+包含域的列名。
 
+*默认值为"domain"。*
 
-Name of column containing domains.
-
-
-*Default value is "domain".*
-
-
-```c title="Set user_column parameter"
+```c title="设置 user_column 参数"
 ...
 modparam("usrloc", "domain_column", "domain")
 ...
 ```
 
+#### contact_column (字符串)
 
-#### contact_column (string)
+包含 contact 的列名。
 
+*默认值为"contact"。*
 
-Name of column containing contacts.
-
-
-*Default value is "contact".*
-
-
-```c title="Set contact_column parameter"
+```c title="设置 contact_column 参数"
 ...
 modparam("usrloc", "contact_column", "contact")
 ...
 ```
 
+#### expires_column (字符串)
 
-#### expires_column (string)
+包含过期值的列名。
 
+*默认值为"expires"。*
 
-Name of column containing expires value.
-
-
-*Default value is "expires".*
-
-
-```c title="Set expires_column parameter"
+```c title="设置 expires_column 参数"
 ...
 modparam("usrloc", "expires_column", "expires")
 ...
 ```
 
+#### q_column (字符串)
 
-#### q_column (string)
+包含 q 值的列名。
 
+*默认值为"q"。*
 
-Name of column containing q values.
-
-
-*Default value is "q".*
-
-
-```c title="Set q_column parameter"
+```c title="设置 q_column 参数"
 ...
 modparam("usrloc", "q_column", "q")
 ...
 ```
 
+#### callid_column (字符串)
 
-#### callid_column (string)
+包含 callid 值的列名。
 
+*默认值为"callid"。*
 
-Name of column containing callid values.
-
-
-*Default value is "callid".*
-
-
-```c title="Set callid_column parameter"
+```c title="设置 callid_column 参数"
 ...
 modparam("usrloc", "callid_column", "callid")
 ...
 ```
 
+#### cseq_column (字符串)
 
-#### cseq_column (string)
+包含 cseq 号码的列名。
 
+*默认值为"cseq"。*
 
-Name of column containing cseq numbers.
-
-
-*Default value is "cseq".*
-
-
-```c title="Set cseq_column parameter"
+```c title="设置 cseq_column 参数"
 ...
 modparam("usrloc", "cseq_column", "cseq")
 ...
 ```
 
+#### methods_column (字符串)
 
-#### methods_column (string)
+包含支持方法的列名。
 
+*默认值为"methods"。*
 
-Name of column containing supported methods.
-
-
-*Default value is "methods".*
-
-
-```c title="Set methods_column parameter"
+```c title="设置 methods_column 参数"
 ...
 modparam("usrloc", "methods_column", "methods")
 ...
 ```
 
+#### flags_column (字符串)
 
-#### flags_column (string)
+保存记录内部标志的列名。
 
+*默认值为"flags"。*
 
-Name of column to save the internal flags of the record.
-
-
-*Default value is "flags".*
-
-
-```c title="Set flags_column parameter"
+```c title="设置 flags_column 参数"
 ...
 modparam("usrloc", "flags_column", "flags")
 ...
 ```
 
+#### cflags_column (字符串)
 
-#### cflags_column (string)
+保存记录的分支/contact 标志的列名。
 
+*默认值为"cflags"。*
 
-Name of column to save the branch/contact flags of the record.
-
-
-*Default value is "cflags".*
-
-
-```c title="Set cflags_column parameter"
+```c title="设置 cflags_column 参数"
 ...
 modparam("usrloc", "cflags_column", "cflags")
 ...
 ```
 
+#### user_agent_column (字符串)
 
-#### user_agent_column (string)
+包含 user-agent 值的列名。
 
+*默认值为"user_agent"。*
 
-Name of column containing user-agent values.
-
-
-*Default value is "user_agent".*
-
-
-```c title="Set user_agent_column parameter"
+```c title="设置 user_agent_column 参数"
 ...
 modparam("usrloc", "user_agent_column", "user_agent")
 ...
 ```
 
+#### received_column (字符串)
 
-#### received_column (string)
+包含来自 REGISTER 消息的源 IP、端口和协议的列名。
 
+*默认值为"received"。*
 
-Name of column containing the source IP, port, and protocol from the REGISTER
-		message.
-
-
-*Default value is "received".*
-
-
-```c title="Set received_column parameter"
+```c title="设置 received_column 参数"
 ...
 modparam("usrloc", "received_column", "received")
 ...
 ```
 
+#### socket_column (字符串)
 
-#### socket_column (string)
+包含 REGISTER 消息的收到套接字信息(IP:port)的列名。
 
+*默认值为"socket"。*
 
-Name of column containing the received socket information (IP:port)
-		for the REGISTER message.
-
-
-*Default value is "socket".*
-
-
-```c title="Set socket_column parameter"
+```c title="设置 socket_column 参数"
 ...
 modparam("usrloc", "socket_column", "socket")
 ...
 ```
 
+#### path_column (字符串)
 
-#### path_column (string)
+包含 Path 首部的列名。
 
+*默认值为"path"。*
 
-Name of column containing the Path header.
-
-
-*Default value is "path".*
-
-
-```c title="Set path_column parameter"
+```c title="设置 path_column 参数"
 ...
 modparam("usrloc", "path_column", "path")
 ...
 ```
 
+#### sip_instance_column (字符串)
 
-#### sip_instance_column (string)
+包含 SIP 实例的列名。
 
+*默认值为"NULL"。*
 
-Name of column containing the SIP instance.
-
-
-*Default value is "NULL".*
-
-
-```c title="Set sip_instance_column parameter"
+```c title="设置 sip_instance_column 参数"
 ...
 modparam("usrloc", "sip_instance_column", "sip_instance")
 ...
 ```
 
+#### kv_store_column (字符串)
 
-#### kv_store_column (string)
+包含通用键值数据的列名。
 
+*默认值为"kv_store"。*
 
-Name of column containing generic key-value data.
-
-
-*Default value is "kv_store".*
-
-
-```c title="Set kv_store_column parameter"
+```c title="设置 kv_store_column 参数"
 ...
 modparam("usrloc", "kv_store_column", "json_data")
 ...
 ```
 
+#### attr_column (字符串)
 
-#### attr_column (string)
+包含与注册相关的附加信息的列名。
 
+*默认值为"attr"。*
 
-Name of column containing additional registration-related information.
-
-
-*Default value is "attr".*
-
-
-```c title="Set attr_column parameter"
+```c title="设置 attr_column 参数"
 ...
 modparam("usrloc", "attr_column", "attributes")
 ...
 ```
 
+#### use_domain (布尔值)
 
-#### use_domain (boolean)
+表示是否也应保存和使用用户 *domain* 部分以及 *username* 部分来识别用户。多域场景中有用。
 
+*默认值为 *true*(启用)。*
 
-Denotes whether the *domain* part of the user should
-		also be saved and used for identifying the user, along with the
-		*username* part.  Useful in multi-domain scenarios.
-
-
-*Default value is *true* (enabled).*
-
-
-```c title="Set use_domain parameter"
+```c title="设置 use_domain 参数"
 ...
 modparam("usrloc", "use_domain", true)
 ...
 ```
 
+#### desc_time_order (整数)
 
-#### desc_time_order (integer)
+是否应按时间戳保持用户的 contact 顺序;否则 contact 将基于 q 值排序。非 0 值表示 true。
 
+*默认值为"0 (false)"。*
 
-If the user's contacts should be kept timestamp ordered; otherwise the
-		contact will be ordered based on q value.
-		Non 0 value means true.
-
-
-*Default value is "0 (false)".*
-
-
-```c title="Set desc_time_order parameter"
+```c title="设置 desc_time_order 参数"
 ...
 modparam("usrloc", "desc_time_order", 1)
 ...
 ```
 
+#### timer_interval (整数)
 
-#### timer_interval (integer)
-
-
-Number of seconds between two timer runs.  During each run, the module
-		will update/delete dirty/expired contacts from memory and/or mirror
-		these operations to the database, if configured to do so.
-
+两次定时器运行之间的秒数。在每次运行期间,模块将从内存中更新/删除脏/过期 contact,并且如果配置了,会将这些操作镜像到数据库。
 
 > [!WARNING]
-> In case of an OpenSIPS shutdown or even a crash, contacts which are in
-		memory only and have not been flushed yet to disk will NOT get lost!
-		OpenSIPS will try its best to do a last-minute sync to DB right before
-		shutting down.
+> 如果 OpenSIPS 关闭甚至崩溃,仅在内存中且尚未刷新到磁盘的 contact 不会丢失!OpenSIPS 将在关闭前尽最大努力执行最后一次 DB 同步。
 
+*默认值为 60。*
 
-*Default value is 60.*
-
-
-```c title="Set timer_interval parameter"
+```c title="设置 timer_interval 参数"
 ...
 modparam("usrloc", "timer_interval", 120)
 ...
 ```
 
+#### db_url (字符串)
 
-#### db_url (string)
+应该使用的数据库的 URL。
 
+*默认值为"mysql://opensips:opensipsrw@localhost/opensips"。*
 
-URL of the database that should be used.
-
-
-*Default value is "mysql://opensips:opensipsrw@localhost/opensips".*
-
-
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("usrloc", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
 ```
 
+#### cachedb_url (字符串)
 
-#### cachedb_url (string)
+要使用的 NoSQL 数据库的 URL。仅在启用缓存的 **[集群模式](#param_cluster_mode)** 中需要。
 
+*默认值为"none"。*
 
-URL of a NoSQL database to be used. Only required in a
-		cachedb-enabled
-		**[cluster mode](#param_cluster_mode)**.
-
-
-*Default value is "none".*
-
-
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 modparam("usrloc", "cachedb_url", "mongodb://10.0.0.4:27017/opensipsDB.userlocation")
 ...
 ```
 
+#### working_mode_preset (字符串)
 
-#### working_mode_preset (string)
+usrloc 模块的预定义工作模式。设置此参数将覆盖任何 [集群模式](#param_cluster_mode)、[重启持久性](#param_restart_persistency) 和 [sql 写入模式](#param_sql_write_mode) 设置。
 
-
-A pre-defined working mode for the usrloc module.  Setting this
-		parameter will override any [cluster mode](#param_cluster_mode),
-		[restart persistency](#param_restart_persistency) and
-		[sql write mode](#param_sql_write_mode) settings.
-
-
-- **"single-instance-no-db"** - This
-			disables database completely. Only memory will be used.
-			Contacts will not survive restart. Use this value if you need a
-			really fast usrloc and contact persistence is not necessary or
-			is provided by other means.
+- **"single-instance-no-db"** - 这完全禁用数据库。只使用内存。Contact 不会在重启后存活。如果您需要真正快速的 usrloc 并且 contact 持久性不必要或由其他方式提供,请使用此值。
 - **"single-instance-sql-write-through"**
-			- Write-Through scheme. All changes to usrloc are immediately
-			reflected in database too. This is very slow, but very reliable.
-			Use this scheme if speed is not your priority but need to make
-			sure that no registered contacts will be lost during crash or
-			reboot.
+			- 写透方案。对 usrloc 的所有更改也会立即反映到数据库中。这非常慢,但非常可靠。如果您不将速度作为优先考虑但需要确保在崩溃或重启期间不会丢失任何已注册的 contact,请使用此方案。
 - **"single-instance-sql-write-back"**
-			- Write-Back scheme. This is a combination of previous two
-			schemes. All changes are made to memory and database
-			synchronization is done in the timer. The timer deletes all
-			expired contacts and flushes all modified or new contacts to
-			database.  Use this scheme if you encounter high-load peaks
-			and want them to process as fast as possible. The mode will
-			not help at all if the load is high all the time.  The
-			added latency on the SIP signaling when using this asynchronous
-			preset is much lower than the one added by the safe but
-			blocking, "single-instance-sql-write-through" preset.
+			- 写回方案。这是前两种方案的组合。所有更改都写入内存,数据库同步在定时器中完成。定时器删除所有过期的 contact,并将所有已修改或新的 contact 刷新到数据库。如果您遇到高负载峰值并希望尽快处理,请使用此方案。如果负载一直很高,此模式根本没有帮助。使用此异步预设的 SIP 信令延迟比使用安全但阻塞的"single-instance-sql-write-through"预设要低得多。
 - **"sql-only"** -
-			DB-Only scheme. No memory cache is kept, all operations being
-			directly performed with the database. The timer deletes all
-			expired contacts from database - cleans after clients that didn't
-			un-register or re-register. The mode is useful if you configure
-			more servers sharing the same DB without any replication at SIP
-			level. The mode may be slower due the high number of DB operation.
-			For example NAT pinging is a killer since during each ping cycle
-			all nated contact are loaded from the DB; The lack of memory
-			caching also disable the statistics exports.
+			仅数据库方案。不保留内存缓存,所有操作都直接对数据库执行。定时器从数据库中删除所有过期的 contact - 清理未注销或重新注册的客户端。此模式在配置多台服务器共享相同 DB 而无需任何 SIP 级别复制的场景中很有用。该模式可能由于大量 DB 操作而变慢。例如,NAT ping 是杀手,因为在每个 ping 周期内所有带 nat 的 contact 都从 DB 加载;缺乏内存缓存也会禁用统计信息导出。
 - **"federation-cachedb-cluster"** -
-			OpenSIPS will run with a "federation-cachedb"
-			[cluster mode](#param_cluster_mode) and
-			"sync-from-cluster" [restart persistency](#param_restart_persistency).
-			This will require the configuration of multiple "seed" nodes in
-			the cluster. Refer to the [federated user location tutorial](https://docs.opensips.org/tutorials-distributed-user-location-federation) for more
-			details.
+			OpenSIPS 将以"federation-cachedb" [集群模式](#param_cluster_mode) 和"sync-from-cluster" [重启持久性](#param_restart_persistency) 运行。这将需要在集群中配置多个"种子"节点。请参阅 [联邦用户位置教程](https://docs.opensips.org/tutorials-distributed-user-location-federation) 获取更多详细信息。
 - **"full-sharing-cluster"** -
-			OpenSIPS will run with a "full-sharing"
-			[cluster mode](#param_cluster_mode) and
-			"sync-from-cluster" [restart persistency](#param_restart_persistency).
-			This will require the configuration of one of the nodes in the cluster
-			as a "seed" node in order to bootstrap the syncing process.
+			OpenSIPS 将以"full-sharing" [集群模式](#param_cluster_mode) 和"sync-from-cluster" [重启持久性](#param_restart_persistency) 运行。这将需要将集群中的一个节点配置为"种子"节点,以引导同步过程。
 - **"full-sharing-cachedb-cluster"** -
-			OpenSIPS will run with a "full-sharing-cachedb"
-			[cluster mode](#param_cluster_mode), where all location data strictly
-			resides in a NoSQL database, thus it will have natural restart
-			persistency.
+			OpenSIPS 将以"full-sharing-cachedb" [集群模式](#param_cluster_mode) 运行,其中所有位置数据严格驻留在 NoSQL 数据库中,因此它具有自然的重启持久性。
 
+请参阅 [分布式 sip 用户位置](#distributed_sip_user_location) 部分获取关于集群拓扑及其行为的详细信息。
 
-Refer to section
-		[distributed sip user location](#distributed_sip_user_location) for details
-		regarding the clustering topologies and their behavior.
+*默认值为"single-instance-no-db"。*
 
-
-*Default value is "single-instance-no-db".*
-
-
-```c title="Set working_mode_preset parameter"
+```c title="设置 working_mode_preset 参数"
 ...
 modparam("usrloc", "working_mode_preset", "full-sharing-cachedb-cluster")
 ...
 ```
 
+#### cluster_mode (字符串)
 
-#### cluster_mode (string)
+**如果设置了 [工作模式预设](#param_working_mode_preset) 或 [db 模式](#param_db_mode),此参数将被覆盖。**
 
+全局 OpenSIPS 用户位置集群的行为。请参阅 [分布式 sip 用户位置](#distributed_sip_user_location) 部分获取详细信息。
 
-**This parameter will get overridden if either
-			[working mode preset](#param_working_mode_preset) or
-			[db mode](#param_db_mode) is set.**
+此参数可以采用以下值:
 
-
-The behavior of the global OpenSIPS user location cluster. Refer to
-		section [distributed sip user location](#distributed_sip_user_location) for details.
-
-
-This parameter may take the following values:
-
-
-- *"none"* - single instance mode.
+- *"none"* - 单实例模式。
 - *"federation-cachedb"* -
-				federation-based data sharing. Local AoR metadata is published
-				inside a NoSQL database, so other cluster nodes can fork SIP
-				traffic over to the current node. Consequently, the
-				[location cluster](#param_location_cluster) and
-				[cachedb url](#param_cachedb_url) parameters are mandatory.
+				基于联邦的数据共享。局部 AoR 元数据发布在 NoSQL 数据库中,以便其他集群节点可以将 SIP 流量分叉到当前节点。因此,[位置集群](#param_location_cluster) 和 [cachedb url](#param_cachedb_url) 参数是必需的。
 - *"full-sharing"* -
-				Broadcast contact updates (full-mesh mirroring) to all other
-				OpenSIPS cluster participants.  Each node will hold the entire
-				user location dataset.  Consequently, the
-				[location cluster](#param_location_cluster) parameter is mandatory.
+				向所有其他 OpenSIPS 集群参与者广播 contact 更新(全网状镜像)。每个节点将保存整个用户位置数据集。因此,[位置集群](#param_location_cluster) 参数是必需的。
 - *"full-sharing-cachedb"* -
-				Full contact data management through the use of a NoSQL
-				database (somewhat resembling the "sql-only" preset).
-				The cluster layer is still required in order to
-				be able to partition and spread the pinging workload evenly
-				among participating OpenSIPS nodes. Consequently, the
-				[location cluster](#param_location_cluster) and
-				[cachedb url](#param_cachedb_url) parameters are mandatory.
+				通过使用 NoSQL 数据库进行完整 contact 数据管理(有些类似于"sql-only"预设)。集群层仍然需要,以便能够均匀地划分和分配 ping 工作负载到参与的 OpenSIPS 节点。因此,[位置集群](#param_location_cluster) 和 [cachedb url](#param_cachedb_url) 参数是必需的。
 - *"sql-only"* -
-				Multiple OpenSIPS boxes using a common
-				[db url](#param_db_url) without necessarily being aware
-				of each other.
+				使用公共 [db url](#param_db_url) 的多个 OpenSIPS 盒子,不必彼此了解。
 
+*默认值为 *"none" (单实例模式)*。*
 
-*Default value is *"none" (single instance mode)*.*
-
-
-```c title="Set cluster_mode parameter"
+```c title="设置 cluster_mode 参数"
 ...
 modparam("usrloc", "cluster_mode", "federation-cachedb")
 ...
 ```
 
+#### restart_persistency (字符串)
 
-#### restart_persistency (string)
+**如果设置了 [工作模式预设](#param_working_mode_preset) 或 [db 模式](#param_db_mode),此参数将被覆盖。**
 
+控制 OpenSIPS 用户位置在重启后的行为。此参数在某些仅数据库工作模式预设中无效,因为重启持久性是自然保证的。
 
-**This parameter will get overridden if either
-			[working mode preset](#param_working_mode_preset) or
-			[db mode](#param_db_mode) are set.**
+此参数可以采用以下值:
 
+- *"none"* - 重启后没有明确的数据
+				同步。节点以空状态启动。
+- *"load-from-sql"* - 启用
+				基于 SQL 的重启持久性。这会导致所有运行时内存写入(即新注册、重新注册或注销)也传播到 SQL 数据库,重启后将从中导入所有数据。选择此值将使 [db url](#param_db_url) 参数成为必需,同时也会使 [sql 写入模式](#param_sql_write_mode) 默认为"write-back"而不是"none"。
+- *"sync-from-cluster"* - 启用
+				基于集群的重启持久性。重启后,OpenSIPS 集群节点将搜索健康的"供体"节点,通过直接集群同步(基于 TCP 的二进制编码数据传输)从中镜像整个用户位置数据集。根据集群模式和集群拓扑,这将需要在集群中配置一个或多个"种子"节点。选择此值将使 [位置集群](#param_location_cluster) 参数成为必需。
 
-Controls the behavior of the OpenSIPS user location following a
-		restart. This parameter has no effect in some database-only working
-		mode presets, where restart persistency is naturally ensured.
+*默认值为
+			*"none" (无重启持久性)*。*
 
-
-This parameter may take the following values:
-
-
-- *"none"* - no explicit data
-				synchronization following a restart. The node starts empty.
-- *"load-from-sql"* - enable
-				SQL-based restart persistency. This causes all runtime
-				in-memory writes (i.e. new registrations, re-registrations or
-				de-registrations) to also propagate to an SQL database, from
-				which all data will be imported following a restart.
-				Choosing this value will make the [db url](#param_db_url)
-				parameter mandatory, as well as cause
-				[sql write mode](#param_sql_write_mode) to default to "write-back"
-				instead of "none".
-- *"sync-from-cluster"* - enable
-				cluster-based restart persistency. Following a restart,
-				an OpenSIPS cluster node will search for a healthy "donor" node
-				from which to mirror the entire user location dataset via
-				direct cluster sync (TCP-based, binary-encoded data transfer).
-				Depending on the clustering mode and cluster topology, this will
-				require the configuration of one or multiple "seed" nodes in the cluster.
-				Choosing this value will make the
-				[location cluster](#param_location_cluster) parameter mandatory.
-
-
-*Default value is
-			*"none" (no restart persistency)*.*
-
-
-```c title="Set restart_persistency parameter"
+```c title="设置 restart_persistency 参数"
 ...
 modparam("usrloc", "restart_persistency", "sync-from-cluster")
 ...
 ```
 
+#### sql_write_mode (字符串)
 
-#### sql_write_mode (string)
+**如果设置了 [工作模式预设](#param_working_mode_preset) 或 [db 模式](#param_db_mode),此参数将被覆盖。**
 
+仅在 [重启持久性](#param_restart_persistency) 启用时有效。控制 OpenSIPS 对 SQL 数据库的运行时写入行为。
 
-**This parameter will get overridden if either
-			[working mode preset](#param_working_mode_preset) or
-			[db mode](#param_db_mode) are set.**
+此参数可以采用以下值:
 
+- *"none"* - 不执行任何
+				额外的运行时 SQL 写入到 SQL 数据库以专门确保重启持久性。
+- *"write-through"* - 所有内存
+				写入(即新注册、重新注册或注销)也会同步内联到 SQL 数据库。虽然这肯定会减慢注册性能(查询从内存提供!),但它具有使实例崩溃安全的优点。
+- *"write-back"* - 所有内存
+				写入(即新注册、重新注册或注销)最终也会通过单独的定时器例程传播到 SQL 数据库。这大大加快了注册速度,但也引入了在最新 contact 更改传播到数据库之前崩溃的可能性。请参阅 [定时器间隔](#param_timer_interval) 获取其他配置。
 
-Only valid if [restart persistency](#param_restart_persistency) is enabled.
-		Controls the runtime behavior of OpenSIPS writes to the SQL database.
+*默认值为 *"none" (无额外 SQL 写入)*。*
 
-
-This parameter may take the following values:
-
-
-- *"none"* - do not perform any
-				additional SQL writes at runtime to an SQL database in order
-				to specifically ensure restart persistency.
-- *"write-through"* - all in-memory
-				writes (i.e. new registrations, re-registrations or
-				de-registrations) also propagate into the SQL database, inline.
-				While this will definitely slow down registration performance
-				(lookups are served from memory!), it has the advantage of
-				making the instance crash-safe.
-- *"write-back"* - all in-memory
-				writes (i.e. new registrations, re-registrations or
-				de-registrations) eventually also propagate into the SQL
-				database, thanks to a separate timer routine. This dramatically
-				speeds up registrations, but also introduces the
-				possibility of crashing before the latest contact changes are
-				propagated to the database. See the
-				[timer interval](#param_timer_interval) for additional configuration.
-
-
-*Default value is *"none" (no added SQL writes)*.*
-
-
-```c title="Set sql_write_mode parameter"
+```c title="设置 sql_write_mode 参数"
 ...
 modparam("usrloc", "sql_write_mode", "write-back")
 ...
 ```
 
+#### matching_mode (整数)
 
-#### matching_mode (integer)
+要使用的 contact 匹配算法。请参阅 [contact 匹配](#contact_matching) 部分获取算法的描述。
 
+该参数可以采用以下值:
 
-What contact matching algorithm to be used. Refer to section
-		[contact matching](#contact_matching) for the description of the
-		algorithms.
+- *0* - 仅基于 CONTACT 的匹配
+				算法。
+- *1* - 基于 CONTACT 和 CALLID 的
+				匹配算法。
 
+*默认值为 *0 (CONTACT_ONLY)*。*
 
-The parameter may take the following values:
-
-
-- *0* - CONTACT ONLY based matching
-				algorithm.
-- *1* - CONTACT and CALLID based
-				matching algorithm.
-
-
-*Default value is *0 (CONTACT_ONLY)*.*
-
-
-```c title="Set matching_mode parameter"
+```c title="设置 matching_mode 参数"
 ...
 modparam("usrloc", "matching_mode", 1)
 ...
 ```
 
+#### cseq_delay (整数)
 
-#### cseq_delay (integer)
+接受具有相同 Call-ID 和 Cseq 的注册请求重传的延迟(秒)。延迟从收到具有该 Call-ID 和 Cseq 的第一个注册开始计算。
 
+在此延迟间隔内的重传将被接受并作为原始请求回复,但不会在位置中进行更新。如果超过延迟,则报告错误。
 
-Delay (in seconds) for accepting as retransmissions register requests
-		with same Call-ID and Cseq. The delay is calculated starting from the
-		receiving time of the first register with that Call-ID and Cseq.
+值为 0 会禁用重传检测。
 
+*默认值为"20 秒"。*
 
-Retransmissions within this delay interval will be accepted and replied
-		as the original request, but no update will be done in location. If the
-		delay is exceeded, error is reported.
-
-
-A value of 0 disable the retransmission detection.
-
-
-*Default value is "20 seconds".*
-
-
-```c title="Set cseq_delay parameter"
+```c title="设置 cseq_delay 参数"
 ...
 modparam("usrloc", "cseq_delay", 5)
 ...
 ```
 
+#### location_cluster (整数)
 
-#### location_cluster (integer)
+指定此实例将向其发送并从中接收所有用户位置相关信息
+		(*address-of-record*、*contacts*)
+		的集群 ID,组织成特定事件(插入、删除或更新)。
 
+此 OpenSIPS 集群公开 **"usrloc-contact-repl"**
+能力,以将节点标记为在任意同步请求期间有资格成为数据供体。因此,集群必须至少有一个节点标记为 **"seed"** 值作为 *clusterer.flags* 列/属性才能完全正常运行。
+请参阅 [clusterer - 能力](../clusterer#capabilities) 章节获取更多详细信息。
 
-Specifies the cluster ID which this instance will send to and receive
-		from all user-location related information
-        (*addresses-of-record*, *contacts*),
-		organized into specific events (inserts, deletes or updates).
+默认值为 0(禁用复制)。
 
+用户位置分发机制的更多详细信息可在 [分布式 sip 用户位置](#distributed_sip_user_location) 下获取。
 
-This OpenSIPS cluster exposes the **"usrloc-contact-repl"**
-capability in order to mark nodes as eligible for becoming data donors during an
-arbitrary sync request. Consequently, the cluster must have *at least
-one node* marked with the **"seed"** value
-as the *clusterer.flags* column/property in order to be fully functional.
-Consult the [clusterer - Capabilities](../clusterer#capabilities)
-chapter for more details.
-
-
-Default value is 0 (replication disabled).
-
-
-More details on the user location distribution mechanisms are
-		available under [distributed sip user location](#distributed_sip_user_location).
-
-
-```c title="Setting the location_cluster parameter"
+```c title="设置 location_cluster 参数"
 ...
 modparam("usrloc", "location_cluster", 1)
 ...
 ```
 
+#### ha_cluster (整数)
 
-#### ha_cluster (integer)
+仅与 **"federation-cachedb"** [集群模式](#param_cluster_mode) 相关。表示要使用的 HA 集群 ID,以建立 HA 对中的活动节点,使得只有该节点执行对 CacheDB 的写入操作。
 
+默认值为 0(禁用)。
 
-Only relevant in **"federation-cachedb"**
-		[cluster mode](#param_cluster_mode).  Denotes the HA cluster ID to use in
-		order to establish the active node within the HA pair, such that only
-		that node performs WRITE operations to CacheDB.
-
-
-Default value is 0 (disabled).
-
-
-```c title="Setting the ha_cluster parameter"
+```c title="设置 ha_cluster 参数"
 ...
 modparam("usrloc", "ha_cluster", 4)
 ...
 ```
 
+#### ha_shtag (字符串)
 
-#### ha_shtag (string)
+仅与 **"federation-cachedb"** [集群模式](#param_cluster_mode) 相关。表示要使用的 HA 集群共享标签,以建立 HA 对中的活动节点,使得只有该节点执行对 CacheDB 的写入操作。
 
+默认值为 NULL(禁用)。
 
-Only relevant in **"federation-cachedb"**
-		[cluster mode](#param_cluster_mode).  Denotes the HA cluster sharing tag to
-		use in order to establish the active node within the HA pair, such that
-		only that node performs WRITE operations to CacheDB.
-
-
-Default value is NULL (disabled).
-
-
-```c title="Setting the ha_shtag parameter"
+```c title="设置 ha_shtag 参数"
 ...
 modparam("usrloc", "ha_shtag", "vip2")
 ...
 ```
 
+#### skip_replicated_db_ops (整数)
 
-#### skip_replicated_db_ops (int)
+防止 OpenSIPS 在通过 *二进制接口* 接收事件时执行任何与数据库相关的 contact 操作。这通常用于防止不必要的重复操作。
 
+默认值为"0"(在接收 usrloc 相关二进制接口事件时,可以自由执行数据库查询)
 
-Prevent OpenSIPS from performing any DB-related contact operations
-		when events are received over the *Binary Interface*.
-		This is commonly used to prevent unneeded duplicate operations.
+用户位置复制机制的更多详细信息可在 [分布式 sip 用户位置](#distributed_sip_user_location) 中获取。
 
-
-Default value is "0" (upon receival of usrloc-related Binary Interface
-		events, DB queries may be freely performed)
-
-
-More details on the user location replication mechanism are available
-		in [distributed sip user location](#distributed_sip_user_location)
-
-
-```c title="Setting the skip_replicated_db_ops parameter"
+```c title="设置 skip_replicated_db_ops 参数"
 ...
 modparam("usrloc", "skip_replicated_db_ops", 1)
 ...
 ```
 
+#### max_contact_delete (整数)
 
-#### max_contact_delete (int)
+仅在 WRITE_THROUGH 或 WRITE_BACK 方案中相关。一次从数据库删除的最大 contact 数量。如果遍历所有 contact 后数量较少,将全部删除。
 
+默认值为"10"
 
-Relevant only in WRITE_THROUGH or WRITE_BACK schemes. The maximum
-		number of contacts to be deleted from the database at once. Will delete
-		all of them, if fewer after passing through all the contacts.
-
-
-Default value is "10"
-
-
-```c title="Setting the max_contact_delete parameter"
+```c title="设置 max_contact_delete 参数"
 ...
 modparam("usrloc", "max_contact_delete", 10)
 ...
 ```
 
+#### hash_size (整数)
 
-#### hash_size (integer)
+usrloc 用于存储位置记录的哈希表的条目数为 2^hash_size。对于 hash_size=4,哈希表的条目数为 16。从版本 2.2 开始,此参数的最大大小为 16,意味着哈希表最大支持 65536 个条目。
 
+*默认值为"9"。*
 
-The number of entries of the hash table used by usrloc to store the
-		location records is 2^hash_size. For hash_size=4, the number of entries
-		of the hash table is 16. Since version 2.2, the maximu size of this
-		parameter is 16, meaning that the hash supports maximum 65536 entries.
-
-
-*Default value is "9".*
-
-
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("usrloc", "hash_size", 10)
 ...
 ```
 
+#### regen_broken_contactid (整数)
 
-#### regen_broken_contactid (integer)
+从版本 2.2 开始,**contact_id** 概念被引入。由于此参数在每次 OpenSIPS 启动时验证 contact,因此有时应该重新生成此参数的值。这是在 **location** 表从旧于 2.2 的版本迁移时,或者更改了 **hash_size** 模块参数时。启用此参数将根据当前配置重新生成损坏的 contact id。
 
+*默认值为"0(未启用)"*
 
-Since version 2.2, **contact_id** concept
-		was introduced. Since this parameter validates a contact each time OpenSIPS
-		is started, there are times when the value of this parameter should be
-		regenerated. That is when **location** table
-		is being migrated from a version older than 2.2 or when
-		**hash_size** module parameter is changed.
-		Enabling this parameter will regenerate broken contact id's based on
-		current configurations.
-
-
-*Default value is "0(not enabled)"*
-
-
-```c title="Set regen_broken_contactid parameter"
+```c title="设置 regen_broken_contactid 参数"
 ...
 modparam("usrloc", "regen_broken_contactid", 1)
 ...
 ```
 
+#### latency_event_min_us (整数)
 
-#### latency_event_min_us (integer)
+定义最小 ping 延迟阈值(以微秒为单位),超过该阈值后将引发 contact ping 延迟更新事件。默认情况下,每次 ping 回复都会引发一个事件(即延迟更新)。
 
+如果同时设置了 [latency event min us](#param_latency_event_min_us) 和 [latency event min us delta](#param_latency_event_min_us_delta),则当其中任一为真时都会引发事件。
 
-Defines a minimal pinging latency threshold, in microseconds, past
-		which contact pinging latency update events will get raised. By
-		default, an event is raised for each ping reply (i.e. latency update).
+*默认值为"0(未设置下限)"。*
 
-
-If both [latency event min us](#param_latency_event_min_us) and
-		[latency event min us delta](#param_latency_event_min_us_delta) are set, the event
-		will get raised if either of them is true.
-
-
-*Default value is "0 (no bottom limit set)".*
-
-
-```c title="Set latency_event_min_us parameter"
+```c title="设置 latency_event_min_us 参数"
 ...
-# raise an event for any 425+ ms pinging latency
+# 为任何 425+ 毫秒的 ping 延迟引发事件
 modparam("usrloc", "latency_event_min_us", 425000)
 ...
 ```
 
+#### latency_event_min_us_delta (整数)
 
-#### latency_event_min_us_delta (integer)
+定义最小绝对 ping 延迟差值(以微秒为单位),超过该差值后将引发 contact ping 延迟更新事件。该差值使用最后两次 contact ping 回复的延迟计算。默认情况下,每次 ping 回复都会引发一个事件(即延迟更新)。
 
+如果同时设置了 [latency event min us](#param_latency_event_min_us) 和 [latency event min us delta](#param_latency_event_min_us_delta),则当其中任一为真时都会引发事件。
 
-Defines a minimal, absolute pinging latency difference, in
-		microseconds, past which contact pinging latency update events will get
-		raised. The difference is computed using the latencies of the last two
-		contact pinging replies. By default, an event is raised for each ping
-		reply (i.e. latency update).
+*默认值为"0(未设置最小延迟差)"。*
 
-
-If both [latency event min us](#param_latency_event_min_us) and
-		[latency event min us delta](#param_latency_event_min_us_delta) are set, the event
-		will get raised if either of them is true.
-
-
-*Default value is "0 (no minimal latency delta set)".*
-
-
-```c title="Set latency_event_min_us_delta parameter"
+```c title="设置 latency_event_min_us_delta 参数"
 ...
-# raise an event only if a contact has pinging latency swings of 300+ ms
+# 仅在 contact 的 ping 延迟波动为 300+ 毫秒时引发事件
 modparam("usrloc", "latency_event_min_us_delta", 300000)
 ...
 ```
 
+#### pinging_mode (字符串)
 
-#### pinging_mode (string)
+根据 [集群模式](#param_cluster_mode),模块可以使用两种可能的启发式算法之一执行 contact ping:
 
+- **"ownership"** - 此实例
+				仅在确定自己是 contact 的逻辑所有者时才尝试 ping contact。如果 contact 附加了共享标签,只要节点拥有相应标签,它就会继续向该 contact 发送 ping。如果未为给定 contact 指定共享标签,默认假定永久拥有该 contact 并在请求时 ping 它。
+- **"cooperation"** - 此
+				ping 启发式算法背后的假设是,所有用户位置集群节点是对称的(可能由 SIP 流量平衡实体前端),
+				使得 **任意** 节点都可以 ping
+				**任意** contact。
+				在此假设下,所有当前在线的用户位置集群节点将合作并通过将 AoR 哈希到当前在线节点数量来均匀分担 ping 工作负载,仅选择它们负责的节点。
 
-Depending on the [cluster mode](#param_cluster_mode), the module
-		can perform contact pinging using one of two possible heuristics:
-
-
-- **"ownership"** - this instance
-				will only attempt to ping a contact if it decides it is the
-				logical owner of the contact.  If a shared tag is attached to
-				a contact, a node will keep sending pings to that contact as
-				long as it owns the respective tag.  If no shared tag has been
-				specified for a given contact, the default is to assume
-				permanent ownership of the contact and ping it upon request.
-- **"cooperation"** - the
-				assumption behind this pinging heuristic is that all
-				user location cluster nodes are symmetrical (possibly
-				front-ended by a SIP traffic balancing entity), such that
-				**either** of them can ping
-				**any** contact.
-				Under this assumption, all currently online user location
-				cluster nodes will cooperate and evenly split the pinging
-				workload between them by hashing AoRs modulo
-				current_number_of_online_nodes, and only picking the ones that
-				they are responsible for.
-
-
-**Possible values for the "pinging_mode",
-				depending on the current "cluster_mode"**
-
+**根据当前"cluster_mode","pinging_mode"的可能值**
 
 |  |  |  |  |  |  |
 | --- | --- | --- | --- | --- | --- |
-| [cluster mode](#param_cluster_mode) | none | federation-cachedb | full-sharing | full-sharing-cachedb | sql-only |
-| [pinging mode](#param_pinging_mode) | **ownership** | **ownership** | **cooperation** / ownership | **cooperation** | *unmaintained* |
+| [集群模式](#param_cluster_mode) | none | federation-cachedb | full-sharing | full-sharing-cachedb | sql-only |
+| [pinging 模式](#param_pinging_mode) | **ownership** | **ownership** | **cooperation** / ownership | **cooperation** | *未维护* |
 
+请注意,只有 **"full-sharing"** 集群模式允许一些灵活性 -- 所有其他模式在逻辑上绑定到单一 ping 逻辑。任何不符合上表的不可接受的值,将静默丢弃。
 
-Notice that only the **"full-sharing"**
-			clustering mode allows some flexibility -- all other modes are
-			logically tied to a single pinging logic.  Any unaccepted value,
-			according to the above table, set
-			for those modes will be silently discarded.
-
-
-```c title="Set pinging_mode parameter"
+```c title="设置 pinging_mode 参数"
 ...
-# prepare an active/backup "full-sharing" setup, with no front-end
+# 准备一个主动/备份"full-sharing"设置,无前端
 modparam("usrloc", "pinging_mode", "ownership")
 ...
 ```
 
+#### mi_dump_kv_store (整数)
 
-#### mi_dump_kv_store (integer)
+启用是为了在所有输出 AoR 或 Contact 表示的 usrloc MI 命令中包含"KV-Store"字段。此详细字段包含附加到这两个实体的自定义数据。例如,mid_registrar 使用这两个 holder。
 
+*默认值为"0(禁用)"。*
 
-Enable in order to include the "KV-Store" field in all usrloc MI
-		commands which output AoR or Contact representations.  This verbose
-		field contains custom data attached to each of these two entities.
-		mid_registrar makes use of both of these holders, for example.
-
-
-*Default value is "0 (disabled)".*
-
-
-```c title="Set mi_dump_kv_store parameter"
+```c title="设置 mi_dump_kv_store 参数"
 ...
-# include the "KV-Store" key in all usrloc MI output
+# 在所有 usrloc MI 输出中包含"KV-Store"键
 modparam("usrloc", "mi_dump_kv_store", 1)
 ...
 ```
 
+#### contact_refresh_timer (布尔值)
 
-#### contact_refresh_timer (boolean)
+启用一个定时器,该定时器将定期扫描排序的 contact 列表,并为其中任何超过重新注册时间间隔限制的 contact 引发 [E_UL_CONTACT_REFRESH](#event_e_ul_contact_refresh)。此限制可能由 registrar 的 *pn_trigger_interval* 模块参数给出,例如。
 
+*默认值为"false(禁用)"。*
 
-Enable a timer which will periodically scan a sorted list of contacts
-		and raise the [E UL CONTACT REFRESH](#event_e_ul_contact_refresh) for any of
-		them which are past their re-registration time interval limit.  This
-		limit may given by registrar's *pn_trigger_interval*
-		module parameter, for example.
-
-
-*Default value is "false (disabled)".*
-
-
-```c title="Set contact_refresh_timer parameter"
+```c title="设置 contact_refresh_timer 参数"
 ...
 modparam("usrloc", "contact_refresh_timer", true)
 ...
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### ul_add_key(domain, aor, key_name, [key_value])
 
+向 Usrloc 记录的键值存储追加键/值。
 
-Append a Key/Value to the Key-Value-Store of a Usrloc-Record.
+如果在 usrloc 中未找到记录,则返回 false。
 
+参数含义如下:
 
-Returns false, if no record is found is usrloc.
+- *domain (字符串)* - AOR 的域,例如"location"
+- *aor (字符串)* - 地址记录,
+				为其保存键的特定(已注册)用户。
+- *key (字符串)* - 要存储的键的名称。
+- *value (字符串,可选)*
+			        - 要存储的值。不提供值或提供空值将删除条目。
 
+此函数可在任何路由中使用。
 
-Meaning of the parameters is as follows:
-
-
-- *domain (string)* - Domain of the
-			        AOR, e.g. "location"
-- *aor (string)* - Address-of-Record,
-			        save the key for a specific (registered) user.
-- *key (string)* - The name of the
-			        key to be stored.
-- *value (string, optional)*
-			        - The value to be stored. Not providing the value or
-			        by providing an empty value, will delete the entry.
-
-
-This function can be used in ANY route.
-
-
-```c title="ul_add_key usage"
+```c title="ul_add_key 使用示例"
 ...
 ul_add_key("location", "$tU@$td", "service_route", "$hdr(Service-Route)");
 ...
 ```
 
-
 #### ul_get_key(domain, aor, key_name, destination)
 
+从 Usrloc 记录的键值存储中检索键/值。
 
-Retrieve a Key/Value from the Key-Value-Store of a Usrloc-Record.
+如果在 usrloc 中未找到记录或未找到相应键,则返回 false。
 
+参数含义如下:
 
-Returns false, if no record is found is usrloc or no according key is found.
+- *domain (字符串)* - AOR 的域,例如"location"
+- *aor (字符串)* - 地址记录,
+				为其保存键的特定(已注册)用户。
+- *key (字符串)* - 要检索的键的名称。
+- *destination (变量)*
+			        - 存储检索到的键的变量。
 
+此函数可在任何路由中使用。
 
-Meaning of the parameters is as follows:
-
-
-- *domain (string)* - Domain of the
-			        AOR, e.g. "location"
-- *aor (string)* - Address-of-Record,
-			        save the key for a specific (registered) user.
-- *key (string)* - The name of the
-			        key to be retrieved.
-- *destination (variable)*
-			        - A variable, where to store the retrieved key.
-
-
-This function can be used in ANY route.
-
-
-```c title="ul_get_key usage"
+```c title="ul_get_key 使用示例"
 ...
 if (ul_get_key("location", "$tU@$td", "service_route", $avp(service_route))) {
         append_to_reply("Service-Route: $avp(service_route)\r\n");
@@ -1261,763 +736,418 @@ if (ul_get_key("location", "$tU@$td", "service_route", $avp(service_route))) {
 ...
 ```
 
-
 #### ul_del_key(domain, aor, key_name)
 
+从 Usrloc 记录的键值存储中删除键/值。
 
-Deletes a Key/Value from the Key-Value-Store of a Usrloc-Record.
+如果在 usrloc 中未找到记录,则返回 false。
 
+参数含义如下:
 
-Returns false, if no record is found is usrloc.
+- *domain (字符串)* - AOR 的域,例如"location"
+- *aor (字符串)* - 地址记录,
+				为其保存键的特定(已注册)用户。
+- *key (字符串)* - 要删除的键的名称。
 
+此函数可在任何路由中使用。
 
-Meaning of the parameters is as follows:
-
-
-- *domain (string)* - Domain of the
-			        AOR, e.g. "location"
-- *aor (string)* - Address-of-Record,
-			        save the key for a specific (registered) user.
-- *key (string)* - The name of the
-			        key to be deleted.
-
-
-This function can be used in ANY route.
-
-
-```c title="ul_del_key usage"
+```c title="ul_del_key 使用示例"
 ...
 ul_del_key("location", "$tU@$td", "service_route");
 ...
 ```
 
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### usrloc:rm
 
+替换已废弃的 MI 命令: *ul_rm*。
 
-Replaces obsolete MI command: *ul_rm*.
+删除整个 AOR 记录(包括其 contacts)。
 
+参数:
 
-Deletes an entire AOR record (including its contacts).
-
-
-Parameters:
-
-
-- *table_name* - table where the AOR
-				is removed from (Ex: location).
-- *aor* - user AOR in username[@domain]
-				format (domain must be supplied only if use_domain option
-				is on).
-
+- *table_name* - 要从中删除 AOR 的表(例如:location)。
+- *aor* - 用户 AOR,格式为 username[@domain]
+	(仅当 use_domain 选项开启时必须提供 domain)。
 
 #### usrloc:rm_contact
 
+替换已废弃的 MI 命令: *ul_rm_contact*。
 
-Replaces obsolete MI command: *ul_rm_contact*.
+从 AOR 记录中删除 contact。
 
+参数:
 
-Deletes a contact from an AOR record.
-
-
-Parameters:
-
-
-- *table name* - table where the AOR
-				is removed from (Ex: location).
-- *AOR* - user AOR in username[@domain]
-				format (domain must be supplied only if use_domain option
-				is on).
-- *contact* - exact contact to be removed
-
+- *table name* - 要从中删除 AOR 的表(例如:location)。
+- *AOR* - 用户 AOR,格式为 username[@domain]
+	(仅当 use_domain 选项开启时必须提供 domain)。
+- *contact* - 要删除的精确 contact。
 
 #### usrloc:dump
 
+替换已废弃的 MI 命令: *ul_dump*。
 
-Replaces obsolete MI command: *ul_dump*.
+转储 USRLOC 内存缓存中的全部内容。
 
+参数:
 
-Dumps the entire content of the USRLOC in memory cache
-
-
-Parameters:
-
-
-- *brief* - (optional, may not be present); if
-				equals to string "brief", a brief dump will be
-				done (only AOR and contacts, with no other details)
-
+- *brief* - (可选,可以不存在);如果等于字符串"brief",将执行简要转储(仅 AOR 和 contact,无其他详细信息)。
 
 #### usrloc:flush
 
+替换已废弃的 MI 命令: *ul_flush*。
 
-Replaces obsolete MI command: *ul_flush*.
-
-
-Force a flush of all pending usrloc cache changes to the database.
-		Normally, this routine runs every
-		[timer interval](#param_timer_interval) seconds.
-
+强制将所有待处理的 usrloc 缓存更改刷新到数据库。
+		通常,此例程每 [timer interval](#param_timer_interval) 秒运行一次。
 
 #### usrloc:add
 
+替换已废弃的 MI 命令: *ul_add*。
 
-Replaces obsolete MI command: *ul_add*.
+为用户 AOR 添加新 contact。
 
+参数:
 
-Adds a new contact for an user AOR.
-
-
-Parameters:
-
-
-- *table name (string)* - table where the contact
-				will be added (Ex: "location").
-- *aor (string)* - user AOR in username[@domain]
-				format (domain must be supplied only if use_domain option
-				is on).
-- *contact (string)* - Contact URI to be added
-- *expires (int)* - expires value of the contact
-- *q (string)* - Q value of the contact
-- *flags (int)* - internal USRLOC flags of the
-				contact
-- *cflags (int)* - per branch flags of the
-				contact
-- *methods (int)* - bitmask with supported requests
-				of the contact.  To whitelist all SIP methods, simply use the
-				value **32767**. For a breakdown
-				of each method's value, see the "request_method" internal enum.
-
+- *table name (字符串)* - 将添加 contact 的表(例如:"location")。
+- *aor (字符串)* - 用户 AOR,格式为 username[@domain]
+	(仅当 use_domain 选项开启时必须提供 domain)。
+- *contact (字符串)* - 要添加的 Contact URI。
+- *expires (整数)* - contact 的过期值。
+- *q (字符串)* - contact 的 Q 值。
+- *flags (整数)* - contact 的内部 USRLOC 标志。
+- *cflags (整数)* - contact 的每分支标志。
+- *methods (整数)* - contact 支持的请求的位掩码。要将所有 SIP 方法列入白名单,只需使用值 **32767**。有关每个方法的值分解,请参见"request_method"内部枚举。
 
 #### usrloc:show_contact
 
+替换已废弃的 MI 命令: *ul_show_contact*。
 
-Replaces obsolete MI command: *ul_show_contact*.
+转储用户 AOR 的 contacts。
 
+参数:
 
-Dumps the contacts of an user AOR.
-
-
-Parameters:
-
-
-- *table_name* - table where the AOR
-				resides (Ex: location).
-- *aor* - user AOR in username[@domain]
-				format (domain must be supplied only if use_domain option
-				is on).
-
+- *table_name* - AOR 所在的表(例如:location)。
+- *aor* - 用户 AOR,格式为 username[@domain]
+	(仅当 use_domain 选项开启时必须提供 domain)。
 
 #### usrloc:sync
 
+替换已废弃的 MI 命令: *ul_sync*。
 
-Replaces obsolete MI command: *ul_sync*.
+清空位置表,然后用内存中的所有 contact 将其同步。
+		请注意,在未指定数据库或使用仅数据库方案时不能使用此命令。
 
+重要:在执行此命令之前,请确保您的所有 contact 都在内存中
+		(*usrloc:dump* MI 函数)。
 
-Empty the location table, then synchronize it with all contacts from
-		memory.  Note that this can not be used when no database is specified
-		or with the DB-Only scheme.
+参数:
 
-
-Important: make sure that all your contacts are in memory
-		(*usrloc:dump* MI function) before executing this
-		command.
-
-
-Parameters:
-
-
-- *table name* - table where the AOR
-				resides (Ex: location).
-- *AOR (optional)* - only delete/sync this
-				user AOR, not the whole table.  Format: "username[@domain]"
-				(*domain* is required only if
-				[use domain](#param_use_domain) option is on).
-
+- *table name* - AOR 所在的表(例如:location)。
+- *AOR (可选)* - 仅删除/同步此用户 AOR,而不是整个表。格式:"username[@domain]"
+	(*domain* 仅在 [use domain](#param_use_domain) 选项开启时需要)。
 
 #### usrloc:cluster_sync
 
+替换已废弃的 MI 命令: *ul_cluster_sync*。
 
-Replaces obsolete MI command: *ul_cluster_sync*.
+此命令仅在目标 OpenSIPS 实例与热备份实例配对且在启用集群的 [工作模式预设](#param_working_mode_preset) 下运行时才会生效。
 
+当前节点将在 [位置集群](#param_location_cluster) 中定位一个健康的供体节点,并向其发出同步请求。供体节点将通过二进制接口将所有用户位置数据推送到当前节点。收到的数据将与现有数据合并。冲突的 contact(根据 [匹配模式](#param_matching_mode) 匹配)仅在同步数据比当前数据更新时才被覆盖。
 
-This command will only take effect if the target OpenSIPS instance is
-		paired with a hot backup instance, while running under a
-		cluster-enabled [working mode preset](#param_working_mode_preset).
+### 导出的统计信息
 
-
-The current node will locate a healthy donor node within the
-		[location cluster](#param_location_cluster) and issue a sync request to
-		it. The donor node will then proceed to push all of its user location
-		data over to the current node, via the binary interface. The received
-		data will be merged with existing data. Conflicting contacts (matched
-		according to [matching mode](#param_matching_mode)) are overwritten
-		only if the sync data is newer than the current data.
-
-
-### Exported Statistics
-
-
-Exported statistics are listed in the next sections.
-
+导出的统计信息在下一节中列出。
 
 #### users
 
-
-Number of AOR existing in the USRLOC memory cache for that domain
-			- can not be resetted; this statistic will be register for each
-			used domain (Ex: location).
-
+USRLOC 内存缓存中该域存在的 AOR 数量
+			- 不能重置;此统计信息将为每个使用的域注册(例如:location)。
 
 #### contacts
 
-
-Number of contacts existing in the USRLOC memory cache for that
-			domain - can not be resetted; this statistic will be register for
-			each used domain (Ex: location).
-
+USRLOC 内存缓存中该域存在的 contact 数量 - 不能重置;此统计信息将为每个使用的域注册(例如:location)。
 
 #### expires
 
-
-Total number of expired contacts for that domain - can be resetted;
-			 this statistic will be register for each used domain
-			(Ex: location).
-
+该域的过期 contact 总数 - 可以重置;
+			此统计信息将为每个使用的域注册(例如:location)。
 
 #### registered_users
 
+所有域的 USRLOC 内存缓存中存在的 AOR 总数 - 不能重置。
 
-Total number of AOR existing in the USRLOC memory cache for all
-			domains - can not be resetted.
-
-
-### Exported Events
-
+### 导出的事件
 
 #### E_UL_AOR_INSERT
 
+当新 AOR 被插入 USRLOC 内存缓存时引发此事件。
 
-This event is raised when a new AOR is inserted in the USRLOC
-			memory cache.
+参数:
 
-
-Parameters:
-
-
-- *domain* - The name of the table.
-- *aor* - The AOR of the inserted record.
-
+- *domain* - 表的名称。
+- *aor* - 插入记录的 AOR。
 
 #### E_UL_AOR_DELETE
 
+当新 AOR 从 USRLOC 内存缓存中删除时引发此事件。
 
-This event is raised when a new AOR is deleted from the USRLOC
-			memory cache.
+参数:
 
-
-Parameters:
-
-
-- *domain* - The name of the table.
-- *aor* - The AOR of the deleted record.
-
+- *domain* - 表的名称。
+- *aor* - 删除记录的 AOR。
 
 #### E_UL_CONTACT_INSERT
 
+当新 contact 插入现有 AOR 的 contact 列表时引发此事件。对于每个新 contact,如果其 AOR 不存在于内存中,则会同时引发 E_UL_AOR_CREATE 和 E_UL_CONTACT_INSERT 事件。
 
-This event is raised when a new contact is inserted in any of the
-			existing AOR's contact list. For each new contact, if its AOR does
-			not exist in the memory, then both the E_UL_AOR_CREATE and
-			E_UL_CONTACT_INSERT events will be raised.
+参数:
 
-
-Parameters:
-
-
-- *domain* - The name of the table.
-- *aor* - The AOR of the inserted contact.
-- *uri* - The contact URI of the inserted
-				contact.
-- *received* - IP, port and protocol the
-				registration message was received from. If these have the
-				same value as the contact's address (see the address parameter)
-				then the received parameter will be an empty string.
-- *path* - The PATH header value of the
-				registration message.(empty string if not present)
-- *qval* - The Q value (priority) of the
-				contact (as integer value from 0 to 10).
-- *user_agent* - The User-Agent header
-				value.
-*NOTICE:*Can contain spaces.
-- *socket* - The SIP socket/listener
-				(as string) used by OpenSIPS to receive the contact
-				registations.
-- *bflags* - The branch flags (bflags) of the
-				contact (in integer value of the bitmask)
-- *expires* - The expires value of the
-				contact (as UNIX timestamp integer).
-- *callid* - The Call-ID header of the
-				registration message.
-- *cseq* - The cseq number as an int value.
-- *attr* - The attributes string attached
-				to the contact (the custom attributes attached from the
-				script level). As this string is options, if missing in the
-				contact, the event will push the empty string for this event
-				field.
-- *latency* - The latency of the last
-				successful ping for this contact, in microseconds. Until the
-				first ping reply for a given contact arrives, its pinging
-				latency will be 0.
-- *shtag* - The shared tag of the contact,
-				which helps determine if the current node owns the contact
-				(e.g. possibly using the **$cluster.sh_tag** pseudo-variable in order to perform the check).
-*NOTICE:*If a contact has no shared tag
-				attached to it, the value of this parameter will be "" (empty
-				string)!
-
+- *domain* - 表的名称。
+- *aor* - 插入 contact 的 AOR。
+- *uri* - 插入 contact 的 Contact URI。
+- *received* - 收到注册消息的 IP、端口和协议。如果这些值与 contact 的地址相同(见 address 参数),则 received 参数将为空字符串。
+- *path* - 注册消息的 PATH 首部值(如果不存在则为空字符串)。
+- *qval* - contact 的 Q 值(优先级)(0 到 10 的整数值)。
+- *user_agent* - User-Agent 首部值。
+*注意:*可以包含空格。
+- *socket* - OpenSIPS 用于接收 contact 注册的 SIP 套接字/监听器(作为字符串)。
+- *bflags* - contact 的分支标志(bflags)(整数位掩码值)。
+- *expires* - contact 的过期值(UNIX 时间戳整数)。
+- *callid* - 注册消息的 Call-ID 首部。
+- *cseq* - cseq 号码作为整数值。
+- *attr* - 附加到 contact 的属性字符串(从脚本级别附加的自定义属性)。由于此字符串是可选的,如果 contact 中缺少,事件将为此字段推送空字符串。
+- *latency* - 上一次成功 ping 此 contact 的延迟,以微秒为单位。在给定 contact 的第一次 ping 回复到达之前,其 ping 延迟将为 0。
+- *shtag* - contact 的共享标签,
+			有助于确定当前节点是否拥有该 contact
+			(例如,可能使用 **$cluster.sh_tag** 伪变量来执行检查)。
+*注意:*如果 contact 没有附加共享标签,则此参数的值将为""(空字符串)!
 
 #### E_UL_CONTACT_DELETE
 
+当 contact 从现有 AOR 的 contact 列表中删除时引发此事件。如果 contact 是列表中唯一的一个,则会同时引发 E_UL_AOR_DELETE 和 E_UL_CONTACT_DELETE 事件。
 
-This event is raised when a contact is deleted from an
-			existing AOR's contact list. If the contact is the only one in
-			the list then both the E_UL_AOR_DELETE and
-			E_UL_CONTACT_DELETE events will be raised.
-
-
-Parameters: same as the
-			[E UL CONTACT INSERT](#event_e_ul_contact_insert) event
-
+参数: 与 [E_UL_CONTACT_INSERT](#event_e_ul_contact_insert) 事件相同。
 
 #### E_UL_CONTACT_UPDATE
 
+当通过收到另一条注册消息更新 contact 信息时引发此事件。
 
-This event is raised when a contact's info is updated by receiving
-			another registration message.
-
-
-Parameters: same as the
-			[E UL CONTACT INSERT](#event_e_ul_contact_insert) event
-
+参数: 与 [E_UL_CONTACT_INSERT](#event_e_ul_contact_insert) 事件相同。
 
 #### E_UL_CONTACT_REFRESH
 
+此事件可能仅为 RFC 8599(推送通知)启用的 contact 引发。
 
-This event may only be raised for RFC 8599 (Push Notification)
-			enabled contacts.
+将 [contact refresh timer](#param_contact_refresh_timer) 设置为 *true* 以启用此事件。该事件在 RFC 8599 启用的 contact 即将过期前的合理时间内引发,以便脚本编写者可以采取行动,可能强制端点进行注册刷新。
 
+参数:
 
-Set [contact refresh timer](#param_contact_refresh_timer) to
-		*true* in order to enable this event.  The event is
-		raised within reasonable time before an RFC 8599 enabled contact
-		will expire, such that the script writer can take action,
-		possibly force a registration refresh from the endpoint.
-
-
-Parameters:
-
-
-- *domain* - The name of the table.
-- *aor* - The AOR of the inserted contact.
-- *uri* - The contact URI of the inserted
-				contact.
-- *received* - IP, port and protocol the
-				registration message was received from. If these have the
-				same value as the contact's address (see the address parameter)
-				then the received parameter will be an empty string.
-- *user_agent* - The User-Agent header
-				value.
-*NOTICE:*Can contain spaces.
-- *socket* - The SIP socket/listener
-				(as string) used by OpenSIPS to receive the contact
-				registations.
-- *bflags* - The branch flags (bflags) of the
-				contact (in integer value of the bitmask)
-- *expires* - The expires value of the
-				contact (as UNIX timestamp integer).
-- *callid* - The Call-ID header of the
-				registration message.
-- *attr* - The attributes string attached
-				to the contact (the custom attributes attached from the
-				script level). As this string is options, if missing in the
-				contact, the event will push the empty string for this event
-				field.
-- *shtag* - The shared tag of the contact,
-				which helps determine if the current node owns the contact
-				(e.g. possibly using the **$cluster.sh_tag** pseudo-variable in order to perform the check).
-- *reason* - the reason why the binding refresh
-				event was triggered.  Possible values:
+- *domain* - 表的名称。
+- *aor* - 插入 contact 的 AOR。
+- *uri* - 插入 contact 的 Contact URI。
+- *received* - 收到注册消息的 IP、端口和协议。如果这些值与 contact 的地址相同(见 address 参数),则 received 参数将为空字符串。
+- *user_agent* - User-Agent 首部值。
+*注意:*可以包含空格。
+- *socket* - OpenSIPS 用于接收 contact 注册的 SIP 套接字/监听器(作为字符串)。
+- *bflags* - contact 的分支标志(bflags)(整数位掩码值)。
+- *expires* - contact 的过期值(UNIX 时间戳整数)。
+- *callid* - 注册消息的 Call-ID 首部。
+- *attr* - 附加到 contact 的属性字符串(从脚本级别附加的自定义属性)。由于此字符串是可选的,如果 contact 中缺少,事件将为此字段推送空字符串。
+- *shtag* - contact 的共享标签,
+			有助于确定当前节点是否拥有该 contact
+			(例如,可能使用 **$cluster.sh_tag** 伪变量来执行检查)。
+- *reason* - 触发绑定刷新事件的原因。可能的值:
 				
-					"reg-refresh" - periodic refresh triggered by OpenSIPS
-
-					"ini-INVITE", "ini-SUBSCRIBE", etc. - a refresh
-						triggered by an incoming initial SIP request
-
-					"mid-INVITE", "mid-BYE", etc. - a refresh triggered
-						by an incoming mid-dialog SIP request
-- *req_callid* - the Call-ID of the SIP request
-				which triggered this event, if any.  This gives the ability to
-				logically link the pending request with the current event and
-				access useful data from that request (e.g. caller identity,
-				dialed number, etc.).
-Using the *req_callid*, if a dialog has been
-				created for the pending request, this dialog may be temporarily
-				loaded inside the event_route using the
-				[load_dialog_ctx()](../dialog#func_load_dialog_ctx) and
-				[unload_dialog_ctx()](../dialog#func_unload_dialog_ctx)
-				functions of the dialog module.
-
+				"reg-refresh" - 由 OpenSIPS 触发的定期刷新
+				
+				"ini-INVITE"、"ini-SUBSCRIBE" 等 - 由传入的初始 SIP 请求触发的刷新
+				
+				"mid-INVITE"、"mid-BYE" 等 - 由传入的会话中 SIP 请求触发的刷新
+- *req_callid* - 触发此事件的 SIP 请求的 Call-ID(如果有的话)。这提供了将待处理请求与当前事件逻辑关联起来的能力,并可从该请求访问有用数据(例如,呼叫者身份、拨打的号码等)。
+使用 *req_callid*,如果为待处理请求创建了对话,则可以使用 dialog 模块的 [load_dialog_ctx()](../dialog#func_load_dialog_ctx) 和 [unload_dialog_ctx()](../dialog#func_unload_dialog_ctx) 函数将此对话临时加载到 event_route 中。
 
 #### E_UL_LATENCY_UPDATE
 
+当 contact ping 延迟匹配 [latency event min us](#param_latency_event_min_us) 或 [latency event min us delta](#param_latency_event_min_us_delta) 过滤器时引发此事件。如果未设置这些过滤器,则每次成功的 contact ping 操作都会引发此事件。
 
-This event is raised when a contact pinging latency matches either
-		of the [latency event min us](#param_latency_event_min_us) or
-		[latency event min us delta](#param_latency_event_min_us_delta) filters. If none of
-		these filters is set, this event will get raised for each successful
-		contact ping operation.
+参数: 与 [E_UL_CONTACT_INSERT](#event_e_ul_contact_insert) 事件相同。
 
+## 开发者指南
 
-Parameters: same as the
-			[E UL CONTACT INSERT](#event_e_ul_contact_insert) event
-
-
-## Developer Guide
-
-
-### Available Functions
-
+### 可用函数
 
 #### ul_register_domain(name)
 
+该函数注册一个新域。域只是 registrar 中使用的表的另一个名称。该函数从 fixups 在 registrar 中调用。它获取域名作为参数并返回指向新域结构的指针。然后 fixup"修复"registrar 中的参数,以便每次调用 save() 或 lookup() 时传递指针而不是名称。某些 usrloc 函数在调用时获取指针作为参数。有关更多详细信息,请参阅 registrar 中 save 函数的实现。
 
-The function registers a new domain. Domain is just another name for
-		table used in registrar. The function is called from fixups in
-		registrar. It gets name of the domain as a parameter and returns
-		pointer to a new domain structure. The fixup than 'fixes' the
-		parameter in registrar so that it will pass the pointer instead of the
-		name every time save() or lookup() is called. Some usrloc functions
-		get the pointer as parameter when called. For more details see
-		implementation of save function in registrar.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *const char* name* - Name of the domain
-				(also called table) to be registered.
-
+- *const char* name* - 要注册的域(也称为表)的名称。
 
 #### ul_insert_urecord(domain, aor, rec, is_replicated)
 
+该函数创建一个新记录结构并将其插入指定域。记录是包含属于指定用户名的所有 contact 的结构。
 
-The function creates a new record structure and inserts it in the
-		specified domain. The record is structure that contains all the
-		contacts for belonging to the specified username.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *udomain_t* domain* - Pointer to domain
-				returned by ul_register_udomain.
-- *str* aor* - Address of Record (aka
-			username) of the new record (at this time the record will
-			contain no contacts yet).
-- *urecord_t** rec* - The newly created
-			record structure.
-- *char is_replicated* - Specifies whether
-			this function will be called from the context of a Binary Interface
-			callback. If uncertain, simply use 0.
-
+- *udomain_t* domain* - 指向由 ul_register_udomain 返回的域的指针。
+- *str* aor* - 新记录的地址记录(又名用户名)(此时记录还不包含任何 contact)。
+- *urecord_t** rec* - 新创建记录结构。
+- *char is_replicated* - 指定此函数是否将从二进制接口回调的上下文中调用。如果不确定,只需使用 0。
 
 #### ul_delete_urecord(domain, aor, is_replicated)
 
+该函数删除与给定地址记录绑定的所有 contact。
 
-The function deletes all the contacts bound with the given Address
-		Of Record.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *udomain_t* domain* - Pointer to domain
-			returned by ul_register_udomain.
-- *str* aor* - Address of record (aka
-			username) of the record, that should be deleted.
-- *char is_replicated* - Specifies whether
-			this function will be called from the context of a Binary Interface
-			callback. If uncertain, simply use 0.
-
+- *udomain_t* domain* - 指向由 ul_register_udomain 返回的域的指针。
+- *str* aor* - 要删除的记录的地址记录(又名用户名)。
+- *char is_replicated* - 指定此函数是否将从二进制接口回调的上下文中调用。如果不确定,只需使用 0。
 
 #### ul_get_urecord(domain, aor)
 
+该函数返回指向具有给定地址记录的记录的指针。
 
-The function returns pointer to record with given Address of Record.
+参数含义如下:
 
+- *udomain_t* domain* - 指向由 ul_register_udomain 返回的域的指针。
 
-Meaning of the parameters is as follows:
-
-
-- *udomain_t* domain* - Pointer to domain
-			returned by ul_register_udomain.
-
-
-- *str* aor* - Address of Record of request
-			record.
-
+- *str* aor* - 请求记录的地址记录。
 
 #### ul_lock_udomain(domain)
 
+该函数锁定指定域,这意味着在此期间,其他进程将无法访问。这可以防止竞争条件。锁的范围是指定域,也就是说,多个域可以同时访问,它们不会相互阻塞。
 
-The function lock the specified domain, it means, that no other
-		processes will be able to access during the time. This prevents race
-		conditions. Scope of the lock is the specified domain, that means,
-		that multiple domain can be accessed simultaneously, they don't block
-		each other.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *udomain_t* domain* - Domain to be locked.
-
+- *udomain_t* domain* - 要锁定的域。
 
 #### ul_unlock_udomain(domain)
 
+解锁之前由 ul_lock_udomain 锁定的指定域。
 
-Unlock the specified domain previously locked by ul_lock_udomain.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *udomain_t* domain* - Domain to be
-			unlocked.
-
+- *udomain_t* domain* - 要解锁的域。
 
 #### ul_release_urecord(record, is_replicated)
 
+执行一些完整性检查 - 如果所有 contact 都已被删除,则删除整个记录结构。
 
-Do some sanity checks - if all contacts have been removed, delete
-		the entire record structure.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *urecord_t* record* - Record to be
-			released.
-- *char is_replicated* - Specifies whether
-			this function will be called from the context of a Binary Interface
-			callback. If uncertain, simply use 0.
-
+- *urecord_t* record* - 要释放的记录。
+- *char is_replicated* - 指定此函数是否将从二进制接口回调的上下文中调用。如果不确定,只需使用 0。
 
 #### ul_insert_ucontact(record, contact, contact_info, contact, is_replicated)
 
+该函数使用指定参数在给定记录中插入新 contact。
 
-The function inserts a new contact in the given record with
-		specified parameters.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *urecord_t* record* - Record in which
-			the contact should be inserted.
-- *str* contact* - Contact URI.
+- *urecord_t* record* - 要插入 contact 的记录。
+- *str* contact* - Contact URI。
 - *ucontact_info_t* contact_info* -
-				Single structure containing the new contact information
-- *char is_replicated* - Specifies whether
-			this function will be called from the context of a Binary Interface
-			callback. If uncertain, simply use 0.
-
+				包含新 contact 信息的单个结构。
+- *char is_replicated* - 指定此函数是否将从二进制接口回调的上下文中调用。如果不确定,只需使用 0。
 
 #### ul_delete_ucontact (record, contact, is_replicated)
 
+该函数从记录中删除给定的 contact。
 
-The function deletes given contact from record.
+参数含义如下:
 
+- *urecord_t* record* - 要从中删除 contact 的记录。
 
-Meaning of the parameters is as follows:
-
-
-- *urecord_t* record* - Record from which
-			the contact should be removed.
-
-
-- *ucontact_t* contact* - Contact to be
-			deleted.
-- *char is_replicated* - Specifies whether
-			this function will be called from the context of a Binary Interface
-			callback. If uncertain, simply use 0.
-
+- *ucontact_t* contact* - 要删除的 contact。
+- *char is_replicated* - 指定此函数是否将从二进制接口回调的上下文中调用。如果不确定,只需使用 0。
 
 #### ul_delete_ucontact_from_id (domain, contact_id)
 
+该函数从给定域中删除具有给定 contact_id 的 contact。
 
-The function deletes a contact with the given contact_id from
-			the given domain.
+参数含义如下:
 
+- *udomain_t* domain* - 可以找到 contact 的域。
 
-Meaning of the parameters is as follows:
-
-
-- *udomain_t* domain* - Domain where
-			the contact can be found.
-
-
-- *uint64_t contact_id* - Contact_id
-			identifying the contact to be deleted.
-
+- *uint64_t contact_id* - 标识要删除的 contact 的 contact_id。
 
 #### ul_get_ucontact(record, contact)
 
+该函数尝试查找具有给定 Contact URI 的 contact,并返回指向表示该 contact 的结构的指针。
 
-The function tries to find contact with given Contact URI and
-		returns pointer to structure representing the contact.
+参数含义如下:
 
+- *urecord_t* record* - 要搜索 contact 的记录。
 
-Meaning of the parameters is as follows:
-
-
-- *urecord_t* record* - Record to be
-			searched for the contact.
-
-
-- *str_t* contact* - URI of the request
-			contact.
-
+- *str_t* contact* - 请求 contact 的 URI。
 
 #### ul_get_domain_ucontacts (domain, buf, len, flags)
 
+该函数从给定域检索所有已注册用户的所有 contact,并将它们返回给调用者提供的缓冲区。如果缓冲区太小,函数返回正值,指示需要多少额外空间来容纳所有 contact。请注意,正值应该仅作为"提示"使用,因为在后续调用之间,已注册 contact 的数量不能保证保持不变。
 
-The function retrieves all contacts of all registered users from the
-		given doamin and returns them in the caller-supplied buffer. If the
-		buffer is too small, the function returns positive value indicating
-		how much additional space would be necessary to accommodate all of
-		them. Please note that the positive return value should be used only
-		as a "hint", as there is no guarantee that during the time
-		between two subsequent calls number of registered contacts will
-		remain the same.
+如果标志参数设置为非零值,则仅返回设置了指定标志的 contact。例如,可以仅列出 NAT 后面的 contact。
 
+参数含义如下:
 
-If flag parameter is set to non-zero value then only contacts that
-		have the specified flags set will be returned. It is, for example,
-		possible to list only contacts that are behind NAT.
+- *udomaint_t* domain* - 要从中获取 contact 的域。
 
+- *void* buf* - 用于返回 contact 的缓冲区。
 
-Meaning of the parameters is as follows:
+- *int len* - 缓冲区的长度。
 
-
-- *udomaint_t* domain* - Domain from which
-			to get the contacts
-
-
-- *void* buf* - Buffer for returning
-			contacts.
-
-
-- *int len* - Length of the buffer.
-
-
-- *unsigned int flags* - Flags that must
-			be set.
-
+- *unsigned int flags* - 必须设置的标志。
 
 #### ul_get_all_ucontacts (buf, len, flags)
 
+该函数检索所有已注册用户的所有 contact,并将它们返回给调用者提供的缓冲区。如果缓冲区太小,函数返回正值,指示需要多少额外空间来容纳所有 contact。请注意,正值应该仅作为"提示"使用,因为在后续调用之间,已注册 contact 的数量不能保证保持不变。
 
-The function retrieves all contacts of all registered users and
-		returns them in the caller-supplied buffer. If the buffer is too small,
-		the function returns positive value indicating how much additional
-		space would be necessary to accommodate all of them. Please note
-		that the positive return value should be used only as a
-		"hint", as there is no guarantee that during the time
-		between two subsequent calls number of registered contacts will
-		remain the same.
+如果标志参数设置为非零值,则仅返回设置了指定标志的 contact。例如,可以仅列出 NAT 后面的 contact。
 
+参数含义如下:
 
-If flag parameter is set to non-zero value then only contacts that
-		have the specified flags set will be returned. It is, for example,
-		possible to list only contacts that are behind NAT.
+- *void* buf* - 用于返回 contact 的缓冲区。
 
+- *int len* - 缓冲区的长度。
 
-Meaning of the parameters is as follows:
-
-
-- *void* buf* - Buffer for returning
-			contacts.
-
-
-- *int len* - Length of the buffer.
-
-
-- *unsigned int flags* - Flags that must
-			be set.
-
+- *unsigned int flags* - 必须设置的标志。
 
 #### ul_update_ucontact(record, contact, contact_info, is_replicated)
 
+该函数使用新值更新 contact。
 
-The function updates contact with new values.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *urecord_t* record* - Record in which
-			the contact should be inserted.
-- *ucontact_t* contact* - Contact URI.
+- *urecord_t* record* - 要插入 contact 的记录。
+- *ucontact_t* contact* - Contact URI。
 - *ucontact_info_t* contact_info* -
-				Single structure containing the new contact information
-- *char is_replicated* - Specifies whether
-			this function will be called from the context of a Binary Interface
-			callback. If uncertain, simply use 0.
-
+				包含新 contact 信息的单个结构。
+- *char is_replicated* - 指定此函数是否将从二进制接口回调的上下文中调用。如果不确定,只需使用 0。
 
 #### ul_bind_ursloc( api )
 
+该函数导入 USRLOC 模块导出的所有函数。为其他想要使用内部 USRLOC API 的模块提供了一种轻松的加载和访问函数的方式。
 
-The function imports all functions that are exported by the
-		USRLOC module. Overs for other modules which want to user the
-		internal USRLOC API an easy way to load and access the functions.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *usrloc_api_t* api* - USRLOC API
-
+- *usrloc_api_t* api* - USRLOC API。
 
 #### ul_register_ulcb(type ,callback, param)
 
+该函数向 USRLOC 注册一个回调函数,当 USRLOC 内部发生某些事件时调用。
 
-The function register with USRLOC a callback function to be called
-		when some event occures inside USRLOC.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *int types* - type of event for which
-			the callback should be called (see usrloc/ul_callback.h).
-- *ul_cb f* - callback function; see
-			usrloc/ul_callback.h for prototype.
-- *void *param* - some parameter to be
-			passed to the callback each time when it is called.
-
+- *int types* - 应该调用回调的事件类型(请参阅 usrloc/ul_callback.h)。
+- *ul_cb f* - 回调函数;请参阅 usrloc/ul_callback.h 获取原型。
+- *void *param* - 每次调用回调时要传递的一些参数。
 
 #### ul_get_num_users()
 
+该函数遍历所有域并汇总用户数量。
 
-The function loops through all domains summing up the number of users.
-<!-- CONTRIBUTORS -->
+### 许可证
 
-### License
-
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享 4.0 许可证授权。

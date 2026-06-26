@@ -1,71 +1,65 @@
 ---
-title: "Peering Module"
-description: "Peering module allows SIP providers (operators or organizations) to verify from a broker if source or destination of a SIP request is a trusted peer."
+title: "对等模块"
+description: "对等模块允许 SIP 提供商(运营商或组织)从代理验证 SIP 请求的源或目标是否为可信对等方。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-Peering module allows SIP
-	providers (operators or organizations) to verify from a broker
-	if source or destination of a SIP request is a trusted peer.
+对等模块允许 SIP
+提供商(运营商或组织)从代理验证 SIP 请求的源或目标是否为可信对等方。
 
 
-In order to participate in the trust community provided by a
-	broker, each SIP provider registers with the broker the domains
-	(host parts of SIP URIs) that they serve.  When a SIP proxy of a
-	provider needs to send a SIP request to a non-local domain, it
-	can find out from the broker using verify_destination() function
-	if the non-local domain is served by a trusted peer.  If so, the
-	provider receives from the broker a hash of the SIP request and
-	a timestamp that it includes in the request to the non-local
-	domain.  When a SIP
-	proxy of the non-local domain receives the SIP request, it, in
-	turn, can verify from the broker using verify_source() function
-	if the request came from a trusted peer.
+为了参与代理提供的信任社区,
+每个 SIP 提供商向代理注册它们所服务的域(SIP URI 的主机部分)。
+当提供商的 SIP 代理需要向非本地域发送 SIP 请求时,
+它可以使用 verify_destination() 函数从代理查明非本地域是否由可信对等方服务。
+如果是,提供商会从代理收到 SIP 请求的哈希和时间戳,
+并将其包含在到非本地域的请求中。
+当非本地域的 SIP 代理收到 SIP 请求时,
+它可以依次使用 verify_source() 函数从代理验证请求是否来自可信对等方。
 
 
-Verification functions communicate with the broker using an AAA
-        protocol.
+验证函数使用 AAA 协议与代理通信。
 
 
-Comments and suggestions for improvements are welcome.
+欢迎提出改进意见和建议。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The module depends on the following modules
-			(in the other words 
-			the listed modules must be loaded before this module):
+该模块依赖以下模块
+(换句话说,
+列出的模块必须在此模块之前加载):
 
 
-- *an AAA implementing module*
+- *实现 AAA 的模块*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### aaa_url (string)
 
 
-This is the url representing the AAA protocol used and the location of the configuration file of this protocol.
+这是表示所使用的 AAA 协议及其配置文件位置的 URL。
 
 
-If the parameter is set to empty string, the AAA accounting support
-			will be disabled (even if compiled).
+如果参数设置为空字符串,
+将禁用 AAA 计费支持(即使已编译)。
 
 
-Default value is "NULL".
+默认值为 "NULL"。
 
 
-```c title="Set aaa_url parameter"
+```c title="设置 aaa_url 参数"
 ...
 modparam("peering", "aaa_url", "radius:/etc/radiusclient-ng/radiusclient.conf")
 ...
@@ -75,16 +69,15 @@ modparam("peering", "aaa_url", "radius:/etc/radiusclient-ng/radiusclient.conf")
 #### verify_destination_service_type (integer)
 
 
-This is the value of the Service-Type AAA attribute to be
-		used, when sender of SIP Request verifies request's
-	destination using verify_destination() function.
+这是 Service-Type AAA 属性的值,
+当 SIP 请求的发送者使用 verify_destination() 函数验证请求目标时使用。
 
 
-Default value is dictionary value of "Sip-Verify-Destination"
-		Service-Type.
+默认值为 "Sip-Verify-Destination"
+Service-Type 的字典值。
 
 
-```c title="verify_destination_service_type parameter usage"
+```c title="verify_destination_service_type 参数用法"
 ...
 modparam("peering", "verify_destination_service_type", 21)
 ...
@@ -94,74 +87,65 @@ modparam("peering", "verify_destination_service_type", 21)
 #### verify_source_service_type (integer)
 
 
-This is the value of the Service-Type AAA attribute to be
-		used, when receiver of SIP Request verifies request's
-	source using verify_source() function.
+这是 Service-Type AAA 属性的值,
+当 SIP 请求的接收者使用 verify_source() 函数验证请求源时使用。
 
 
-Default value is dictionary value of "Sip-Verify-Source"
-		Service-Type.
+默认值为 "Sip-Verify-Source"
+Service-Type 的字典值。
 
 
-```c title="verify_source_service_type parameter usage"
+```c title="verify_source_service_type 参数用法"
 ...
 modparam("peering", "verify_source_service_type", 22)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### verify_destination()
 
 
-Function verify_destination() queries from
-		broker's AAA server if domain (host part) of Request
-	URI is served by a trusted peer.  AAA request contains the
-	following attributes/values:
+verify_destination() 函数从
+代理的 AAA 服务器查询 Request URI 的域(主机部分)是否由可信对等方服务。
+AAA 请求包含以下属性/值:
 
 
-- User-Name - Request-URI host
-- SIP-URI-User - Request-URI user
-- SIP-From-Tag - From tag
-- SIP-Call-Id - Call id
+- User-Name - Request-URI 主机
+- SIP-URI-User - Request-URI 用户
+- SIP-From-Tag - From 标签
+- SIP-Call-Id - Call ID
 - Service-Type - verify_destination_service_type
 
 
-Function returns value 1 if domain of Request URI is
-	served by a trusted peer and -1 otherwise.  In case of positive
-	result, AAA server returns a set of SIP-AVP reply attributes.
-	Value of each SIP-AVP is of form:
+如果 Request URI 的域由可信对等方服务,函数返回 1,否则返回 -1。
+如果是肯定结果,AAA 服务器返回一组 SIP-AVP 回复属性。
+每个 SIP-AVP 的值格式如下:
 
 
 [#]name(:|#)value
 
 
-Value of each SIP-AVP reply attribute is mapped to an
-		 OpenSIPS AVP.  Prefix # in front of name or value indicates a
-	string name or string value, respectively.
+每个 SIP-AVP 回复属性的值映射到
+OpenSIPS AVP。名称或值前面的 # 前缀分别表示字符串名称或字符串值。
 
 
-One of the SIP-AVP reply attributes contains a string
-		 that the source peer must include "as is" in a 
-		 P-Request-Hash header when it sends the SIP request to
-		 the destination peer.  The string value may, for
-		 example, be of form hash@timestamp, where hash contains
-		 a hash calculated by the broker based on the attributes
-		 of the query and some local information and timestamp
-		 is the time when the calculation was done.
+其中一个 SIP-AVP 回复属性包含一个字符串,
+源对等方必须"按原样"包含在向目标对等方发送 SIP 请求时的 P-Request-Hash 头中。
+字符串值例如可以是 hash@timestamp 形式,
+其中 hash 包含代理基于查询的属性和一些本地信息计算的哈希,
+timestamp 是进行计算的时间。
 
 
-AVP names used in reply attributes are assigned by the
-		 broker.
+回复属性中使用的 AVP 名称由代理分配。
 
 
-This function can be used from REQUEST_ROUTE and
-		FAILURE_ROUTE.
+此函数可用于 REQUEST_ROUTE 和 FAILURE_ROUTE。
 
 
-```c title="verify_destination() usage"
+```c title="verify_destination() 用法"
 ...
 if (verify_destination()) {
    append_hf("P-Request-Hash: $avp(prh)\r\n");
@@ -173,54 +157,48 @@ if (verify_destination()) {
 #### verify_source()
 
 
-Function verify_source() queries from
-		broker's AAA server if SIP request was received from
-	a trusted peer.  AAA request contains the
-	following attributes/values:
+verify_source() 函数从
+代理的 AAA 服务器查询 SIP 请求是否来自可信对等方。
+AAA 请求包含以下属性/值:
 
 
-- User-Name - Request-URI host
-- SIP-URI-User - Request-URI user
-- SIP-From-Tag - From tag
-- SIP-Call-Id - Call id
-- SIP-Request-Hash - body of P-Request-Hash header
+- User-Name - Request-URI 主机
+- SIP-URI-User - Request-URI 用户
+- SIP-From-Tag - From 标签
+- SIP-Call-Id - Call ID
+- SIP-Request-Hash - P-Request-Hash 头的内容
 - Service-Type - verify_source_service_type
 
 
-Function returns value 1 if SIP request was received
-	from a trusted peer and -1 otherwise.  In case of positive
-	result, AAA server may return a set of SIP-AVP reply
-	attributes.  Value of each SIP-AVP is of form:
+如果 SIP 请求来自可信对等方,函数返回 1,否则返回 -1。
+如果是肯定结果,AAA 服务器可以返回一组 SIP-AVP 回复属性。
+每个 SIP-AVP 的值格式如下:
 
 
 [#]name(:|#)value
 
 
-Value of each SIP-AVP reply attribute is mapped to an
-		 OpenSIPS 
-		 AVP.  Prefix # in front of name or value indicates a
-	string name or string value, respectively.
+每个 SIP-AVP 回复属性的值映射到
+OpenSIPS AVP。名称或值前面的 # 前缀分别表示字符串名称或字符串值。
 
 
-AVP names used in reply attributes are
-		 assigned by the broker.
+回复属性中使用的 AVP 名称由代理分配。
 
 
-This function can be used from REQUEST_ROUTE and
-		FAILURE_ROUTE.
+此函数可用于 REQUEST_ROUTE 和 FAILURE_ROUTE。
 
 
-```c title="verify_source() usage"
+```c title="verify_source() 用法"
 ...
 if (is_present_hf("P-Request-Hash")) {
    if (verify_source()) {
-      xlog("L_INFO", "Request came from trusted peer\n")
+      xlog("L_INFO", "请求来自可信对等方\n")
    }
 }
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享许可证 4.0 版授权

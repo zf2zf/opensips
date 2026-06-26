@@ -1,54 +1,53 @@
 ---
-title: "mysql Module"
-description: "This is a module which provides MySQL connectivity for OpenSIPS. It implements the DB API defined in OpenSIPS."
+title: "mysql 模块"
+description: "这是一个为 OpenSIPS 提供 MySQL 连接功能的模块。它实现了 OpenSIPS 中定义的 DB API。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is a module which provides MySQL connectivity for OpenSIPS.
-		It implements the DB API defined in OpenSIPS.
+这是一个为 OpenSIPS 提供 MySQL 连接功能的模块。
+它实现了 OpenSIPS 中定义的 DB API。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块需要在此模块之前加载：
 
 
-- *If a [use tls](#param_use_tls) is defined, the **tls_mgm** module will need to be loaded as well*.
+- *如果定义了 [use tls](#param_use_tls)，则还需要加载 **tls_mgm** 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *libmysqlclient-dev* - the development libraries of mysql-client.
+- *libmysqlclient-dev* - mysql-client 的开发库。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### exec_query_threshold (integer)
 
 
-If queries take longer than 'exec_query_threshold' microseconds, warning
-		messages will be written to logging facility.
+如果查询时间超过 'exec_query_threshold' 微秒，
+警告消息将被写入日志设施。
 
 
-*Default value is 0 - disabled.*
+*默认值为 0 - 禁用。*
 
 
-```c title="Set exec_query_threshold parameter"
+```c title="设置 exec_query_threshold 参数"
 ...
 modparam("db_mysql", "exec_query_threshold", 60000)
 ...
@@ -58,21 +57,20 @@ modparam("db_mysql", "exec_query_threshold", 60000)
 #### timeout_interval (integer)
 
 
-Time interval after which a connection attempt (read or write request)
-		is aborted. The value counts three times, as several retries are done
-		from the driver before it gives up.
+连接尝试（读取或写入请求）被中止的时间间隔。
+该值会计算三次，因为驱动在放弃之前会进行多次重试。
 
 
-The read timeout parameter is ignored on driver versions prior to
-		"5.1.12", "5.0.25" and "4.1.22".
-		The write timeout parameter is ignored on version prior to "5.1.12"
-		and "5.0.25", the "4.1" release don't support it at all.
+在驱动版本早于 "5.1.12"、"5.0.25" 和 "4.1.22" 时，
+读取超时参数会被忽略。
+在版本早于 "5.1.12" 和 "5.0.25" 时，写入超时参数会被忽略，
+"4.1" 版本根本不支持此功能。
 
 
-*Default value is 2 (6 sec).*
+*默认值为 2（6 秒）。*
 
 
-```c title="Set timeout_interval parameter"
+```c title="设置 timeout_interval 参数"
 ...
 modparam("db_mysql", "timeout_interval", 2)
 ...
@@ -82,14 +80,14 @@ modparam("db_mysql", "timeout_interval", 2)
 #### max_db_queries (integer)
 
 
-The maximum number of retries to execute a failed query due to connections problems.
-            If this parameter is set improperly, it is set to default value.
+连接问题导致查询失败时执行重试的最大次数。
+如果此参数设置不当，它将被设置为默认值。
 
 
-*Default value is 2.*
+*默认值为 2。*
 
 
-```c title="Set max_db_queries parameter"
+```c title="设置 max_db_queries 参数"
 ...
 modparam("db_mysql", "max_db_queries", 2)
 ...
@@ -99,14 +97,14 @@ modparam("db_mysql", "max_db_queries", 2)
 #### max_db_retries (integer)
 
 
-The maximum number of database connection retries. If this parameter
-                is set improperly, it is set to default value.
+数据库连接重试的最大次数。如果此参数
+设置不当，它将被设置为默认值。
 
 
-*Default value is 3.*
+*默认值为 3。*
 
 
-```c title="Set max_db_retries parameter"
+```c title="设置 max_db_retries 参数"
 ...
 modparam("db_mysql", "max_db_retries", 2)
 ...
@@ -116,19 +114,19 @@ modparam("db_mysql", "max_db_retries", 2)
 #### ps_max_col_size (integer)
 
 
-The maximum size of a column's data, when fetched using prepared
-		statements.  Particularly relevant for variable-length data, such as
-		CHAR, BLOB, etc.
+使用预编译语句获取时列数据的最大大小。
+对于可变长度数据特别重要，如
+CHAR、BLOB 等。
 
 
-NOTE: Should a column's data exceed this limit, the value will be
-		silently truncated to fit the buffer, without reporting any errors!
+注意：如果列数据超过此限制，值将被
+静默截断以适应缓冲区，不会报告任何错误！
 
 
-*Default value is *1024 (bytes)*.*
+*默认值为 *1024（字节）*。*
 
 
-```c title="Set ps_max_col_size parameter"
+```c title="设置 ps_max_col_size 参数"
 ...
 modparam("db_mysql", "ps_max_col_size", 4096)
 ...
@@ -138,36 +136,36 @@ modparam("db_mysql", "ps_max_col_size", 4096)
 #### use_tls (integer)
 
 
-Setting this parameter will allow you to use TLS for MySQL connections.
-		In order to enable TLS for a specific connection, you can use the
-		"**tls_domain=**dom_name" URL parameter in the db_url of
-		the respective OpenSIPS module. This should be placed at the end of the
-		URL after the **'?'** character. Additionally,
-		the query string may include the "**tls_opts=**
-		PKEY,CERT,CA,CA_DIR,CIPHERS" CSV parameter, in order to control/limit the
-		amount of TLS options passed to the TLS library.
+设置此参数将允许您对 MySQL 连接使用 TLS。
+要为特定连接启用 TLS，您可以在相应
+OpenSIPS 模块的 db_url 中使用
+"**tls_domain=**dom_name" URL 参数。这应该放在
+URL 末尾 **'?'** 字符之后。此外，
+查询字符串可能包含 "**tls_opts=**
+PKEY,CERT,CA,CA_DIR,CIPHERS" CSV 参数，以控制/限制
+传递给 TLS 库的 TLS 选项数量。
 
 
-When using this parameter, you must also ensure that
-		*tls_mgm* is loaded and properly configured. Refer to
-		the the module for additional info regarding TLS client domains.
+使用此参数时，还必须确保
+*tls_mgm* 已加载并正确配置。请参阅
+该模块以获取有关 TLS 客户端域的更多信息。
 
 
-Note that if you want to use this feature, the TLS domain must be
-		provisioned in the configuration file, *NOT* in
-		the database. In case you are loading TLS certificates from the
-		database, you must at least define one domain in the
-		configuration script, to use for the initial connection to the DB.
+请注意，如果您想使用此功能，TLS 域必须在
+配置文件中配置，*不是*
+在数据库中。如果您从数据库加载 TLS 证书，
+则必须在配置脚本中至少定义一个域，
+以用于到数据库的初始连接。
 
 
-Also, you can *NOT* enable TLS for the connection
-		to the database of the *tls_mgm* module itself.
+此外，您*不能*为 *tls_mgm* 模块
+自己的数据库连接启用 TLS。
 
 
-*Default value is **0** (not enabled)*
+*默认值为 **0**（未启用）*
 
 
-```c title="Set the use_tls parameter"
+```c title="设置 use_tls 参数"
 ...
 modparam("tls_mgm", "client_domain", "dom1")
 modparam("tls_mgm", "certificate", "[dom1]/etc/pki/tls/certs/opensips.pem")
@@ -183,43 +181,43 @@ modparam("usrloc", "db_url", "mysql://root:1234@localhost/opensips?tls_domain=do
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+配置文件中没有导出可使用的函数。
 
 
-### Installation
+### 安装
 
 
-Because it dependes on an external library, the mysql module is not
-		compiled and installed by default. You can use one of the next options.
+由于依赖外部库，mysql 模块默认不会
+被编译和安装。您可以使用以下选项之一：
 
 
-- - edit the "Makefile" and remove "db_mysql" from "excluded_modules"
-			list. Then follow the standard procedure to install OpenSIPS:
-			"make all; make install".
-- - from command line use: 'make all include_modules="db_mysql";
-			make install include_modules="db_mysql"'.
+- - 编辑 "Makefile" 并从 "excluded_modules"
+列表中删除 "db_mysql"。然后按照标准程序安装 OpenSIPS：
+"make all; make install"。
+- - 从命令行使用：'make all include_modules="db_mysql";
+make install include_modules="db_mysql"'。
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_MYSQL_CONNECTION
 
 
-This event is raised when a MySQL connection is lost or recovered.
+当 MySQL 连接丢失或恢复时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *url* - the URL of the connection as specified by the *db_url* parameter.
-- *status* - *connected* if the connection recovered, or 
-				*disconnected* if the connection was lost.
+- *url* - 由 *db_url* 参数指定的连接 URL。
+- *status* - 如果连接恢复，则为 *connected*，
+如果连接丢失，则为 *disconnected*。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

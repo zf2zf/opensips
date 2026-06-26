@@ -1,123 +1,84 @@
 ---
-title: "event_stream Module"
-description: "This module provides a TCP transport layer implementation for the Event Interface. The module can either send a JSON-RPC notification or a standard request and wait for the response (when used in *reliable_mode*)."
+title: "event_stream 模块"
+description: "此模块为 Event Interface 提供 TCP 传输层实现。该模块可以发送 JSON-RPC 通知或标准请求并等待响应（当在 *reliable_mode* 中使用时）。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides a TCP transport layer implementation for the Event
-		Interface. The module can either send a JSON-RPC notification or a
-		standard request and wait for the response (when used in
-		*reliable_mode*).
+此模块为 Event Interface 提供 TCP 传输层实现。该模块可以发送 JSON-RPC 通知或标准请求并等待响应（当在 *reliable_mode* 中使用时）。
 
 
-As the JSON-RPC is sent directly over TCP, avoiding any application
-		transport layer (such as HTTP), this module offers a very lightweight
-		and reliable way of delivering events to an application server.
+由于 JSON-RPC 直接通过 TCP 发送，避免了任何应用传输层（如 HTTP），此模块提供了一种非常轻量级和可靠的方式来向应用服务器传递事件。
 
 
-In order to be notified, a JSON-RPC server has to subscribe for a
-		certain event provided by OpenSIPS. This can be done using the generic
-		MI Interface (*event_subscribe* function) or from
-		OpenSIPS script (*subscribe_event* core function).
+为了接收通知，JSON-RPC 服务器需要订阅 OpenSIPS 提供的某个事件。这可以使用通用 MI Interface（*event_subscribe* 函数）或从 OpenSIPS 脚本（*subscribe_event* 核心函数）完成。
 
 
-### Stream socket syntax
+### Stream 套接字语法
 
 
 *'tcp:' host ':' port ['/' method]*
 
 
-Meaning:
+含义：
 
 
-- *'tcp:'* - specifies the
-					transport protocol used by the Event Interface
-					to send the command. the *tcp*
-					token indicates that the subscriber's events should be
-					notified using the
-					*event_strea,* module.
-- *host* - host name of the JSON-RPC server.
-- *port* - port of the JSON-RPC server.
-- *method* - method called remotely by the
-					JSON-RPC client.
-					NOTE: this parameter is optional - if it is missing,
-						the method used is the actual event subscribed
-						to (i.e. if *localhost:8080*
-						subscribes to the *E_PIKE_BLOCKED*
-						event, the RPC call will use the
-						*E_PIKE_BLOCKED* method.
+- *'tcp:'* - 指定 Event Interface 用来发送命令的传输协议。*tcp* 令牌表示订阅者的事件应使用 *event_stream* 模块通知。
+- *host* - JSON-RPC 服务器的主机名。
+- *port* - JSON-RPC 服务器的端口。
+- *method* - JSON-RPC 客户端远程调用的方法。
+					注意：此参数是可选的——如果缺失，则使用实际订阅的事件（即如果 *localhost:8080* 订阅了 *E_PIKE_BLOCKED* 事件，RPC 调用将使用 *E_PIKE_BLOCKED* 方法）。
 
 
-The JSON-RPC command is built as it follows:
+JSON-RPC 命令构建如下：
 
 
-- *id* - uniquly generated if
-				*reliable_mode* is used, otherwise (for
-				notifications) *null*.
-- *method* - if no method is specified in the
-				socket, the name of the event is set as method, otherwise
-				the token specified is used.
-- *params* - if the event sent contains
-				named parameters, then this parameter contains a JSON object
-				with an object for each parameter. If the event sent only
-				contains values, the parameters will be sent as an array.
+- *id* - 如果使用 *reliable_mode*，则唯一生成，否则（用于通知）为 *null*。
+- *method* - 如果套接字中未指定方法，则设置为事件名称，否则使用指定的令牌。
+- *params* - 如果发送的事件包含命名参数，则此参数包含一个 JSON 对象，每个参数一个对象。如果发送的事件仅包含值，则参数将作为数组发送。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *none*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### reliable_mode (integer)
 
 
-This parameter controls the way the
-			*event_stream* module communicates
-			with the JSON-RPC server. If enabled, (set to
-			*1*), each event is translated to
-			a JSON-RPC request. If disabled, each event will be sent
-			as a JSON-RPC notification - there will be no reply
-			expected by our client.
+此参数控制 *event_stream* 模块与 JSON-RPC 服务器通信的方式。如果启用（设置为 *1*），每个事件都被转换为 JSON-RPC 请求。如果禁用，每个事件将作为 JSON-RPC 通知发送——我们的客户端不会期望回复。
 
 
-Note that if you need a reliable communication with
-			the JSON-RPC server, where each event sent needs to be
-			confirmed (by a JSON-RPC response), you must set this parameter
-			to *1/yes*. If you are using this
-			module in a failover setup (using the
-			*event_virtual* module), it is recommended
-			to set this parameter to *1/yes*.
+请注意，如果您需要与 JSON-RPC 服务器进行可靠通信，其中发送的每个事件都需要确认（通过 JSON-RPC 响应），则必须将此参数设置为 *1/yes*。如果您在故障转移设置中使用此模块（使用 *event_virtual* 模块），建议将此参数设置为 *1/yes*。
 
 
-*Default value is "0 (disabled)".*
+*默认值为 "0（禁用）"。*
 
 
-```c title="Set reliable_mode parameter"
+```c title="设置 reliable_mode 参数"
 ...
 modparam("event_stream", "reliable_mode", yes)
 ...
@@ -127,25 +88,18 @@ modparam("event_stream", "reliable_mode", yes)
 #### timeout (integer)
 
 
-Specified the amount of milliseconds the module
-			waits for a command to complete. In
-			*reliable_mode*, it specifies the time
-			module waits the request to be sent and a reply received.
-			In non-*reliable_mode*, it represents
-			only the time opensips takes to send the JSON-RPC
-			notification.
+指定模块等待命令完成的毫秒数。在 *reliable_mode* 中，它指定模块等待请求发送和接收回复的时间。在非 *reliable_mode* 中，它仅表示 opensips 发送 JSON-RPC 通知所需的时间。
 
 
-NOTE that if the event is not using names for its parameters,
-			the event will be the first parameter in the JSON-RPC command.
+请注意，如果事件没有为其参数使用名称，则事件将成为 JSON-RPC 命令中的第一个参数。
 
 
-*Default value is "1000 milliseconds = 1 second".*
+*默认值为 "1000 毫秒 = 1 秒"。*
 
 
-```c title="Set timeout parameter"
+```c title="设置 timeout 参数"
 ...
-# only wait for 200 milliseonds for a reply
+# 仅等待 200 毫秒获取回复
 modparam("event_stream", "timeout", 200)
 ...
 ```
@@ -154,51 +108,45 @@ modparam("event_stream", "timeout", 200)
 #### event_param (string)
 
 
-By default, the name of the event subscribed to is not
-			send in the JSON-RPC command. If one needs to send the
-			name of the event as well, you can use this parameter to
-			specify the name of JSON object within the params that
-			will contain the name of the event.
+默认情况下，订阅的事件名称不会在 JSON-RPC 命令中发送。如果需要发送事件名称，可以使用此参数指定 params 中将包含事件名称的 JSON 对象名称。
 
 
-*Default value is "disabled" - event is not added.*
+*默认值为 "disabled" - 不添加事件。*
 
 
-```c title="Set event_param parameter"
+```c title="设置 event_param 参数"
 ...
 modparam("event_stream", "event_param", "opensips_event")
-# json resulted will contain the "opensips_event": EVENT token
+# 生成的 json 将包含 "opensips_event": EVENT 令牌
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+没有可从配置文件使用的函数。
 
 
-### Examples
+### 示例
 
 
-```c title="Stream socket"
-	# calls the 'block_ip' method
+```c title="Stream 套接字"
+	# 调用 'block_ip' 方法
 	tcp:127.0.0.1:8080/block_ip
 
-	# calls the 'E_PIKE_BLOCKED' method, if subscribed to the E_PIKE_BLOCKED event
+	# 如果订阅了 E_PIKE_BLOCKED 事件，则调用 'E_PIKE_BLOCKED' 方法
 	tcp:127.0.0.1:8080
 ```
 
 
-#### JSON-RPC notification
+#### JSON-RPC 通知
 
 
-This is an example of an event raised when
-			*reliable_mode* is disabled
-			by the pike module when it decides an ip should be blocked:
+这是当 *reliable_mode* 被禁用时，pike 模块在决定应阻止 IP 时引发的事件示例：
 
 
-```c title="E_PIKE_BLOCKED JSON-RPC notification"
+```c title="E_PIKE_BLOCKED JSON-RPC 通知"
 {
 	"jsonrpc": "2.0",
 	"method": "E_PIKE_BLOCKED",
@@ -209,16 +157,14 @@ This is an example of an event raised when
 ```
 
 
-#### JSON-RPC Request
+#### JSON-RPC 请求
 
 
-This is an example of an event raised in
-			*reliable_mode* by the pike module
-			when it decides an ip should be blocked:
+这是在 *reliable_mode* 中，pike 模块在决定应阻止 IP 时引发的事件示例：
 
 
-```c title="E_PIKE_BLOCKED JSON-RPC request (reliable_mode)"
-# request
+```c title="E_PIKE_BLOCKED JSON-RPC 请求 (reliable_mode)"
+# 请求
 {
 	"id": 915243442,
 	"jsonrpc": "2.0",
@@ -228,7 +174,7 @@ This is an example of an event raised in
 	}
 }
 
-# reply
+# 回复
 {
 	"jsonrpc": "2.0",
 	"result": 8,
@@ -237,21 +183,19 @@ This is an example of an event raised in
 ```
 
 
-#### JSON-RPC Notification with Event's name
+#### 带事件名称的 JSON-RPC 通知
 
 
-when having the *event_param* set to
-			*opensips_event*, the event raised by
-			the pike module will look like the following:
+当 *event_param* 设置为 *opensips_event* 时，pike 模块引发的事件将如下所示：
 
 
-```c title="E_PIKE_BLOCKED notification with event name"
-# module configuration
+```c title="带事件名称的 E_PIKE_BLOCKED 通知"
+# 模块配置
 modparam("event_stream", "event_param", "opensips_event")
 
-# Stream socket: tcp:HOST:PORT/handle_cmd
+# Stream 套接字: tcp:HOST:PORT/handle_cmd
 
-# JSON-RPC command sent
+# 发送的 JSON-RPC 命令
 {
 	"jsonrpc": "2.0",
 	"method": "handle_cmd",
@@ -263,20 +207,16 @@ modparam("event_stream", "event_param", "opensips_event")
 ```
 
 
-#### Custom JSON-RPC Notification from script
+#### 从脚本发送自定义 JSON-RPC 通知
 
 
-This example contains a snippet to send a custom
-			event from the script using the
-			*event_stream* module.
+此示例包含使用 *event_stream* 模块从脚本发送自定义事件的代码片段。
 
 
-Note that we are only populating values for the
-			event, we are not assinging names to those values.
-			Therefore, the parameters will be sent as an array.
+请注意，我们仅为事件填充值，没有为这些值分配名称。因此，参数将作为数组发送。
 
 
-```c title="E_PIKE_BLOCKED event"
+```c title="E_PIKE_BLOCKED 事件"
 startup_route {
 	subscribe_event("E_MY_EVENT", "tcp:127.0.0.1:8080");
 }
@@ -289,7 +229,7 @@ route {
 	...
 }
 
-# JSON-RPC command sent
+# 发送的 JSON-RPC 命令
 {
 	"jsonrpc": "2.0",
 	"method": "E_MY_EVENT",
@@ -298,6 +238,6 @@ route {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证

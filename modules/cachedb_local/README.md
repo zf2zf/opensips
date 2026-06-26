@@ -1,35 +1,30 @@
 ---
-title: "cachedb_local Module"
-description: "This module is an implementation of a local cache system designed as a hash table. It uses the Key-Value interface exported by OpenSIPS core. Starting with version 2.3, the module can have multiple hash tables, called collections. Each url for cachedb_local module points to one collection..."
+title: "cachedb_local 模块"
+description: "本模块是作为哈希表实现的本地缓存系统。它使用了 OpenSIPS 核心导出的 Key-Value 接口。从版本 2.3 开始，该模块可以有多个哈希表，称为集合。cachedb_local 模块的每个 URL 指向一个集合..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an implementation of a local cache system designed as
-		a hash table. It uses the Key-Value interface exported by OpenSIPS core.
-		Starting with version 2.3, the module can have multiple hash tables,
-		called collections. Each url for cachedb_local module points to one
-		collection. One collection can be shared between multiple urls.
+本模块是作为哈希表实现的本地缓存系统。它使用了 OpenSIPS 核心导出的 Key-Value 接口。
+从版本 2.3 开始，该模块可以有多个哈希表，称为集合。cachedb_local 模块的每个 URL 指向一个集合。
+一个集合可以由多个 URL 共享。
 
 
-### Clustering
+### 集群
 
 
-Cachedb_local clustering is a mechanism used to mirror local cache changes
-			taking place in one OpenSIPS instance to one or multiple other instances without
-			the need of third party dependencies.
-			The process is simplified by using the clusterer module which facilitates the
-			management of a cluster of OpenSIPS noeds and the sending of replication-related
-			BIN packets (binary-encoded, using proto_bin). This might be usefull for implementing
-			a hot stand-by system, where the stand-by instance can take over without the need
-			of filling the cache by its own.
+Cachedb_local 集群是一种用于将本地缓存更改镜像到其他一个或多个 OpenSIPS 实例的机制，
+无需第三方依赖。
+该过程通过使用 clusterer 模块简化，该模块便于管理 OpenSIPS 节点集群
+并发送复制相关的 BIN 数据包（使用 proto_bin 的二进制编码）。这对于实现
+热备份系统很有用，备用实例可以接管而无需自己填充缓存。
 
 
-The following cache operations will be distributet within the cluster:
+以下缓存操作将在集群内部分发：
 
 
 - cache_store
@@ -38,300 +33,213 @@ The following cache operations will be distributet within the cluster:
 - cache_sub
 
 
-In addition to the event-driven replication, an OpenSIPS instance will first
-			try to learn all the local cache information from antoher node in the cluster at startup.
-			The data synchronization mechanism requires defining one of the nodes in the cluster
-			as a "**seed**" node.
-			See the [clusterer](../clusterer#capabilities)
-			module for details on how to do this and why is it needed.
+除了事件驱动的复制，OpenSIPS 实例在启动时首先会尝试从集群中的另一个节点学习所有本地缓存信息。
+数据同步机制需要将集群中的一个节点定义为"**种子**"节点。
+有关如何执行此操作以及为何需要它，请参阅 [clusterer](../clusterer#capabilities) 模块。
 
 
-*Note:* You have to explicitly specify which collections
-			you want to replicate when you set [cache collections](#param_cache_collections).
+*注意：*当您设置 [cache collections](#param_cache_collections) 时，必须明确指定要复制的集合。
 
 
-**Limitations:** The clustering operations are not atomic
-			and constistency over the cluster nodes is not guaranteed.
+**限制：** 集群操作不是原子性的，
+且不保证集群节点之间的一致性。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在本模块之前加载：
 
 
-- *clusterer, if [cluster id](#param_cluster_id)
-					is set.*
+- *如果设置了 [cluster id](#param_cluster_id)，则需要 clusterer 模块。*
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行 OpenSIPS 并加载本模块之前，必须安装以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### cachedb_url (string)
+#### cachedb_url (字符串)
 
 
-URLs of local cache groups to be used used for the script and MI cacheDB
-		operations. The parameter can be set multiple times.
+用于脚本和 MI cacheDB 操作的本地缓存组 URL。该参数可以多次设置。
 
 
-One collection can belong to multiple URLs, but one URL can have only one collection.
-		Redefining an URL with the same schema and group name will result in overwriting
-		that URL. Each collection used in URL definition must be defined using
-		*cachedb_collection* parameter. The collection shall be defined
-		as a normal database, at the end of the URL as in the examples. In the script the
-		collection shall be identified using the schema and, if exists, the group name.
+一个集合可以属于多个 URL，但一个 URL 只能有一个集合。
+使用相同的 schema 和组名重新定义 URL 将导致覆盖该 URL。
+URL 定义中使用的每个集合必须使用 *cachedb_collection* 参数定义。
+集合应作为普通数据库定义，在 URL 末尾定义，如示例所示。
+在脚本中，应使用 schema 和（如果存在）组名来标识集合。
 
 
-*"If no URL defined, the url with no group name and collection "default"
-					will be used.".*
+*"如果未定义 URL，则将使用没有组名且集合为 "default" 的 URL。"*
 
 
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
-### for this example, if no collection is defined, the default collection named
-### "default" shall be used
+### 对于此示例，如果未定义集合，则应使用名为 "default" 的默认集合
 modparam("cachedb_local", "cachedb_url", "local://")
-### this URL will use the collection named collection1; it will overwrite the
-### previous url definition which was using the "default" collection
+### 此 URL 将使用名为 collection1 的集合；它将覆盖之前的 url 定义（使用 "default" 集合）
 modparam("cachedb_local", "cachedb_url", "local:///collection1")
-### this URL will use collection2; it will be referenced from the script
-### with "local:group2"
+### 此 URL 将使用 collection2；它将从脚本中以 "local:group2" 引用
 modparam("cachedb_local", "cachedb_url", "local:group2:///collection2")
 
-## how to use the URLs from the script
-## as defined above, this call will use collection1
+## 如何从脚本中使用 URL
+## 如上定义，此调用将使用 collection1
 cache_store("local", ...)
-## as defined above, this call will use collection2
+## 如上定义，此调用将使用 collection2
 cache_store("local:group2", ...)
 ...
-	
-```
 
+## 导出的参数
 
-#### cache_collections (string)
+#### cache_collections (字符串)
 
+使用此参数可以定义集合（哈希表）及其大小。每个集合定义必须使用 ';' 相互分隔。
+哈希的默认大小为 512。大小必须使用 '=' 与集合名称分隔。
 
-Using this parameter, collections(hash tables) and their sizes can be defined. Each
-			collection definition must be separated one from another using ';'. Default size
-			for a hash is 512. The size must be separated from the name of the collection using
-			'='.
+如果启用了集群，您必须使用 */r* 后缀指定要复制的集合。
 
+*"default"* 集合始终会被创建，
+即使未包含在此集合列表中。
 
-If clustering is enabled you have to specify which collections you want to replicate
-			with the */r* suffix to the collection name.
-
-
-The *"default"* collection always gets created, even when
-				not included in this list of collections.
-
-
-```c title="Set cache_collections parameter"
+```c title="设置 cache_collections 参数"
 ...
-## creating collection1 with default size (512) and collection2 with custom size
-## 2^5 (32); we also changed the size of the default collection, which would have been
-## created anyway from 2^9 - 512 (default value) to 2^4 - 16
-## also, collection1 and collection2 will be replicated in the cluster, while the
-## default collection will be local to this node
+## 创建 collection1（默认大小 512）和自定义大小为 2^5 (32) 的 collection2
+## 我们还更改了默认集合的大小，从 2^9 - 512（默认值）改为 2^4 - 16
+## 此外，collection1 和 collection2 将在集群中复制，而 default 集合将是本地的
 modparam("cachedb_local", "cache_collections", "collection1/r; collection2/r = 5; default = 4")
 ...
-	
-```
 
+#### cache_clean_period (整数)
 
-#### cache_clean_period (int)
+清除过期记录的时间间隔（秒）。
 
+*默认值为 "600（10 分钟）"。*
 
-The time interval in seconds at which to go through all the
-			records and delete the expired ones.
-
-
-*Default value is "600 (10 minutes)".*
-
-
-```c title="Set cache_clean_period parameter"
+```c title="设置 cache_clean_period 参数"
 ...
 modparam("cachedb_local", "cache_clean_period", 1200)
 ...
-	
-```
 
+#### cluster_id (整数)
 
-#### cluster_id (int)
+指定此实例将向其发送和接收缓存数据的集群 ID。
 
+此 OpenSIPS 集群公开 **"cachedb-local-repl"** 功能，
+用于将节点标记为在任意同步请求期间有资格成为数据捐赠者。
+因此，集群必须至少有**一个节点**在 *clusterer.flags* 列/属性中标记为 **"seed"** 值，
+才能完全正常运行。
+请参阅 [clusterer - 功能](../clusterer#capabilities) 章节了解更多详情。
 
-Specifies the cluster ID which this instance will send to and receive
-		cache data.
+默认值为 0（禁用复制）。
 
-
-This OpenSIPS cluster exposes the **"cachedb-local-repl"**
-capability in order to mark nodes as eligible for becoming data donors during an
-arbitrary sync request. Consequently, the cluster must have *at least
-one node* marked with the **"seed"** value
-as the *clusterer.flags* column/property in order to be fully functional.
-Consult the [clusterer - Capabilities](../clusterer#capabilities)
-chapter for more details.
-
-
-Default value is 0 (replication disabled).
-
-
-```c title="Setting the cluster_id parameter"
+```c title="设置 cluster_id 参数"
 ...
 modparam("cachedb_local", "cluster_id", 1)
 ...
-		
-```
 
+#### cluster_persistency (字符串)
 
-#### cluster_persistency (string)
+控制 OpenSIPS 本地 cachedb 集群在重启后的行为。
 
+此参数可采用以下值：
 
-Controls the behavior of the OpenSIPS local cachedb clustering following a restart.
+- *"none"* - 重启后没有明确的数据
+			同步。节点以空状态启动。
+- *"sync-from-cluster"* - 启用
+			基于集群的重启持久性。重启后，
+			OpenSIPS 集群节点将搜索健康的"捐赠者"节点，
+			通过直接集群同步（基于 TCP 的二进制编码数据传输）镜像整个用户位置数据集。
+			这需要配置集群中的一个或多个"种子"
+			节点。
 
+*默认值为
+			*"sync-from-cluster"*。*
 
-This parameter may take the following values:
-
-
-- *"none"* - no explicit data
-				synchronization following a restart. The node starts empty.
-- *"sync-from-cluster"* - enable
-				cluster-based restart persistency. Following a restart,
-				an OpenSIPS cluster node will search for a healthy "donor" node
-				from which to mirror the entire user location dataset via
-				direct cluster sync (TCP-based, binary-encoded data transfer).
-				This will require the configuration of one or multiple "seed"
-				nodes in the cluster.
-
-
-*Default value is
-				*"sync-from-cluster"*.*
-
-
-```c title="Set cluster_persistency parameter"
+```c title="设置 cluster_persistency 参数"
 ...
 modparam("cachedb_local", "cluster_persistency", "sync-from-cluster")
 ...
-		
-```
 
+#### enable_restart_persistency (整数)
 
-#### enable_restart_persistency (int)
+使用持久内存机制启用重启持久性。数据存储在映射到 OpenSIPS 内存的缓存文件中。
 
+请注意，您必须保持与上次运行相同的集合定义，以便将缓存数据用于相应的集合。
 
-Enable restart persistency using the persistent memory mechanism. Data is
-			stored in a cache file that is mapped against OpenSIPS memory.
+如果同时启用了集群持久性，从持久性缓存加载的密钥
+如果未在集群同步数据中收到，将被丢弃。
 
+*默认值为 "0（禁用）"。*
 
-Note that you have to keep the same collection definitions from a previous
-			run in order to use the cached data for the respective collections.
-
-
-If cluster persistency is enabled as well, keys loaded from the persistent
-			cache will be discarded if they are not received in the cluster sync data.
-
-
-*Default value is "0 (disabled)".*
-
-
-```c title="Set enable_restart_persistency parameter"
+```c title="设置 enable_restart_persistency 参数"
 ...
 modparam("cachedb_local", "enable_restart_persistency", yes)
 ...
-```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### cache_remove_chunk([collection,] glob)
 
+从本地缓存中删除所有与特定 *collection* 或默认集合（如果未定义）的 *glob* 模式匹配的键。
+请注意，集合名称与组名称不同，组名称在 cachedb 操作中标识引擎。
 
-Remove all keys from local cache that match the *glob* pattern
-			corresponding to a certain *collection* or the 'default' collection
-			if none defined. Keep in mind that collection name is different than group name,
-			which identifies the engine in cachedb operations.
+参数：
 
+- *collection* (字符串，可选)
+- *glob* (字符串)
 
-Parameters:
+此函数可用于所有路由。
 
-
-- *collection* (string, optional)
-- *glob* (string)
-
-
-This function can be used from all routes
-
-
-```c title="cache_remove_chunk usage"
+```c title="cache_remove_chunk 使用方法"
 	...
 	cache_remove_chunk("myinfo_*");
 	cache_remove_chunk("collection1", "myinfo_*");
 	...
-	
-```
 
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### cachedb_local:remove_chunk
 
+替换已弃用的 MI 命令：*cache_remove_chunk*。
 
-Replaces obsolete MI command: *cache_remove_chunk*.
+删除所有与提供的 glob 参数匹配的本地缓存条目。
 
+参数：
 
-Removes all local cache entries that match the provided glob param.
+- *glob* - 将删除匹配的键
+- *collection*（可选）- 要从中删除键的集合；如果未设置集合，将使用默认集合；
 
-
-Parameters :
-
-
-- *glob* - keys that match glob will be removed
-- *collection(optional)* - collection from which the keys shall
-					be removed; if no collection set, the default collection will be used;
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
 opensips-cli -x mi cachedb_local:remove_chunk "keyprefix*" collection
 		
 ```
 
-
 #### cachedb_local:fetch_chunk
 
+替换已弃用的 MI 命令：*cache_fetch_chunk*。
 
-Replaces obsolete MI command: *cache_fetch_chunk*.
+获取所有与提供的 glob 参数匹配的本地缓存条目。
 
+参数：
 
-Fetches all local cache entries that match the provided glob param.
+- *glob* - 将返回匹配的键
+- *collection*（可选）- 要从中获取键的集合；如果未设置集合，将使用默认集合；
 
-
-Parameters :
-
-
-- *glob* - keys that match glob will be returned
-- *collection(optional)* - collection from which the keys shall
-					be retrieved; if no collection set, the default collection will be used;
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式：
 
 ```c
 opensips-cli -x mi cachedb_local:fetch_chunk "keyprefix*" collection
@@ -347,23 +255,17 @@ opensips-cli -x mi cachedb_local:fetch_chunk "keyprefix*" collection
         }
     ]
 }
-		
-```
 
+## 常见问题
 
-## Frequently Asked Questions
+**Q: 旧的 cache_table_size 参数发生了什么？**
 
-
-**Q: What happened with old cache_table_size parameter?**
-
-
-The parameter was removed because it was redundant. Since the
-			addition of collections, the old hash now belongs to the
-			default collection. This collection is created every time and
-			it has a default size of 512. The size can be changed by
-			setting the default collection size using cache_collections paramter.
+该参数已被删除，因为它是多余的。自
+	添加集合以来，旧哈希现在属于
+	默认集合。此集合每次都会创建，
+	默认大小为 512。可以通过使用 cache_collections 参数设置默认集合大小来更改大小。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用知识共享许可证 4.0 版授权

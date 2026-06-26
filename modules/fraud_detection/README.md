@@ -1,89 +1,84 @@
 ---
-title: "Fraud Detection Module"
-description: "This module provides a way to prevent some basic fraud attacks. Alerts are provided through return codes and events."
+title: "欺诈检测模块"
+description: "本模块提供了一种防止某些基本欺诈攻击的方法。警报通过返回码和事件提供。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides a way to prevent some basic fraud attacks.
-		Alerts are provided through return codes and events.
+本模块提供了一种防止某些基本欺诈攻击的方法。
+		警报通过返回码和事件提供。
 
 
-#### Monitored Stats
+#### 监控的统计信息
 
 
-Basically, this module watches the following parameters:
+基本上,本模块监控以下参数：
 
 
-- Total calls
-- Calls per minute
-- Concurrent calls
-- Number of sequential calls
-- Call duration
+- 总呼叫数
+- 每分钟呼叫数
+- 并发呼叫数
+- 顺序呼叫数
+- 呼叫持续时间
 
 
-Each of the above parameters is monitored for every user and
-			every called prefix separately. The stats are altered whenever
-			the *check_fraud* function is called. The
-			function assumes a new call is made, and checks the called
-			number against all the rules from the supplied profile. The
-			rule's prefix is considered to be the called prefix which along with
-			the provided user will be used to monitor values for the 5
-			parameters.
+上述每个参数都针对每个用户和每个被叫前缀分别监控。
+			每当调用 *check_fraud* 函数时都会更改统计信息。
+			该函数假定进行了一次新呼叫,并根据提供的配置文件检查被叫号码。
+			规则的前缀被视为被叫前缀,它与提供的用户一起,
+			将用于监控这 5 个参数的值。
 
 
-#### Fraud rules
+#### 欺诈规则
 
 
-A rule is a set of two thresholds (warning and critical thresholds) for each of the
-			five parameters (as described above) and is only available for a specified prefix.
-			Further more, a rule will only match between the indicated hours in the indicated days
-			of the week (similarly to a dr rule). A fraud profile is simply a group of fraud rules
-			and is used to only to limit the list of rules to match when calling the check_fraud
-			function.
+规则是五个参数（如下所述）每个参数的两个阈值（警告阈值和临界阈值）的集合,
+			仅对指定的前缀有效。此外,规则仅在指定的一周中的指定小时内匹配
+			（与 dr 规则类似）。欺诈配置文件只是一组欺诈规则,
+			其作用仅是在调用 check_fraud 函数时限制要匹配的规则列表。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
 - drouting
 - dialog
 
 
-#### External libraries or applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module:
+以下库或应用程序必须在运行
+		加载本模块的 OpenSIPS 之前安装：
 
 
-- *none*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-Database where to load the rules from.
+要加载规则的数据库。
 
 
-*Default value is "NULL". At least one db_url should
-			be defined for the fraud_detection module to work.*
+*默认值为 "NULL"。至少应定义一个 db_url
+			才能使 fraud_detection 模块工作。*
 
 
-```c title="Set the 'db_url' parameter"
+```c title="设置 'db_url' 参数"
 ...
 modparam("fraud_detection", "db_url", "mysql://user:passwb@localhost/database")
 ...
@@ -93,14 +88,14 @@ modparam("fraud_detection", "db_url", "mysql://user:passwb@localhost/database")
 #### use_utc_time (integer)
 
 
-Set this parameter to non-zero in order to enable UTC-based interval
-		matching and statistics resets, rather than local time-based.
+将此参数设置为非零值可以启用基于 UTC 的间隔匹配和统计重置,
+		而不是基于本地时间。
 
 
-*The default value is "0" (use local time).*
+*默认值为 "0"（使用本地时间）。*
 
 
-```c title="Set the 'use_utc_time' parameter"
+```c title="设置 'use_utc_time' 参数"
 ...
 modparam("fraud_detection", "use_utc_time", 1)
 ...
@@ -110,14 +105,13 @@ modparam("fraud_detection", "use_utc_time", 1)
 #### table_name (string)
 
 
-If you want to load the rules from the database you must set
-		this parameter as the database name.
+如果要从此数据库加载规则,必须将此参数设置为数据库名称。
 
 
-*The default value is "fraud_detection".*
+*默认值为 "fraud_detection"。*
 
 
-```c title="Set the 'table_name' parameter"
+```c title="设置 'table_name' 参数"
 ...
 modparam("fraud_detection", "table_name", "my_fraud")
 ...
@@ -127,14 +121,13 @@ modparam("fraud_detection", "table_name", "my_fraud")
 #### rid_col (string)
 
 
-The column's name in the database storing the
-			fraud rule's id.
+数据库中存储欺诈规则 ID 的列名。
 
 
-*Default value is "ruleid".*
+*默认值为 "ruleid"。*
 
 
-```c title="Set 'rid_col' parameter"
+```c title="设置 'rid_col' 参数"
 ...
 modparam("fraud_detection", "rid_col", "theruleid")
 ...
@@ -144,18 +137,16 @@ modparam("fraud_detection", "rid_col", "theruleid")
 #### pid_col (string)
 
 
-The column's name in the database storing the
-			fraud profile's id.
+数据库中存储欺诈配置文件 ID 的列名。
 
 
-Please keep in mind that a profile is merely
-			a set of rules.
+请注意,配置文件只是一组规则。
 
 
-*Default value is "profileid".*
+*默认值为 "profileid"。*
 
 
-```c title="Set 'pid_col' parameter"
+```c title="设置 'pid_col' 参数"
 ...
 modparam("fraud_detection", "pid_col", "profile")
 ...
@@ -165,14 +156,13 @@ modparam("fraud_detection", "pid_col", "profile")
 #### prefix_col (string)
 
 
-The column's name in the database storing the
-			prefix for which the fraud rule will match.
+数据库中存储欺诈规则匹配前缀的列名。
 
 
-*Default value is "prefix".*
+*默认值为 "prefix"。*
 
 
-```c title="Set 'prefix_col' parameter"
+```c title="设置 'prefix_col' 参数"
 ...
 modparam("fraud_detection", "prefix_col", "myprefix")
 ...
@@ -182,19 +172,16 @@ modparam("fraud_detection", "prefix_col", "myprefix")
 #### start_h (string)
 
 
-The column's name in the database storing the
-			the start time of the interval in which the
-			rule will match.
+数据库中存储规则匹配间隔开始时间的列名。
 
 
-The time needs to be specified as string using
-			the format: "HH:MM"
+时间需要使用格式 "HH:MM" 指定为字符串。
 
 
-*Default value is "start_hour".*
+*默认值为 "start_hour"。*
 
 
-```c title="Set 'start_h' parameter"
+```c title="设置 'start_h' 参数"
 ...
 modparam("fraud_detection", "start_h", "the_start_time")
 ...
@@ -204,19 +191,16 @@ modparam("fraud_detection", "start_h", "the_start_time")
 #### end_h (string)
 
 
-The column's name in the database storing the
-			the end time of the interval in which the
-			rule will match.
+数据库中存储规则匹配间隔结束时间的列名。
 
 
-The time needs to be specified as string using
-			the format: "HH:MM"
+时间需要使用格式 "HH:MM" 指定为字符串。
 
 
-*Default value is "end_hour".*
+*默认值为 "end_hour"。*
 
 
-```c title="Set 'end_h' parameter"
+```c title="设置 'end_h' 参数"
 ...
 modparam("fraud_detection", "end_h", "the_end_time")
 ...
@@ -226,22 +210,18 @@ modparam("fraud_detection", "end_h", "the_end_time")
 #### days_col (string)
 
 
-The column's name in the database storing the
-			week days in which the fraud rule's interval
-			is available.
+数据库中存储欺诈规则间隔可用的一周中的天的列名。
 
 
-The daysoftheweek needs to be specified as a
-			string containing a list of days or intervals.
-			Each day must be specified using the first
-			three letters of its name. A valid string
-			would be: "Fri-Mon, Wed, Thu"
+daysoftheweek 需要指定为包含天列表或间隔的字符串。
+			每天必须使用其名称的前三个字母指定。
+			有效字符串例如："Fri-Mon, Wed, Thu"。
 
 
-*Default value is "daysoftheweek".*
+*默认值为 "daysoftheweek"。*
 
 
-```c title="Set 'days_col' parameter"
+```c title="设置 'days_col' 参数"
 ...
 modparam("fraud_detection", "days_col", "days")
 ...
@@ -251,14 +231,13 @@ modparam("fraud_detection", "days_col", "days")
 #### cpm_thresh_warn_col (string)
 
 
-The column's name in the database storing the
-			warning threshold value for calls per minute.
+数据库中存储每分钟呼叫警告阈值值的列名。
 
 
-*Default value is "cpm_warning".*
+*默认值为 "cpm_warning"。*
 
 
-```c title="Set 'cpm_thresh_warn_col' parameter"
+```c title="设置 'cpm_thresh_warn_col' 参数"
 ...
 modparam("fraud_detection", "cpm_thresh_warn_col", "cpm_warn_thresh")
 ...
@@ -268,14 +247,13 @@ modparam("fraud_detection", "cpm_thresh_warn_col", "cpm_warn_thresh")
 #### cpm_thresh_crit_col (string)
 
 
-The column's name in the database storing the
-			critical threshold value for calls per minute.
+数据库中存储每分钟呼叫临界阈值值的列名。
 
 
-*Default value is "cpm_critical".*
+*默认值为 "cpm_critical"。*
 
 
-```c title="Set 'cpm_thresh_crit_col' parameter"
+```c title="设置 'cpm_thresh_crit_col' 参数"
 ...
 modparam("fraud_detection", "cpm_thresh_crit_col", "cpm_crit_thresh")
 ...
@@ -285,14 +263,13 @@ modparam("fraud_detection", "cpm_thresh_crit_col", "cpm_crit_thresh")
 #### calldur_thresh_warn_col (string)
 
 
-The column's name in the database storing the
-			warning threshold value for call duration.
+数据库中存储呼叫持续时间警告阈值值的列名。
 
 
-*Default value is "call_duration_warning".*
+*默认值为 "call_duration_warning"。*
 
 
-```c title="Set 'calldur_thresh_warn_col' parameter"
+```c title="设置 'calldur_thresh_warn_col' 参数"
 ...
 modparam("fraud_detection", "calldur_thresh_warn_col", "calldur_warn_thresh")
 ...
@@ -302,14 +279,13 @@ modparam("fraud_detection", "calldur_thresh_warn_col", "calldur_warn_thresh")
 #### calldur_thresh_crit_col (string)
 
 
-The column's name in the database storing the
-			critical threshold value for call duration.
+数据库中存储呼叫持续时间临界阈值值的列名。
 
 
-*Default value is "call_duration_critical".*
+*默认值为 "call_duration_critical"。*
 
 
-```c title="Set 'calldur_thresh_crit_col' parameter"
+```c title="设置 'calldur_thresh_crit_col' 参数"
 ...
 modparam("fraud_detection", "calldur_thresh_crit_col", "calldur_crit_thresh")
 ...
@@ -319,14 +295,13 @@ modparam("fraud_detection", "calldur_thresh_crit_col", "calldur_crit_thresh")
 #### totalc_thresh_warn_col (string)
 
 
-The column's name in the database storing the
-			warning threshold value for the number of total calls.
+数据库中存储总呼叫数警告阈值值的列名。
 
 
-*Default value is "total_calls_warning".*
+*默认值为 "total_calls_warning"。*
 
 
-```c title="Set 'totalc_thresh_warn_col' parameter"
+```c title="设置 'totalc_thresh_warn_col' 参数"
 ...
 modparam("fraud_detection", "totalc_thresh_warn_col", "totalc_warn_thresh")
 ...
@@ -336,14 +311,13 @@ modparam("fraud_detection", "totalc_thresh_warn_col", "totalc_warn_thresh")
 #### totalc_thresh_crit_col (string)
 
 
-The column's name in the database storing the
-			critical threshold value for the number of total calls.
+数据库中存储总呼叫数临界阈值值的列名。
 
 
-*Default value is "total_calls_critical".*
+*默认值为 "total_calls_critical"。*
 
 
-```c title="Set 'totalc_thresh_crit_col' parameter"
+```c title="设置 'totalc_thresh_crit_col' 参数"
 ...
 modparam("fraud_detection", "totalc_thresh_crit_col", "totalc_crit_thresh")
 ...
@@ -353,15 +327,13 @@ modparam("fraud_detection", "totalc_thresh_crit_col", "totalc_crit_thresh")
 #### concalls_thresh_warn_col (string)
 
 
-The column's name in the database storing the
-			warning threshold value for the number of
-			concurrent calls.
+数据库中存储并发呼叫数警告阈值值的列名。
 
 
-*Default value is "concurrent_calls_warning".*
+*默认值为 "concurrent_calls_warning"。*
 
 
-```c title="Set 'concalls_thresh_warn_col' parameter"
+```c title="设置 'concalls_thresh_warn_col' 参数"
 ...
 modparam("fraud_detection", "concalls_thresh_warn_col", "concalls_warn_thresh")
 ...
@@ -371,15 +343,13 @@ modparam("fraud_detection", "concalls_thresh_warn_col", "concalls_warn_thresh")
 #### concalls_thresh_crit_col (string)
 
 
-The column's name in the database storing the
-			critical threshold value for the number of
-			concurrent calls.
+数据库中存储并发呼叫数临界阈值值的列名。
 
 
-*Default value is "concurrent_calls_critical".*
+*默认值为 "concurrent_calls_critical"。*
 
 
-```c title="Set 'concalls_thresh_crit_col' parameter"
+```c title="设置 'concalls_thresh_crit_col' 参数"
 ...
 modparam("fraud_detection", "concalls_thresh_crit_col", "concalls_crit_thresh")
 ...
@@ -389,15 +359,13 @@ modparam("fraud_detection", "concalls_thresh_crit_col", "concalls_crit_thresh")
 #### seqcalls_thresh_warn_col (string)
 
 
-The column's name in the database storing the
-			warning threshold value for the number of
-			sequential calls.
+数据库中存储顺序呼叫数警告阈值值的列名。
 
 
-*Default value is "sequential_calls_warning".*
+*默认值为 "sequential_calls_warning"。*
 
 
-```c title="Set 'seqcalls_thresh_warn_col' parameter"
+```c title="设置 'seqcalls_thresh_warn_col' 参数"
 ...
 modparam("fraud_detection", "seqcalls_thresh_warn_col", "seqcalls_warn_thresh")
 ...
@@ -407,91 +375,81 @@ modparam("fraud_detection", "seqcalls_thresh_warn_col", "seqcalls_warn_thresh")
 #### seqcalls_thresh_crit_col (string)
 
 
-The column's name in the database storing the
-			critical threshold value for the number of
-			sequential calls.
+数据库中存储顺序呼叫数临界阈值值的列名。
 
 
-*Default value is "sequential_calls_critical".*
+*默认值为 "sequential_calls_critical"。*
 
 
-```c title="Set 'seqcalls_thresh_crit_col' parameter"
+```c title="设置 'seqcalls_thresh_crit_col' 参数"
 ...
 modparam("fraud_detection", "seqcalls_thresh_crit_col", "seqcalls_crit_thresh")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### check_fraud(user, number, profile_id)
 
 
-This method should be called each time a given *user*
-			calls a given *number*. It will try to match a fraud rule
-			within the given fraud profile and update the stats (see above). Furthermore,
-			the stats will be checked against the rule's thresholds. If any of the stats
-			is above its threshold value, the appropriate event will also be raised
-			(see further details below).
+每次给定 *user* 呼叫给定 *number* 时应调用此方法。
+		它将尝试在给定欺诈配置文件中匹配欺诈规则并更新统计信息（见上文）。
+		此外,统计信息将根据规则的阈值进行检查。
+		如果任何统计信息超过其阈值值,也将引发相应的事件
+		（见下文了解更多详情）。
 
 
-Designed to only work with initial INVITE messages!  If a dialog is
-			not already present, one will be created (equivalent of
-			create_dialog()).
+专为初始 INVITE 消息设计！如果不存在对话,
+			将创建一个（相当于 create_dialog()）。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *user* (string) - the user who is making the call. Please keep in mind that
-				the user doesn't have to be registered. This string is only used to keep different stats
-				for different registered users.
-- *number* (string) - the number the user is calling to.
-- *profile_id* (int) - the fraud profile id (i.e. the subset of fraud
-				rules) in which to try and find a matching fraud rule.
+- *user* (string) - 进行呼叫的用户。请注意,
+				用户不必已注册。此字符串仅用于为不同的注册用户保持不同的统计信息。
+- *number* (string) - 用户呼叫的号码。
+- *profile_id* (int) - 欺诈配置文件 ID（即欺诈规则子集）,
+				在其中尝试查找匹配的欺诈规则。
 
 
-The meaning of the return code is as follows:
+返回码的含义如下：
 
 
-- *2* - no matching fraud rule was found
-- *1* - a matching rule was found, but there is no
-					parameter above the rule's threshlod, i.e - everything is ok
-- *-1* - there is a parameter above the warning threshold value.
-					Check the raised event for more info
-- *-2* - there is a parameter above the critical threshold value.
-					Check the raised event for more info
-- *-3* - something went wrong (internal mechanism failed)
+- *2* - 未找到匹配的欺诈规则
+- *1* - 找到匹配规则,但没有参数超过规则的阈值,即一切正常
+- *-1* - 有参数超过警告阈值值。请查看引发的事件了解更多详情
+- *-2* - 有参数超过临界阈值值。请查看引发的事件了解更多详情
+- *-3* - 出现问题（内部机制失败）
 
 
-This function can be used from REQUEST_ROUTE and ONREPLY_ROUTE.
+此函数可用于 REQUEST_ROUTE 和 ONREPLY_ROUTE。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### fraud_detection:show_stats
 
 
-Replaces obsolete MI command: *show_fraud_stats*.
+替换已废弃的 MI 命令：*show_fraud_stats*。
 
 
-Show the current statistics for all dials of a
-		*user* to a *prefix*.
+显示用户对前缀的所有拨号当前统计信息。
 
 
-NOTE: Since the fraud statistics are refreshed on-the-fly, as
-		check_fraud() is called, **this function will
-		return stale data** if check_fraud() has not been called at
-		least once for the (user, prefix) pair within a newly matching time
-		interval!
+注意：由于欺诈统计信息是实时刷新的,
+		随着 check_fraud() 被调用,**如果 check_fraud()
+		在新匹配的 时间间隔内尚未为（用户,前缀）对至少调用过一次,
+		此函数将返回过时数据！**
 
 
-Name: *fraud_detection:show_stats*
+名称：*fraud_detection:show_stats*
 
 
-Parameters:
+参数：
 
 
 - user
@@ -501,61 +459,57 @@ Parameters:
 #### fraud_detection:reload
 
 
-Replaces obsolete MI command: *fraud_reload*.
+替换已废弃的 MI 命令：*fraud_reload*。
 
 
-Reload the all the fraud rules.
+重新加载所有欺诈规则。
 
 
-Name: *fraud_detection:reload*
+名称：*fraud_detection:reload*
 
 
-Parameters: *none*
+参数：*无*
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_FRD_WARNING
 
 
-This event is raised whenever one of the 5 monitored parameters
-			is above the warning threshold value
+每当五个监控参数之一超过警告阈值时引发此事件。
 
 
-Parameters:
+参数：
 
 
-- *param* - the name of the parameter.
-- *value* - the current value of the parameter.
-- *threshold* - the warning threshold value.
-- *user* - the user who initiated the call.
-- *called_number* - the number that was called.
-- *rule_id* - the id of the fraud rule that matched
-					when the call was initiated
-- *profile_id* - the profile id used
+- *param* - 参数名称。
+- *value* - 参数当前值。
+- *threshold* - 警告阈值值。
+- *user* - 发起呼叫的用户。
+- *called_number* - 被叫号码。
+- *rule_id* - 呼叫发起时匹配的欺诈规则 ID。
+- *profile_id* - 使用的配置文件 ID。
 
 
 #### E_FRD_CRITICAL
 
 
-This event is raised whenever one of the 5 monitored parameters
-			is above the warning threshold value
+每当五个监控参数之一超过警告阈值时引发此事件。
 
 
-Parameters:
+参数：
 
 
-- *param* - the name of the parameter.
-- *value* - the current value of the parameter.
-- *threshold* - the warning threshold value.
-- *user* - the user who initiated the call.
-- *called_number* - the number that was called.
-- *rule_id* - the id of the fraud rule that matched
-					when the call was initiated
-- *profile_id* - the profile id used
+- *param* - 参数名称。
+- *value* - 参数当前值。
+- *threshold* - 警告阈值值。
+- *user* - 发起呼叫的用户。
+- *called_number* - 被叫号码。
+- *rule_id* - 呼叫发起时匹配的欺诈规则 ID。
+- *profile_id* - 使用的配置文件 ID。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权

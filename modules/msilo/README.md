@@ -1,91 +1,67 @@
 ---
-title: "MSILO Module"
-description: "This modules provides offline message storage for the Open SIP Server. It stores received messages for an offline user and sends them when the user becomes online."
+title: "MSILO 模块"
+description: "此模块为Open SIP Server提供离线消息存储。它为离线用户存储接收到的消息，并在用户上线时发送。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This modules provides offline message storage for the Open SIP Server. It 
-		stores received messages for an offline user and sends them when the 
-		user becomes online.
+此模块为Open SIP Server提供离线消息存储。它为离线用户存储接收到的消息，并在用户上线时发送。
 
 
-For each message, the modules stores "Request-URI" 
-		("R-URI") only if it is a complete address of record 
-		("username@hostname"), URI from "To" 
-		header, URI from "From" header, incoming time,
-		expiration time, content type and body of the message. If 
-		"R-URI" is not an address of record (it might be the 
-		contact address for current SIP session) the URI
-		from "To" header will be used as R-URI.
+对于每条消息，模块存储"Request-URI"（"R-URI"），仅当它是完整的地址记录（"username@hostname"）时，以及"To"头中的URI、"From"头中的URI、接收时间、过期时间、内容类型和消息体。如果"R-URI"不是地址记录（它可能是当前SIP会话的contact地址），则使用"To"头中的URI作为R-URI。
 
 
-When the expiration time passed, the message is discarded from 
-		database.  Expiration time is computed based on incoming time and 
-		one of the module's parameters.
+当过期时间过去时，消息将从数据库中丢弃。过期时间基于接收时间和模块参数之一计算。
 
 
-Every time when a user registers with OpenSIPS, the module is looking in 
-		database for offline messages intended for that user. All of them will 
-		be sent to contact address provided in REGISTER request.
+每次用户向OpenSIPS注册时，模块会在数据库中查找该用户的离线消息。所有这些消息都将发送到REGISTER请求中提供的contact地址。
 
 
-It may happen the SIP user to be registered but his SIP User Agent 
-		to have no support for MESSAGE request. In this case it should be used 
-		the "failure_route" to store the undelivered requests.
+有时SIP用户可能已注册但其SIP用户代理不支持MESSAGE请求。这种情况下应使用"failure_route"来存储未传递的请求。
 
 
-Another functionality provided by the modules is to send messages at
-		a certain time -- the reminder functionality. Using config logic, a
-		received message can be stored and delivered at a time specified while
-		storing with the 'snd_time_avp'.
+模块提供的另一个功能是在特定时间发送消息——提醒功能。使用配置逻辑，接收到的消息可以存储并在存储时指定的时间使用'snd_time_avp'发送。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS modules
+#### OpenSIPS模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *database module* - mysql, dbtext or other 
-				module that implements the "db" interface and 
-				provides support for storing/receiving data to/from a 
-				database system.
-- *TM*--transaction module--is used to 
-				send SIP requests.
+- *数据库模块* - mysql、dbtext或其他实现"db"接口并提供对数据库系统存储/接收数据支持的模块。
+- *TM*--事务模块--用于发送SIP请求。
 
 
-#### External libraries or applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module:
+运行此模块之前必须安装以下库或应用程序：
 
 
-- *none*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-Database URL.
+数据库URL。
 
 
-*Default value is 
-			"mysql://opensips:opensipsrw@localhost/opensips".*
+*默认值为"mysql://opensips:opensipsrw@localhost/opensips"。*
 
 
-```c title="Set the 'db_url' parameter"
+```c title="设置 'db_url' 参数"
 ...
 modparam("msilo", "db_url", "mysql://user:passwd@host.com/dbname")
 ...
@@ -95,13 +71,13 @@ modparam("msilo", "db_url", "mysql://user:passwd@host.com/dbname")
 #### db_table (string)
 
 
-The name of table where to store the messages.
+存储消息的表名。
 
 
-*Default value is "silo".*
+*默认值为"silo"。*
 
 
-```c title="Set the 'db_table' parameter"
+```c title="设置 'db_table' 参数"
 ...
 modparam("msilo", "db_table", "silo")
 ...
@@ -111,16 +87,13 @@ modparam("msilo", "db_table", "silo")
 #### from_address (string)
 
 
-The SIP address used to inform users that destination of their 
-		message is not online and the message will be delivered next time 
-		when that user goes online. If the parameter is not set, the module 
-		will not send any notification. It can contain pseudo-variables.
+用于通知用户其消息目标不在线且该消息将在该用户下次上线时传递的SIP地址。如果未设置此参数，模块将不发送任何通知。它可以包含伪变量。
 
 
-*Default value is "NULL".*
+*默认值为"NULL"。*
 
 
-```c title="Set the 'from_address' parameter"
+```c title="设置 'from_address' 参数"
 ...
 modparam("msilo", "from_address", "sip:registrar@example.org")
 modparam("msilo", "from_address", "sip:$rU@example.org")
@@ -131,15 +104,13 @@ modparam("msilo", "from_address", "sip:$rU@example.org")
 #### contact_hdr (string)
 
 
-The value of the Contact header (including header name and ending
-		\r\n) to be added in notification messages.
-		It can contain pseudo-variables.
+通知消息中要添加的Contact头的值（包括头名称和结束符\r\n）。它可以包含伪变量。
 
 
-*Default value is "NULL".*
+*默认值为"NULL"。*
 
 
-```c title="Set the 'contact_hdr' parameter"
+```c title="设置 'contact_hdr' 参数"
 ...
 modparam("msilo", "contact_hdr", "Contact: <sip:null@example.com>\r\n")
 ...
@@ -149,17 +120,16 @@ modparam("msilo", "contact_hdr", "Contact: <sip:null@example.com>\r\n")
 #### offline_message (string)
 
 
-The body of the notification message.
-		It can contain pseudo-variables.
+通知消息的正文。它可以包含伪变量。
 
 
-*Default value is "NULL".*
+*默认值为"NULL"。*
 
 
-```c title="Set the 'offline_message' parameter"
+```c title="设置 'offline_message' 参数"
 ...
-modparam("msilo", "offline_message", "*** User $rU is offline!")
-modparam("msilo", "offline_message", "<em>I am offline!</em>")
+modparam("msilo", "offline_message", "*** 用户 $rU 已离线！")
+modparam("msilo", "offline_message", "<em>我已离线！</em>")
 ...
 ```
 
@@ -167,16 +137,13 @@ modparam("msilo", "offline_message", "<em>I am offline!</em>")
 #### content_type_hdr (string)
 
 
-The value of the Content-Type header (including header name and ending
-		\r\n) to be added in notification messages. It must reflect what the
-		'offline_message' contains.
-		It can contain pseudo-variables.
+通知消息中要添加的Content-Type头的值（包括头名称和结束符\r\n）。它必须反映'offline_message'包含的内容。它可以包含伪变量。
 
 
-*Default value is "NULL".*
+*默认值为"NULL"。*
 
 
-```c title="Set the 'content_type_hdr' parameter"
+```c title="设置 'content_type_hdr' 参数"
 ...
 modparam("msilo", "content_type_hdr", "Content-Type: text/plain\r\n")
 modparam("msilo", "content_type_hdr", "Content-Type: text/html\r\n")
@@ -187,14 +154,13 @@ modparam("msilo", "content_type_hdr", "Content-Type: text/html\r\n")
 #### reminder (string)
 
 
-The SIP address used to send reminder messages. If this value
-		is not set, the reminder feature is disabled.
+用于发送提醒消息的SIP地址。如果未设置此值，提醒功能将被禁用。
 
 
-*Default value is "NULL".*
+*默认值为"NULL"。*
 
 
-```c title="Set the 'reminder' parameter"
+```c title="设置 'reminder' 参数"
 ...
 modparam("msilo", "reminder", "sip:registrar@example.org")
 ...
@@ -204,16 +170,13 @@ modparam("msilo", "reminder", "sip:registrar@example.org")
 #### outbound_proxy (string)
 
 
-The SIP address used as next hop when sending the message. Very
-		useful when using OpenSIPS with a domain name not in DNS, or when
-		using a separate OpenSIPS instance for msilo processing. If not set,
-		the message will be sent to the address in destination URI.
+发送消息时用作下一跳的SIP地址。当使用OpenSIPS且域名不在DNS中，或使用单独的OpenSIPS实例进行msilo处理时非常有用。如果未设置，消息将发送到目标URI中的地址。
 
 
-*Default value is "NULL".*
+*默认值为"NULL"。*
 
 
-```c title="Set the 'outbound_proxy' parameter"
+```c title="设置 'outbound_proxy' 参数"
 ...
 modparam("msilo", "outbound_proxy", "sip:opensips.org;transport=tcp")
 ...
@@ -223,14 +186,13 @@ modparam("msilo", "outbound_proxy", "sip:opensips.org;transport=tcp")
 #### expire_time (int)
 
 
-Expire time of stored messages - seconds. When this time passed, the message is
-		silently discarded from database.
+存储消息的过期时间（秒）。超过此时间后，消息将被静默丢弃。
 
 
-*Default value is "259200 (72 hours = 3 days)".*
+*默认值为"259200（72小时=3天）"。*
 
 
-```c title="Set the 'expire_time' parameter"
+```c title="设置 'expire_time' 参数"
 ...
 modparam("msilo", "expire_time", 36000)
 ...
@@ -240,15 +202,13 @@ modparam("msilo", "expire_time", 36000)
 #### check_time (int)
 
 
-Timer interval to check if dumped messages are sent OK - seconds. The module keeps
-		each request send by itself for a new online user and if the reply is 2xx then the
-		message is deleted from database.
+检查转储消息是否发送成功的计时器间隔（秒）。模块为每个向新上线用户发送的请求保留，如果回复是2xx，则从数据库中删除消息。
 
 
-*Default value is "30".*
+*默认值为"30"。*
 
 
-```c title="Set the 'check_time' parameter"
+```c title="设置 'check_time' 参数"
 ...
 modparam("msilo", "check_time", 10)
 ...
@@ -258,18 +218,16 @@ modparam("msilo", "check_time", 10)
 #### send_time (int)
 
 
-Timer interval in seconds to check if there are reminder messages.
-		The module takes all reminder messages that must be sent at that moment 
-		or before that moment.
+检查是否有提醒消息的计时器间隔（秒）。模块获取所有此刻或之前必须发送的提醒消息。
 
 
-If the value is 0, the reminder feature is disabled.
+如果值为0，提醒功能将被禁用。
 
 
-*Default value is "0".*
+*默认值为"0"。*
 
 
-```c title="Set the 'send_time' parameter"
+```c title="设置 'send_time' 参数"
 ...
 modparam("msilo", "send_time", 60)
 ...
@@ -279,14 +237,13 @@ modparam("msilo", "send_time", 60)
 #### clean_period (int)
 
 
-Number of "check_time" cycles when to check if
-		there are expired messages in database.
+检查数据库中是否有过期消息的"check_time"周期数。
 
 
-*Default value is "5".*
+*默认值为"5"。*
 
 
-```c title="Set the 'clean_period' parameter"
+```c title="设置 'clean_period' 参数"
 ...
 modparam("msilo", "clean_period", 3)
 ...
@@ -296,14 +253,13 @@ modparam("msilo", "clean_period", 3)
 #### use_contact (int)
 
 
-Turns on/off the usage of the Contact address to send notification
-		back to sender whose message is stored by MSILO.
+开启/关闭使用Contact地址发送通知回发送者（其消息由MSILO存储）的功能。
 
 
-*Default value is "1 (0 = off, 1 = on)".*
+*默认值为"1（0=关闭，1=开启）"。*
 
 
-```c title="Set the 'use_contact' parameter"
+```c title="设置 'use_contact' 参数"
 ...
 modparam("msilo", "use_contact", 0)
 ...
@@ -313,13 +269,13 @@ modparam("msilo", "use_contact", 0)
 #### sc_mid (string)
 
 
-The name of the column in silo table, storing message id.
+silo表中存储消息ID的列名。
 
 
-Default value is "mid".
+默认值为"mid"。
 
 
-```c title="Set the 'sc_mid' parameter"
+```c title="设置 'sc_mid' 参数"
 ...
 modparam("msilo", "sc_mid", "other_mid")
 ...
@@ -329,13 +285,13 @@ modparam("msilo", "sc_mid", "other_mid")
 #### sc_from (string)
 
 
-The name of the column in silo table, storing the source address.
+silo表中存储源地址的列名。
 
 
-Default value is "src_addr".
+默认值为"src_addr"。
 
 
-```c title="Set the 'sc_from' parameter"
+```c title="设置 'sc_from' 参数"
 ...
 modparam("msilo", "sc_from", "source_address")
 ...
@@ -345,13 +301,13 @@ modparam("msilo", "sc_from", "source_address")
 #### sc_to (string)
 
 
-The name of the column in silo table, storing the destination address.
+silo表中存储目标地址的列名。
 
 
-Default value is "dst_addr".
+默认值为"dst_addr"。
 
 
-```c title="Set the 'sc_to' parameter"
+```c title="设置 'sc_to' 参数"
 ...
 modparam("msilo", "sc_to", "destination_address")
 ...
@@ -361,13 +317,13 @@ modparam("msilo", "sc_to", "destination_address")
 #### sc_uri_user (string)
 
 
-The name of the column in silo table, storing the user name.
+silo表中存储用户名的列名。
 
 
-Default value is "username".
+默认值为"username"。
 
 
-```c title="Set the 'sc_uri_user' parameter"
+```c title="设置 'sc_uri_user' 参数"
 ...
 modparam("msilo", "sc_uri_user", "user")
 ...
@@ -377,13 +333,13 @@ modparam("msilo", "sc_uri_user", "user")
 #### sc_uri_host (string)
 
 
-The name of the column in silo table, storing the domain.
+silo表中存储域名的列名。
 
 
-Default value is "domain".
+默认值为"domain"。
 
 
-```c title="Set the 'sc_uri_host' parameter"
+```c title="设置 'sc_uri_host' 参数"
 ...
 modparam("msilo", "sc_uri_host", "domain")
 ...
@@ -393,13 +349,13 @@ modparam("msilo", "sc_uri_host", "domain")
 #### sc_body (string)
 
 
-The name of the column storing the message body in silo table.
+silo表中存储消息体的列名。
 
 
-Default value is "body".
+默认值为"body"。
 
 
-```c title="Set the 'sc_body' parameter"
+```c title="设置 'sc_body' 参数"
 ...
 modparam("msilo", "sc_body", "message_body")
 ...
@@ -409,13 +365,13 @@ modparam("msilo", "sc_body", "message_body")
 #### sc_ctype (string)
 
 
-The name of the column in silo table, storing content type.
+silo表中存储内容类型的列名。
 
 
-Default value is "ctype".
+默认值为"ctype"。
 
 
-```c title="Set the 'sc_ctype' parameter"
+```c title="设置 'sc_ctype' 参数"
 ...
 modparam("msilo", "sc_ctype", "content_type")
 ...
@@ -425,13 +381,13 @@ modparam("msilo", "sc_ctype", "content_type")
 #### sc_exp_time (string)
 
 
-The name of the column in silo table, storing the expire time of the message.
+silo表中存储消息过期时间的列名。
 
 
-Default value is "exp_time".
+默认值为"exp_time"。
 
 
-```c title="Set the 'sc_exp_time' parameter"
+```c title="设置 'sc_exp_time' 参数"
 ...
 modparam("msilo", "sc_exp_time", "expire_time")
 ...
@@ -441,13 +397,13 @@ modparam("msilo", "sc_exp_time", "expire_time")
 #### sc_inc_time (string)
 
 
-The name of the column in silo table, storing the incoming time of the message.
+silo表中存储消息接收时间的列名。
 
 
-Default value is "inc_time".
+默认值为"inc_time"。
 
 
-```c title="Set the 'sc_inc_time' parameter"
+```c title="设置 'sc_inc_time' 参数"
 ...
 modparam("msilo", "sc_inc_time", "incoming_time")
 ...
@@ -457,13 +413,13 @@ modparam("msilo", "sc_inc_time", "incoming_time")
 #### sc_snd_time (string)
 
 
-The name of the column in silo table, storing the send time for the reminder.
+silo表中存储提醒发送时间的列名。
 
 
-Default value is "snd_time".
+默认值为"snd_time"。
 
 
-```c title="Set the 'sc_snd_time' parameter"
+```c title="设置 'sc_snd_time' 参数"
 ...
 modparam("msilo", "sc_snd_time", "send_reminder_time")
 ...
@@ -473,19 +429,16 @@ modparam("msilo", "sc_snd_time", "send_reminder_time")
 #### snd_time_avp (str)
 
 
-The name of an AVP which may contain the time when to sent
-		the received message as reminder.The AVP is used ony by m_store().
+可能包含接收消息作为提醒发送时间的AVP名称。此AVP仅由m_store()使用。
 
 
-If the parameter is not set, the module does not look for this AVP. If
-		the value is set to a valid AVP name, then the module expects in the AVP
-		to be a time value in format YYYYMMDDHHMMSS (e.g., 20060101201500).
+如果未设置参数，模块不会查找此AVP。如果值设置为有效的AVP名称，则模块期望AVP中的时间格式为YYYYMMDDHHMMSS（例如20060101201500）。
 
 
-*Default value is "null".*
+*默认值为"null"。*
 
 
-```c title="Set the 'snd_time_avp' parameter"
+```c title="设置 'snd_time_avp' 参数"
 ...
 modparam("msilo", "snd_time_avp", "$avp(snd_time)")
 ...
@@ -495,13 +448,13 @@ modparam("msilo", "snd_time_avp", "$avp(snd_time)")
 #### add_date (int)
 
 
-Wheter to add as prefix the date when the message was stored.
+是否将消息存储时的日期作为前缀。
 
 
-*Default value is "1" (1==on/0==off).*
+*默认值为"1"（1=开启/0=关闭）。*
 
 
-```c title="Set the 'add_date' parameter"
+```c title="设置 'add_date' 参数"
 ...
 modparam("msilo", "add_date", 0)
 ...
@@ -511,46 +464,38 @@ modparam("msilo", "add_date", 0)
 #### max_messages (int)
 
 
-Maximum number of stored message for an AoR.  Value 0
-		equals to no limit.
+AoR存储消息的最大数量。值0等于无限制。
 
 
-*Default value is 0.*
+*默认值为0。*
 
 
-```c title="Set the 'max_messages' parameter"
+```c title="设置 'max_messages' 参数"
 ...
 modparam("msilo", "max_messages", 0)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### m_store([owner])
 
 
-The method stores certain parts of the current SIP request (it 
-		should be called when the request type is MESSAGE and the destination 
-		user is offline or his UA does not support MESSAGE requests). If the 
-		user is registered with a UA which does not support MESSAGE requests 
-		you should not use mode="0" if you have
-		changed the request uri with the contact address of user's UA.
+此方法存储当前SIP请求的某些部分（应在请求类型为MESSAGE且目标用户离线或其UA不支持MESSAGE请求时调用）。如果用户注册的UA不支持MESSAGE请求，如果已用用户UA的contact地址更改了请求uri，则不应使用mode="0"。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *owner* (string, optional) - a SIP URI in whose
-			inbox the message will be stored. If "owner" is missing,
-			the SIP address is taken from R-URI.
+- *owner* (string, 可选) - 消息将存储在其收件箱中的SIP URI。如果"owner"缺失，则从R-URI获取SIP地址。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE.
+此函数可用于REQUEST_ROUTE、FAILURE_ROUTE。
 
 
-```c title="m_store usage"
+```c title="m_store 使用示例"
 ...
 m_store();
 m_store($tu);
@@ -561,27 +506,20 @@ m_store($tu);
 #### m_dump([owner], [maxmsg])
 
 
-The method sends stored messages for the SIP user that is going to 
-		register to his actual contact address. The method should be called 
-		when a REGISTER request is received and the "Expire" 
-		header has a value greater than zero.
+此方法向将注册的SIP用户发送存储的消息到其实际contact地址。此方法应在收到REGISTER请求且"Expire"头值大于零时调用。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *owner* (string, optional) - 
-			a SIP URI whose inbox will be dumped. If "owner" is missing,
-			the SIP address is taken from To URI.
-- *maxmsg* (int, optional) - is a maximum number of messages
-			to be dumped.
+- *owner* (string, 可选) - 将被转储其收件箱的SIP URI。如果"owner"缺失，则从To URI获取SIP地址。
+- *maxmsg* (int, 可选) - 要转储的最大消息数。
 
 
-This function can be used from REQUEST_ROUTE, STARTUP_ROUTE,
-		TIMER_ROUTE, EVENT_ROUTE
+此函数可用于REQUEST_ROUTE、STARTUP_ROUTE、TIMER_ROUTE、EVENT_ROUTE
 
 
-```c title="m_dump usage"
+```c title="m_dump 使用示例"
 ...
 m_dump();
 m_dump($fu);
@@ -590,51 +528,51 @@ m_dump($fu, 10);
 ```
 
 
-### Exported Statistics
+### 导出的统计信息
 
 
 #### stored_messages
 
 
-The number of messages stored by msilo.
+msilo存储的消息数。
 
 
 #### dumped_messages
 
 
-The number of dumped messages.
+转储的消息数。
 
 
 #### failed_messages
 
 
-The number of failed dumped messages.
+转储失败的消息数。
 
 
 #### dumped_reminders
 
 
-The number of dumped reminder messages.
+转储的提醒消息数。
 
 
 #### failed_reminders
 
 
-The number of failed reminder messages.
+提醒消息发送失败数。
 
 
-### Installation and Running
+### 安装和运行
 
 
-#### OpenSIPS config file
+#### OpenSIPS配置文件
 
 
-Next picture displays a sample usage of msilo.
+下图显示了msilo的示例用法。
 
 
-[OpenSIPS config script - sample msilo usage](./samples.md "include")
+[OpenSIPS配置文件 - msilo使用示例](./samples.md "include")
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即.md扩展名）均采用知识共享署名4.0许可证。

@@ -1,107 +1,107 @@
 ---
-title: "UAC Registrant Module"
-description: "The module enable OpenSIPS to register itself on a remote SIP registrar."
+title: "UAC Registrant 模块"
+description: "该模块使 OpenSIPS 能够在远程 SIP registrar 上注册自己。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module enable OpenSIPS to register itself on a remote SIP registrar.
+该模块使 OpenSIPS 能够在远程 SIP registrar 上注册自己。
 
 
-At startup, the registrant records are loaded into
-		a hash table in memory and a timer is started.
-		The hash index is computed over the AOR field.
+在启动时，registrant 记录被加载到内存中的哈希表中，
+		并启动一个计时器。
+		哈希索引是根据 AOR 字段计算的。
 
 
-The timer interval for checking records in a hash bucket is computed
-		by dividing the timer_interval module param by the number of hash buckets.
-		When the timer fires for the first time, the first hash bucket will be checked and
-		REGISTERs will be sent out for each record that is found.
-		On the next timeout fire, the second hash bucket will be checked and so on.
-		If the configured timer_interval module param is lower then the number of buckets,
-		the module will fail to start.
+检查哈希桶中记录的时间间隔是通过
+		将 timer_interval 模块参数除以哈希桶数来计算的。
+		当计时器第一次触发时，将检查第一个哈希桶，
+		并将发送找到的每条记录的 REGISTER。
+		在下一次超时触发时，将检查第二个哈希桶，依此类推。
+		如果配置的 timer_interval 模块参数小于桶数，
+		模块将无法启动。
 
 
-Example: setting the timer_interval module to 8 with a hash_size of 2, will result
-	    in having 4 hash buckets (2^2=4) and buckets will be checked one by one every 2s (8/4=2).
+示例：将 timer_interval 模块设置为 8，hash_size 设置为 2，
+		将产生 4 个哈希桶（2^2=4），
+		桶将每 2 秒检查一次（8/4=2）。
 
 
-Each registrant has it's own state.
-	    Registrant's status can be inspected via "uac_registrant:list" MI command.
+每个 registrant 都有自己的状态。
+	    Registrant 的状态可以通过 "uac_registrant:list" MI 命令检查。
 
 
-UAC registrant states:
+UAC registrant 状态：
 
 
 - *0*
 				- NOT_REGISTERED_STATE -
-				the initial state (no REGISTER has been sent out yet);
+				初始状态（尚未发送 REGISTER）；
 - *1*
-				- REGISTERING_STATE - waiting for a reply from the registrar
-				after a REGISTER without authentication header was sent;
+				- REGISTERING_STATE - 发送无认证头的 REGISTER 后
+				等待 registrar 的回复；
 - *2*
-				- AUTHENTICATING_STATE - waiting for a reply from the registrar
-			 	after a REGISTER with authentication header was sent;
+				- AUTHENTICATING_STATE - 发送带认证头的 REGISTER 后
+				等待 registrar 的回复；
 - *3*
-				- REGISTERED_STATE - the uac is successfully registered;
+				- REGISTERED_STATE - uac 已成功注册；
 - *4*
 				- REGISTER_TIMEOUT_STATE :
-				no reply received from the registrar;
+				未收到 registrar 的回复；
 - *5*
 				- INTERNAL_ERROR_STATE -
-				some errors were found/encountered during the
-				processing of a reply;
+				处理回复时发现/遇到一些错误；
 - *6*
 				- WRONG_CREDENTIALS_STATE -
-				credentials rejected by the registrar;
+				registrar 拒绝凭据；
 - *7*
 				- REGISTRAR_ERROR_STATE -
-				error reply received from the registrar;
+				收到 registrar 的错误回复；
 - *8*
-				- UNREGISTERING_STATE - waiting for a reply from the registrar
-				after an unREGISTER without authentication header was sent;
+				- UNREGISTERING_STATE - 发送无认证头的 unREGISTER 后
+				等待 registrar 的回复；
 - *9*
-				- AUTHENTICATING_UNREGISTER_STATE - waiting for a reply from the registrar
-				after an unREGISTER with authentication header was sent;
+				- AUTHENTICATING_UNREGISTER_STATE - 发送带认证头的 unREGISTER 后
+				等待 registrar 的回复；
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *uac_auth - UAC authentication module*
+- *uac_auth - UAC 认证模块*
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-None.
+无。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### hash_size (integer)
 
 
-The size of the hash table internally used to keep the registrants.
-		A larger table distributes better the registration load in time but consumes more memory.
-		The hash size is a power of number two.
+用于保存 registrants 的哈希表的大小。
+		较大的表在时间上更均匀地分配注册负载，但消耗更多内存。
+		哈希大小是 2 的幂次方。
 
 
-*Default value is 1.*
+*默认值为 1。*
 
 
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("uac_registrant", "hash_size", 2)
 ...
@@ -111,13 +111,13 @@ modparam("uac_registrant", "hash_size", 2)
 #### timer_interval (integer)
 
 
-Defines the periodic timer for checking the registrations status.
+定义检查注册状态的定期计时器。
 
 
-*Default value is 100.*
+*默认值为 100。*
 
 
-```c title="Set timer_interval parameter"
+```c title="设置 timer_interval 参数"
 ...
 modparam("uac_registrant", "timer_interval", 120)
 ...
@@ -127,16 +127,16 @@ modparam("uac_registrant", "timer_interval", 120)
 #### failure_retry_interval (integer)
 
 
-Defines a custom interval to retry the registration upon error/failure.
-		Normally, after any kind of failure (timeout, credentials, internal 
-		error), the registration is re-taken after "expires" seconds. The 
-		parameter here, if set, overrides that value.
+定义在错误/失败时重试注册的自定义间隔。
+		通常，在任何类型的失败（超时、凭据、内部错误）后，
+		注册将在 "expires" 秒后重新获取。
+		如果设置了此参数，它将覆盖该值。
 
 
-*Default value is 0 (not set).*
+*默认值为 0（未设置）。*
 
 
-```c title="Set failure_retry_interval parameter"
+```c title="设置 failure_retry_interval 参数"
 ...
 modparam("uac_registrant", "failure_retry_interval", 3600)
 ...
@@ -146,19 +146,17 @@ modparam("uac_registrant", "failure_retry_interval", 3600)
 #### enable_clustering (integer)
 
 
-This parameter enables the clustering support in the module. This is
-		used to share this registration between all the nodes in the cluster.
-		When using this option, you should define (for each registrant record)
-		a sharing tag - this sharing tag will control at the cluster level
-		which node is entitled to perform the registation (only the node having
-		that tag as active will do the registation, the onther nodes being
-		idle).
+此参数启用模块中的集群支持。
+		这用于在集群中的所有节点之间共享此注册。
+		使用此选项时，您应该为每个 registrant 记录定义一个共享标签
+		- 此共享标签将在集群级别控制哪个节点有权执行注册
+		（只有将标签作为活动标签的节点才会执行注册，其他节点保持空闲）。
 
 
-*Default value is 0 / off.*
+*默认值为 0 / 关闭。*
 
 
-```c title="Set enable_clustering parameter"
+```c title="设置 enable_clustering 参数"
 ...
 modparam("uac_registrant", "enable_clustering", 1)
 ...
@@ -168,13 +166,13 @@ modparam("uac_registrant", "enable_clustering", 1)
 #### db_url (string)
 
 
-Database where to load the registrants from.
+要从中加载 registrants 的数据库。
 
 
-*Default value is "NULL" (use default DB URL from core).*
+*默认值为 "NULL"（使用核心中的默认 DB URL）。*
 
 
-```c title="Set 'db_url' parameter"
+```c title="设置 'db_url' 参数"
 ...
 modparam("uac_registrant", "db_url", "mysql://user:passw@localhost/database")
 ...
@@ -184,13 +182,13 @@ modparam("uac_registrant", "db_url", "mysql://user:passw@localhost/database")
 #### table_name (string)
 
 
-The database table that holds the registrant records.
+保存 registrant 记录的数据库表。
 
 
-*Default value is "registrant".*
+*默认值为 "registrant"。*
 
 
-```c title="Set 'table_name' parameter"
+```c title="设置 'table_name' 参数"
 ...
 modparam("uac_registrant", "table_name", "my_registrant")
 ...
@@ -200,15 +198,14 @@ modparam("uac_registrant", "table_name", "my_registrant")
 #### registrar_column (string)
 
 
-The column's name in the database storing the
-		URI pointing to the remote registrar (mandatory field).
-		OpenSIPS expects a valid URI.
+数据库中存储指向远程 registrar 的 URI 的列名（必填字段）。
+		OpenSIPS 期望一个有效的 URI。
 
 
-*Default value is "registrar".*
+*默认值为 "registrar"。*
 
 
-```c title="Set 'registrar_column' parameter"
+```c title="设置 'registrar_column' 参数"
 ...
 modparam("uac_registrant", "registrar_column", "registrant_uri")
 ...
@@ -218,16 +215,15 @@ modparam("uac_registrant", "registrar_column", "registrant_uri")
 #### proxy_column (string)
 
 
-The column's name in the database storing the
-		URI pointing to the outbond proxy (not mandatory field).
-		An empty or NULL value means no outbound proxy,
-		otherwise OpenSIPS expects a valid URI.
+数据库中存储指向出站代理的 URI 的列名（非必填字段）。
+		空值或 NULL 值表示无出站代理，
+		否则 OpenSIPS 期望一个有效的 URI。
 
 
-*Default value is "proxy".*
+*默认值为 "proxy"。*
 
 
-```c title="Set 'proxy_column' parameter"
+```c title="设置 'proxy_column' 参数"
 ...
 modparam("uac_registrant", "proxy_column", "proxy_uri")
 ...
@@ -237,16 +233,15 @@ modparam("uac_registrant", "proxy_column", "proxy_uri")
 #### aor_column (string)
 
 
-The column's name in the database storing the
-		URI defining the address of record (mandatory field).
-		The URI stored here will be used in the To URI of the REGISTER.
-		OpenSIPS expects a valid URI.
+数据库中存储定义地址记录的 URI 的列名（必填字段）。
+		存储在这里的 URI 将用于 REGISTER 的 To URI。
+		OpenSIPS 期望一个有效的 URI。
 
 
-*Default value is "aor".*
+*默认值为 "aor"。*
 
 
-```c title="Set 'aor_column' parameter"
+```c title="设置 'aor_column' 参数"
 ...
 modparam("uac_registrant", "aor_column", "to_uri")
 ...
@@ -256,18 +251,17 @@ modparam("uac_registrant", "aor_column", "to_uri")
 #### third_party_registrant_column (string)
 
 
-The column's name in the database storing the
-		URI defining the third party registrant (not mandatory field).
-		The URI stored here will be used in the From URI of the REGISTER.
-		An empty or NULL value means no third party registration
-		(the From URI will be identical to To URI),
-		otherwise OpenSIPS expects a valid URI.
+数据库中存储定义第三方 registrant 的 URI 的列名（非必填字段）。
+		存储在这里的 URI 将用于 REGISTER 的 From URI。
+		空值或 NULL 值表示无第三方注册
+		（From URI 将与 To URI 相同），
+		否则 OpenSIPS 期望一个有效的 URI。
 
 
-*Default value is "third_party_registrant".*
+*默认值为 "third_party_registrant"。*
 
 
-```c title="Set 'third_party_registrant_column' parameter"
+```c title="设置 'third_party_registrant_column' 参数"
 ...
 modparam("uac_registrant", "third_party_registrant_column", "from_uri")
 ...
@@ -277,14 +271,14 @@ modparam("uac_registrant", "third_party_registrant_column", "from_uri")
 #### username_column (string)
 
 
-The column's name in the database storing the
-		username for authentication (mandatory if the registrar requires authentication).
+数据库中存储认证用户名的列名
+		（如果 registrar 需要认证，则为必填）。
 
 
-*Default value is "username".*
+*默认值为 "username"。*
 
 
-```c title="Set 'username_column' parameter"
+```c title="设置 'username_column' 参数"
 ...
 modparam("uac_registrant", "username_column", "auth_username")
 ...
@@ -294,14 +288,14 @@ modparam("uac_registrant", "username_column", "auth_username")
 #### password_column (string)
 
 
-The column's name in the database storing the
-		password for authentication (mandatory if the registrar requires authntication).
+数据库中存储认证密码的列名
+		（如果 registrar 需要认证，则为必填）。
 
 
-*Default value is "password".*
+*默认值为 "password"。*
 
 
-```c title="Set 'password_column' parameter"
+```c title="设置 'password_column' 参数"
 ...
 modparam("uac_registrant", "password_column", "auth_passowrd")
 ...
@@ -311,16 +305,15 @@ modparam("uac_registrant", "password_column", "auth_passowrd")
 #### binding_URI_column (string)
 
 
-The column's name in the database storing the
-		binding URI in REGISTER (mandatory field).
-		The URI stored here will be used in the Contact URI of the REGISTER.
-		OpenSIPS expects a valid URI.
+数据库中存储 REGISTER 中 binding URI 的列名（必填字段）。
+		存储在这里的 URI 将用于 REGISTER 的 Contact URI。
+		OpenSIPS 期望一个有效的 URI。
 
 
-*Default value is "binding_URI".*
+*默认值为 "binding_URI"。*
 
 
-```c title="Set 'binding_URI_column' parameter"
+```c title="设置 'binding_URI_column' 参数"
 ...
 modparam("uac_registrant", "binding_URI_column", "contact_uri")
 ...
@@ -330,34 +323,32 @@ modparam("uac_registrant", "binding_URI_column", "contact_uri")
 #### binding_params_column (string)
 
 
-The column's name in the database storing the
-		binding params in REGISTER (not mandatory field).
-		If not NULL or not empty, the string stored here will be added
-		as params to the Contact URI in REGISTER (it MUST start with ";".
+数据库中存储 REGISTER 中 binding params 的列名（非必填字段）。
+		如果不为 NULL 或不为空，存储在这里的字符串将作为参数添加到
+		REGISTER 的 Contact URI 中（必须以 ";" 开头）。
 
 
-If the following two params are present, then the binding will be enforced
-		to be unique (if two bindings are received in a 200ok, a complete binding
-		removal will be performed before re-registering):
+如果存在以下两个参数，则强制绑定为唯一的
+		（如果在 200ok 中收到两个绑定，在重新注册之前将执行完整绑定移除）：
 
 
 - *reg-id*
 - *+sip.instance*
 
 
-Example of params that will force unique binding:
+强制唯一绑定的参数示例：
 
 
 ```c
 ;reg-id=1;+sip.instance="<urn:uuid:11111111-AABBCCDDEEFF>"
-		
+			
 ```
 
 
-*Default value is "binding_params".*
+*默认值为 "binding_params"。*
 
 
-```c title="Set 'binding_params_column' parameter"
+```c title="设置 'binding_params_column' 参数"
 ...
 modparam("uac_registrant", "binding_params_column", "contact_params")
 ...
@@ -367,14 +358,13 @@ modparam("uac_registrant", "binding_params_column", "contact_params")
 #### expiry_column (string)
 
 
-The column's name in the database storing the
-		expiration time (not mandatory).
+数据库中存储过期时间的列名（非必填）。
 
 
-*Default value is "expiry".*
+*默认值为 "expiry"。*
 
 
-```c title="Set 'expiry_column' parameter"
+```c title="设置 'expiry_column' 参数"
 ...
 modparam("uac_registrant", "expiry_column", "registration_timeout")
 ...
@@ -384,17 +374,16 @@ modparam("uac_registrant", "expiry_column", "registration_timeout")
 #### forced_socket_column (string)
 
 
-The column's name in the database storing the
-		socket for sending the REGISTER (not mandatory).
-		If a forced socket is provided, the socket MUST be
-		explicitely set as a global listening socket in the config
-		(see "socket" core parameter).
+数据库中存储用于发送 REGISTER 的套接字的列名（非必填）。
+		如果提供了强制套接字，该套接字必须
+		在配置中明确设置为全局监听套接字
+		（见 "socket" 核心参数）。
 
 
-*Default value is "forced_socket".*
+*默认值为 "forced_socket"。*
 
 
-```c title="Set 'forced_socket_column' parameter"
+```c title="设置 'forced_socket_column' 参数"
 ...
 modparam("uac_registrant", "forced_socket_column", "fs")
 ...
@@ -404,16 +393,16 @@ modparam("uac_registrant", "forced_socket_column", "fs")
 #### cluster_shtag_column (string)
 
 
-The column's name in the database storing the
-		cluster sharing tag in [tag_name/cluster_id] format (not mandatory).
-		If a cluster sharing tag is provided, the REGISTER requests will
-		be fired out only when the tag is active.
+数据库中存储集群共享标签的列名，
+		格式为 [tag_name/cluster_id]（非必填）。
+		如果提供了集群共享标签，
+		则仅当标签处于活动状态时才会发出 REGISTER 请求。
 
 
-*Default value is "cluster_shtag".*
+*默认值为 "cluster_shtag"。*
 
 
-```c title="Set 'cluster_shtag_column' parameter"
+```c title="设置 'cluster_shtag_column' 参数"
 ...
 modparam("uac_registrant", "cluster_shtag_column", "sh")
 ...
@@ -423,16 +412,15 @@ modparam("uac_registrant", "cluster_shtag_column", "sh")
 #### state_column (string)
 
 
-The column's name in the database storing the current state of the
-		registrant. When a registrant is disabled, OpenSIPS will no longer send
-		REGISTERs for it. A value of *0* for this column means
-		enabled and *1* disabled.
+数据库中存储 registrant 当前状态的列名。
+		当 registrant 被禁用时，OpenSIPS 将不再为其发送 REGISTER。
+		此列的值为 *0* 表示启用，*1* 表示禁用。
 
 
-*Default value is "state".*
+*默认值为 "state"。*
 
 
-```c title="Set 'state_column' parameter"
+```c title="设置 'state_column' 参数"
 ...
 modparam("uac_registrant", "state_column", "status")
 ...
@@ -442,444 +430,452 @@ modparam("uac_registrant", "state_column", "status")
 #### reregister_expiry_percentage (integer)
 
 
-Percentage describing how much sooner a RE-REGISTER needs to be send based on the Expiry. a 100 value means the RE-REGISTER will be send right on the edge of expiry ( old behavior ), which might lead to registration loss. a 90 value means the RE-REGISTER will be sent sooner , at 90% of the Expiry, etc.
+描述基于 Expiry 需要多早发送 RE-REGISTER 的百分比。
+		100 表示 RE-REGISTER 将在过期边缘发送（旧行为），
+		这可能导致注册丢失。
+		90 表示 RE-REGISTER 将更早发送，在 Expiry 的 90% 时，依此类推。
 
 
-*Default value is "100".*
+*默认值为 "100"。*
 
 
-```c title="Set 'reregister_expiry_percentage' parameter"
+```c title="设置 'reregister_expiry_percentage' 参数"
 ...
 modparam("uac_registrant", "reregister_expiry_percentage", 90)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-None to be used in configuration file.
+配置文件中没有要使用的函数。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### uac_registrant:list
 
 
-Replaces obsolete MI command: *reg_list*.
+替换已弃用的 MI 命令：*reg_list*。
 
 
-Lists the registrant records and their status.
+列出 registrant 记录及其状态。
 
 
-Name: *uac_registrant:list*
+名称：*uac_registrant:list*
 
 
-Parameters:
+参数：
 
 
-- *aor* (optional) - URI defining the address
-				of record. If provided, *contact* and
-				*registrar* parameters are also required and
-				only a specific record will be listed.
-- *contact* (optional) - Contact URI. If 
-				provided,
-				*aor* and *registrar*
-				parameters are also required and only a specific record will
-				be listed.
-- *registrar* (optional) - URI pointing to the
-				remote registrar. If provided, *aor* and
-				*contact* parameters are also required and
-				only a specific record will be listed.
+- *aor* (可选) - 定义地址记录的 URI。
+				如果提供，则还需要 *contact* 和
+				*registrar* 参数，
+				并且仅列出特定记录。
+- *contact* (可选) - Contact URI。如果
+				提供，
+				*aor* 和 *registrar*
+				参数也必须提供，
+				并且仅列出特定记录。
+- *registrar* (可选) - 指向远程 registrar 的 URI。
+				如果提供，则还需要 *aor* 和
+				*contact* 参数，
+				并且仅列出特定记录。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:list
 ...
 opensips-cli -x mi uac_registrant:list sip:alice@opensips.org  sip:alice@127.0.0.1:5060 sip:opensips.org
-		
+			
 ```
 
 
 #### uac_registrant:reload
 
 
-Replaces obsolete MI command: *reg_reload*.
+替换已弃用的 MI 命令：*reg_reload*。
 
 
-Reloads the registrant records from the database.
+从数据库重新加载 registrant 记录。
 
 
-Name: *uac_registrant:reload*
+名称：*uac_registrant:reload*
 
 
-Parameters: *none*
+参数：*无*
 
 
-- *aor* (optional) - URI defining the address
-				of record. If provided, *contact* and
-				*registrar* parameters are also required and
-				only a specific record will be reloaded.
-- *contact* (optional) - Contact URI. If 
-				provided,
-				*aor* and *registrar*
-				parameters are also required and only a specific record will
-				be reloaded.
-- *registrar* (optional) - URI pointing to the
-				remote registrar. If provided, *aor* and
-				*contact* parameters are also required and
-				only a specific record will be reloaded.
+- *aor* (可选) - 定义地址记录的 URI。
+				如果提供，则还需要 *contact* 和
+				*registrar* 参数，
+				并且仅重新加载特定记录。
+- *contact* (可选) - Contact URI。如果
+				提供，
+				*aor* 和 *registrar*
+				参数也必须提供，
+				并且仅重新加载特定记录。
+- *registrar* (可选) - 指向远程 registrar 的 URI。
+				如果提供，则还需要 *aor* 和
+				*contact* 参数，
+				并且仅重新加载特定记录。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:reload
 ...
 opensips-cli -x mi reg_leload sip:alice@opensips.org  sip:alice@127.0.0.1:5060 sip:opensips.org
-		
+			
 ```
 
 
 #### uac_registrant:enable
 
 
-Replaces obsolete MI command: *reg_enable*.
+替换已弃用的 MI 命令：*reg_enable*。
 
 
-Enables a specific registrant. OpenSIPS will immediately send
-		a REGISTER if the registrant was previously disabled and will update
-		the state in the database.
+启用特定 registrant。
+		如果 registrant 之前被禁用，OpenSIPS 将立即发送 REGISTER，
+		并更新数据库中的状态。
 
 
-Name: *uac_registrant:enable*
+名称：*uac_registrant:enable*
 
 
-Parameters: *none*
+参数：*无*
 
 
-- *aor* - URI defining the address of record.
-- *contact* - Contact URI.
-- *registrar* - URI pointing to the remote registrar.
+- *aor* - 地址记录的 URI。
+- *contact* - Contact URI。
+- *registrar* - 指向远程 registrar 的 URI。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:enable sip:alice@opensips.org  sip:alice@127.0.0.1:5060 sip:opensips.org
-		
+			
 ```
 
 
 #### uac_registrant:disable
 
 
-Replaces obsolete MI command: *reg_disable*.
+替换已弃用的 MI 命令：*reg_disable*。
 
 
-Disables a specific registrant. OpenSIPS will immediately send
-		an unREGISTER if the registrant was previously enabled and will update
-		the state in the database.
+禁用特定 registrant。
+		如果 registrant 之前被启用，OpenSIPS 将立即发送 unREGISTER，
+		并更新数据库中的状态。
 
 
-Name: *uac_registrant:disable*
+名称：*uac_registrant:disable*
 
 
-Parameters: *none*
+参数：*无*
 
 
-- *aor* - URI defining the address
-				of record. If provided, *contact* and
-				*registrar* parameters are also required and
-				only a specific record will be disabled.
-- *contact* - Contact URI. If provided,
-				*aor* and *registrar*
-				parameters are also required and only a specific record will
-				be disabled.
-- *registrar* - URI pointing to the remote
-				registrar. If provided, *aor* and
-				*contact* parameters are also required and
-				only a specific record will be disabled.
+- *aor* - 地址记录的 URI。
+				如果提供，则还需要 *contact* 和
+				*registrar* 参数，
+				并且仅禁用特定记录。
+- *contact* - Contact URI。如果提供，
+				*aor* 和 *registrar*
+				参数也必须提供，
+				并且仅禁用特定记录。
+- *registrar* - 指向远程
+				registrar 的 URI。如果提供，
+				则还需要 *aor* 和
+				*contact* 参数，
+				并且仅禁用特定记录。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:disable sip:alice@opensips.org  sip:alice@127.0.0.1:5060 sip:opensips.org
-		
+			
 ```
 
 
 #### uac_registrant:force_register
 
 
-Replaces obsolete MI command: *reg_force_register*.
+替换已弃用的 MI 命令：*reg_force_register*。
 
 
-Forces the re-registration (or registation) of a specific 
-		registrant (depending on its state). Note that the registrant must be
-		enabled.
+强制重新注册（或注册）特定 registrant
+		（取决于其状态）。请注意，registrant 必须已启用。
 
 
-Name: *uac_registrant:force_register*
+名称：*uac_registrant:force_register*
 
 
-Parameters:
+参数：
 
 
-- *aor* - URI defining the address
-				of record. If provided, *contact* and
-				*registrar* parameters are also required and
-				only a specific record will be forced to re-register.
-- *contact* - Contact URI. If provided,
-				*aor* and *registrar*
-				parameters are also required and only a specific record will be
-				forced to re-register.
-- *registrar* - URI pointing to the remote
-				registrar. If provided, *aor* and
-				*contact* parameters are also required and
-				only a specific record will be forced to re-register.
+- *aor* - 地址记录的 URI。
+				如果提供，则还需要 *contact* 和
+				*registrar* 参数，
+				并且仅强制重新加载特定记录。
+- *contact* - Contact URI。如果提供，
+				*aor* 和 *registrar*
+				参数也必须提供，
+				并且仅强制重新加载特定记录。
+- *registrar* - 指向远程
+				registrar 的 URI。如果提供，
+				则还需要 *aor* 和
+				*contact* 参数，
+				并且仅强制重新加载特定记录。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:force_register sip:alice@opensips.org  sip:alice@127.0.0.1:5060 sip:opensips.org
-		
+			
 ```
 
 
 #### uac_registrant:upsert
 
 
-Replaces obsolete MI command: *reg_upsert*.
+替换已弃用的 MI 命令：*reg_upsert*。
 
 
-Inserts or updates the in-memory contents of the AOR/Contact/Registrar. No Database queries are done when calling this MI command, all parameters are passed via MI
+插入或更新 AOR/Contact/Registrar 的内存内容。
+		调用此 MI 命令时不执行数据库查询，
+		所有参数都通过 MI 传递。
 
 
-Name: *uac_registrant:upsert*
+名称：*uac_registrant:upsert*
 
 
-Parameters:
+参数：
 
 
-- *aor* - URI defining the address
+- *aor* - 地址的 URI
 - *contact* - Contact URI
-- *registrar* - URI pointing to the remote registrar
-- *proxy* - URI of a registration proxy
-- *third_party_registrant* - 3rd party registrant
-- *username* - the username for auth purposes
-- *password* - the password for auth purposes
-- *binding_params* - params to be added to the registration
-- *expiry* - number of seconds that the registration will be valid
-- *forced_socket* - opensips socket to send out the register out through
-- *cluster_shtag* - the sharing tag for this registration
-- *state* - 0 for enabled, 1 for disabled
+- *registrar* - 指向远程 registrar 的 URI
+- *proxy* - 注册代理的 URI
+- *third_party_registrant* - 第三方 registrant
+- *username* - 用于认证的用户名
+- *password* - 用于认证的密码
+- *binding_params* - 要添加到注册的参数
+- *expiry* - 注册有效的秒数
+- *forced_socket* - opensips 套接字用于发送注册
+- *cluster_shtag* - 此注册的共享标签
+- *state* - 0 表示启用，1 表示禁用
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:upsert aor=sip:vlad@test.com contact=sip:test@localhost registrar=sip:127.0.0.1:5061 proxy="" third_party_registrant="" username="vlad" password="1234" binding_params="" expiry=60 forced_socket="" cluster_shtag="" state=0
-		
+			
 ```
 
 
 #### uac_registrant:delete
 
 
-Replaces obsolete MI command: *reg_delete*.
+替换已弃用的 MI 命令：*reg_delete*。
 
 
-Deletes the in-memory contents of the AOR/Contact/Registrar. No Database queries are done when calling this MI command, all parameters are passed via MI
+删除 AOR/Contact/Registrar 的内存内容。
+		调用此 MI 命令时不执行数据库查询，
+		所有参数都通过 MI 传递。
 
 
-Name: *uac_registrant:delete*
+名称：*uac_registrant:delete*
 
 
-Parameters:
+参数：
 
 
-- *aor* - URI defining the address
+- *aor* - 地址的 URI
 - *contact* - Contact URI
-- *registrar* - URI pointing to the remote registrar
+- *registrar* - 指向远程 registrar 的 URI
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi uac_registrant:delete aor=sip:vlad@test.com contact=sip:test@localhost registrar=sip:127.0.0.1:5061 
-		
+			
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_REGISTRANT_REGISTERING
 
 
-This event is raised when the module sent the initial REGISTER and started the registration process.
+当模块发送初始 REGISTER 并开始注册过程时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_AUTHENTICATING
 
 
-This event is raised when the initial REGISTER has been challenged and a new REGISTER with credentials has been sent out.
+当初始 REGISTER 被质询并发送了带凭据的新 REGISTER 时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_REGISTERED
 
 
-This event is raised when a REGISTER has been 200 OKd.
+当 REGISTER 收到 200 OK 时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_REGISTER_TIMEOUT
 
 
-This event is raised when a REGISTER received no reply from the registrar.
+当 REGISTER 未收到 registrar 的回复时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_INTERNAL_ERROR
 
 
-This event is raised when a REGISTER procesing was stopped due to an internal OpenSIPS error.
+当 REGISTER 处理因内部 OpenSIPS 错误而停止时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_WRONG_CREDENTIALS
 
 
-This event is raised when a REGISTER with credentials was still rejected by the registrar
+当初始 REGISTER 仍被 registrar 拒绝时触发此事件
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_REGISTRAR_ERROR
 
 
-This event is raised when a REGISTER is rejected by the registrar with a non-standard sip code.
+当 REGISTER 被 registrar 以非标准 sip 码拒绝时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_UNREGISTERING
 
 
-This event is raised when a de-REGISTER is sent by OpenSIPS.
+当 OpenSIPS 发送 de-REGISTER 时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
 #### E_REGISTRANT_AUTHENTICATING_UNREGISTER
 
 
-This event is raised when a de-REGISTER is challenged and auth is sent by OpenSIPS.
+当 de-REGISTER 被质询且 OpenSIPS 发送认证时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *aor* - the AOR
-- *contact* - the Contact
-- *registrar* - the Registrar
+- *aor* - AOR
+- *contact* - Contact
+- *registrar* - Registrar
 
 
-### Exported Status/Report Identifiers
+### 导出的状态/报告标识符
 
 
-The module provides the "uac_registrant" Status/Report group, where each
-	UAC registrant is defined as a separate SR identifier.
+该模块提供 "uac_registrant" 状态/报告组，
+		其中每个 UAC registrant 被定义为单独的 SR 标识符。
 
 
-The name of each individual identitfier is built as follows:
+每个单独标识符的名称构建如下：
 
 
 ```c
    "aor=_AOR_;contact=_SIP_CONTACT_URI_;registrar=_SIP_REGISTAR_URI_"
-   Ex:
+   例如：
    "aor=sip:vlad@test.com;contact=sip:test@mycontact.com;registrar=sip:127.0.0.1:5061"
 	
 ```
 
 
-In terms of status, the following values will be reported:
+就状态而言，将报告以下值：
 
 
-- STATUS_READY, if REGISTERED
-- STATUS_LOADING_DATA, if REGISTERING, UNREGISTERING, AUTHENTICATING
-- STATUS_NOT_READY, any other state of the registrant
+- STATUS_READY（如果已注册）
+- STATUS_LOADING_DATA（如果正在注册、注销、认证中）
+- STATUS_NOT_READY（registrant 的任何其他状态）
 
 
-As reports, each identifier may provide information like:
+作为报告，每个标识符可以提供以下信息：
 
 
 ```c
@@ -891,29 +887,30 @@ As reports, each identifier may provide information like:
            {
                "Timestamp": 1769604697,
                "Date": "Wed Jan 28 14:51:37 2026",
-               "Log": "created with state NOT_REGISTERED_STATE\n"
+               "Log": "创建于 NOT_REGISTERED_STATE\n"
            },
            {
                "Timestamp": 1769604707,
                "Date": "Wed Jan 28 14:51:47 2026",
-               "Log": "state changed to REGISTERING_STATE\n"
+               "Log": "状态更改为 REGISTERING_STATE\n"
            },
            {
                "Timestamp": 1769604712,
                "Date": "Wed Jan 28 14:51:52 2026",
-               "Log": "state changed to REGISTER_TIMEOUT_STATE\n"
+               "Log": "状态更改为 REGISTER_TIMEOUT_STATE\n"
            }
        ]
    }
 ]
+
 	
 ```
 
 
-For how to access and use the Status/Report information, please see
-	[https://www.opensips.org/Documentation/Interface-StatusReport-3-6](>https://www.opensips.org/Documentation/Interface-StatusReport-3-6).
+有关如何访问和使用状态/报告信息，
+		请参阅 [https://www.opensips.org/Documentation/Interface-StatusReport-3-6](>https://www.opensips.org/Documentation/Interface-StatusReport-3-6)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。

@@ -1,62 +1,56 @@
 ---
 title: "PUA Usrloc"
-description: "The pua_usrloc is the connector between usrloc and pua modules. It creates the environment to send PUBLISH requests for user location records, on specific events (e.g., when new record is added in usrloc, a PUBLISH with status open (online) is issued; when expires, it sends closed (of..."
+description: "pua_usrloc 是 usrloc 和 pua 模块之间的连接器。它创建环境以便在特定事件发生时为用户位置记录发送 PUBLISH 请求（例如，当新记录添加到 usrloc 时，发送状态为 open（在线）的 PUBLISH；当过期时，发送 closed（离线））。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The pua_usrloc is the connector between usrloc and pua modules.
-		 It creates the environment to send PUBLISH requests for user
-		 location records, on specific events (e.g., when new record is
-		 added in usrloc, a PUBLISH with status open (online) is issued;
-		 when expires, it sends closed (offline)).
+pua_usrloc 是 usrloc 和 pua 模块之间的连接器。
+它创建环境以便在特定事件发生时为用户位置记录发送 PUBLISH 请求（例如，当新记录添加到 usrloc 时，发送状态为 open（在线）的 PUBLISH；当过期时，发送 closed（离线））。
 
 
-Using this module, phones which have no support for presence can
-		be seen as online/offline.
+使用此模块，没有呈现支持的电话可以被视为在线/离线。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+必须在加载此模块之前加载以下模块：
 
 
-- *usrloc*.
-- *pua*.
+- *usrloc*。
+- *pua*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+在运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *libxml*.
+- *libxml*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### default_domain (str)
 
 
-The default domain to use when constructing the presentity
-		uri if it is missing from recorded aor.
+在构造 presentity URI 时，如果 recorded aor 中缺少域名，则使用的默认域名。
 
 
-*Default value is "NULL".*
+默认值为 "NULL"。
 
 
-```c title="Set default_domain parameter"
+```c title="设置 default_domain 参数"
 ...
 modparam("pua_usrloc", "default_domain", "opensips.org")
 ...
@@ -66,15 +60,14 @@ modparam("pua_usrloc", "default_domain", "opensips.org")
 #### entity_prefix (str)
 
 
-The prefix when construstructing entity attribute to be added to
-		presence node in xml pidf.
-		(ex: pres:user@domain ).
+在 xml pidf 的 presence 节点中构造 entity 属性时添加的前缀。
+（例如：pres:user@domain）。
 
 
-*Default value is "NULL".*
+默认值为 "NULL"。
 
 
-```c title="Set presentity_prefix parameter"
+```c title="设置 presentity_prefix 参数"
 ...
 modparam("pua_usrloc", "entity_prefix", "pres")
 ...
@@ -84,11 +77,10 @@ modparam("pua_usrloc", "entity_prefix", "pres")
 #### presence_server (str)
 
 
-The the address of the presence server. If set, it will be
-		used as outbound proxy when sending PUBLISH requests.
+presence 服务器的地址。如果设置，发送 PUBLISH 请求时将使用它作为 outbound proxy。
 
 
-```c title="Set presence_server parameter"
+```c title="设置 presence_server 参数"
 ...
 modparam("pua_usrloc", "presence_server", "sip:pa@opensips.org:5075")
 ...
@@ -96,18 +88,16 @@ modparam("pua_usrloc", "presence_server", "sip:pa@opensips.org:5075")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### pua_set_publish()
 
 
-The function is used to mark REGISTER requests that have to
-				issue a PUBLISH. The PUBLISH is issued when REGISTER is saved
-				in location table.
+此函数用于标记必须发出 PUBLISH 的 REGISTER 请求。当 REGISTER 保存到位置表时，将发出 PUBLISH。
 
 
-```c title="pua_set_publish usage"
+```c title="pua_set_publish 用法"
 ...
 if(is_method("REGISTER") && $fu=~"john@opensips.org") 
 	pua_set_publish();
@@ -115,6 +105,6 @@ if(is_method("REGISTER") && $fu=~"john@opensips.org")
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享 4.0 许可证。

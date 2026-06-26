@@ -1,142 +1,81 @@
 ---
-title: "Call Control Module"
-description: "This module allows one to limit the duration of calls and automatically end them when they exceed the imposed limit. Its main use case is to implement a prepaid system, but it can also be used to impose a global limit on all calls processed by the proxy."
+title: "呼叫控制模块"
+description: "此模块允许限制呼叫的持续时间并在呼叫超过设定限制时自动结束它们。它的主要用例是实现预付费系统，但也可用于对代理处理的所有呼叫施加全局限制。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module allows one to limit the duration of calls and automatically
-      end them when they exceed the imposed limit. Its main use case is to
-      implement a prepaid system, but it can also be used to impose a global
-      limit on all calls processed by the proxy.
+此模块允许限制呼叫的持续时间并在呼叫超过设定限制时自动结束它们。它的主要用例是实现预付费系统，但也可用于对代理处理的所有呼叫施加全局限制。
 
 
-### Description
+### 描述
 
 
-Callcontrol consists of 3 components:
+Callcontrol 由 3 个组件组成：
 
 
-- The OpenSIPS call_control module
-- An external application called callcontrol which keeps track of
-            the calls that have a time limit and automatically ends them when
-            they exceed it. This application receives requests from OpenSIPS
-            and makes requests to a rating engine (see below) to find out if
-            a call needs to be limited or not. When a call ends (or is ended)
-            it will also instruct the rating engine to debit the balance for
-            the caller with the consumed amount. The callcontrol application
-            is available from http://callcontrol.ag-projects.com/
-- A rating engine that is used to calculate the time limit based on
-            the caller's credit and the destination price and to debit the
-            caller's balance after a call ends. This is available as part of
-            CDRTool from http://cdrtool.ag-projects.com/
+- OpenSIPS call_control 模块
+- 一个名为 callcontrol 的外部应用程序，用于跟踪有时间限制的呼叫并在它们超过限制时自动结束它们。此应用程序接收来自 OpenSIPS 的请求，并向计费引擎发出请求（见下文）以确定呼叫是否需要限制。当呼叫结束（或被结束）时，它还会指示计费引擎扣除呼叫者已消费金额的余额。callcontrol 应用程序可从 http://callcontrol.ag-projects.com/ 获取
+- 一个计费引擎，用于根据呼叫者信用和目的地价格计算时间限制，并在呼叫结束后扣除呼叫者的余额。这作为 CDRTool 的一部分提供，可从 http://cdrtool.ag-projects.com/ 获取
 
 
-The callcontrol application runs on the same machine as OpenSIPS and they
-      communicate over a filesystem socket, while the rating engine can run on
-      a different host and communicates with the callcontrol application using
-      a TCP connection.
+callcontrol 应用程序与 OpenSIPS 运行在同一台机器上，它们通过文件系统套接字通信，而计费引擎可以运行在不同的主机上，通过 TCP 连接与 callcontrol 应用程序通信。
 
 
-Callcontrol is invoked by calling the call_control() function for the
-      initial INVITE of every call we want to apply a limit to. This will end
-      up as a request to the callcontrol application, which will interrogate
-      the rating engine for a time limit for the given caller and destination.
-      The rating engine will determine if the destination has any associated
-      cost and if the caller has any credit limit and if so will return the
-      amount of time he is allowed to call that destination. Otherwise it will
-      indicate that there is no limit associated with the call. If there is a
-      limit, the callcontrol application will retain the session and attach
-      a timer to it that will expire after the given time causing it to call
-      back to OpenSIPS with a request to end the dialog. If the rating engine
-      returns that there is no limit for the call, the session is discarded
-      by the callcontrol application and it will allow it to go proceed any
-      limit. An appropriate response is returned to the call_control module
-      that is then returned by the call_control() function call and allows
-      the script to make a decision based on the answer.
+Callcontrol 通过为每个我们要施加限制的呼叫的初始 INVITE 调用 call_control() 函数来调用。这将最终成为对 callcontrol 应用程序的请求，该应用程序将向计费引擎查询给定呼叫者和目的地的时限。计费引擎将确定目的地是否有相关费用，呼叫者是否有信用额度，如果有，将返回允许呼叫该目的地的时间量。否则，它将指示该呼叫没有关联限制。如果有限制，callcontrol 应用程序将保留会话并附加一个计时器，该计时器将在给定时间后过期，导致它回调 OpenSIPS 并发出结束对话框的请求。如果计费引擎返回该呼叫没有限制，则会话由 callcontrol 应用程序丢弃，并将允许其继续进行而没有任何限制。适当的响应返回给 call_control 模块，然后由 call_control() 函数调用返回，并允许脚本根据答案做出决定。
 
 
-### Features
+### 功能特性
 
 
-- Very simple API consisting of a single function that needs to be
-            called once for the first INVITE of every call. The rest is done
-            automatically in the background using dialog callbacks.
-- Gracefully end dialogs when they exceed their time by triggering
-            a dlg_end_dlg request into the dialog module, that will generate
-            two BYE messages towards each endpoint, ending the call cleanly.
-- Allow parallel sessions using one balance per subscriber
-- Integrates with mediaproxy's ability to detect when a call does
-            timeout sending media and is closed. In this case the dlg_end_dlg
-            that is triggered by mediaproxy will end the callcontrol session
-            before it reaches the limit and consumes all the credit for a call
-            that died and didn't actually take place. For this mediaproxy has
-            to be used and it has to be started by engage_media_proxy() to be
-            able to keep track of the call's dialog and end it on timeout.
-- Even when mediaproxy is unable to end the dialog because it was
-            not started with engage_media_proxy(), the callcantrol application
-            is still able to detect calls that did timeout sending media, by
-            looking in the radius accounting records for entries recorded by
-            mediaproxy for calls that did timeout. These calls will also be
-            ended gracefully by the callcontrol application itself.
-- If the prepaid_account_flag module parameter is defined, the
-            external application compares the OpenSIPS's and the rating engine's
-            views on whether the account calling is prepaid or not and takes
-            appropriate action if they conflict. This provides protection
-            against frauds in case the rating engine malfunctions or there is an
-            inconsistency in the database.
-- If the call_limit_avp is defined to a value greater than 0 it will be
-            passed to the CallControl application, which will limit the number of concurrent
-            calls the billing party (From user or diverter) is able to make. If the limit
-            is reached the call_control function will return a specific error value.
-- The call_token_avp may be used to detect calls with a duplicated CallID that could
-            create potential problems in call rating engines.
+- 非常简单的 API，只有一个函数，需要为每个呼叫的首次 INVITE 调用一次。其余的通过对话框回调在后台自动完成。
+- 当呼叫超过时间时通过触发 dialog 模块的 dlg_end_dlg 请求优雅地结束对话框，这将向每个端点生成两个 BYE 消息，干净地结束呼叫。
+- 使用每个订阅者一个余额允许多个并行会话
+- 与 mediaproxy 检测呼叫何时超时未发送媒体并被关闭的能力集成。在这种情况下，由 mediaproxy 触发的 dlg_end_dlg 将在呼叫达到限制并消耗完已死亡但实际未发生的呼叫的所有信用之前结束 callcontrol 会话。为此，必须使用 mediaproxy，并且必须通过 engage_media_proxy() 启动它，以便能够跟踪呼叫的对话框并在超时时结束它。
+- 即使 mediaproxy 无法结束对话框，因为它不是通过 engage_media_proxy() 启动的，callcontrol 应用程序仍然能够检测到超时未发送媒体的呼叫，方法是在 mediaproxy 记录的 RADIUS 计费记录中查找超时呼叫的条目。这些呼叫也将由 callcontrol 应用程序本身优雅地结束。
+- 如果定义了 prepaid_account_flag 模块参数，外部应用程序会比较 OpenSIPS 和计费引擎关于呼叫账户是否为预付费的观点，并在它们冲突时采取适当行动。这提供了在计费引擎发生故障或数据库不一致的情况下的欺诈保护。
+- 如果 call_limit_avp 定义为大于 0 的值，它将被传递给 CallControl 应用程序，这会将计费方（From 用户或转向者）能够进行的并发呼叫数量限制在该值。如果达到限制，call_control 函数将返回特定的错误值。
+- call_token_avp 可用于检测具有重复 CallID 的呼叫，这可能在计费引擎中造成潜在问题。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *dialog* module
+- *dialog* 模块
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-        running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### disable (int)
 
 
-Boolean flag that specifies if callcontrol should be disabled. This
-        is useful when you want to use the same OpenSIPS configuration in
-        two different context, one using callcontrol, the other not. In the
-        case callcontrol is disabled, calls to the call_control() function
-        will return a code indicating that there is no limit associated with
-        the call, allowing the use of the same configuration without changes.
+一个布尔标志，指定是否应禁用 callcontrol。当您想在两个不同的上下文中使用相同的 OpenSIPS 配置时，这很有用，一个使用 callcontrol，另一个不使用。如果 callcontrol 被禁用，对 call_control() 函数的调用将返回指示呼叫没有关联限制的代码，允许使用相同的配置而无需更改。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Setting the disable parameter"
+```c title="设置 disable 参数"
 ...
 modparam("call_control", "disable", 1)
 ...
@@ -147,15 +86,13 @@ modparam("call_control", "disable", 1)
 #### socket_name (string)
 
 
-It is the path to the filesystem socket where the callcontrol
-        application listens for commands from the module.
+这是 callcontrol 应用程序监听模块命令的文件系统套接字的路径。
 
 
-*Default value is 
-            "/run/callcontrol/socket".*
+*默认值为 "/run/callcontrol/socket"。*
 
 
-```c title="Setting the socket_name parameter"
+```c title="设置 socket_name 参数"
 ...
 modparam("call_control", "socket_name", "/run/callcontrol/socket")
 ...
@@ -166,14 +103,13 @@ modparam("call_control", "socket_name", "/run/callcontrol/socket")
 #### socket_timeout (int)
 
 
-How much time (in milliseconds) to wait for an answer from the
-        callcontrol application.
+等待 callcontrol 应用程序回复的时间（以毫秒为单位）。
 
 
-*Default value is "500" (ms).*
+*默认值为 "500"（毫秒）。*
 
 
-```c title="Setting the socket_timeout parameter"
+```c title="设置 socket_timeout 参数"
 ...
 modparam("call_control", "socket_timeout", 500)
 ...
@@ -184,30 +120,17 @@ modparam("call_control", "socket_timeout", 500)
 #### signaling_ip_avp (string)
 
 
-Specification of the AVP which holds the IP address from where
-        the SIP signaling originated. If this AVP is set it will be used
-        to get the signaling IP address, else the source IP address
-        from where the SIP message was received will be used.
-        This AVP is meant to be used in cases where there are more than
-        one proxy in the call setup path and the proxy that actually
-        starts callcontrol doesn't receive the SIP messages directly
-        from the UA and it cannot determine the NAT IP address from
-        where the signaling originated. In such a case attaching a
-        SIP header at the first proxy and then copying that header's
-        value into the signaling_ip_avp on the proxy that starts
-        callcontrol will allow it to get the correct NAT IP address
-        from where the SIP signaling originated.
+此 AVP 保存 SIP 信令起源 IP 地址的规范。如果设置了这个 AVP，它将被用于获取信令 IP 地址，否则将使用接收 SIP 消息的源 IP 地址。
+此 AVP 旨在在呼叫设置路径中有多个代理且实际启动 callcontrol 的代理不直接从 UA 接收 SIP 消息且无法确定信令起源的 NAT IP 地址的情况下使用。在这种情况下，在第一个代理附加 SIP 头部，然后在启动 callcontrol 的代理上将那个头部的值复制到 signaling_ip_avp 将允许它获取 SIP 信令起源的正确 NAT IP 地址。
 
 
-This is used by the rating engine which finds the rates to apply to a
-        call based on caller's SIP URI, caller's SIP domain or caller's IP
-        address (whichever yields a rate first, in this order).
+这由计费引擎使用，该引擎根据呼叫者的 SIP URI、呼叫者的 SIP 域或呼叫者的 IP 地址（以首先产生费率的顺序）找到要应用于呼叫的费率。
 
 
-*Default value is "$avp(cc_signaling_ip)".*
+*默认值为 "$avp(cc_signaling_ip)"。*
 
 
-```c title="Setting the signaling_ip_avp parameter"
+```c title="设置 signaling_ip_avp 参数"
 ...
 modparam("call_control", "signaling_ip_avp", "$avp(cc_signaling_ip)")
 ...
@@ -218,18 +141,13 @@ modparam("call_control", "signaling_ip_avp", "$avp(cc_signaling_ip)")
 #### canonical_uri_avp (string)
 
 
-Specification of the AVP which holds an optional application defined
-        canonical request URI. When this is set, it will be used as the
-        destination when computing the call price, otherwise the request URI
-        will be used. This is useful when the username of the ruri needs to
-        have a different, canonical form in the rating engine computation
-        than it has in the ruri.
+此 AVP 保存可选的应用程序定义的规范请求 URI 的规范。设置后，它将在计算呼叫价格时用作目的地，否则将使用请求 URI。当 ruri 中的用户名需要在计费引擎计算中具有与 ruri 中不同的规范形式时，这很有用。
 
 
-*Default value is "$avp(cc_can_uri)".*
+*默认值为 "$avp(cc_can_uri)"。*
 
 
-```c title="Setting the canonical_uri_avp parameter"
+```c title="设置 canonical_uri_avp 参数"
 ...
 modparam("call_control", "canonical_uri_avp", "$avp(cc_can_uri)")
 ...
@@ -240,33 +158,22 @@ modparam("call_control", "canonical_uri_avp", "$avp(cc_can_uri)")
 #### diverter_avp (string)
 
 
-Specification of the AVP which holds an optional
-        application defined diverter SIP URI. When this is set, it will be
-        used by the rating engine as the billing party when finding the rates
-        to apply to a given call, otherwise, the caller's URI taken from the
-        From field will be used. When set, this AVP should contain a value in
-        the form "user@domain" (no sip: prefix should be used).
+此 AVP 保存可选的应用程序定义的转向者 SIP URI 的规范。设置后，计费引擎在查找给定呼叫的费率时将其用作计费方，否则将使用 From 字段中的呼叫者 URI。设置时，此 AVP 应包含 "user@domain" 形式的值（不应使用 sip: 前缀）。
 
 
-This is useful when a destination diverts a call, thus becoming the
-        new caller. In this case the billing party is the diverter and this
-        AVP should be set to it, to allow the rating engine to pick the right
-        rates for the call. For example, if A calls B and B diverts all its
-        calls unconditionally to C, then the diverter AVP should the set to
-        B's URI, because B is the billing party in the call not A after the
-        call was diverted.
+当目的地转向呼叫时这很有用，从而成为新的呼叫者。在这种情况下，计费方是转向者，此 AVP 应设置为它，以允许计费引擎为呼叫选择正确的费率。例如，如果 A 呼叫 B，B 无条件地将所有呼叫转向到 C，那么 diverter AVP 应设置为 B 的 URI，因为 B 是呼叫中的计费方，而不是转向后的 A。
 
 
-*Default value is "$avp(diverter)".*
+*默认值为 "$avp(diverter)"。*
 
 
-```c title="Setting the diverter_avp parameter"
+```c title="设置 diverter_avp 参数"
 ...
 modparam("call_control", "diverter_avp", "$avp(diverter)")
 
 route {
   ...
-  # alice@example.com is paying for this call
+  # alice@example.com 为此呼叫付费
   $avp(diverter) = "alice@example.com";
   ...
 }
@@ -278,20 +185,13 @@ route {
 #### prepaid_account_flag (string)
 
 
-The flag that is used to specify whether the account making the call is
-        prepaid or postpaid. Setting this to a non-null value will determine
-        the module to pass the flag's value to the external application. This
-        will allow the external application to compare OpenSIPS's and the rating
-        engine's views on whether the account calling is prepaid or not and take
-        appropriate action if they conflict. The flag should be set from the
-        OpenSIPS configuration for a prepaid account and reset for a postpaid
-        one.
+用于指定呼叫账户是否为预付费的标志。设置此值为非空值将决定模块将标志的值传递给外部应用程序。这将允许外部应用程序比较 OpenSIPS 和计费引擎关于呼叫账户是否为预付费的观点，并在它们冲突时采取适当行动。标志应从 OpenSIPS 配置为预付费账户设置，为后付费账户重置。
 
 
-*Default value is NULL (undefined).*
+*默认值为 NULL（未定义）。*
 
 
-```c title="Setting the prepaid_account_flag parameter"
+```c title="设置 prepaid_account_flag 参数"
 ...
 modparam("call_control", "prepaid_account_flag", "PP_ACC_FLAG")
 ...
@@ -302,16 +202,13 @@ modparam("call_control", "prepaid_account_flag", "PP_ACC_FLAG")
 #### call_limit_avp (string)
 
 
-Specification of the AVP which holds an optional application defined
-        call limit. When this is set, it will be passed to the CallControl
-        application and if the limit is reached the call_control function will
-        return an error code of -4.
+此 AVP 保存可选的应用程序定义的呼叫限制的规范。设置后，它将被传递给 CallControl 应用程序，如果达到限制，call_control 函数将返回错误代码 -4。
 
 
-*Default value is "$avp(cc_call_limit)".*
+*默认值为 "$avp(cc_call_limit)"。*
 
 
-```c title="Setting the call_limit_avp parameter"
+```c title="设置 call_limit_avp 参数"
 ...
 modparam("call_control", "call_limit_avp", "$avp(cc_call_limit)")
 ...
@@ -322,18 +219,13 @@ modparam("call_control", "call_limit_avp", "$avp(cc_call_limit)")
 #### call_token_avp (string)
 
 
-Specification of the AVP which holds an optional application defined
-        token. This token will be used to check if two calls with the same
-        CallID actually refer to the same call. If call_control() is called
-        multiple times for the same call (thus same CallID) the token needs
-        to be the same or call_control will return -3 error, indicating that
-        the CallID is duplicated.
+此 AVP 保存可选的应用程序定义的令牌的规范。此令牌将用于检查具有相同 CallID 的两个呼叫是否实际引用同一个呼叫。如果为同一呼叫（因此具有相同 CallID）多次调用 call_control()，则令牌需要相同，否则 call_control 将返回 -3 错误，表示 CallID 重复。
 
 
-*Default value is "$avp(cc_call_token)".*
+*默认值为 "$avp(cc_call_token)"。*
 
 
-```c title="Setting the call_token_avp parameter"
+```c title="设置 call_token_avp 参数"
 ...
 modparam("call_control", "call_token_avp", "$avp(cc_call_token)")
 ...
@@ -346,27 +238,25 @@ $avp(cc_call_token) := $RANDOM;
 #### init (string)
 
 
-This parameter is used to describe custom call control initialize messages. It represents a
-      list of key value pairs and has the following format:
+此参数用于描述自定义呼叫控制初始化消息。它代表一个键值对列表，格式如下：
 
 
 - "string1 = var1 [string2 = var2]*"
 
 
-The left-hand side of the assignment can be any string.
+赋值的左侧可以是任何字符串。
 
 
-The right-hand side of the assignment must be a script pseudo variable or
-			a script AVP. For more information about them see [CookBooks - Scripting Variables](https://opensips.org/Resources/DocsCoreVar15).
+赋值的右侧必须是脚本伪变量或脚本 AVP。有关更多信息，请参阅[烹饪书 - 脚本变量](https://opensips.org/Resources/DocsCoreVar15)。
 
 
-If the parameter is not set, the default initialize message is sent.
+如果未设置参数，则发送默认初始化消息。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the init parameter"
+```c title="设置 init 参数"
 	
 ...
 modparam("call_control", "init", "call-id=$ci to=$tu from=$fu 
@@ -379,27 +269,25 @@ modparam("call_control", "init", "call-id=$ci to=$tu from=$fu
 #### start (string)
 
 
-This parameter is used to describe custom call control start messages. It represents a
-      list of key value pairs and has the following format:
+此参数用于描述自定义呼叫控制启动消息。它代表一个键值对列表，格式如下：
 
 
 - "string1 = var1 [string2 = var2]*"
 
 
-The left-hand side of the assignment can be any string.
+赋值的左侧可以是任何字符串。
 
 
-The right-hand side of the assignment must be a script pseudo variable or
-			a script AVP. For more information about them see [CookBooks - Scripting Variables](https://opensips.org/Resources/DocsCoreVar15).
+赋值的右侧必须是脚本伪变量或脚本 AVP。有关更多信息，请参阅[烹饪书 - 脚本变量](https://opensips.org/Resources/DocsCoreVar15)。
 
 
-If the parameter is not set, the default start message is sent.
+如果未设置参数，则发送默认启动消息。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the start parameter"
+```c title="设置 start 参数"
 	
 ...
 modparam("call_control", "start", "call-id=$ci to=$tu from=$fu 
@@ -412,27 +300,25 @@ modparam("call_control", "start", "call-id=$ci to=$tu from=$fu
 #### stop (string)
 
 
-This parameter is used to describe custom call control stop messages. It represents a
-      list of key value pairs and has the following format:
+此参数用于描述自定义呼叫控制停止消息。它代表一个键值对列表，格式如下：
 
 
 - "string1 = var1 [string2 = var2]*"
 
 
-The left-hand side of the assignment can be any string.
+赋值的左侧可以是任何字符串。
 
 
-The right-hand side of the assignment must be a script pseudo variable or
-			a script AVP. For more information about them see [CookBooks - Scripting Variables](https://opensips.org/Resources/DocsCoreVar15).
+赋值的右侧必须是脚本伪变量或脚本 AVP。有关更多信息，请参阅[烹饪书 - 脚本变量](https://opensips.org/Resources/DocsCoreVar15)。
 
 
-If the parameter is not set, the default stop message is sent.
+如果未设置参数，则发送默认停止消息。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the stop parameter"
+```c title="设置 stop 参数"
 	
 ...
 modparam("call_control", "stop", "call-id=$ci to=$tu from=$fu 
@@ -442,44 +328,37 @@ modparam("call_control", "stop", "call-id=$ci to=$tu from=$fu
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### call_control()
 
 
-Trigger the use of callcontrol for the dialog started by the INVITE
-        for which this function is called (the function should only be called
-        for the first INVITE of a call). Further in-dialog requests will be
-        processed automatically using internal bindings into the dialog state
-        machine, allowing callcontrol to update its internal state as the
-        dialog progresses, without any other intervention from the script.
+对此函数被调用的 INVITE 启动的对话框启用 callcontrol（此函数应仅在为呼叫的首次 INVITE 时调用）。进一步的对话框内请求将使用与对话框状态机的内部绑定自动处理，允许 callcontrol 在对话框进行时更新其内部状态，而无需脚本的其他干预。
 
 
-This function should be called right before the message is sent out
-        using t_relay(), when all the request uri modifications are over and
-        a final destination has been determined.
+此函数应在使用 t_relay() 发送消息之前调用，此时所有请求 URI 修改都已结束并且已确定最终目的地。
 
 
-This function has the following return codes:
+此函数具有以下返回代码：
 
 
-- +2 - call has no limit
-- +1 - call has limit and is traced by callcontrol
-- -1 - not enough credit to make the call
-- -2 - call is locked by another call in progress
-- -3 - duplicated callid
-- -4 - call limit has been reached
-- -5 - internal error (message parsing, communication, ...)
+- +2 - 呼叫没有限制
+- +1 - 呼叫有限制并被 callcontrol 跟踪
+- -1 - 信用不足，无法进行呼叫
+- -2 - 呼叫被另一个进行中的呼叫锁定
+- -3 - 重复的 callid
+- -4 - 呼叫限制已达到
+- -5 - 内部错误（消息解析、通信、...）
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="Using the call_control function"
+```c title="使用 call_control 函数"
 ...
 if ($avp(805) != NULL) {
-    # the diverter AVP is set, use it as billing party
+    # diverter AVP 已设置，用作计费方
     $avp(billing_party_domain) = $(avp(805){uri.domain});
 } else {
     $avp(billing_party_domain) = $fd;
@@ -490,32 +369,32 @@ if (is_method("INVITE") && !has_totag() &&
     call_control();
     switch ($retcode) {
     case 2:
-        # Call with no limit
+        # 无限制的呼叫
     case 1:
-        # Call has limit and is under callcontrol management
+        # 有限制且受 callcontrol 管理的呼叫
         break;
     case -1:
-        # Not enough credit (prepaid call)
+        # 信用不足（预付费呼叫）
         sl_send_reply(402, "Not enough credit");
         exit;
         break;
     case -2:
-        # Locked by another call in progress (prepaid call)
+        # 被另一个进行中的呼叫锁定（预付费呼叫）
         sl_send_reply(403, "Call locked by another call in progress");
         exit;
         break;
     case -3:
-        # Duplicated callid
+        # 重复的 callid
         sl_send_reply(400, "Duplicated callid");
         exit;
         break;
     case -4:
-        # Call limit reached
+        # 达到呼叫限制
         sl_send_reply(503, "Too many concurrent calls");
         exit;
         break;
     default:
-        # Internal error (message parsing, communication, ...)
+        # 内部错误（消息解析、通信、...）
         if (PREPAID_ACCOUNT) {
             xlog("Call control: internal server error\n");
             sl_send_reply(500, "Internal server error");
@@ -531,6 +410,6 @@ t_relay();
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

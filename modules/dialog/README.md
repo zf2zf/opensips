@@ -1,1384 +1,878 @@
 ---
-title: "dialog Module"
-description: "The dialog module provides dialog awareness to the OpenSIPS proxy. Its functionality is to keep trace of the current dialogs, to offer information about them (like how many dialogs are active)."
+title: "dialog 模块"
+description: "dialog 模块为 OpenSIPS 代理提供对话感知功能。其功能是跟踪当前对话,提供关于对话的信息(如当前有多少活跃对话)。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+dialog 模块为 OpenSIPS 代理提供对话感知功能。其功能是跟踪当前对话,提供关于对话的信息(如当前有多少活跃对话)。
 
+除了跟踪, dialog 模块还提供每个对话的标志和属性(跨对话的持久数据)、对话分析和对话终止(基于超时或外部触发)。
 
-The dialog module provides dialog awareness to the OpenSIPS proxy. Its
-	functionality is to keep trace of the current dialogs, to offer information
-	about them (like how many dialogs are active).
+该模块还通过内部 API 为在更多复杂对话功能之上构建其他 OpenSIPS 模块提供基础。
 
+### 工作原理
 
-Aside tracking, the dialog module offers functionalities like flags and
-	attributes per dialog (persistent data across dialog), dialog profiling
-	and dialog termination (on timeout base or external triggered).
+要创建与初始请求关联的对话,您必须调用 create_dialog() 函数,可以带参数或不带参数。
 
+当收到"BYE"时,对话会自动终止。如果没有"BYE",对话生命周期由默认超时控制(见"default_timeout" - [默认超时](#param_default_timeout))和自定义超时(见"$DLG_timeout" - [DLG 超时](#pv_DLG_timeout))。
 
-The module, via an internal API, also provide the foundation to build on
-	top of it more complex dialog-based functionalities via other OpenSIPS
-	modules.
+一旦终止,内存中的对话可能会立即被销毁,或者,根据"delete_delay" - [删除延迟](#param_delete_delay)) 设置,它可能会在内存中保留一段时间,处于只读状态(无操作、无更改、无)。这种延迟可用于帮助路由可能在对话终止后收到的后期会话中请求(如由于重传的延迟 BYE、跨 BYE 请求、认证的 BYE 请求、慢速 ACK 重新邀请等)。
 
+### 对话分析
 
-### How it works
+对话分析是一种机制,有助于使用对话的任何属性(如呼叫者、目的地、呼叫类型等)对某些类型的对话进行分类、排序和跟踪。对话可以动态添加到不同的(多个)分析表中——从逻辑上讲,每个分析表可以具有特殊含义(如域外对话、终止到 PSTN 的对话等)。
 
+有两种类型的分析:
 
-To create the dialog associated with an initial request, you must call
-	the create_dialog() function, with or without parameter.
+- *无值* - 对话仅属于一个分析。(如外呼分析)。没有其他附加信息来描述对话对该分析的归属;
+- *有值* - 对话属于具有特定值的分析(如呼叫者分析,其中值是呼叫者 ID)。对话对分析的归属与该值密切相关。
 
+一个对话可以同时添加到多个分析中。
 
-The dialog is automatically terminated when a "BYE" is
-	received. In case of no "BYE", the dialog lifetime is
-	controlled via the default timeout (see "default_timeout"
-	- [default timeout](#param_default_timeout)) and custom timeout (see
-	"$DLG_timeout" - [DLG timeout](#pv_DLG_timeout)).
+分析在请求路由中可见(用于初始和顺序请求)以及原始请求的分支、失败和回复路由中。
 
+对话分析也可用于分布式系统,使用 OpenSIPS CacheDB 接口或 *clusterer* 模块。此功能允许您与使用相同 CacheDB 后端或属于 OpenSIPS 集群的多个 OpenSIPS 实例共享对话分析信息。为此,必须定义 **cachedb_url** 或 **profile_replication_cluster** 参数。此外,必须通过在 *profiles_with_value* 或 *profiles_no_value* 参数中的分析名称添加 *'/s'* 或 *'/b'* 后缀之一来将分析标记为共享。
 
-Once terminated, the in-memory dialog may be destroyed right away or, 
-	depending on the "delete_delay"
-	- [delete delay](#param_delete_delay)) setting, it may be kept for a
-	while in memory, in a read-only state (no action, no changes, nothing).
-	This delaying may be used to help with the routing of late in-dialog
-	request that may be received after the dialog terminted (like late BYE's
-	due retransmissions, cross BYE requests, auth'ed BYE request, slow ACK on
-	re-INVITEs, etc).
+### 对话集群
 
+**对话复制** 是一种用于将发生在一个 OpenSIPS 实例上的所有对话更改镜像到一个或多个其他实例的机制。该过程通过使用促进 OpenSIPS 节点集群管理和发送复制相关 BIN 数据包(二进制编码,使用 *proto_bin*)的 *clusterer* 模块来简化。此功能有助于实现高可用性和/或负载均衡 ongoing calls。
 
-### Dialog profiling
+配置接收和发送对话复制数据包非常简单,可以通过使用 **dialog_replication_cluster** 参数来完成。但除了共享数据之外,为了正确地对对话进行集群化,您需要使用 **共享标签** 机制来管理集群中哪个节点对哪个对话执行某些操作。
+有关在不同使用场景中这将如何工作的配置示例,请参阅 [这篇文章](https://blog.opensips.org/2018/03/23/clustering-ongoing-calls-with-opensips-2-4/)。
 
+以下操作**不会**对标记有处于"**备份**"状态的共享标签的对话执行:
 
-Dialog profiling is a mechanism that helps in classifying, sorting and
-	keeping trace of certain types of dialogs, using whatever properties of
-	the dialog (like caller, destination, type of calls, etc).
-	Dialogs can be dynamically added in different (and several) profile
-	tables - logically, each profile table can have a special meaning (like
-	dialogs outside the domain, dialogs terminated to PSTN, etc).
+- 向端点发送重新邀请或 OPTIONS ping
+- 生成 BYE 请求或任何其他操作(如在对话过期时生成 CDR)
+- 在对话事件(更新、删除)上发送复制数据包
+- 在对话所属的分析中计算对话;仅在也启用了分析复制时
 
+除了事件驱动的复制,OpenSIPS 实例还会在启动时首先尝试从集群中的另一个节点学习所有对话信息。数据同步机制要求将集群中的一个节点定义为"**种子**"节点。
+请参阅 [clusterer](../clusterer#capabilities) 模块获取如何执行此操作以及为什么需要的详细信息。
 
-There are two types of profiles:
+在对话复制的上下文中,使用数据库作为获取对话数据重启持久性的故障保护很有用,以防集群中的所有节点都关闭了。如果为集群中的每个节点使用单独的本地 DB,这种方法最有意义。在从集群同步完成后,那些未通过同步重新确认的从数据库加载的对话将被删除并也从数据库中删除。
 
+当已配置对话复制时,也不需要通过 *profile_replication_cluster* 参数配置分析复制。分析信息包含在发送到对话复制集群的对话更新中。但仍必须在 *profiles_with_value* 或 *profiles_no_value* 参数中将分析标记为共享。
 
-- *with no value* - a dialog simply belongs
-			to a profile. (like outbound calls profile). There is no other
-			additional information to describe the dialog's belonging to the
-			profile;
-- *with value* - a dialog belongs to a profile
-			having a certain value (like in caller profile, where the value
-			is the caller ID). The belonging of the dialog to the profile is
-			strictly related to the value.
+当平台有多个 POP,其中为 HA 目的配置了单独的对话复制集群,并且还需要一个全局共享分析的集群时,应配置对话和分析复制。在这种情况下,通过使用共享标签机制来确保正确的对话计数(以避免在对话的活动和备份节点上重复计算每个对话)。
 
+### 依赖
 
-A dialog can be added to multiple profiles in the same time.
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载:
 
-Profiles are visible (at the moment) in the request route (for initial
-	and sequential requests) and in the branch, failure and reply routes of
-	the original request.
+- *TM* - 事务模块
+- *RR* - 记录路由模块,如果在非拓扑隐藏情况下使用对话 ID 匹配,则为可选
+- *clusterer* - 如果设置了 *replication_cluster* 参数(通过 clusterer 模块进行 contact 复制)
 
+#### 外部库或应用程序
 
-Dialog profiles can also be used in distributed systems, using the OpenSIPS
-	CacheDB Interface or the *clusterer* module. This feature
-	allows you to share dialog profile information with multiple OpenSIPS instaces
-	that use the same CacheDB backend or are part of an OpenSIPS cluster. In order
-	to do that, the **cachedb_url** or
-	**profile_replication_cluster** parameters must be defined.
-	Also, the profile must be marked as shared, by adding one of the
-	*'/s'* or *'/b'* suffixes to the name of
-	the profile in the *profiles_with_value* or
-	*profiles_no_value* parameters.
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序:
 
+- *无*。
 
-### Dialog clustering
+### 导出的参数
 
+#### enable_stats (整数)
 
-**Dialog replication** is a mechanism used to
-	mirror all dialog changes taking place in one OpenSIPS instance to one or
-	multiple other instances. The process is simplified by using the
-	*clusterer* module which facilitates the management of a
-	cluster of OpenSIPS nodes and the sending of replication-related BIN packets
-	(binary-encoded, using *proto_bin*). This feature
-	is useful in achieving High Availability and/or Load Balancing for ongoing calls.
+是否应启用统计支持。通过统计变量,模块提供有关对话处理的信息。将其设置为零以禁用或非零以启用。
 
+*默认值为"1(启用)"。*
 
-Configuring both receival and sending of dialog replication packets is trivial
-	and can be done by using the
-	**dialog_replication_cluster** parameter. But in
-	addition to just sharing data, in order to properly cluster dialogs you will
-	need to manage which node in the cluster is doing certain actions on certain
-	dialogs using the **sharing tags** mechanism.
-	For details and configuration examples on how this would work
-	in different usage scenarios, see 
-	[this article](https://blog.opensips.org/2018/03/23/clustering-ongoing-calls-with-opensips-2-4/).
-
-
-The following actions will **not** be performed for a dialog
-	marked with a sharing tag that is in the "**backup**" state:
-
-
-- sending Re-Invite or OPTIONS pings to end-points
-- generating BYE requests or any other actions(like producing CDRs)
-			upon dialog expiration
-- sending replication packets on dialog events(update, delete)
-- counting the dialog in the profiles that it belongs; only if profile replication
-			is also enabled
-
-
-In addition to the event-driven replication, an OpenSIPS instance will first
-	try to learn all the dialog information from antoher node in the cluster at startup.
-	The data synchronization mechanism requires defining one of the nodes in the cluster
-	as a "**seed**" node.
-	See the [clusterer](../clusterer#capabilities) 
-	module for details on how to do this and why is it needed.
-
-
-In the context of dialog replication, using a database as a failsafe for obtaining
-	restart persistency for dialog data is useful in case all nodes in the cluster are down.
-	This approach makes the most sense if a separate, local DB is used for each node in the
-	cluster. Dialogs loaded from the database at startup, which are not reconfirmed through
-	syncing, are dropped and also deleted from the database once the sync from cluster is complete.
-
-
-Also configuring profile replication via the *profile_replication_cluster*
-	parameter is not necessary when dialog replication is already configured. The profile information
-	is included in the dialog updates sent in the dialog replication cluster. The profiles must still
-	be marked for sharing though in the *profiles_with_value* or
-	*profiles_no_value* parameters.
-
-
-A scenario were both profile and dialog replication should be configured is when a platform has
-	multiple POPs, where separate dialog replication clusters are configured for HA purposes, and a
-	cluster for globally shared profiles is also required. In this case, proper counting for dialogs
-	is ensured by using the sharing tags mechanism(in order to avoid counting each dialog twice,
-	both on the active and backup node for that dialog).
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-The following modules must be loaded before this module:
-
-
-- *TM* - Transaction module
-- *RR* - Record-Route module, optional, 
-				if Dialog ID matching is used in non Topo Hiding cases
-- *clusterer* - if *replication_cluster*
-				parameter is set (contact replication via clusterer
-				module)
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
-
-
-- *None*.
-
-
-### Exported Parameters
-
-
-#### enable_stats (integer)
-
-
-If the statistics support should be enabled or not. Via statistic
-		variables, the module provide information about the dialog processing.
-		Set it to zero to disable or to non-zero to enable it.
-
-
-*Default value is "1 (enabled)".*
-
-
-```c title="Set enable_stats parameter"
+```c title="设置 enable_stats 参数"
 ...
 modparam("dialog", "enable_stats", 0)
 ...
 ```
 
+#### hash_size (整数)
 
-#### hash_size (integer)
+用于保存对话的哈希表的大小。较大的表速度更快但消耗更多内存。哈希大小必须是 2 的幂。
 
+重要:如果要将对话信息存储在数据库中,则应使用恒定的 hash_size,否则恢复过程将不会发生。如果您真的想修改 hash_size,必须在重启 OpenSIPS 之前删除所有表行。
 
-The size of the hash table internally used to keep the dialogs. A
-		larger table is much faster but consumes more memory. The hash size
-		must be a power of 2 number.
+*默认值为"4096"。*
 
-
-IMPORTANT: If dialogs' information should be stored in a database,
-		a constant hash_size should be used, otherwise the restored process
-		will not take place. If you really want to modify the hash_size you
-		must delete all table's rows before restarting OpenSIPS.
-
-
-*Default value is "4096".*
-
-
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("dialog", "hash_size", 1024)
 ...
 ```
 
+#### log_profile_hash_size (整数)
 
-#### log_profile_hash_size (integer)
+用于存储 profile->dialog 关联的哈希表的大小。较大的表可以提供更多并行操作但消耗更多内存。哈希大小以 2 为底的对数提供(例如,log_profile_hash_size =4 表示表有 2^4 个条目)。
 
+*默认值为"4"。*
 
-The size of the hash table internally used to store  profile->dialog
-		associations. A larger table can provide more
-		parallel operations but consumes more memory. The hash size
-		is provided as the base 2 logarithm(e.g. log_profile_hash_size =4
-		means the table has 2^4 entries).
-
-
-*Default value is "4".*
-
-
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
-modparam("dialog", "log_profile_hash_size", 5) #set a table size of 32
+modparam("dialog", "log_profile_hash_size", 5) #设置表大小为 32
 ...
 ```
 
+#### rr_param (字符串)
 
-#### rr_param (string)
+要用对话 cookie 添加的 Record-Route 参数的名称。它用于快速匹配顺序请求的对话。
 
+*默认值为"did"。*
 
-Name of the Record-Route parameter to be added with the dialog cookie.
-		It is used for fast dialog matching of the sequential requests.
-
-
-*Default value is "did".*
-
-
-```c title="Set rr_param parameter"
+```c title="设置 rr_param 参数"
 ...
 modparam("dialog", "rr_param", "xyz")
 ...
 ```
 
+#### default_timeout (整数)
 
-#### default_timeout (integer)
+如果没有设置自定义超时,则为默认对话超时(秒)。
 
+*默认值为"43200(12 小时)"。*
 
-The default dialog timeout (in seconds) if no custom one is set.
-
-
-*Default value is "43200 (12 hours)".*
-
-
-```c title="Set default_timeout parameter"
+```c title="设置 default_timeout 参数"
 ...
 modparam("dialog", "default_timeout", 21600)
 ...
 ```
 
+#### dlg_extra_hdrs (字符串)
 
-#### dlg_extra_hdrs (string)
+一个字符串,包含要添加到模块生成的请求(如 BYE)中的额外首部(完整格式,带 EOH)。
 
+*默认值为"NULL"。*
 
-A string containing the extra headers (full format, with EOH)
-		to be added in the requests generated by the module (like BYEs).
-
-
-*Default value is "NULL".*
-
-
-```c title="Set dlf_extra_hdrs parameter"
+```c title="设置 dlf_extra_hdrs 参数"
 ...
 modparam("dialog", "dlg_extra_hdrs", "Hint: credit expired\r\n")
 ...
 ```
 
+#### dlg_match_mode (整数)
 
-#### dlg_match_mode (integer)
+顺序请求应如何与已知对话匹配。这些模式是在 Record-Route 首部中存储为 cookie 的 cookie(DID)匹配和基于 SIP 元素(如 RFC3261 中)的匹配的组合。
 
+支持的模式有:
 
-How the seqential requests should be matched against the known dialogs.
-		The modes are a combination between matching based on a cookie (DID)
-		stored as cookie in Record-Route header and the matching based on SIP
-		elements (as in RFC3261).
+- *0 - DID_ONLY* - 匹配完全基于 DID 完成;
+- *1 - DID_FALLBACK* - 匹配首先尝试基于 DID,如果不存在,则回退到 SIP 匹配;
+- *2 - DID_NONE* - 匹配完全基于 SIP 元素完成;不在 RR 中添加 DID 信息。
 
+*默认值为"1 (DID_FALLBACK)"。*
 
-The supported modes are:
+请注意,如果您在 OpenSIPS 服务器上有呼叫循环(多次通过同一 OpenSIPS 实例),强烈建议仅使用 DID_ONLY 模式,因为基于 SIP 的匹配将有未定义行为 - 从 SIP 角度看,顺序对话将匹配呼叫的所有循环,因为 Call-ID、To 和 From TAG 都相同。
 
-
-- *0 - DID_ONLY* - the match is done
-				exclusively based on DID;
-- *1 - DID_FALLBACK* - the match is first
-				tried based on DID and if not present, it will fallback to
-				SIP matching;
-- *2 - DID_NONE* - the match is done
-				exclusively based on SIP elements; no DID information is added
-				in RR.
-
-
-*Default value is "1 (DID_FALLBACK)".*
-
-
-NOTE that if you have call looping on your OpenSIPS server (passing
-		more than once through the same OpenSIPS instance), it is strongly
-		suggested to use only DID_ONLY mode, as the SIP based matching will
-		have an undefined behavior - from SIP perspective, a sequential
-		dialog will match all the loops of the call, as the Call-ID, To and 
-		From TAGs are the same.
-
-
-```c title="Set dlg_match_mode parameter"
+```c title="设置 dlg_match_mode 参数"
 ...
 modparam("dialog", "dlg_match_mode", 0)
 ...
 ```
 
+#### delete_delay (整数)
 
-#### delete_delay (integer)
+在终止后延迟删除/从内存中移除对话的时间间隔(秒)。一旦终止,对话将保持在只读状态(无操作、无更改),但仍能匹配和路由后期的会话中请求。
 
+此全局值可以通过对话的 DLG_del_delay "$DLG_del_delay"([DLG del delay](#pv_DLG_del_delay)) 脚本变量进行每个呼叫的更改。
 
-The interval (seconds) to delay a dialog deletion / removal from
-			memory AFTER its termination. Once terminated, the dialog will
-			be kept in a read only state (no action, no changes), but it will
-			still be able to match and route late in-dialog requests.
+*默认值为"0"(禁用)。*
 
-
-This global value may be per-call changed via the DLG_del_delay
-			"$DLG_del_delay" ([DLG del delay](#pv_DLG_del_delay))
-			script variable.
-
-
-*Default value is "0" (disabled).*
-
-
-```c title="Set delete_delay parameter"
+```c title="设置 delete_delay 参数"
 ...
 modparam("dialog", "delete_delay", 10)
 ...
 ```
 
+#### db_url (字符串)
 
-#### db_url (string)
+如果您想将对话信息存储在数据库中,则必须指定数据库 URL。
 
+*默认值为"mysql://opensips:opensipsrw@localhost/opensips"。*
 
-If you want to store the information about the dialogs in a database
-		a database url must be specified.
-
-
-*Default value is "mysql://opensips:opensipsrw@localhost/opensips".*
-
-
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("dialog", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
 ```
 
+#### db_mode (整数)
 
-#### db_mode (integer)
+描述如何将对话信息从内存推送到 DB。
 
+支持的模式有:
 
-Describe how to push into the DB the dialogs' information from memory.
+- *0 - NO_DB* - 内存内容不
+				刷新到数据库;
+- *1 - REALTIME* - 任何对话信息
+				更改都会立即反映到数据库中。
+- *2 - DELAYED* - 对话信息
+				更改将定期刷新到数据库,基于定时器例程。
+- *3 - SHUTDOWN* - 对话信息
+				仅在关闭时刷新到数据库 - 无运行时更新。
 
+*默认值为"0"。*
 
-The supported modes are:
-
-
-- *0 - NO_DB* - the memory content is not
-				flushed into DB;
-- *1 - REALTIME* - any dialog information
-				changes will be reflected into the database immediately.
-- *2 - DELAYED* - the dialog information
-				changes will be flushed into the DB periodically, based on a
-				timer routine.
-- *3 - SHUTDOWN* - the dialog information
-				will be flushed into DB only at shutdown - no runtime updates.
-
-
-*Default value is "0".*
-
-
-```c title="Set db_mode parameter"
+```c title="设置 db_mode 参数"
 ...
 modparam("dialog", "db_mode", 1)
 ...
 ```
 
+#### db_update_period (整数)
 
-#### db_update_period (integer)
+如果选择以给定间隔存储对话信息,则更新对话信息的间隔(秒)。太短的间隔会产生密集的数据库操作,太长的间隔会忽略短对话。
 
+*默认值为"60"。*
 
-The interval (seconds) at which to update dialogs' information if you chose to store the dialogs' info at a given interval.
-			A too short interval will generate intensive database operations, a too large one will not notice short dialogs.
-
-
-*Default value is "60".*
-
-
-```c title="Set db_update_period parameter"
+```c title="设置 db_update_period 参数"
 ...
 modparam("dialog", "db_update_period", 120)
 ...
 ```
 
+#### options_ping_interval (整数)
 
-#### options_ping_interval (integer)
+OpenSIPS 将生成会话中 OPTIONS ping 的一方或双方的时间间隔(秒)。
 
+*默认值为"30"。*
 
-The interval (seconds) at which OpenSIPS will generate in-dialog
-		OPTIONS pings for one or both of the involved parties.
-
-
-*Default value is "30".*
-
-
-```c title="Set options_ping_interval parameter"
+```c title="设置 options_ping_interval 参数"
 ...
 modparam("dialog", "options_ping_interval", 20)
 ...
 ```
 
+#### reinvite_ping_interval (整数)
 
-#### reinvite_ping_interval (integer)
+OpenSIPS 将生成会话中重新邀请 ping 的一方或双方的时间间隔(秒)。
 
+**重要:** ping 超时检测每次此间隔 tick 时都会执行,而不是在重新邀请事务超时时!因此,请确保重新邀请事务的超时(例如"tm"模块的"fr_timeout" modparam或其 $T_fr_timeout 变量)始终**低于**此参数的值!未能确保此超时顺序可能会导致重新邀请 ping 由于在有机会正确超时之前重试而永远不会结束断开的对话。
 
-The interval (seconds) at which OpenSIPS will generate in-dialog
-		Re-INVITE pings for one or both of the involved parties.
+*默认值为"300"。*
 
-
-**Important:** the ping timeout detection
-		is performed every time this interval ticks, not when the re-INVITE
-		transaction times out! Consequently, please make sure that the
-		timeouts for re-INVITE transactions (e.g. the "fr_timeout"
-		modparam of the "tm" module or its $T_fr_timeout variable) are
-		always **lower** than the value of this
-		parameter! Failing to ensure this ordering of timeouts may possibly
-		lead to re-INVITE pings never ending a disconnected dialog due to pings
-		getting retried before getting a chance to properly time out.
-
-
-*Default value is "300".*
-
-
-```c title="Set reinvite_ping_interval parameter"
+```c title="设置 reinvite_ping_interval 参数"
 ...
 modparam("dialog", "reinvite_ping_interval", 600)
 ...
 ```
 
+#### table_name (字符串)
 
-#### table_name (string)
+如果您想将对话信息存储在数据库中,则必须指定表名。
 
+*默认值为"dialog"。*
 
-If you want to store the information about the dialogs in a
-		database a table name must be specified.
-
-
-*Default value is "dialog".*
-
-
-```c title="Set table_name parameter"
+```c title="设置 table_name 参数"
 ...
 modparam("dialog", "table_name", "my_dialog")
 ...
 ```
 
+#### call_id_column (字符串)
 
-#### call_id_column (string)
+数据库中存储对话 callid 的列名。
 
+*默认值为"callid"。*
 
-The column's name in the database to store the dialogs' callid.
-
-
-*Default value is "callid".*
-
-
-```c title="Set call_id_column parameter"
+```c title="设置 call_id_column 参数"
 ...
 modparam("dialog", "call_id_column", "callid_c_name")
 ...
 ```
 
+#### from_uri_column (字符串)
 
-#### from_uri_column (string)
+数据库中存储呼叫者 sip 地址的列名。
 
+*默认值为"from_uri"。*
 
-The column's name in the database to store the caller's
-			sip address.
-
-
-*Default value is "from_uri".*
-
-
-```c title="Set from_uri_column parameter"
+```c title="设置 from_uri_column 参数"
 ...
 modparam("dialog", "from_uri_column", "from_uri_c_name")
 ...
 ```
 
+#### from_tag_column (字符串)
 
-#### from_tag_column (string)
+数据库中存储邀请请求的 From tag 的列名。
 
+*默认值为"from_tag"。*
 
-The column's name in the database to store the From tag from
-			the Invite request.
-
-
-*Default value is "from_tag".*
-
-
-```c title="Set from_tag_column parameter"
+```c title="设置 from_tag_column 参数"
 ...
 modparam("dialog", "from_tag_column", "from_tag_c_name")
 ...
 ```
 
+#### to_uri_column (字符串)
 
-#### to_uri_column (string)
+数据库中存储被叫者 sip 地址的列名。
 
+*默认值为"to_uri"。*
 
-The column's name in the database to store the calee's sip address.
-
-
-*Default value is "to_uri".*
-
-
-```c title="Set to_uri_column parameter"
+```c title="设置 to_uri_column 参数"
 ...
 modparam("dialog", "to_uri_column", "to_uri_c_name")
 ...
 ```
 
+#### to_tag_column (字符串)
 
-#### to_tag_column (string)
+数据库中存储邀请请求的 200 OK 响应中的 To tag 的列名(如果存在)。
 
+*默认值为"to_tag"。*
 
-The column's name in the database to store the To tag from
-			the 200 OK response to the Invite request, if present.
-
-
-*Default value is "to_tag".*
-
-
-```c title="Set to_tag_column parameter"
+```c title="设置 to_tag_column 参数"
 ...
 modparam("dialog", "to_tag_column", "to_tag_c_name")
 ...
 ```
 
+#### from_cseq_column (字符串)
 
-#### from_cseq_column (string)
+数据库中存储呼叫者端 cseq 的列名。
 
+*默认值为"caller_cseq"。*
 
-The column's name in the database to store the cseq from caller
-			side.
-
-
-*Default value is "caller_cseq".*
-
-
-```c title="Set from_cseq_column parameter"
+```c title="设置 from_cseq_column 参数"
 ...
 modparam("dialog", "from_cseq_column", "from_cseq_c_name")
 ...
 ```
 
+#### to_cseq_column (字符串)
 
-#### to_cseq_column (string)
+数据库中存储被叫者端 cseq 的列名。
 
+*默认值为"callee_cseq"。*
 
-The column's name in the database to store the cseq from callee
-			side.
-
-
-*Default value is "callee_cseq".*
-
-
-```c title="Set to_cseq_column parameter"
+```c title="设置 to_cseq_column 参数"
 ...
 modparam("dialog", "to_cseq_column", "to_cseq_c_name")
 ...
 ```
 
+#### from_route_column (字符串)
 
-#### from_route_column (string)
+数据库中存储来自呼叫者端的路由记录的列名(代理到呼叫者)。
 
+*默认值为"caller_route_set"。*
 
-The column's name in the database to store the route records from
-			caller side (proxy to caller).
-
-
-*Default value is "caller_route_set".*
-
-
-```c title="Set from_route_column parameter"
+```c title="设置 from_route_column 参数"
 ...
 modparam("dialog", "from_route_column", "from_route_c_name")
 ...
 ```
 
+#### to_route_column (字符串)
 
-#### to_route_column (string)
+数据库中存储来自被叫者端的路由记录的列名(代理到被叫者)。
 
+*默认值为"callee_route_set"。*
 
-The column's name in the database to store the route records from
-			callee side (proxy to callee).
-
-
-*Default value is "callee_route_set".*
-
-
-```c title="Set to_route_column parameter"
+```c title="设置 to_route_column 参数"
 ...
 modparam("dialog", "to_route_column", "to_route_c_name")
 ...
 ```
 
+#### from_contact_column (字符串)
 
-#### from_contact_column (string)
+数据库中存储呼叫者 contact uri 的列名。
 
+*默认值为"caller_contact"。*
 
-The column's name in the database to store the caller's contact
-			uri.
-
-
-*Default value is "caller_contact".*
-
-
-```c title="Set from_contact_column parameter"
+```c title="设置 from_contact_column 参数"
 ...
 modparam("dialog", "from_contact_column", "from_contact_c_name")
 ...
 ```
 
+#### to_contact_column (字符串)
 
-#### to_contact_column (string)
+数据库中存储被叫者 contact uri 的列名。
 
+*默认值为"callee_contact"。*
 
-The column's name in the database to store the callee's contact
-			uri.
-
-
-*Default value is "callee_contact".*
-
-
-```c title="Set to_contact_column parameter"
+```c title="设置 to_contact_column 参数"
 ...
 modparam("dialog", "to_contact_column", "to_contact_c_name")
 ...
 ```
 
+#### from_sock_column (字符串)
 
-#### from_sock_column (string)
+数据库中存储有关接收来自呼叫者的流量的本地接口信息的列名。
 
+*默认值为"caller_sock"。*
 
-The column's name in the database to store the information about
-			the local interface receiving the traffic from caller.
-
-
-*Default value is "caller_sock".*
-
-
-```c title="Set from_sock_column parameter"
+```c title="设置 from_sock_column 参数"
 ...
 modparam("dialog", "from_sock_column", "from_sock_c_name")
 ...
 ```
 
+#### to_sock_column (字符串)
 
-#### to_sock_column (string)
+数据库中存储有关接收来自被叫者的流量的本地接口信息的列名。
 
+*默认值为"callee_sock"。*
 
-The column's name in the database to store information about the
-			local interface receiving the traffic from callee.
-
-
-*Default value is "callee_sock".*
-
-
-```c title="Set to_sock_column parameter"
+```c title="设置 to_sock_column 参数"
 ...
 modparam("dialog", "to_sock_column", "to_sock_c_name")
 ...
 ```
 
+#### dlg_id_column (字符串)
 
-#### dlg_id_column (string)
+数据库中存储对话 id 信息的列名。
 
+*默认值为"dlg_id"。*
 
-The column's name in the database to store the dialogs'
-			id information.
-
-
-*Default value is "dlg_id".*
-
-
-```c title="Set dlg_id_column parameter"
+```c title="设置 dlg_id_column 参数"
 ...
 modparam("dialog", "dlg_id_column", "dlg_id_c_name")
 ...
 ```
 
+#### state_column (字符串)
 
-#### state_column (string)
+数据库中存储对话状态信息的列名。
 
+*默认值为"state"。*
 
-The column's name in the database to store the
-			dialogs' state information.
-
-
-*Default value is "state".*
-
-
-```c title="Set state_column parameter"
+```c title="设置 state_column 参数"
 ...
 modparam("dialog", "state_column", "state_c_name")
 ...
 ```
 
+#### start_time_column (字符串)
 
-#### start_time_column (string)
+数据库中存储对话开始时间信息的列名。
 
+*默认值为"start_time"。*
 
-The column's name in the database to store the
-			dialogs' start time information.
-
-
-*Default value is "start_time".*
-
-
-```c title="Set start_time_column parameter"
+```c title="设置 start_time_column 参数"
 ...
 modparam("dialog", "start_time_column", "start_time_c_name")
 ...
 ```
 
+#### timeout_column (字符串)
 
-#### timeout_column (string)
+数据库中存储对话超时的列名。
 
+*默认值为"timeout"。*
 
-The column's name in the database to store the dialogs' timeout.
-
-
-*Default value is "timeout".*
-
-
-```c title="Set timeout_column parameter"
+```c title="设置 timeout_column 参数"
 ...
 modparam("dialog", "timeout_column", "timeout_c_name")
 ...
 ```
 
+#### profiles_column (字符串)
 
-#### profiles_column (string)
+数据库中存储对话分析的列名。
 
+*默认值为"profiles"。*
 
-The column's name in the database to store the dialogs' profiles.
-
-
-*Default value is "profiles".*
-
-
-```c title="Set profiles_column parameter"
+```c title="设置 profiles_column 参数"
 ...
 modparam("dialog", "profiles_column", "profiles_c_name")
 ...
 ```
 
+#### vars_column (字符串)
 
-#### vars_column (string)
+数据库中存储对话变量的列名。
 
+*默认值为"vars"。*
 
-The column's name in the database to store the dialogs' vars.
-
-
-*Default value is "vars".*
-
-
-```c title="Set vars_column parameter"
+```c title="设置 vars_column 参数"
 ...
 modparam("dialog", "vars_column", "vars_c_name")
 ...
 ```
 
+#### sflags_column (字符串)
 
-#### sflags_column (string)
+数据库中存储对话脚本标志的列名。
 
+*默认值为"script_flags"。*
 
-The column's name in the database to store the dialogs' script flags.
-
-
-*Default value is "script_flags".*
-
-
-```c title="Set sflags_column parameter"
+```c title="设置 sflags_column 参数"
 ...
 modparam("dialog", "sflags_column", "sflags_c_name")
 ...
 ```
 
+#### mflags_column (字符串)
 
-#### mflags_column (string)
+数据库中存储对话模块标志的列名。
 
+*默认值为"module_flags"。*
 
-The column's name in the database to store the dialogs' module flags.
-
-
-*Default value is "module_flags".*
-
-
-```c title="Set mflags_column parameter"
+```c title="设置 mflags_column 参数"
 ...
 modparam("dialog", "mflags_column", "mflags_c_name")
 ...
 ```
 
+#### flags_column (字符串)
 
-#### flags_column (string)
+数据库中存储对话标志的列名。
 
+*默认值为"flags"。*
 
-The column's name in the database to store the dialogs' flags.
-
-
-*Default value is "flags".*
-
-
-```c title="Set flags_column parameter"
+```c title="设置 flags_column 参数"
 ...
 modparam("dialog", "flags_column", "flags_c_name")
 ...
 ```
 
+#### profiles_with_value (字符串)
 
-#### profiles_with_value (string)
+带值的分析名称列表(字母数字/-/_)。标志 */b* 或 */s* 允许分别使用 clusterer 模块或 CacheDB 后端在 OpenSIPS 实例之间共享分析。
 
+*默认值为"empty"。*
 
-List of names (alphanumerical/-/_) for profiles with values. Flags
-			*/b* or */s* allow sharing
-			profiles between OpenSIPS instances using the clusterer module or a
-			CacheDB backend, respectively.
-
-
-*Default value is "empty".*
-
-
-```c title="Set profiles_with_value parameter"
+```c title="设置 profiles_with_value 参数"
 ...
 modparam("dialog", "profiles_with_value", "callerCC; gatewayCC; clientChannels/s; codecUsed/b;")
 ...
 ```
 
+#### profiles_no_value (字符串)
 
-#### profiles_no_value (string)
+无值的分析名称列表(字母数字/-/_)。标志 */b* 或 */s* 允许分别使用 clusterer 模块或 CacheDB 后端在 OpenSIPS 实例之间共享分析。
 
+*默认值为"empty"。*
 
-List of names (alphanumerical/-/_) for profiles without values. Flags
-			*/b* or */s* allow sharing
-			profiles between OpenSIPS instances using the clusterer module or a
-			CacheDB backend, respectively.
-
-
-*Default value is "empty".*
-
-
-```c title="Set profiles_no_value parameter"
+```c title="设置 profiles_no_value 参数"
 ...
 modparam("dialog", "profiles_no_value", "inbound ; outbound ; shared/s; repl/b;")
 ...
 ```
 
+#### db_flush_vals_profiles (整数)
 
-#### db_flush_vals_profiles (int)
+将对话值、分析和标志连同其他对话状态信息一起推送到数据库(见 db_mode 1 和 2)。
 
+*默认值为"empty"。*
 
-Pushes dialog values, profiles and flags into the database
-			along with other dialog state information (see db_mode 1 and 2).
-
-
-*Default value is "empty".*
-
-
-```c title="Set db_flush_vals_profiles parameter"
+```c title="设置 db_flush_vals_profiles 参数"
 ...
 modparam("dialog", "db_flush_vals_profiles", 1)
 ...
 ```
 
+#### timer_bulk_del_no (整数)
 
-#### timer_bulk_del_no (int)
+应同时尝试删除的对话数量(单个查询)。
 
+*默认值为"1"。*
 
-The number of dialogs that should be attempted to be
-			deleted at the same time ( a single query ) from the
-			DB back-end.
-
-
-*Default value is "1".*
-
-
-```c title="Set timer_bulk_del_no parameter"
+```c title="设置 timer_bulk_del_no 参数"
 ...
 modparam("dialog", "timer_bulk_del_no", 10)
 ...
 ```
 
+#### race_condition_timeout (整数)
 
-#### race_condition_timeout (int)
+如果使用'E'标志创建对话,并且发生了 SIP Race condition,则对话将在'race_condition_timeout'秒后终止。目前,唯一支持的 race conditions 是(200OK vs CANCEL)和(early BYE vs 200OK)
 
+*默认值为"5"秒。*
 
-If dialog is created using the 'E' flag, and a SIP Race condition happens, then the dialog will be terminated after 'race_condition_timeout' seconds.
-		Currently, the only supported race conditions are (200OK vs CANCEL) and (early BYE vs 200OK)
-
-
-*Default value is "5" seconds.*
-
-
-```c title="Set race_condition_timeout parameter"
+```c title="设置 race_condition_timeout 参数"
 ...
 modparam("dialog", "race_condition_timeout", 1)
 ...
 ```
 
+#### cachedb_url (字符串)
 
-#### cachedb_url (string)
+启用分布式对话分析,并指定 CacheDB 接口应使用的后端。
 
+*默认值为"empty"。*
 
-Enables distributed dialog profiles and specifies the
-			backend that should be used by the CacheDB interface.
-
-
-*Default value is "empty".*
-
-
-```c title="Set cachedb_url parameter"
+```c title="设置 cachedb_url 参数"
 ...
 modparam("dialog", "cachedb_url", "redis://127.0.0.1:6379")
 ...
 ```
 
+#### profile_value_prefix (字符串)
 
-#### profile_value_prefix (string)
+指定在将带值的分析插入 CacheDB 后端时要添加的前缀。这仅在启用分布式分析时使用。
 
+*默认值为"dlg_val_"。*
 
-Specifies what prefix should be added to the profiles with
-			value when they are inserted into CacheDB backed. This is
-			only used when distributed profiles are enabled.
-
-
-*Default value is "dlg_val_".*
-
-
-```c title="Set profile_value_prefix parameter"
+```c title="设置 profile_value_prefix 参数"
 ...
 modparam("dialog", "profile_value_prefix", "dlgv_")
 ...
 ```
 
+#### profile_no_value_prefix (字符串)
 
-#### profile_no_value_prefix (string)
+指定在将无值的分析插入 CacheDB 后端时要添加的前缀。这仅在启用分布式分析时使用。
 
+*默认值为"dlg_noval_"。*
 
-Specifies what prefix should be added to the profiles without
-			value when they are inserted into CacheDB backed. This is
-			only used when distributed profiles are enabled.
-
-
-*Default value is "dlg_noval_".*
-
-
-```c title="Set profile_no_value_prefix parameter"
+```c title="设置 profile_no_value_prefix 参数"
 ...
 modparam("dialog", "profile_no_value_prefix", "dlgnv_")
 ...
 ```
 
+#### profile_size_prefix (字符串)
 
-#### profile_size_prefix (string)
+指定在 CacheDB 后端中保存带值分析大小的实体时要添加的前缀。这仅在启用分布式分析时使用。
 
+*默认值为"dlg_size_"。*
 
-Specifies what prefix should be added to the entity that holds
-			the profiles with value size in CacheDB backed. This is
-			only used when distributed profiles are enabled.
-
-
-*Default value is "dlg_size_".*
-
-
-```c title="Set profile_size_prefix parameter"
+```c title="设置 profile_size_prefix 参数"
 ...
 modparam("dialog", "profile_size_prefix", "dlgs_")
 ...
 ```
 
+#### profile_timeout (整数)
 
-#### profile_timeout (int)
+指定对话分析应在 CacheDB 中保持有效的时长,直到过期。这仅在启用分布式分析时使用。
 
+*默认值为"86400"。*
 
-Specifies how long a dialog profile should be kept in the CacheDB
-			until it expires. This is only used when distributed profiles are
-			enabled.
-
-
-*Default value is "86400".*
-
-
-```c title="Set profile_timeout parameter"
+```c title="设置 profile_timeout 参数"
 ...
 modparam("dialog", "profile_timeout", "43200")
 ...
 ```
 
+#### dialog_replication_cluster (整数)
 
-#### dialog_replication_cluster (int)
+使用 *clusterer* 模块指定对话复制的集群 ID。这启用在集群中发送和接收所有对话相关事件(创建、更新和删除)。
 
+此 OpenSIPS 集群公开 **"dialog-dlg-repl"**
+能力,以将节点标记为在任意同步请求期间有资格成为数据供体。因此,集群必须至少有一个节点标记为 **"seed"** 值作为 *clusterer.flags* 列/属性才能完全正常运行。
+请参阅 [clusterer - 能力](../clusterer#capabilities) 章节获取更多详细信息。
 
-Specifies the cluster ID for dialog replication using the
-			*clusterer* module. This enables sending
-			and receiving all the dialog-related events (creation, update and
-			deletion) in the cluster.
+*默认值为"0"(无复制)。*
 
-
-This OpenSIPS cluster exposes the **"dialog-dlg-repl"**
-capability in order to mark nodes as eligible for becoming data donors during an
-arbitrary sync request. Consequently, the cluster must have *at least
-one node* marked with the **"seed"** value
-as the *clusterer.flags* column/property in order to be fully functional.
-Consult the [clusterer - Capabilities](../clusterer#capabilities)
-chapter for more details.
-
-
-*Default value is "0" (no replication).*
-
-
-```c title="Set dialog_replication_cluster parameter"
+```c title="设置 dialog_replication_cluster 参数"
 ...
 modparam("dialog", "dialog_replication_cluster", 1)
 ...
 ```
 
+#### profile_replication_cluster (整数)
 
-#### profile_replication_cluster (int)
+使用 *clusterer* 模块指定分析复制的集群 ID。这启用在集群中发送和接收分析信息(值、对话计数)。
 
+*默认值为"0"(无复制)。*
 
-Specifies the cluster ID for profile replication using the
-			*clusterer* module. This enables sending
-			and receiving the profile information (value, dialog count)
-			in the cluster.
-
-
-*Default value is "0" (no replication).*
-
-
-```c title="Set profile_replication_cluster parameter"
+```c title="设置 profile_replication_cluster 参数"
 ...
 modparam("dialog", "profile_replication_cluster", 1)
 ...
 ```
 
+#### replicate_profiles_buffer (字符串)
 
-#### replicate_profiles_buffer (string)
+用于指定二进制复制使用的缓冲区长度(字节)。通常这应该足够大以容纳尽可能多的数据,但又要足够小以避免 UDP 分片。建议值是所有复制实例之间的最小 MTU。
 
+*默认值为 1400 字节。*
 
-Used to specify the length of the buffer used by the binary
-		replication, in bytes. Usually this should be big enough to hold
-		as much data as possible, but small enough to avoid UDP
-		fragmentation. The recommended value is the smallest MTU between
-		all the replication instances.
-
-
-*Default value is 1400 bytes.*
-
-
-```c title="Set replicate_profiles_buffer parameter"
+```c title="设置 replicate_profiles_buffer 参数"
 ...
 modparam("dialog", "replicate_profiles_buffer", 500)
 ...
 ```
 
+#### replicate_profiles_check (字符串)
 
-#### replicate_profiles_check (string)
+检查旧复制分析值是否过时且应被移除的时间间隔(秒),以秒为单位。
 
+*默认值为 10 秒。*
 
-Timer in seconds, used to specify how often the module should check
-		whether old, replicated profiles values are obsolete and should be removed.
-		should replicate its profiles to the other instances.
-
-
-*Default value is 10 s.*
-
-
-```c title="Set replicate_profiles_check parameter"
+```c title="设置 replicate_profiles_check 参数"
 ...
 modparam("dialog", "replicate_profiles_check", 100)
 ...
 ```
 
+#### replicate_profiles_timer (字符串)
 
-#### replicate_profiles_timer (string)
+指定模块应多久将分析复制到其他实例一次的时间间隔,以毫秒为单位。
 
+*默认值为 200 毫秒。*
 
-Timer in milliseconds, used to specify how often the module
-		should replicate its profiles to the other instances.
-
-
-*Default value is 200 ms.*
-
-
-```c title="Set replicate_profiles_timer parameter"
+```c title="设置 replicate_profiles_timer 参数"
 ...
 modparam("dialog", "replicate_profiles_timer", 100)
 ...
 ```
 
+#### replicate_profiles_expire (字符串)
 
-#### replicate_profiles_expire (string)
+指定从不同实例收到的分析计数器不再考虑的过期时间(秒)。这用于防止实例停止复制其计数器时的过时值。
 
+*默认值为 10 秒。*
 
-Timer in seconds, used to specify when the profiles counters received
-		from a different instance should no longer be taken into account.
-		This is used to prevent obsolete values, in case an instance stops
-		replicating its counters.
-
-
-*Default value is 10 s.*
-
-
-```c title="Set replicate_profiles_expire parameter"
+```c title="设置 replicate_profiles_expire 参数"
 ...
 modparam("dialog", "replicate_profiles_expire", 10)
 ...
 ```
 
+#### cluster_auto_sync (字符串)
 
-#### cluster_auto_sync (string)
+指定当节点变得可到达时,是否自动发出同步请求(针对标记为备份状态共享标签的对话)。值 *1* 表示启用,*0* 表示禁用。
 
+*默认值为 1(启用)。*
 
-Specifies whether to automatically issue a sync request (for dialogs
-		marked with a sharing tag in backup state) when a node becomes reachable.
-		A value of *1* means enabled and *0*
-		disabled.
-
-
-*Default value is 1 (enabled).*
-
-
-```c title="Set cluster_auto_sync parameter"
+```c title="设置 cluster_auto_sync 参数"
 ...
 modparam("dialog", "cluster_auto_sync", 0)
 ...
 ```
 
+#### auto_prack_hangup_on_failure (整数)
 
-#### auto_prack_hangup_on_failure (int)
+控制使用"auto-prack"标志创建的对话在自动生成的 PRACK 事务失败时的行为。值 *1* 会导致 OpenSIPS 在相关 INVITE 事务上生成原生 *502 Bad Gateway* 回复,而值 *0* 会使 INVITE 事务保持不变。
 
+失败意味着本地 PRACK 事务完成并收到最终否定回复或命中 TM 失败处理。
 
-Controls how dialogs created with the "auto-prack" flag react
-		when the automatically generated PRACK transaction fails. A value of
-		*1* causes OpenSIPS to generate a native
-		*502 Bad Gateway* reply on the correlated INVITE
-		transaction, while a value of *0* leaves the INVITE
-		transaction untouched.
+*默认值为"0"(禁用)。*
 
+#### auto_prack_fr_timeout (整数)
 
-A failure means that the local PRACK transaction either completed with a
-		final negative reply or hit TM failure handling.
+为使用"auto-prack"标志创建的对话自动生成的 PRACK 事务指定 TM FR 超时(秒)。此值在本地 PRACK 事务创建后立即应用。
 
+*默认值为"3"。*
 
-*Default value is "0" (disabled).*
-
-
-#### auto_prack_fr_timeout (int)
-
-
-Specifies the TM FR timeout, in seconds, for PRACK transactions generated
-		automatically for dialogs created with the "auto-prack" flag.
-		This value is applied to the local PRACK transaction immediately after it
-		is created.
-
-
-*Default value is "3".*
-
-
-### Exported Functions
-
+### 导出的函数
 
 #### create_dialog([flags])
 
+该函数为当前处理的请求创建对话。该请求必须是初始请求。
 
-The function creats the dialog for the currently processed request. The
-		request must be an initial request.
+可选地,该函数也接收一个字符串参数,该参数指定要对此当前对话执行的特殊行为。
 
-		Optionally,the function also receives a string parameter, which specifies
-		special behavior to be done for the current dialog.
+参数:
 
-
-Parameters:
-
-
-- *flags (string, optional)*
-				Possible values here are:
+- *flags (字符串,可选)*
+			可能的值有:
 				
-				"bye-on-timeout" - upon reaching dialog lifetime,
-				BYEs will be triggered both ways
-				"options-ping-caller" - ping caller side with
-				OPTIONS messages, once every
-				`options_ping_interval` seconds
-				"options-ping-callee" - ping callee side with
-				OPTIONS messages, once every
-				`options_ping_interval` seconds
-				"reinvite-ping-caller" - ping caller side with
-				RE-INVITE messages, once every
-				`reinvite_ping_interval` seconds
-				"reinvite-ping-callee" - ping callee side with
-				RE-INVITE messages, once every
-				`reinvite_ping_interval` seconds
-				"end-on-race-condition" - upon detecting a SIP
-				Race condition (see RFC 5407), end the call after
-				`race_condition_timeout` seconds
-				"auto-prack" - automatically generate PRACK
-				requests for reliable 101-199 provisional INVITE replies
-				carrying an RSeq header
+				"bye-on-timeout" - 达到对话生命周期时,双向都会触发 BYE
+				"options-ping-caller" - 使用 OPTIONS 消息 ping 呼叫者端,每
+				`options_ping_interval` 秒一次
+				"options-ping-callee" - 使用 OPTIONS 消息 ping 被叫者端,每
+				`options_ping_interval` 秒一次
+				"reinvite-ping-caller" - 使用 RE-INVITE 消息 ping 呼叫者端,每
+				`reinvite_ping_interval` 秒一次
+				"reinvite-ping-callee" - 使用 RE-INVITE 消息 ping 被叫者端,每
+				`reinvite_ping_interval` 秒一次
+				"end-on-race-condition" - 检测到 SIP Race condition 时(见 RFC 5407),在
+				`race_condition_timeout` 秒后结束呼叫
+				"auto-prack" - 为携带 RSeq 首部的可靠 101-199 临时 INVITE 回复自动生成 PRACK 请求
 				
-				Multiple string flags can be used at the same time as a CSV,
-				i.e. passing
+				多个字符串标志可以作为 CSV 同时使用,即传递
 				"bye-on-timeout,options-ping-caller,options-ping-callee"
-				will enable all 3 flags.
+				将启用所有 3 个标志。
 
+注意:不能同时为单个对话端启用 RE-INVITE 和 OPTIONS ping。如果为同一端提供了两个标志(例如
+				"options-ping-caller,reinvite-ping-caller" 或
+				"options-ping-callee,reinvite-ping-callee"),
+				则只会使用 RE-INVITE ping。
 
-NOTE: both RE-INVITE and OPTIONS pinging cannot be enabled at the same time
-		for a single dialog leg. If both flags for the same leg are provided
-		(for example
-		"options-ping-caller,reinvite-ping-caller" or
-		"options-ping-callee,reinvite-ping-callee"),
-		only RE-INVITE pinging will be used.
+如果对话创建成功或对话已存在,则函数返回 true。
 
+此函数可以从 REQUEST_ROUTE 使用。
 
-The function returns true if the dialog was successfully created or
-		if the dialog was previously created.
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="create_dialog() usage"
+```c title="create_dialog() 使用示例"
 ...
 create_dialog();
 ...
-#ping caller
+#ping 呼叫者
 create_dialog("options-ping-caller");
 ...
-#ping caller and callee
+#ping 呼叫者和被叫者
 create_dialog("options-ping-caller,options-ping-callee");
 
-#bye on timeout
+#超时时 bye
 create_dialog("bye-on-timeout");
 
-#auto-PRACK reliable provisional replies
+#auto-PRACK 可靠临时回复
 create_dialog("auto-prack");
 ...
 ```
 
-
 #### match_dialog([dlg_match_mode])
 
+此函数用于将顺序(会话中)请求匹配到 ongoing 对话。
 
-This function is to be used to match a sequential (in-dialog) request
-		to an ongoing dialog.
+默认情况下,对话匹配根据 [dlg match mode](#param_dlg_match_mode) 模块参数执行。可以通过指定可选的"dlg_match_mode"参数来强制执行特定匹配模式。此参数的可能值为"DID_ONLY"、"DID_FALLBACK"和"DID_NONE"。
 
+由于顺序请求在进行"loose_route()"时会自动匹配到对话,此函数旨在:(A)控制脚本中执行对话匹配的位置;(B)处理没有 Route 首部的虚假顺序请求,因此不会被 loose_route() 处理。
 
-By default, dialog matching is performed according to the
-		[dlg match mode](#param_dlg_match_mode) module parameter. A specific
-		matching mode may be enforced by specifying the optional
-		"dlg_match_mode" parameter. Possible values for this parameter are
-		"DID_ONLY", "DID_FALLBACK" and "DID_NONE".
+参数:
 
+- *dlg_match_mode (字符串,可选)*
 
-As sequential requests are automatically matched to the dialog when
-		doing "loose_route()" from script, this function is intended to:
-		(A) control the place in your script where the dialog matching is done
-		and (B) to cope with bogus sequential requests that do not have Route
-		headers, so they are not handled by loose_route().
+如果请求存在对话,函数返回 true。
 
+此函数可以从 REQUEST_ROUTE 使用。
 
-Parameters:
-
-
-- *dlg_match_mode (string, optional)*
-
-
-The function returns true if a dialog exists for the request.
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="match_dialog() usage"
+```c title="match_dialog() 使用示例"
 ...
     if (has_totag()) {
         loose_route();
 
-        # example 1: match according to 
+        # 示例 1:根据
 ```
-
 
 #### validate_dialog()
 
+该函数检查当前收到的请求与它所属的对话(内部数据)。
+通过执行多个测试,该函数将有助于检测注入的虚假会话中请求(如恶意 BYE)。
 
-The function checks the current received requests against the dialog
-		(internal data) it belongs to.
-		Performing several tests, the function will help to detect the bogus
-		injected in-dialog requests (like malicious BYEs).
+执行的测试与 CSEQ 序列检查和路由信息检查(contact 和路由集)相关。
 
+如果请求存在对话且请求有效(根据对话数据),则函数返回 true。如果请求无效,则返回以下返回码:
 
-The performed tests are related to CSEQ sequence checking and routing
-		information checking (contact and route set).
+- *-1* - 无效的 cseq
+- *-2* - 无效的远程目标
+- *-3* - 无效的路由集
+- *-4* - 其他错误(解析、无对话等)
 
+此函数可以从 REQUEST_ROUTE 使用。
 
-The function returns true if a dialog exists for the request and if
-		the request is valid (according to dialog data). If the request is invalid,
-		the following return codes are returned :
-
-
-- *-1* - invalid cseq
-- *-2* - invalid remote target
-- *-3* - invalid route set
-- *-4* - other errors ( parsing, no dlg, etc )
-
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="validate_dialog() usage"
+```c title="validate_dialog() 使用示例"
 ...
     if (has_totag()) {
         loose_route();
         if ($DLG_status!=NULL && !validate_dialog() ) {
-            xlog(" in-dialog bogus request \n");
+            xlog(" 会话中虚假请求 \n");
         } else {
-            xlog(" in-dialog valid request - $DLG_dir !\n");
+            xlog(" 会话中有效请求 - $DLG_dir !\n");
         }
     }
 ...
 ```
 
-
 #### fix_route_dialog()
 
+该函数强制会话中 SIP 消息包含由其所属对话的内部数据指定的 ruri、路由首部和 dst_uri。该函数将防止虚假注入的会话中请求(如恶意 BYE)的存在。
 
-The function forces an in dialog SIP message to contain the ruri, route headers and
-			dst_uri, as specified by the internal data of the dialog it belongs to.
-			The function will prevent the existence of bogus injected in-dialog
-			requests ( like malicious BYEs )
+此函数可以从 REQUEST_ROUTE 使用。
 
-
-This function can be used from REQUEST_ROUTE.
-
-
-```c title="fix_route_dialog() usage"
+```c title="fix_route_dialog() 使用示例"
 ...
     if (has_totag()) {
         loose_route();
@@ -1389,48 +883,27 @@ This function can be used from REQUEST_ROUTE.
 ...
 ```
 
-
 #### get_dialog_info(attr,avp,key,key_val,no_dlgs)
 
+该函数从另一个对话中提取对话值。它首先搜索所有现有(进行中)对话,查找具有名为"key"且值为"key_val"的对话变量的所有对话(即 $dlg_val(key)=="key_val" 的对话)。如果找到,它将从所有找到的对话中返回名为"attr"的对话变量的值到"avp"伪变量,否则不会写入"avp",并返回负错误代码。
 
-The function extracts a dialog value from another dialog. It first searches
-		through all existing (ongoing) dialogs for all dialogs that have a dialog
-		variable named "key" with the value "key_val"
-		(so a dialog where $dlg_val(key)=="key_val"). If found, it returns
-		the value of the dialog variable "attr" from all the
-		founds dialog in the "avp" pseudo-variable, otherwise nothing is written
-		in "avp", and a negative error code is returned.
+注意:该函数不需要在对话上下文中调用 - 您可以在搜索其他对话时随时随地使用它。
 
+参数含义如下:
 
-NOTE: the function does not require to be called in the context of
-		a dialog - you can use it whenever / whereever for searching for other
-		dialogs.
+- *attr (字符串)* - 要返回的(从找到的对话中)对话变量的名称;
+- *avp (var)* - 用于存储从找到的对话中推送的"attr"对话变量值的 AVP。
+			由于函数检查所有对话,这需要是一个实际的 AVP 以支持从所有匹配的对话推送值。
+- *key (字符串)* - 用作搜索目标对话的键的对话变量名。
+- *key_val (var)* - 用作键的对话变量的值,用于在搜索目标对话时。
+- *no_dlgs (var)* - 包含键变量的对话总数。
 
+此函数可以从所有路由使用。
 
-Meaning of the parameters is as follows:
-
-
-- *attr (string)* - the name of the dialog variable
-			(from the found dialog) to be returned;
-- *avp (var)* - an avp where to store the values of
-			the "attr" dialog variable.
-			Since the function checks through all dialogs, this needs to be an actual
-			AVP in order to support pushing values from all matched dialogs.
-- *key (string)* - name of a dialog variable to be
-			used a search key (when looking after the target dialog)
-- *key_val (var)* - the value of the dialog
-			variable that is used as key in searching the target dialog.
-- *no_dlgs (var)* - the total number of dialogs
-			containing the key variable
-
-
-This function can be used from ALL ROUTES.
-
-
-```c title="get_dialog_info usage"
+```c title="get_dialog_info 使用示例"
 ...
 if ( get_dialog_info("callee",$avp(callee_array),"caller",$fu,$var(dlg_no)) ) {
-	xlog("caller $fu has $var(dlg_no) other ongoing calls, talking with :");	
+	xlog("呼叫者 $fu 有 $var(dlg_no) 个其他进行中呼叫,正在与:");	
 	$var(it) = 0;
 	while ($var(it) < $var(dlg_no)) {
 		$var(current_callee) = $(avp(callee_array)[$var(it)]);
@@ -1441,344 +914,229 @@ if ( get_dialog_info("callee",$avp(callee_array),"caller",$fu,$var(dlg_no)) ) {
 	xlog("\n");
 }
 
-# create dialog for current call and place the caller and callee attributes
+# 为当前呼叫创建对话并放置呼叫者和被叫者属性
 create_dialog();
 $dlg_val(caller) = $fu;
 $dlg_val(callee) = $ru;
 ...
 ```
 
-
 #### get_dialog_vals(names,vals,callid)
 
+该函数获取另一个对话的所有对话变量。它首先基于给定的 SIP CallID 搜索所有现有(进行中)对话。如果找到,它以两个并行的名称和值数组形式返回所有对话变量(使用给定的"names"和"vals"变量)。由于这些变量必须保存数组,它们必须是 AVP。
 
-The function fetches all the dialog variables of another dialog.
-		It first searches through all existing (ongoing) dialogs based on the 
-		given SIP CallID. If found, it returns all the dialog variables as 
-		two parallel arrays of names and values (using the given variables
-		"names" and "vals"). As these variables have to hold arrays, they must
-		be AVPs.
+注意:该函数不需要在对话上下文中调用 - 您可以在搜索其他对话时随时随地使用它。
 
+参数含义如下:
 
-NOTE: the function does not require to be called in the context of
-		a dialog - you can use it whenever / whereever for searching for other
-		dialogs.
+- *names (var)* - 一个 AVP 变量,用于保存从找到的对话中获取的所有变量名。
+- *vals (var)* - 一个 AVP 变量,用于保存从找到的对话中获取的所有变量值。
+- *callid (字符串)* - 要搜索的对话的 callid(并获取变量)。
 
+此函数可以从任何类型的路由使用。
 
-Meaning of the parameters is as follows:
-
-
-- *names (var)* - an AVP variable to
-			hold all the names of the variables from the found dialog.
-- *vals (var)* - an AVP variable to
-			hold all the values of the variables from the found dialog.
-- *callid (string)* - the callid of a dialog
-			to be searched (and have the variables fetched).
-
-
-This function can be used from any type of route.
-
-
-```c title="get_dialog_vals usage"
+```c title="get_dialog_vals 使用示例"
 ...
 if ( get_dialog_vals($avp(d_names),$avp(d_vals),$var(callid)) ) {
-	xlog("the call $var(callid) has the variables:\n);
+	xlog("呼叫 $var(callid) 有变量:\n);
 	$var(i) = 0;
 	while ( $(avp(d_names)[$var(i)])!=NULL ) {
-		xlog("var $var(i) is $(avp(d_names)[$var(i)])='$(avp(d_vals)[$var(i)])'\n");
+		xlog("var $var(i) 是 $(avp(d_names)[$var(i)])='$(avp(d_vals)[$var(i)])'\n");
 		$var(i) = $var(i) + 1;
 	}
 }
 ...
 ```
-
 
 #### get_dialogs_by_val(name,value,out_avp,out_dlg_no)
 
+该函数在整个对话表中查找包含具有提供名称和值的 $dlg_val 的对话,并返回所有匹配对话的 $DLG_ctx_json 变量,将它们存储在提供的 out_avp 中。匹配对话的总数在 out_dlgs_no 变量中返回。
 
-The function looks up through the whole dialog table for dialogs containing a $dlg_val with the provided name and value, and returns all the $DLG_ctx_json variables for the matched dialogs, storing them in the provided out_avp. The total number of matched dialogs is returned in the out_dlgs_no variable
+注意:该函数不需要在对话上下文中调用 - 您可以在搜索其他对话时随时随地使用它。
 
+参数含义如下:
 
-NOTE: the function does not require to be called in the context of
-		a dialog - you can use it whenever / whereever for searching for other
-		dialogs.
+- *name (字符串)* - 用于查找的对话变量的名称。
+- *value (var)* - 上述对话 val 的值。
+- *out_avp (var)* - 将填充所有匹配呼叫的对话 JSON 的 AVP。
+- *dlg_no (var)* - 将包含匹配对话总数的 out 变量。
 
+此函数可以从任何类型的路由使用。
 
-Meaning of the parameters is as follows:
-
-
-- *name (string)* - the name of the dialog variable used for the lookup
-- *value (var)* - the value of the above dialog val
-- *out_avp (var)* - the AVP which will be populated will the dialog JSONs for all the matched calls
-- *dlg_no (var)* - the out var which will contain the total number of matched dialogs
-
-
-This function can be used from any type of route.
-
-
-```c title="get_dialog_vals usage"
+```c title="get_dialog_vals 使用示例"
 ...
 if ( get_dialogs_by_val("caller",$fU,$avp(dlg_jsons),$avp(dlg_no)) ) {
-	xlog("Caller $fU has $avp(dlg_no) other calls \n);
+	xlog("呼叫者 $fU 有 $avp(dlg_no) 个其他呼叫 \n);
 	$var(i) = 0;
 	while ( $(avp(dlg_jsons)[$var(i)])!=NULL ) {
 		$json(dlg_info) := $(avp(dlg_jsons)[$var(i)]); 
-		# fetch any info for the above call and process it
+		# 获取上述呼叫的任何信息并处理
 		$var(i) = $var(i) + 1;
 	}
 }
 ...
 ```
-
 
 #### get_dialogs_by_profile(name,value,out_avp,out_dlg_no)
 
+该函数在整个对话表中查找配置为在提供的对话分析名称中的对话,并可选地使用提供的分析值。该函数返回所有匹配对话的 $DLG_ctx_json 变量,将它们存储在提供的 out_avp 中。匹配对话的总数在 out_dlgs_no 变量中返回。
 
-The function looks up through the whole dialog table for dialogs configured to be within the provided dialog profile name, and optionally with the provided profile value. The function returns all the $DLG_ctx_json variables for the matched dialogs, storing them in the provided out_avp. The total number of matched dialogs is returned in the out_dlgs_no variable
+注意:该函数不需要在对话上下文中调用 - 您可以在搜索其他对话时随时随地使用它。
 
+参数含义如下:
 
-NOTE: the function does not require to be called in the context of
-		a dialog - you can use it whenever / whereever for searching for other
-		dialogs.
+- *name (字符串)* - 用于查找的对话分析的名称。
+- *value (字符串)* - 上述对话分析的值(可选)。
+- *out_avp (var)* - 将填充所有匹配呼叫的对话 JSON 的 AVP。
+- *dlg_no (var)* - 将包含匹配对话总数的 out 变量。
 
+此函数可以从任何类型的路由使用。
 
-Meaning of the parameters is as follows:
-
-
-- *name (string)* - the name of the dialog profile used for the lookup
-- *value (string)* - the value of the above dialog profile ( optional )
-- *out_avp (var)* - the AVP which will be populated will the dialog JSONs for all the matched calls
-- *dlg_no (var)* - the out var which will contain the total number of matched dialogs
-
-
-This function can be used from any type of route.
-
-
-```c title="get_dialog_vals usage"
+```c title="get_dialog_vals 使用示例"
 ...
 if ( get_dialogs_by_profile("caller",$fU,$avp(dlg_jsons),$avp(dlg_no)) ) {
-	xlog("Caller $fU has $avp(dlg_no) other calls \n);
+	xlog("呼叫者 $fU 有 $avp(dlg_no) 个其他呼叫 \n);
 	$var(i) = 0;
 	while ( $(avp(dlg_jsons)[$var(i)])!=NULL ) {
 		$json(dlg_info) := $(avp(dlg_jsons)[$var(i)]); 
-		# fetch any info for the above call and process it
+		# 获取上述呼叫的任何信息并处理
 		$var(i) = $var(i) + 1;
 	}
 }
 ...
 ```
 
-
 #### load_dialog_ctx( dialog [, id_type] [, active_only])
 
+该函数加载并切换到给定对话的上下文。
+对话的上下文由对话的标志、变量、分析以及与对话相关的任何其他值/状态给出。通过切换到另一个对话的上下文,您将在脚本级别默认看到新对话的所有数据。
 
-The function loads and switches to the context of the given dialog.
-		The context of a dialog is given by the dialog flags, variables,
-		profiles and any other value/state related to the dialog. By 
-		switching to the context of another dialog, you will see at the script
-		level, by default, all the data from the new dialog.
+注意:在执行卸载之前,您无法执行新的加载 - 不支持嵌套加载。
 
+参数含义如下:
 
-NOTE: you cannot perform a new load until doing an unload - no nested
-		loadings are possible.
+- *dialog (字符串)* - 要加载的对话的标识符,它可以是 SIP Call-ID 或对话 ID。
+- *id_type (字符串,可选)* - 第一个参数中使用的对话标识符类型。它可以是 *callid*(SIP Call-ID)或 *did*(内部对话 ID)。默认为 callid。
+- *active_only (整数,可选)* - 如果设置为不同于 *0* 的值,
+			它仅考虑活动对话 - 未删除的对话。
 
+此函数可以从任何类型的路由使用。
 
-Meaning of the parameters is as follows:
-
-
-- *dialog (string)* - the identifier of the
-			dialog to be loaded, it may be a SIP Call-ID or a Dialog ID.
-- *id_type (string,optional)* - what kind of
-			dialog identified was used in the first parameter. It can be
-			*callid* (SIP Call-ID) or 
-			*did* (internal Dialog ID). By default callid
-			will be assumed.
-- *active_only (integer,optional)* - if
-			set to something different than *0*,
-			it only considers active dialogs - dialogs that are not
-			deleted.
-
-
-This function can be used from any type of route.
-
-
-```c title="load_dialog_ctx usage"
+```c title="load_dialog_ctx 使用示例"
 ...
 if (load_dialog_ctx("$var(callid)")) {
-	xlog("The dialog '$var(callid)' already has a duration "
-	     "of $DLG_lifetime seconds\n");
+	xlog("对话 '$var(callid)' 已经存在 "
+	     "$DLG_lifetime 秒\n");
 	if (is_in_profile("inboundCall"))
-		xlog("this dialog is an inbound call\n");
+		xlog("这是一个入站呼叫\n");
 	unload_dialog_ctx();
 }
 ...
 ```
 
-
 #### unload_dialog_ctx()
 
+该函数卸载另一个对话的加载上下文,暴露执行加载之前存在的任何对话上下文。
 
-The function off-loads the loaded context of another dialog, exposing
-		whatever dialog context was present before doing the load.
+注意:您必须从脚本中显式卸载您执行的每次加载,否则加载的对话将永远挂起。
 
+此函数可以从任何类型的路由使用。
 
-NOTE: you MUST perform from script an explicit unload for each load
-		you did, otherwise the loaded dialog will remain hanged for ever.
-
-
-This function can be used from any type of route.
-
-
-For usage example, see the [load dialog ctx](#func_load_dialog_ctx)
-
+有关使用示例,请参阅 [load dialog ctx](#func_load_dialog_ctx)。
 
 #### set_dlg_profile(profile, [value], [clear_values])
 
+将当前对话插入分析。请注意,如果分析不支持值,这将静默丢弃。一个对话可以多次插入同一分析。
 
-Inserts the current dialog into a profile. Note that if the profile does
-		not support values, this will be silently discarded. A dialog may be
-		inserted in the same profile multiple times.
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
+参数含义如下:
 
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
+- *profile (字符串)* - 要添加到对话的分析的名称。
+- *value (字符串,可选)* - 字符串值用于定义对话对该分析的归属 - 请注意,分析必须支持值。
+- *clear_values (布尔值,可选)* - 如果设置为 *true*(1),
+				所有分析值将在设置给定值之前清除。默认值: *false*。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-Meaning of the parameters is as follows:
-
-
-- *profile (string)* - name of the profile to be
-			added to.
-- *value (string, optional)* - string value to
-			define the belonging of the dialog to the profile - note that the
-			profile must support values.
-- *clear_values (boolean, optional)* - if set to
-				*true* (1), all values of the profile will be cleared
-				before setting the given value.  Default: *false*.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="set_dlg_profile usage"
+```c title="set_dlg_profile 使用示例"
 ...
 set_dlg_profile("inboundCall");
 
-# Set a new value (all other values are kept intact)
+# 设置新值(保留所有其他值)
 set_dlg_profile("caller", $fu);
 
-# Set a new value while removing all previous values
+# 设置新值同时删除所有先前的值
 set_dlg_profile("caller", $fu, true);
 ...
 ```
 
-
 #### unset_dlg_profile(profile, [value])
 
+从分析中移除当前对话。
 
-Removes the current dialog from a profile.
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
+参数含义如下:
 
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
+- *profile (字符串)* - 要从中移除的分析的名称。
+- *value (字符串,可选)* - 字符串值用于定义对话对该分析的归属 - 请注意,分析必须支持值。
+3.4 新增:对于带值的分析,通过省略此参数,您现在可以清除给定分析的所有值。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-Meaning of the parameters is as follows:
-
-
-- *profile (string)* - name of the profile to be
-			removed from.
-- *value (string, optional)* - string value to
-			define the belonging of the dialog to the profile - note that the
-			profile must support values.
-NEW in 3.4: for profiles with value, by omitting this parameter
-				you can now clear all values of the given profile.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="unset_dlg_profile usage"
+```c title="unset_dlg_profile 使用示例"
 ...
 unset_dlg_profile("inboundCall");
 unset_dlg_profile("caller", $fu);
 ...
-# Remove all values in a profile
+# 清除分析中的所有值
 unset_dlg_profile("caller");
 ...
 ```
 
-
 #### is_in_profile(profile,[value])
 
+检查当前对话是否属于某分析。如果分析支持值,则检查可以加强以考虑特定值 - 如果对话使用特定值插入到分析中。如果未传递值,则仅检查对话对该分析的简单归属。请注意,如果分析不支持值,这将静默丢弃。
 
-Checks if the current dialog belongs to a profile. If the profile
-		supports values, the check can be reinforced to take into account a
-		specific value - if the dialog was inserted into the profile for a
-		specific value. If no value is passed, only simply belonging of the
-		dialog to the profile is checked. Note that if the profile does not
-		support values, this will be silently discarded.
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
+参数含义如下:
 
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
+- *profile (字符串)* - 要检查的分析的名称。
+- *value (字符串,可选)* - 字符串值用于加强检查。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-Meaning of the parameters is as follows:
-
-
-- *profile (string)* - name of the profile to be
-			checked against.
-- *value (string. optional)* - string value to
-			toughen the check.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="is_in_profile usage"
+```c title="is_in_profile 使用示例"
 ...
 if (is_in_profile("inboundCall")) {
-	log("this request belongs to a inbound call\n");
+	log("此请求属于入站呼叫\n");
 }
 ...
 if (is_in_profile("caller","XX")) {
-	log("this request belongs to a call of user XX\n");
+	log("此请求属于用户 XX 的呼叫\n");
 }
 ...
 ```
 
-
 #### get_profile_size(profile,[value],size)
 
+返回属于某分析的对话数量。如果分析支持值,则检查可以加强以考虑特定值 - 有多少对话使用特定值插入到分析中。如果未传递值,则仅检查对话对该分析的简单归属。请注意,如果分析不支持值,这将静默丢弃。
 
-Returns the number of dialogs belonging to a profile. If the profile
-		supports values, the check can be reinforced to take into account a
-		specific value - how many dialogs were inserted into the profile with
-		a specific value. If not value is passed, only simply belonging of the
-		dialog to the profile is checked. Note that the profile does not
-		supports values, this will be silently discarded.
+参数含义如下:
 
+- *profile (字符串)* - 要获取其大小的分析名称。
+- *value (字符串,可选)* - 字符串值用于加强检查。
+- *size (var)* - AVP 或脚本变量,用于返回分析大小。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-
-- *profile (string)* - name of the profile to get
-			the size for.
-- *value (string, optional)* - string value to
-			toughen the check.
-- *size (var)* - an AVP or script variable to
-			return the profile size in.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="get_profile_size usage"
+```c title="get_profile_size 使用示例"
 modparam("dialog", "profiles_no_value", "inboundCalls")
 modparam("dialog", "profiles_with_value", "caller")
 ...
@@ -1786,394 +1144,257 @@ get_profile_size("inboundCalls",,$var(size));
 xlog("inboundCalls: $var(size)\n");
 ...
 get_profile_size("caller", $fu, $var(size));
-xlog("currently, the user $fu has $var(size) active outgoing calls\n");
+xlog("当前,用户 $fu 有 $var(size) 个活动外呼\n");
 ...
 ```
 
-
 #### set_dlg_flag(flag)
 
+将名为 *flag* 的对话标志设置为 true。对话标志是对话持久的,它们可以访问(设置和测试)属于该对话的所有请求。
 
-Sets the dialog flag named *flag* to true. The dialog
-		flags are dialog persistent and they can be accessed (set and test)
-		for all requests belonging to the dialog.
+参数:
 
+- *flag (字符串,静态)* - 标志名称。
 
-Parameters:
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-- *flag (string, static)* - The flag name.
-
-
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="set_dlg_flag usage"
+```c title="set_dlg_flag 使用示例"
 ...
 set_dlg_flag("MY_DLG_FLAG");
 ...
 ```
 
-
 #### test_and_set_dlg_flag(flag, value)
 
+原子性地检查名为 *flag* 的对话标志是否等于 *value*。如果是,则将其值更改为相反的值。此操作在对话锁下完成。
 
-Atomically checks if the dialog flag named *flag* is
-		equal to *value*. If true, changes the value with the
-		opposite one. This operation is done under the dialog lock.
+- *flag (字符串,静态)* - 标志名称。
+- *value (整数)* - 值应为 0(false)或 1(true)。
 
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
-- *flag (string, static)* - The flag name.
-- *value (int)* - The value should be 0 (false) or 1 (true).
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="test_and_set_dlg_flag usage"
+```c title="test_and_set_dlg_flag 使用示例"
 ...
 test_and_set_dlg_flag("MY_DLG_FLAG", 0);
 ...
 ```
 
-
 #### reset_dlg_flag(flag)
 
+将名为 *flag* 的对话标志重置为 false。对话标志是对话持久的,它们可以访问(设置和测试)属于该对话的所有请求。
 
-Resets the dialog flag named *flag* to false.
-		The dialog flags are dialog persistent and they can be accessed
-		(set and test) for all requests belonging to the dialog.
+参数:
 
+- *flag (字符串,静态)* - 标志名称。
 
-Parameters:
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-- *flag (string, static)* - The flag name.
-
-
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="reset_dlg_flag usage"
+```c title="reset_dlg_flag 使用示例"
 ...
 reset_dlg_flag("MY_DLG_FLAG");
 ...
 ```
 
-
 #### is_dlg_flag_set(flag)
 
+如果名为 *flag* 的对话标志已设置,则返回 true。对话标志是对话持久的,它们可以访问(设置和测试)属于该对话的所有请求。
 
-Returns true if the dialog flag named *flag* is set.
-		The dialog flags are dialog persistent and they can be accessed
-		(set and test) for all requests belonging to the dialog.
+参数:
 
+- *flag (字符串,静态)* - 标志名称。
 
-Parameters:
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-- *flag (string, static)* - The flag name.
-
-
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="is_dlg_flag_set usage"
+```c title="is_dlg_flag_set 使用示例"
 ...
 if (is_dlg_flag_set("MY_DLG_FLAG")) {
-	xlog("dialog flag MY_DLG_FLAG is set\n");
+	xlog("对话标志 MY_DLG_FLAG 已设置\n");
 }
 ...
 ```
 
-
 #### store_dlg_value(name,val)
 
+将变量 *val* 的值以名称 *name* 附加到对话。附加到对话的值是对话持久的,它们可以访问(读写)属于该对话的所有请求。
 
-Attaches to the dialog the value from the variable *val*
-		under the name *name*. The values attached to dialogs are
-		dialog persistent and they can be accessed (read and write) for all
-		requests belonging to the dialog.
+参数:
 
-
-Parameters:
-
-
-- *name (string)*
+- *name (字符串)*
 - *val (var)*
 
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
+也可以通过将值赋给伪变量 *$dlg_val(name)* 来获得相同功能。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-Same functionality may be obtain by assigning a value to pseudo
-		variable *$dlg_val(name)*.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="store_dlg_value usage"
+```c title="store_dlg_value 使用示例"
 ...
 store_dlg_value("inv_src_ip",$si);
 store_dlg_value("account type",$var(account));
-# or
+# 或
 $dlg_val(account_type) = "prepaid";
 ...
 ```
 
-
 #### fetch_dlg_value(name,val)
 
+从对话中获取名为 *name* 的属性值。附加到对话的值是对话持久的,它们可以访问(读写)属于该对话的所有请求。
 
-Fetches from the dialog the value of attribute named
-		*name*. The values attached to dialogs are
-		dialog persistent and they can be accessed (read and write) for all
-		requests belonging to the dialog.
+参数:
 
-
-Parameters:
-
-
-- *name (string)*
+- *name (字符串)*
 - *val (var)*
 
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
+也可以通过读取伪变量 *$dlg_val(name)* 来获得相同功能。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-Same functionality may be obtain by reading the pseudo
-		variable *$dlg_val(name)*.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="fetch_dlg_value usage"
+```c title="fetch_dlg_value 使用示例"
 ...
 fetch_dlg_value("inv_src_ip",$avp(2));
 fetch_dlg_value("account type",$var(account));
-# or
+# 或
 $var(account) = $dlg_val(account_type);
 ...
 ```
 
-
 #### set_dlg_sharing_tag(tag_name)
 
+使用共享标签 *tag_name* 标记当前对话。从此时起,诸如会话中 ping、超时 BYE 等操作将取决于标签状态("备份"状态无操作,"活动"状态正常操作)。
 
-Marks the current dialog with the sharing tag *tag_name*.
-		From this point on, actions like in-dialog pinging, BYEs on timeout etc.
-		will depend on the tag state(no action in "backup" state, normal operation
-		in "active" state).
+有关更多详细信息,请参阅 [对话集群](#dialog_clustering) 章节。
 
+参数:
 
-For more details see the [dialog clustering](#dialog_clustering) chapter.
+- *tag_name (字符串)*
 
+注意:必须在使用此函数之前创建对话(请在此之前使用 create_dialog() 函数)。
 
-Parameters:
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-
-- *tag_name (string)*
-
-
-NOTE: the dialog must be created before using this function (use
-		create_dialog() function before).
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="set_dlg_sharing_tag usage"
+```c title="set_dlg_sharing_tag 使用示例"
 ...
 set_dlg_sharing_tag("vip1");
 ...
 ```
 
-
 #### dlg_on_answer([route_name])
 
+该函数在当前对话稍后被应答时设置要执行的脚本路由。当路由执行时,对话上下文将暴露,但没有有效的 SIP 消息(只是一个假消息)。
 
-The function arms a script route to be executed when the current
-		dialog will be later answered. When the route will be executed, the
-		dialog context will be exposed, but with no valid SIP message (just
-		a phony one).
+您必须在创建对话之后且在对话被应答之前使用此函数。
 
+如果参数缺失,函数会重置之前设置的任何路由;将不会触发。
 
-You must use this function AFTER creating the dialog and before the
-		dialog being answered.
+参数:
 
+- *route_name (字符串,可选)* - 要执行的脚本路由的名称。
 
-If the parameter is missing, the function does a reset of any route
-		previously set; there will be no triggering.
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-
-Parameters:
-
-
-- *route_name (string,optional)* - the name
-				of the script route to be executed.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="dlg_on_answer usage"
+```c title="dlg_on_answer 使用示例"
 ...
 create_dialog();
 dlg_on_answer("dlg_answered");
 ...
 route[dlg_answered] {
-	xlog("The dialog $DLG_did was answered\n");
+	xlog("对话 $DLG_did 已被应答\n");
 }
 ```
 
-
 #### dlg_on_timeout([route_name])
 
+该函数在当前对话超时(如持续时间)时设置要执行的脚本路由。当路由执行时,对话上下文将暴露,但没有有效的 SIP 消息(只是一个假消息)。
 
-The function arms a script route to be executed when (and if) the 
-		current dialog will timeout (as duration). When the route will be 
-		executed, the dialog context will be exposed, but with no valid SIP
-		message (just a phony one)
+当路由执行时,对话尚未终止,只是其生命周期达到了设定的限制。在超时路由中,您可以增加对话过期超时(对话将继续)或者可以让对话终止(在此路由结束后)。
 
+您必须在创建对话之后且在对话被应答之前使用此函数。
 
-When the route is executed, the dialog is not yet terminated, just its
-		lifetime reached the set limit. In the timeout route you can increase 
-		the dialog expiration timeout (and the dialog will continue) or you
-		can let the dialog to be terminated (after the end of this route).
+您必须在创建对话之后且在对话被应答之前使用此函数。
 
+参数:
 
-You must use this function AFTER creating the dialog and before the
-		dialog being answered.
+- *route_name (字符串,可选)* - 要执行的脚本路由的名称。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-You must use this function AFTER creating the dialog and before the
-		dialog being answered.
-
-
-Parameters:
-
-
-- *route_name (string,optional)* - the name
-				of the script route to be executed.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="dlg_on_timeout usage"
+```c title="dlg_on_timeout 使用示例"
 ...
 create_dialog();
 $DLG_timeout=120;
 dlg_on_timeout("dlg_timeout");
 ...
 route[dlg_timeout] {
-	xlog("The dialog $DLG_did timed out\n");
+	xlog("对话 $DLG_did 超时\n");
 	if (_some_prolongation_condition)
-		$DLG_timeout = 60; # give it 1 min more
+		$DLG_timeout = 60; # 再给1分钟
 }
 ```
 
-
 #### dlg_on_hangup([route_name])
 
+该函数在当前对话终止时设置要执行的脚本路由。当路由执行时,对话上下文将暴露,但没有有效的 SIP 消息(只是一个假消息)。请注意,对话已经终止,除了从其上下文读取数据外,您无能为力。
 
-The function arms a script route to be executed when the current
-		dialog will be terminated. When the route will be executed, the
-		dialog context will be exposed, but with no valid SIP message (just
-		a phony one). Note that the dialog will be already terminated and there
-		is nothing you can do about it besides reading data from its context.
-
-
-You must use this function AFTER creating the dialog and before the
-		dialog being answered.
+您必须在创建对话之后且在对话被应答之前使用此函数。
 		
-		If the parameter is missing, the function does a reset of any route
-		previously set; there will be no triggering.
+如果参数缺失,函数会重置之前设置的任何路由;将不会触发。
 
+参数:
 
-Parameters:
+- *route_name (字符串,可选)* - 要执行的脚本路由的名称。
 
+此函数可以从 REQUEST_ROUTE, BRANCH_ROUTE,
+			REPLY_ROUTE 和 FAILURE_ROUTE 使用。
 
-- *route_name (string,optional)* - the name
-				of the script route to be executed.
-
-
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE,
-			REPLY_ROUTE and FAILURE_ROUTE.
-
-
-```c title="dlg_on_hangup usage"
+```c title="dlg_on_hangup 使用示例"
 ...
 create_dialog();
 dlg_on_hangup("dlg_hangup");
 ...
 route[dlg_hangup] {
-	xlog("The dialog $DLG_did terminated after $DLG_lifetime secs\n");
+	xlog("对话 $DLG_did 在 $DLG_lifetime 秒后终止\n");
 }
 ```
 
-
 #### dlg_send_sequential(method, leg, [, body] [, content-type] [, headers])
 
+用于向对话的一个端点发送会话中请求。该函数假定它在对话上下文中运行 - 如果您从不同上下文(如 event_route)运行它,请确保首先使用 [load dialog ctx](#func_load_dialog_ctx) 函数加载对话上下文。
 
-Used to send an in-dialog request towards one if the dialog's legs.
-		The function assumes that is runs inside a dialog context - if you
-		are running it from a different context (such as an event_route),
-		make sure you first load the dialog context using the
-			[load dialog ctx](#func_load_dialog_ctx) function.
+参数:
 
+- *method (字符串)* -
+			发送请求的方法。
+- *leg (字符串)* - 发送请求的端点。必须是 *caller* 或 *callee*。
+- *body (字符串,可选)* -
+			请求中发送的可选 body。如果缺失,则不发送 body。
+- *content-type (字符串,可选)* -
+			发送的 body 的内容类型。每次发送带 body 的请求时,请确保指定此项,否则您的 UAC 很可能拒绝该请求。
+- *headers (字符串,可选)* -
+			附加到发送请求的首部。
 
-Parameters:
+此函数可以从任何路由使用。
 
-
-- *method (string)* -
-				the method of the request sent.
-- *leg (string)* - the leg
-				where the request is sent. Must be either
-				*caller* or *callee*.
-- *body (string, optional)* - an
-				optional body sent in the request. If missing, no body is sent.
-- *content-type (string, optional)* -
-				the content type of the body sent. Make sure you specify this
-				every time you send a request with a body, otherwise there are high
-				changes that your UAC will reject the request.
-- *headers (string, optional)* -
-				additional headers attached to the request sent.
-
-
-This function can be used from ANY route.
-
-
-```c title="dlg_send_sequential usage to convert DTMF codes"
+```c title="dlg_send_sequential 使用示例转换 DTMF 代码"
 ...
 event_route[E_RTPPROXY_DTMF] {
     if (load_dialog_ctx("$param(id)", "did")) {
@@ -2191,624 +1412,375 @@ event_route[E_RTPPROXY_DTMF] {
 ...
 ```
 
-
 #### dlg_inc_cseq([tag, ][inc])
 
+递增与对话标签标识的端点关联的对话生成的 CSeq。
 
-Increments the dialog's generated CSeq associated to the leg
-		identified by the dialog's tag.
+参数:
 
+- *tag (字符串,可选)* -
+			要递增 CSeq 值的标签。如果缺失,则使用消息的 *To* 标签来识别要递增 CSeq 的端点。
+- *inc (整数,可选)* - 用于递增/递减(如果为负)标识端点的 CSeq 的值。如果未使用,则值递增 *1*。
 
-Parameters:
+此函数可以从 REQUEST_ROUTE, FAILURE_ROUTE,
+			ONREPLY_ROUTE, BRANCH_ROUTE 和 LOCAL_ROUTE 路由使用。
 
-
-- *tag (string, optional)* -
-			the tag to increment the CSeq value for. If missing, the
-			message's *To* tag is used to identify
-			the leg to increment the CSeq for.
-- *inc (integer, optional)* - the
-			value used to increment/decrement (if negative) the CSeq of
-			the identified leg. If not used, the value is incremented with
-			*1*.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-			ONREPLY_ROUTE, BRANCH_ROUTE and LOCAL_ROUTE routes.
-
-
-```c title="dlg_inc_cseq usage"
+```c title="dlg_inc_cseq 使用示例"
 ...
 route {
 	...
 	if (has_totag()) {
 		if (loose_route())
-			dlg_inc_cseq(); # increment upstream CSeq after each in-dialog request
+			dlg_inc_cseq(); # 在每个会话中请求后向上游递增 CSeq
 	}
 }
 ...
 ```
 
-
-### Exported Statistics
-
+### 导出的统计信息
 
 #### active_dialogs
 
-
-Returns the number of current active dialogs (may be confirmed or
-			not).
-
+返回当前活动对话的数量(可以是已确认或未确认)。
 
 #### early_dialogs
 
-
-Returns the number of early dialogs.
-
+返回早期对话的数量。
 
 #### processed_dialogs
 
-
-Returns the total number of processed dialogs (terminated,
-			expired or active) from the startup.
-
+从启动以来处理的对话总数(终止、过期或活动)。
 
 #### expired_dialogs
 
-
-Returns the total number of expired dialogs from the startup.
-
+从启动以来过期的对话总数。
 
 #### failed_dialogs
 
-
-Returns the number of failed dialogs ( dialogs were
-			never established due to whatever reasons - internal error,
-			negative reply, cancelled, etc )
-
+返回失败对话的数量(由于各种原因从未建立的对话 - 内部错误、否定回复、取消等)。
 
 #### create_sent
 
-
-Returns the number of replicated dialog
-			**create** requests send to other OpenSIPS
-			instances.
-
+返回发送到其他 OpenSIPS 实例的复制对话 **创建** 请求数量。
 
 #### update_sent
 
-
-Returns the number of replicated dialog
-			**update** requests send to other OpenSIPS
-			instances.
-
+返回发送到其他 OpenSIPS 实例的复制对话 **更新** 请求数量。
 
 #### delete_sent
 
-
-Returns the number of replicated dialog
-			**delete** requests send to other OpenSIPS
-			instances.
-
+返回发送到其他 OpenSIPS 实例的复制对话 **删除** 请求数量。
 
 #### create_recv
 
-
-Returns the number of dialog
-			**create** events received from other
-			OpenSIPS instances.
-
+返回从其他 OpenSIPS 实例接收的对话 **创建** 事件数量。
 
 #### update_recv
 
-
-Returns the number of dialog
-			**update** events received from other
-			OpenSIPS instances.
-
+返回从其他 OpenSIPS 实例接收的对话 **更新** 事件数量。
 
 #### delete_recv
 
+返回从其他 OpenSIPS 实例接收的对话 **删除** 事件数量。
 
-Returns the number of dialog
-			**delete** events received from other
-			OpenSIPS instances.
-
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### dialog:list
 
+替换已废弃的 MI 命令: *dlg_list*。
 
-Replaces obsolete MI command: *dlg_list*.
+列出对话(呼叫)的描述。如果未提供参数,将列出所有对话。如果传递对话标识符作为参数(callid 和 fromtag),则仅列出该对话。如果传递索引和计数器参数,它将列出从索引开始的一定数量的"计数器"对话 - 这用于仅获取对话的部分。
 
+名称: *dialog:list*
 
-Lists the description of the dialogs (calls). If no parameter is given,
-		all dialogs will be listed. If a dialog identifier is passed
-		as parameter (callid and fromtag), only that dialog will be listed. If
-		a index and conter parameter is passed, it will list only a number of
-		"counter" dialogs starting with index (as offset) - this is used to
-		get only section of dialogs.
+参数(带对话标识):
 
+- *callid (可选)* - 如果要列出单个对话则为 callid。
+- *from_tag (可选,但不能在没有 callid 参数的情况下存在)* - 要列出的对话的 fromtag(根据初始请求)。
 
-Name: *dialog:list*
+参数(带对话计数):
 
+- *index* - 对话列表应开始的位置偏移量。
+- *counter* - 应列出的对话数量(从偏移量开始)。
 
-Parameters (with dialog idetification):
-
-
-- *callid* (optional) - callid if a single
-				dialog to be listed.
-- *from_tag* (optional, but cannot be present
-				without the callid parameter) - fromtag (as per initial request)
-				of the dialog to be listed.
-				entry
-
-
-Parameters (with dialog counting):
-
-
-- *index* - offset where the dialog listing
-				should start.
-- *counter* - how many dialogs should be
-				listed (starting from the offset)
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
-		## list all ongoing dialogs
+		## 列出所有进行中的对话
 		opensips-cli -x mi dialog:list
-		## list the dialog by callid and From TAG
+		## 通过 callid 和 From TAG 列出对话
 		opensips-cli -x mi dialog:list callid=abcdrssfrs122444@192.168.1.1 from_tag=AAdfeEFF33
-		## list 10 dialogs, starting from the position 40
-		## (in the list of all ongoing dialogs)
+		## 列出从位置 40 开始的 10 个对话
+		## (在所有进行中对话的列表中)
 		opensips-cli -x mi dialog:list index=40 counter=10
 		
 ```
 
-
 #### dialog:list_ctx
 
+替换已废弃的 MI 命令: *dlg_list_ctx*。
 
-Replaces obsolete MI command: *dlg_list_ctx*.
+与"dialog:list"相同,但在对话描述中包含位于对话模块之上的模块的关联上下文。
+此函数还打印对话的值。对于二进制值,不可打印字符以十六进制表示(例如 \x00)。
 
+名称: *dialog:list_ctx*
 
-The same as the "dialog:list" but including in the
-		dialog description
-		the associated context from modules sitting on top of
-		the dialog module.
-		This function also prints the dialog's values. In case of
-		binary values, the non-printable chars are represented in hex
-		(e.g. \x00)
+参数: *参见"dialog:list"*
 
-
-Name: *dialog:list_ctx*
-
-
-Parameters: *see "dialog:list"*
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:list_ctx
 		
 ```
 
-
 #### dialog:end_dlg
 
+替换已废弃的 MI 命令: *dlg_end_dlg*。
 
-Replaces obsolete MI command: *dlg_end_dlg*.
+终止正在进行的对话。
+			如果对话已建立,则双向发送 BYE。
+			如果对话处于未确认或早期状态,将向被叫方发送 CANCEL,这将触发 487,当被转发时,也将终止呼叫者端的对话。
 
+名称: *dialog:end_dlg*
 
-Terminates an ongoing dialog.
-				If dialog is established, BYEs are sent in both directions.
-				If dialog is in unconfirmed or early state, a CANCEL will be
-				sent to the callee side, that will trigger a 487 from the
-				callee, which, when relayed, will also end the dialog on 
-				the caller's side.
+参数为:
 
+- *dialog_id* - 这是对话的标识符 - 它可以是(1)对话的唯一 ID(由 dialog:list 提供),或者(2)对话的 SIP Call-ID。
+- *extra_hdrs* - (可选)字符串,包含要添加到 BYE 请求中的额外首部(完整格式)。
 
-Name: *dialog:end_dlg*
+"dialog_id" 值可以通过"dialog:list" MI 命令获取。
 
-
-Parameters are:
-
-
-- *dialog_id* - this is an identifier
-				of the dialog - it can be either (1) the unique ID 
-				of the dialog (as provided by dialog:list), either (2) the 
-				SIP Call-ID of the dialog.
-- *extra_hdrs* - (optional) string containg
-				the extra headers (full format) to be added to the BYE
-				requests.
-
-
-The "dialog_id" value can be get via the "dialog:list" MI command.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
-		# terminate the dialog via the internal Dialog-ID
+		# 通过内部对话-ID 终止对话
 		opensips-cli -x mi dialog:end_dlg 6ae.4b38d013
-		# terminate the dialog via its SIP Call-ID
+		# 通过其 SIP Call-ID 终止对话
 		opensips-cli -x mi dialog:end_dlg Y2IwYjQ2YmE2ZDg5MWVkNDNkZGIwZjAzNGM1ZDY
 		
 ```
 
-
 #### dialog:profile_get_size
 
+替换已废弃的 MI 命令: *profile_get_size*。
 
-Replaces obsolete MI command: *profile_get_size*.
+返回属于某分析的对话数量。如果分析支持值,则检查可以加强以考虑特定值 - 有多少对话使用特定值插入到分析中。如果未传递值,则仅检查对话对该分析的简单归属。请注意,如果分析不支持值,这将静默丢弃。
 
+名称: *dialog:profile_get_size*
 
-Returns the number of dialogs belonging to a profile. If the profile
-		supports values, the check can be reinforced to take into account a
-		specific value - how many dialogs were inserted into the profile with
-		a specific value. If not value is passed, only simply belonging of the
-		dialog to the profile is checked. Note that the profile does not
-		supports values, this will be silently discarded.
+参数:
 
+- *profile* - 要获取其值的分析名称。
+- *value (可选)- 字符串值用于加强检查;
 
-Name: *dialog:profile_get_size*
-
-
-Parameters:
-
-
-- *profile* - name of the profile to get the
-				value for.
-- *value* (optional)- string value to
-				toughen the check;
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:profile_get_size inboundCalls
 		
 ```
 
-
 #### dialog:profile_list_dlgs
 
+替换已废弃的 MI 命令: *profile_list_dlgs*。
 
-Replaces obsolete MI command: *profile_list_dlgs*.
+列出属于某分析的所有对话。如果分析支持值,则检查可以加强以考虑特定值 - 仅列出使用该特定值插入到分析中的对话。如果未传递值,将列出属于该分析的所有对话。请注意,如果分析不支持值,这将静默丢弃。此外,当使用 CacheDB 接口使用共享分析时,此命令仅显示本地对话。
 
+名称: *dialog:profile_list_dlgs*
 
-Lists all the dialogs belonging to a profile. If the profile
-		supports values, the check can be reinforced to take into account a
-		specific value - list only the dialogs that were inserted into the
-		profile with that specific value. If not value is passed, all dialogs
-		belonging to the profile will be listed. Note that the profile does
-		not supports values, this will be silently discarded. Also, when using
-		shared profiles using the CacheDB interface, this command will only
-		display the local dialogs.
+参数:
 
+- *profile* - 要列出其对话的分析名称。
+- *value (可选)- 字符串值用于加强检查;
 
-Name: *dialog:profile_list_dlgs*
-
-
-Parameters:
-
-
-- *profile* - name of the profile to list the
-				dialog for.
-- *value* (optional)- string value to
-				toughen the check;
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:profile_list_dlgs inboundCalls
 		
 ```
 
-
 #### dialog:profile_get_values
 
+替换已废弃的 MI 命令: *profile_get_values*。
 
-Replaces obsolete MI command: *profile_get_values*.
+列出属于某分析的所有值及其计数。如果分析不支持值,将返回总数。请注意,此函数不适用于通过 CacheDB 接口的共享分析。
 
+名称: *dialog:profile_get_values*
 
-Lists all the values belonging to a profile along with their
-		count. If the profile does not support values a total count
-		will be returned. Note that this function does not work for shared
-		profiles over the CacheDB interface.
+参数:
 
+- *profile* - 要列出其对话的分析名称。
 
-Name: *dialog:profile_get_values*
-
-
-Parameters:
-
-
-- *profile* - name of the profile to list the
-				dialog for.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:profile_get_values inboundCalls
 		
 ```
 
-
 #### dialog:profile_end_dlgs
 
+替换已废弃的 MI 命令: *profile_end_dlgs*。
 
-Replaces obsolete MI command: *profile_end_dlgs*.
+从指定分析中终止所有正在进行的对话,在单个对话上执行与命令 **[mi end dlg](#mi_end_dlg)** 相同的操作。
 
+名称: *dialog:profile_end_dlgs*
 
-Terminate all ongoing dialogs from a specified profile, on a single dialog it
-		performs the same operations as the command **[mi end dlg](#mi_end_dlg)**
+参数:
 
+- *profile* - 将终止其对话的分析的名称。
+- *value* - (可选)如果分析支持值,则仅终止具有指定值的对话。
 
-Name: *dialog:profile_end_dlgs*
-
-
-Parameters:
-
-
-- *profile* - name of the profile that will have its dialogs termianted
-- *value* - (optional) if the profile supports values terminate only the dialogs
-				with the specified value
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:profile_end_dlgs inboundCalls
 		
 ```
 
-
 #### dialog:db_sync
 
+替换已废弃的 MI 命令: *dlg_db_sync*。
 
-Replaces obsolete MI command: *dlg_db_sync*.
+将有关对话的所有信息从数据库加载到 OpenSIPS 内部内存中。如果在内存中找到对话且具有相同/较旧状态,则将使用数据库中的值进行更新。否则,较新的内存版本不会被更改。
 
+名称: *dialog:db_sync*
 
-Will load all the information about the dialogs from the database
-		in the OpenSIPS internal memory. If a dialog is already found in memory
-		and has the same/an older state, it will be updated with the values from
-		DB. Otherwise, the newer in-memory version will not be changed.
+它不带参数。
 
-
-Name: *dialog:db_sync*
-
-
-It takes no parameters
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:db_sync
 		
 ```
 
-
 #### dialog:cluster_sync
 
+替换已废弃的 MI 命令: *dlg_cluster_sync*。
 
-Replaces obsolete MI command: *dlg_cluster_sync*.
+此命令仅在启用对话复制时才会生效。
 
+从 [对话复制集群](#param_dialog_replication_cluster) 中的合适供体节点完全同步内存中的对话信息。已经存在于内存中但未通过同步重新确认的对话将被丢弃。可以指定共享标签以仅同步标记有该共享标签的对话。
 
-This command will only take effect if dialog replication is enabled.
+名称: *dialog:cluster_sync*
 
+参数:
 
-Fully synchronize the dialog information in memory from a suitable donor
-		node within the [dialog replication cluster](#param_dialog_replication_cluster). Dialogs
-		that already exist in memory which are not reconfirmed through syncing will
-		be discarded. A sharing tag can be specified in order to sync only dialogs
-		marked with that sharing tag.
+- *sharing_tag* - 对话必须标记以便同步的共享标签名称。
 
-
-Name: *dialog:cluster_sync*
-
-
-Parameters:
-
-
-- *sharing_tag* - name of the sharing tag that
-				dialogs have to be marked with in order to be synced
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:cluster_sync vip1
 		
 ```
 
-
 #### dialog:restore_db
 
+替换已废弃的 MI 命令: *dlg_restore_db*。
 
-Replaces obsolete MI command: *dlg_restore_db*.
+在潜在的同步失调事件后恢复对话表。该表被截断,然后用内存中的已确认对话填充。
 
+名称: *dialog:restore_db*
 
-Restores the dialog table after a potential desynchronization event.
-		The table is truncated, then populated with CONFIRMED dialogs from memory.
+它不带参数。
 
-
-Name: *dialog:restore_db*
-
-
-It takes no parameters
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:restore_db
 		
 ```
 
-
 #### dialog:list_all_profiles
 
+替换已废弃的 MI 命令: *list_all_profiles*。
 
-Replaces obsolete MI command: *list_all_profiles*.
+列出所有对话分析,以及给定分析是否具有关联值的 1 或 0。
 
+名称: *dialog:list_all_profiles*
 
-Lists all the dialog profiles, along with 1 or 0 if
-		the given profile has/does not have an associated value.
+参数: *它不带参数*
 
-
-Name: *dialog:list_all_profiles*
-
-
-Parameters: *It takes no parameters*
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:list_all_profiles
 		
 ```
 
-
 #### dialog:push_var
 
+替换已废弃的 MI 命令: *dlg_push_var*。
 
-Replaces obsolete MI command: *dlg_push_var*.
+为给定的对话 ID 列表 / Call-ID 推送或更新对话值。
 
+名称: *dialog:push_var*
 
-Push or update a dialog value for the given list of dialog IDs / Call-IDs.
+参数: *它需要 3 个或更多参数*
 
+- *dlg_val_name* - 需要插入/更新的对话值名称。
+- *dlg_val_value* - 要插入/更新的值。
+- *DID* - 对话标识符。可以是 $DLG_did 或实际 Call-ID。
 
-Name: *dialog:push_var*
-
-
-Parameters: *It takes 3 or more parameters*
-
-
-- *dlg_val_name* - name of the dialog value that needs to be inserted/updated
-- *dlg_val_value* - value to be inserted/updated
-- *DID* - dialog identifier. Can be either the $DLG_did or the actual Call-ID.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:push_var var_name var_value DID1 [ DID2 DID3 ...  DIDN ]
 		
 ```
 
-
 #### dialog:send_sequential
 
+替换已废弃的 MI 命令: *dlg_send_sequential*。
 
-Replaces obsolete MI command: *dlg_send_sequential*.
+在正在进行的对话中发送顺序请求。
 
+名称: *dialog:send_sequential*
 
-Sends a sequential request within an ongoing dialog.
+参数:
 
+- *callid* - 需要触发顺序消息的对话的 callid。
+- *method* - (可选)用于顺序消息的方法。默认值为 *INVITE*。
+- *mode* - (可选)可用于调整顺序消息行为的模式。*mode* 的可能值为:
+					
+					*caller* - (默认)发送顺序消息到呼叫者。在高可用性场景中,当您想更新上游的路由集(特别是 contact)时,此模式很有用。
+					*callee* - 与 caller 相同,但发送顺序消息到被叫者。
+					*challenge* - 发送顺序 INVITE(或 UPDATE)到呼叫者以质询其广告的 SDP body。收到 body 后,将其转发到被叫者。此模式在尝试更改两个端点(上游和下游)的路由集时很有用。它在尝试为 SDP body 重新协商时也很有用。
+					*challenge-caller* - 与 *challenge* 相同。
+					*challenge-callee* - 与 *challenge-caller* 相同,只是它首先质询被叫者,而不是呼叫者。
+- *body* - (可选)可用于指定初始顺序消息的 body。*body* 参数的可能值为:
+					
+					*none* - (默认)不向顺序消息添加 body。
+					*inbound* - 在生成的顺序消息的 body 中广告其对应方收到的最后一个 body。例如,如果 *mode=challenge-caller*,则消息将包含被叫者发送给 OpenSIPS 的 body。当您需要更改之前发送给呼叫者的 body 时,这很有用,因为您想为呼叫重新协商不同的媒体代理。这可以通过在 *local_route* 中捕获生成的请求并重新参与媒体代理来实现。
+					*outbound* - 在生成的顺序消息的 body 中广告最后发送给该 UAC 的 body。例如,如果 *mode=challenge-caller*,则消息将包含 OpenSIPS 发送给呼叫者的最后一个 body。在高可用性场景中,当尝试重新协商服务器的 contact 但不需要更改之前发送的 body 时,这很有用。
+					*custom:CONTENT_TYPE:BODY* - 可用于为生成的顺序消息指定特定 Content-Type 首部和 body。
+- *headers* - (可选)可用于指定初始顺序消息的某些首部。
 
-Name: *dialog:send_sequential*
+此函数异步运行,并返回最后收到的回复的状态码和原因,无论是 *challenge* 还是正常模式。
 
-
-Parameters:
-
-
-- *callid* - the callid of the dialog you need to trigger
-					the sequential message for.
-- *method* - (optional) the method used for the sequential
-					message. Default value is *INVITE*.
-- *mode* - (optional) can be used to tune the behavior of
-					the sequential message. Possible values for the *mode* are:
-				
-					*caller* - (default) sends the sequential message
-						to the caller. This mode can be useful in high availability scenarios
-						when you want to update the upstream's routing set, specifically the contact.
-					*callee* - same as caller, but sends the sequential
-							message to the callee.
-					*challenge* - sends a sequential INVITE (or UPDATE)
-						to the caller to challenge it for its advertised SDP body. When the
-						body is received, it is forwarded to the callee. This mode is useful
-						when trying to change both endpoints (upstream and downstream) routing
-						set. It can also be useful when trying to trigger a re-negotiation for
-						SDP body.
-					*challenge-caller* - same as *challenge*
-					*challenge-callee* - same as
-							*challenge-caller*, only that it first challenges
-							the callee, instead of the caller.
-- *body* - (optional) can be used to specify a body for
-					the initial sequential message. Possible values for the *body*
-					parameter are:
-				
-					*none* - (default) no body added to the sequential message.
-					*inbound* - advertises in the body of the sequential
-							message generated the last body received from its pair. For example,
-							if the *mode=challenge-caller*, the message will
-							contain the body sent to OpenSIPS by the callee. This is useful when
-							you need to alter the body previously sent to the caller, because you
-							want to re-negotiate a different media proxy for the call. This can
-							be achieved by catching the generated request in
-							*local_route*, and re-engage the Media proxy.
-					*outbound* - advertises in the body of the sequential
-							message generated the last body sent to that UAC. For example,
-							if the *mode=challenge-caller*, the message will
-							contain the last body sent by OpenSIPS to the caller. This is useful
-							in a high availability scenario when trying to re-negotiate the
-							contact of the server, but there is no need to alter the body sent
-							earlier.
-					*custom:CONTENT_TYPE:BODY* - this can be used to
-								specify a specific Content-Type ehader and body for the
-								sequential message generated.
-- *headers* - (optional) can be used to specify some headers for
-					the initial sequential message.
-
-
-This functions runs asynchronously and returns the status code and reason
-			of the last reply received for either the *challenge* or normal mode.
-
-
-MI Command Format:
-
+MI 命令格式:
 
 ```c
 			opensips-cli -x mi dialog:send_sequential \
 				callid=5291231-testing@127.0.0.1
-		
+			
 ```
 
-
-MI Command used to trigger media re-negotiation:
-
+用于触发媒体重新协商的 MI 命令:
 
 ```c
 			opensips-cli -x mi dialog:send_sequential \
 				callid=5291231-testing@127.0.0.1 \
 				mode=challenge \
 				body=inbound
-		
+			
 ```
 
-
-MI Command used to UPDATE the callee's remote Contact after a server failover:
-
+用于在服务器故障转移后更新被叫者远程 Contact 的 MI 命令:
 
 ```c
 			opensips-cli -x mi dialog:send_sequential \
@@ -2816,12 +1788,10 @@ MI Command used to UPDATE the callee's remote Contact after a server failover:
 				mode=challenge-callee \
 				body=outbound \
 				method=UPDATE
-		
+			
 ```
 
-
-MI Command used to send REFER to the callee, and add Refer-To header:
-
+用于发送 REFER 到被叫者,并添加 Refer-To 首部:
 
 ```c
 			opensips-cli -x mi dialog:send_sequential \
@@ -2830,416 +1800,241 @@ MI Command used to send REFER to the callee, and add Refer-To header:
 				body=none \
 				mode=callee \
 				headers='Refer-To: sip:user@domain:50060'
-		
+			
 ```
-
 
 #### dialog:set_profile
 
+替换已废弃的 MI 命令: *set_dlg_profile*。
 
-Replaces obsolete MI command: *set_dlg_profile*.
+将标识的对话(带可选值和清除旧分析值)通过对话 ID / Call-ID 设置到给定分析中。
 
+名称: *dialog:set_profile*
 
-Set the dialog identified by dialog ID / Call-ID into the given profile ( with optional value and clearing of the old profile values )
+参数: *它需要 2-4 个参数*
 
+- *dlg_id* - 相应对话的对话 ID 或 Call-ID。
+- *profile* - 要设置的分析名称。
+- *value* - 可选,要设置的分析值。
+- *clear_values* - 可选,在设置新值之前清除分析中的先前值。
 
-Name: *dialog:set_profile*
-
-
-Parameters: *It takes 2-4 parameters*
-
-
-- *dlg_id* - dialog ID or Call-ID for the respective dialog
-- *profile* - profile name to be set
-- *value* - optional, the profile value to be set
-- *clear_values* - optional, clear previous values in the profile before setting the new one
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:set_profile dlg_id=DID profile=my_profile value=my_value clear_values=1
 		
 ```
 
-
 #### dialog:unset_profile
 
+替换已废弃的 MI 命令: *unset_dlg_profile*。
 
-Replaces obsolete MI command: *unset_dlg_profile*.
+将标识的对话(带可选值)从给定分析中取消设置。
 
+名称: *dialog:unset_profile*
 
-Unsets the dialog identified by dialog ID / Call-ID from the given profile (with optional value).
+参数: *它需要 2-3 个参数*
 
+- *dlg_id* - 相应对话的对话 ID 或 Call-ID。
+- *profile* - 要取消设置的分析名称。
+- *value* - 可选,要取消设置的分析值。对于带值的分析,通过省略此参数,您现在可以清除给定分析的所有值。
 
-Name: *dialog:unset_profile*
-
-
-Parameters: *It takes 2-3 parameters*
-
-
-- *dlg_id* - dialog ID or Call-ID for the respective dialog
-- *profile* - profile name to be unset
-- *value* - optional, the profile value to be unset. for profiles with value, by omitting this parameter you can now clear all values of the given profile.
-
-
-MI FIFO Command Format:
-
+MI FIFO 命令格式:
 
 ```c
 		opensips-cli -x mi dialog:unset_profile dlg_id=DID profile=my_profile value=my_value
 		
 ```
 
-
-### Exported Pseudo-Variables
-
+### 导出的伪变量
 
 #### $DLG_count
 
-
-Returns the number of current active dialogs (may be confirmed or
-			not).
-
+返回当前活动对话的数量(可以是已确认或未确认)。
 
 #### $DLG_status
 
+返回与处理的顺序请求对应的对话状态。此 PV 仅在顺序请求中可用,在执行 loose_route() 之后。
 
-Returns the status of the dialog corresponding to the processed
-			sequential request. This PV will be available only for sequential
-			requests, after doing loose_route().
+值可能是:
 
-
-Value may be:
-
-
-- *NULL* - Dialog not found.
-- *1* - Dialog unconfirmed (created
-					but no reply received at all)
-- *2* - Dialog in early state (created
-					provisional reply received, but no final reply received
-					yet)
-- *3* - Confirmed by a final reply but
-					no ACK received yet.
-- *4* - Confirmed by a final reply and
-					ACK received.
-- *5* - Dialog ended.
-
+- *NULL* - 未找到对话。
+- *1* - 对话未确认(已创建但未收到任何回复)。
+- *2* - 对话处于早期状态(已收到临时回复,但尚未收到最终回复)。
+- *3* - 已通过最终回复确认但尚未收到 ACK。
+- *4* - 已通过最终回复确认并收到 ACK。
+- *5* - 对话已结束。
 
 #### $DLG_lifetime
 
+返回与处理的顺序请求对应的对话持续时间(秒)。持续时间从对话确认到当前时刻计算。此 PV 仅在顺序请求中可用,在执行 loose_route() 之后。
 
-Returns the duration (in seconds) of the dialog corresponding to
-			the processed sequential request. The duration is calculated from
-			the dialog confirmation and the current moment. This PV will be
-			available only for sequential requests, after doing loose_route().
-
-
-NULL will be returned if there is no dialog for the request.
-
+如果没有对话则返回 NULL。
 
 #### $DLG_flags
 
+以标志名称列表(以空格分隔)形式返回与处理的顺序请求对应的对话标志。此 PV 仅在顺序请求中可用,在执行 loose_route() 之后。
 
-Returns the dialog flags (as a list of flag names separted by space)
-			of the dialog corresponding to the processed sequential request.
-			This PV will be available only for sequential requests,
-			after doing loose_route().
-
-
-NULL will be returned if there is no dialog for the request.
-
+如果没有对话则返回 NULL。
 
 #### $DLG_dir
 
+以字符串形式返回请求在对话中的方向(如果请求由被叫者生成,则为"upstream",如果由呼叫者生成,则为"downstream") - 用于顺序请求。此 PV 仅在顺序请求中可用,在执行 loose_route() 之后。
 
-Returns the direction of the request in dialog (as "upstream" string
-			if the request is generated by callee or "downstream" string if the
-			request is generated by caller) - to be used for sequential request.
-			This PV will be available only for sequential requests (not for
-			replies), after doing loose_route().
-
-
-NULL will be returned if there is no dialog for the request.
-
+如果没有对话则返回 NULL。
 
 #### $DLG_did
 
+返回与处理的顺序请求对应的对话 ID。输出格式与 dialog:list MI 函数返回的格式相同。此 PV 仅在顺序请求中可用,在执行 loose_route() 之后。
 
-Returns the id of the dialog corresponding to
-			the processed sequential request. The output format is a string
-			identical to the one returned by the dialog:list MI function. This PV will be
-			available only for sequential requests, after doing loose_route().
-
-
-NULL will be returned if there is no dialog for the request.
-
+如果没有对话则返回 NULL。
 
 #### $DLG_end_reason
 
+返回对话终止的原因。它可以是以下之一:
 
-Returns the reason for the dialog termination. It can be
-				one of the following :
+- *Upstream BYE* - 被叫者发送了 BYE。
+- *Downstream BYE* - 呼叫者发送了 BYE。
+- *Lifetime Timeout* - 对话生命周期已过期。
+- *MI Termination* - 对话通过 MI 接口终止。
+- *Ping Timeout* - 对话因选项 ping 无回复而结束。
+- *ReINVITE Ping Timeout* - 对话因重新邀请 ping 无回复而结束。
+- *RTPProxy Timeout* - RTPProxy 信号的媒体超时。
+- *SIP Race Condition* - 发生了 SIP Race Condition。
 
-
-- *Upstream BYE* - Callee has sent a BYE
-- *Downstream BYE* - Caller has sent a BYE
-- *Lifetime Timeout* - Dialog lifetime expired
-- *MI Termination* - Dialog ended via the MI interface
-- *Ping Timeout* - Dialog ended because no reply to option pings
-- *ReINVITE Ping Timeout* - Dialog ended because no reply to reinvite pings
-- *RTPProxy Timeout* - Media timeout signaled by RTPProxy
-- *SIP Race Condition* - SIP Race Condition occurred
-
-
-NULL will be returned if there is no dialog for the request,
-				or if the dialog is not ended in the current context.
-
+如果没有对话或对话未在当前上下文中结束,则返回 NULL。
 
 #### $DLG_timeout
 
+用于设置对话生命周期(秒)。读取时,变量返回对话过期并被销毁前的秒数。请注意,读取变量仅在对话创建后(对于初始请求)或执行 loose_route() 后(对于顺序请求)才可能。重要提示:在 REALTIME db_mode 下使用此变量非常低效,因为每次更改对话值时都会执行数据库更新。
 
-Used to set the dialog lifetime (in seconds). When read, the variable
-				returns the number of seconds until the dialog expires and is destroyed.
-				Note that reading the variable is only possible after the dialog is created
-				(for initial requests) or after doing loose_route() (for sequential requests).
-				Important notice: using this variable with a REALTIME db_mode is very inefficient,
-				because every time the dialog value is changed, a database update is done.
-
-
-NULL will be returned if there is no dialog for the request, otherwise the
-				number of seconds until the dialog expiration.
-
+如果没有对话则返回 NULL,否则返回距离对话过期的秒数。
 
 #### $DLG_del_delay
 
+用于设置当前对话的对话删除延迟(秒)(以每个呼叫的方式)。读取时,变量返回为呼叫设置的秒数,或者是默认值(请参阅 "delete_delay" - [删除延迟](#param_delete_delay))模块参数)用于删除延迟。
 
-Used to set the dialog deletion delay (in seconds) for the
-				current dialog (in a per-call manner). When read, the variable
-				returns the number of seconds that were set for the call or
-				the default value ( see the
-				"delete_delay" - [delete delay](#param_delete_delay))
-				module param) for the delete delaying.
-
-
-The variable must be used when the context of a dialog is
-				available in script.
-
+当对话上下文在脚本中可用时,必须使用此变量。
 
 #### $DLG_json
 
+该变量是只读的,暴露一个包含 dialog:list MI 函数包含的所有信息的 JSON 变量。
 
-The variable is read-only and exposes a JSON variable containing all the information that the dialog:list MI function contains
-
-
-NULL will be returned if there is no dialog for the request, otherwise the JSON will be returned.
-
+如果没有对话则返回 NULL,否则返回 JSON。
 
 #### $DLG_ctx_json
 
+该变量是只读的,暴露一个包含 dialog:list_ctx MI 函数包含的所有信息的 JSON 变量(在 $DLG_json 之上,这将暴露当前对话的所有对话 vars 和分析链接的完整列表)。
 
-The variable is read-only and exposes a JSON variable containing all the information that the dialog:list_ctx MI function contains ( on top of $DLG_json, this will expose the full list of dialog vars and profile links for the current dialog )
-
-
-NULL will be returned if there is no dialog for the request, otherwise the JSON will be returned.
-
+如果没有对话则返回 NULL,否则返回 JSON。
 
 #### $dlg_val(name)
 
+这是一个读/写变量,允许访问名为 *name* 的对话属性。它可以保存字符串或整数值。
 
-This is a read/write variable that allows access to the dialog
-			attribute named *name*. It can hold a string or
-			integer value.
+请确保仅在拥有对话上下文时使用此变量(如在 create_dialog() 或 match_dialog() 之后或等效操作之后)。
 
+变量接受动态名称,意味着名称可以包含其他变量。
 
-Be sure and use this variable only when having a dialog context 
-			(like after create_dialog() or match_dialog() or equivalent).
+如果没有对话则返回 NULL。
 
-
-The variable accepts dynamic names, meaning the name may contain
-			other variables.
-
-
-NULL will be returned if there is no dialog for the request.
-
-
-### Exported Events
-
+### 导出的事件
 
 #### E_DLG_STATE_CHANGED
 
+当对话状态改变时引发此事件。
 
-This event is raised when the dialog state is changed.
+参数:
 
+- *id* - 对话 ID 的十六进制表示。
+- *db_id* - 对话 ID 的整数表示,如其存储在数据库 *dlg_id* 字段中。
+- *callid* - callid。
+- *from_tag* - From tag。
+- *to_tag* - To tag。
+- *old_state* - 对话的旧状态。
+- *new_state* - 对话的新状态。
 
-Parameters:
+## 开发者指南
 
-
-- *id* - the hex representation of the dialog id.
-- *db_id* - the integer representation of the dialog id,
-					as it is stored in the database *dlg_id* field.
-- *callid* - the callid.
-- *from_tag* - the From tag.
-- *to_tag* - the To tag.
-- *old_state* - the old state of the dialog.
-- *new_state* - the new state of the dialog.
-
-
-## Developer Guide
-
-
-### Available Functions
-
+### 可用函数
 
 #### register_dlgcb (dialog, type, cb, param, free_param_cb)
 
+向对话注册新回调。
 
-Register a new callback to the dialog.
+参数含义如下:
 
-
-Meaning of the parameters is as follows:
-
-
-- *struct dlg_cell* dlg* - dialog to 
-			register callback to. If maybe NULL only for DLG_CREATED callback
-			type, which is not a per dialog type.
-- *int type* - types of callbacks; more
-			types may be register for the same callback function; only 
-			DLG_CREATED must be register alone. Possible types:
-			
-			
-				*DLGCB_LOADED* - called when a dialog
-				is loaded from the database, or received by a node using the
-				cluster replication.
-			
-			
+- *struct dlg_cell* dlg* - 要注册回调的对话。如果可能为 NULL,则仅适用于 DLG_CREATED 回调类型,它不是每个对话类型。
+- *int type* - 回调的类型;可以为同一回调函数注册多种类型;只有 DLG_CREATED 必须单独注册。可能的类型:
+				
+				*DLGCB_LOADED* - 当对话从数据库加载或使用
+				集群复制接收到节点时调用。
+				
 				*DLGCB_SAVED*
-			
-			
-				*DLG_CREATED* - called when a new 
-				dialog is created - it's a global type (not associated to 
-				any dialog)
-			
-			
-				*DLG_FAILED* - called when the dialog
-				was negatively replied (non-2xx) - it's a per dialog type.
-			
-			
-				*DLG_CONFIRMED* - called when the 
-				dialog is confirmed (2xx replied) - it's a per dialog type.
-			
-			
-				*DLG_REQ_WITHIN* - called when the 
-				dialog matches a sequential request - it's a per dialog type.
-			
-			
-				*DLG_TERMINATED* - called when the 
-				dialog is terminated via BYE, or by the mi dlg_end_dlg command
-				- it's a per dialog type.
-			
-			
-				*DLG_EXPIRED* - called when the 
-				dialog expires without receiving a BYE - it's a per dialog 
-				type. Note that when using replication sharing tags, this
-				callback is only executed by the node that has the Active tag.
-			
-			
-				*DLGCB_EARLY* - called when the
-				dialog is created in an early state (18x replied) - it's
-				a per dialog type.
-			
-			
-				*DLGCB_RESPONSE_FWDED* - called when
-				the dialog matches a reply to the initial INVITE request - it's
-				a per dialog type.
-			
-			
-				*DLGCB_RESPONSE_WITHIN* - called when
-				the dialog matches a reply to a subsequent in dialog request
-				- it's a per dialog type.
-			
-			
-				*DLGCB_MI_CONTEXT* - called when the
-				mi dlg_list_ctx command is invoked - it's a per dialog type.
-			
-			
+				
+				*DLG_CREATED* - 当新对话创建时调用 - 它是一个全局类型(不与任何对话关联)。
+				
+				*DLG_FAILED* - 当对话被否定回复(非 2xx)时调用 - 它是一个每个对话类型。
+				
+				*DLG_CONFIRMED* - 当对话被确认(2xx 回复)时调用 - 它是一个每个对话类型。
+				
+				*DLG_REQ_WITHIN* - 当对话匹配顺序请求时调用 - 它是一个每个对话类型。
+				
+				*DLG_TERMINATED* - 当对话通过 BYE 或 mi dlg_end_dlg 命令终止时调用 - 它是一个每个对话类型。
+				
+				*DLG_EXPIRED* - 当对话在未收到 BYE 的情况下过期时调用 - 它是一个每个对话类型。请注意,当使用复制共享标签时,此回调仅由拥有活动标签的节点执行。
+				
+				*DLGCB_EARLY* - 当对话在早期状态(18x 回复)中创建时调用 - 它是一个每个对话类型。
+				
+				*DLGCB_RESPONSE_FWDED* - 当对话匹配对初始 INVITE 请求的回复时调用 - 它是一个每个对话类型。
+				
+				*DLGCB_RESPONSE_WITHIN* - 当对话匹配对后续会话中请求的回复时调用 - 它是一个每个对话类型。
+				
+				*DLGCB_MI_CONTEXT* - 当调用 mi dlg_list_ctx 命令时调用 - 它是一个每个对话类型。
+				
 				*DLGCB_DESTROY*
-- *dialog_cb cb* - callback function to be 
-			called. Prototype is: "void (dialog_cb) 
+- *dialog_cb cb* - 要调用的回调函数。原型是: "void (dialog_cb) 
 			(struct dlg_cell* dlg, int type, struct dlg_cb_params * params);
-			"
-- *void *param* - parameter to be passed to
-			the callback function.
+			"。
+- *void *param* - 要传递给回调函数的参数。
 - *param_free callback_param_free* - 
-			callback function to be called to free the param.
-			Prototype is: "void (param_free_cb) (void *param);"
+			回调函数,用于释放参数。原型是: "void (param_free_cb) (void *param);"
 
+## 常见问题
 
-## Frequently Asked Questions
+**Q: "topology_hiding()" 函数发生了什么?**
 
+相应功能已移至 topology_hiding 模块。函数原型保持不变。
 
-**Q: What happened with "topology_hiding()" 
-		function?**
+**Q: "use_tight_match" 参数发生了什么?**
 
+该参数在 1.3 版本中移除,因为紧密匹配选项变得强制性和不可配置。现在,紧密匹配始终执行(当使用 DID 匹配时)。
 
-The respective functionality was moved into the topology_hiding module.
-			Function prototype has remained the same.
+**Q: "bye_on_timeout_flag" 参数发生了什么?**
 
+该参数在 dialog 模块参数重组中移除。要保持超时时 bye 行为,您需要向 create_dialog() 函数提供"B"字符串参数。
 
-**Q: What happened with "use_tight_match" 
-		parameter?**
+**Q: "dlg_flag" 参数发生了什么?**
 
+该参数已被视为过时。创建对话的唯一方法是调用 create_dialog() 函数。
 
-The parameter was removed with version 1.3 as the option of tight
-			matching became mandatory and not configurable. Now, the tight
-			matching is done all the time (when using DID matching).
+**Q: 在哪里可以找到更多关于 OpenSIPS 的信息?**
 
+请查看 [https://opensips.org/](https://opensips.org/)。
 
-**Q: What happened with "bye_on_timeout_flag" 
-		parameter?**
+**Q: 在哪里可以发布关于此模块的问题?**
 
+首先检查您的问题是否已在我们某个邮件列表中得到解答:
 
-The parameter was removed in a dialog module parameter restructuring.
-			To keep the bye on timeout behavior, you need to provide a "B" 
-			string parameter to the create_dialog() function.
+关于任何稳定 OpenSIPS 版本的电子邮件应发送到 users@lists.opensips.org,关于开发版本的电子邮件应发送到 devel@lists.opensips.org。
 
+如果您想保持邮件私密,请发送至 users@lists.opensips.org。
 
-**Q: What happened with "dlg_flag" 
-		parameter?**
+**Q: 如何报告错误?**
 
+请遵循以下指南:
+[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 
-The parameter is considered obsolete. The only way to
-			create a dialog is to call the create_dialog() function
+### 许可证
 
-
-**Q: Where can I find more about OpenSIPS?**
-
-
-Take a look at [https://opensips.org/](https://opensips.org/).
-
-
-**Q: Where can I post a question about this module?**
-
-
-First at all check if your question was already answered on one of
-			our mailing lists:
-
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
-
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
-
-
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
-<!-- CONTRIBUTORS -->
-
-### License
-
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享 4.0 许可证授权。

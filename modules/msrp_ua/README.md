@@ -1,92 +1,83 @@
 ---
-title: "MSRP UA Module"
-description: "This module implements an User Agent capable of establishing messaging sessions using the MSRP(RFC 4976) protocol."
+title: "MSRP UA 模块"
+description: "本模块实现了一个用户代理,能够使用 MSRP(RFC 4976)协议建立消息会话。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements an User Agent capable of establishing messaging
-		sessions using the MSRP(RFC 4976) protocol.
+本模块实现了一个用户代理,能够使用 MSRP(RFC 4976)协议建立消息会话。
 
 
-Through an internal API and exported script and MI functions, the module
-		allows OpenSIPS to set up MSRP sessions via SIP and exchange messages as
-		an MSRP endpoint.
+通过内部 API 和导出的脚本及 MI 函数,该模块允许 OpenSIPS 通过 SIP 设置 MSRP 会话,
+并作为 MSRP 端点交换消息。
 
 
-The module makes use of the *proto_msrp* module for
-    	the MSRP protocol stack and the *b2b_entities* module 
-    	for the SIP UAC/UAS functionalities.
+该模块利用 *proto_msrp* 模块来实现 MSRP 协议栈,
+以及 *b2b_entities* 模块来实现 SIP UAC/UAS 功能。
 
 
-### Usage from Script and External API
+### 脚本和外部 API 使用
 
 
-In order to start a SIP call carying MSRP from OpenSIPS you can use the
-	[mi start session](#mi_start_session) MI function. Alternatively, to
-	answer a SIP session with MSRP you can use the
-	[msrp ua answer](#func_msrp_ua_answer) script function.
+要从 OpenSIPS 发起携带 MSRP 的 SIP 呼叫,您可以使用
+[mi start session](#mi_start_session) MI 函数。或者,要应答携带 MSRP 的 SIP 会话,
+您可以使用 [msrp ua answer](#func_msrp_ua_answer) 脚本函数。
 
 
-When a UAC or UAS session is successfully established(ACK sent/received) the
-	[E MSRP SESSION NEW](#event_e_msrp_session_new) event is triggered. After this point,
-	you may receive MSRP messages or Reports, signaled by the
-	[E MSRP MSG RECEIVED](#event_e_msrp_msg_received) and
-	[E MSRP REPORT RECEIVED](#event_e_msrp_report_received) events.
+当 UAC 或 UAS 会话成功建立(ACK 发送/接收)时,
+会触发 [E MSRP SESSION NEW](#event_e_msrp_session_new) 事件。此后,
+您可能会收到 MSRP 消息或报告,由 [E MSRP MSG RECEIVED](#event_e_msrp_msg_received) 和
+[E MSRP REPORT RECEIVED](#event_e_msrp_report_received) 事件信号通知。
 
 
-Note that the *E_MSRP_REPORT_RECEIVED* event covers both actual MSRP
-    REPORT requests as well as negative MSRP transaction responses and local send
-    timeouts(which should be treated the same as a received timeout transaction
-    response).
+请注意,*E_MSRP_REPORT_RECEIVED* 事件涵盖实际的 MSRP REPORT 请求、
+否定的 MSRP 事务响应和本地发送超时(这些应被视为收到超时事务响应)。
 
 
-You can send MSRP messages to the peer with the
-    [mi send message](#mi_send_message) MI function.
+您可以使用 [mi send message](#mi_send_message) MI 函数向对方发送 MSRP 消息。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
 - *proto_msrp*
 - *b2b_entities*
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed 
-			before running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前必须安装以下库或应用程序:
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### hash_size (int)
 
 
-The size of the hash table that stores the MSRP session
-				information. It is the 2 logarithmic value of the real size.
+存储 MSRP 会话信息的哈希表大小。
+这是实际大小的以 2 为底的对数值。
 
 
-*Default value is "10"*
-			 (1024 records).
+*默认值为 "10"*
+(1024 条记录)。
 
 
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("msrp_ua", "hash_size", 16)
 ...
@@ -97,14 +88,13 @@ modparam("msrp_ua", "hash_size", 16)
 #### cleanup_interval (int)
 
 
-The interval between full iterations of the sessions table
-			in order to clean up expired MSRP sessions.
+完整遍历会话表进行清理过期 MSRP 会话的间隔时间。
 
 
-*Default value is "60".*
+*默认值为 "60"。*
 
 
-```c title="Set cleanup_interval parameter"
+```c title="设置 cleanup_interval 参数"
 ...
 modparam("msrp_ua", "cleanup_interval", 30)
 ...
@@ -115,13 +105,13 @@ modparam("msrp_ua", "cleanup_interval", 30)
 #### max_duration (integer)
 
 
-The maximum duration of a call. If set to 0, there will be no limitation.
+呼叫的最大持续时间。如果设置为 0,则没有限制。
 
 
-The default value is 12 * 3600 seconds (12 hours).
+默认值为 12 * 3600 秒(12 小时)。
 
 
-```c title="max_duration parameter example"
+```c title="max_duration 参数示例"
 ...
 modparam("msrp_ua", "max_duration", 7200)
 ...
@@ -131,19 +121,17 @@ modparam("msrp_ua", "max_duration", 7200)
 #### my_uri (string)
 
 
-The MSRP URI of the OpenSIPS endpoint. This URI will be advertised in the SDP
-		offer provided to peers when setting up a session and should match one
-		of the MSRP listeners defined in the script.
+OpenSIPS 端点的 MSRP URI。此 URI 将在提供给对方的 SDP offer 中公布,
+并应与脚本中定义的 MSRP 监听器之一匹配。
 
 
-The *session-id* part of the URI should be ommited.
+URI 的 *session-id* 部分应省略。
 
 
-If the port is not set explicitly, the default value of 2855 wil
-		be assumed
+如果未明确设置端口,则假定默认值为 2855
 
 
-```c title="my_uri parameter usage"
+```c title="my_uri 参数用法"
 ...
 modparam("msrp_ua", "my_uri", "msrp://opensips.org:2855;tcp")
 ...
@@ -153,16 +141,15 @@ modparam("msrp_ua", "my_uri", "msrp://opensips.org:2855;tcp")
 #### advertised_contact (string)
 
 
-Contact to be used in the generated SIP requests. For sessions answered
-		by OpenSIPS, if it is not set, it is constructed dynamically from the
-		socket where the initiating request was received.
+在生成的 SIP 请求中使用的 Contact。对于由 OpenSIPS 应答的会话,
+如果未设置,则会根据接收发起请求的套接字动态构建。
 
 
-This parameter is mandatory when using the
-		[mi start session](#mi_start_session) MI function.
+使用 [mi start session](#mi_start_session) MI 函数时,
+此参数是必需的。
 
 
-```c title="advertised_contact parameter usage"
+```c title="advertised_contact 参数用法"
 ...
 modparam("msrp_ua", "advertised_contact", "sip:oss@opensips.org")
 ...
@@ -172,49 +159,44 @@ modparam("msrp_ua", "advertised_contact", "sip:oss@opensips.org")
 #### relay_uri (string)
 
 
-URI of an MSRP relay to use for both accepted and initiated
-		sessions.
+用于已接受和发起会话的 MSRP 中继 URI。
 
 
-Credentials for the MSRP client are provided via the
-		*uac_auth* module by setting the
-		*credential* module parameter.
+MSRP 客户端的凭据通过 *uac_auth* 模块提供,
+设置 *credential* 模块参数。
 
 
-If not set, no relay will be used.
+如果未设置,则不使用中继。
 
 
-```c title="relay_uri parameter usage"
+```c title="relay_uri 参数用法"
 ...
 modparam("msrp_ua", "relay_uri", "msrp://opensips.org:2856;tcp")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### msrp_ua_answer(content_types)
 
 
-This functions answers an initial INVITE offering a new MSRP
-			messaging session. After this function is used to initialize the
-			session, the call will be completely handled by the B2B engine.
+此函数应答发起新的 MSRP 消息会话的初始 INVITE。
+使用此函数初始化会话后,呼叫将完全由 B2B 引擎处理。
 
 
-Parameters:
+参数:
 
 
-- *content_types* (string) - content types
-				adevertised in the *accept-types* SDP
-				attribute. At least one of the content types in this list must
-				match the types offered by the peer in its SDP offer.
+- *content_types* (string) - 在 *accept-types* SDP
+属性中公布的内容类型。此列表中至少有一种内容类型必须与对方在其 SDP offer 中提供的内容类型匹配。
 
 
-This function can be used only from a request route.
+此函数只能用于请求路由。
 
 
-```c title="msrp_ua_answer() usage"
+```c title="msrp_ua_answer() 用法"
 ...
 if (!has_totag() && is_method("INVITE")) {
 	msrp_ua_answer("text/plain");
@@ -224,46 +206,46 @@ if (!has_totag() && is_method("INVITE")) {
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### msrp_ua:send_message
 
 
-Replaces obsolete MI command: *msrp_ua_send_message*.
+替代已废弃的 MI 命令: *msrp_ua_send_message*。
 
 
-Sends a new MSRP message to the peer.
+向对方发送新的 MSRP 消息。
 
 
-Name: *msrp_ua:send_message*
+名称: *msrp_ua:send_message*
 
 
-Parameters
+参数
 
 
-- *session_id* (string) - the MSRP session
-				identifier ("session-id" part of the MSRP URI).
-- *mime* (string, optional) - MIME content
-				type of this message. If missing, an empty message will be sent.
-- *body* (string, optional) - actual message
-				body. If missing, an empty message will be sent.
-- *success_report* (string, optional) - string
-				indicating whether to request an MSRP Success Report. Possible
-				values are *yes* or *no*.
-				If the parameter is missing or is set to "no" the SEND request
-				will not include a Success-Report header.
-- *failure_report* (string, optional) - string
-				indicating whether to request an MSRP Failure Report. Possible
-				values are *yes*, *no* or
-				*partial*, as specified in MSRP.
-				If the parameter is missing or is set to "yes" the SEND request
-				will not include a Failure-Report header. Note that if the header
-				field is not present, the receving MSRP endpoint must treat it the
-				same as a Failure-Report header with a value of "yes".
+- *session_id* (string) - MSRP 会话
+标识符(MSRP URI 的 "session-id" 部分)。
+- *mime* (string, 可选) - 此消息的 MIME 内容
+类型。如果缺失,将发送空消息。
+- *body* (string, 可选) - 实际的消息
+体。如果缺失,将发送空消息。
+- *success_report* (string, 可选) - 字符串,
+指示是否请求 MSRP Success Report。可能的
+值为 *yes* 或 *no*。
+如果参数缺失或设置为 "no",则 SEND 请求
+将不包含 Success-Report 头。
+- *failure_report* (string, 可选) - 字符串,
+指示是否请求 MSRP Failure Report。可能的
+值为 *yes*、*no* 或
+*partial*,如 MSRP 中所规定。
+如果参数缺失或设置为 "yes",则 SEND 请求
+将不包含 Failure-Report 头。请注意,如果头
+字段不存在,接收 MSRP 端点必须将其视为
+值为 "yes" 的 Failure-Report 头。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式:
 
 
 ```c
@@ -277,34 +259,31 @@ opensips-cli -x mi msrp_ua:send_message \
 #### msrp_ua:start_session
 
 
-Replaces obsolete MI command: *msrp_ua_start_session*.
+替代已废弃的 MI 命令: *msrp_ua_start_session*。
 
 
-Starts a MSRP session.
+启动一个 MSRP 会话。
 
 
-The [advertised contact](#param_advertised_contact) is mandatory if this
-		function is used.
+如果使用此函数,则 [advertised contact](#param_advertised_contact) 是必需的。
 
 
-Name: *msrp_ua:start_session*
+名称: *msrp_ua:start_session*
 
 
-Parameters
+参数
 
 
-- *content_types* (string) - content types
-				adevertised in the *accept-types* SDP
-				attribute.
-- *from_uri* (string) - From URI to be used
-				in the INVITE.
-- *to_uri* (string) - To URI to be used
-				in the INVITE.
-- *ruri* (string) - Request URI and destination
-				of the INVITE.
+- *content_types* (string) - 在 *accept-types* SDP
+属性中公布的内容类型。
+- *from_uri* (string) - INVITE 中使用的
+From URI。
+- *to_uri* (string) - INVITE 中使用的
+To URI。
+- *ruri* (string) - INVITE 的 Request URI 和目标。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式:
 
 
 ```c
@@ -318,22 +297,22 @@ opensips-cli -x mi msrp_ua:start_session \
 #### msrp_ua:list_sessions
 
 
-Replaces obsolete MI command: *msrp_ua_list_sessions*.
+替代已废弃的 MI 命令: *msrp_ua_list_sessions*。
 
 
-Lists information about ongoing MSRP sessions.
+列出正在进行的 MSRP 会话信息。
 
 
-Name: *msrp_ua:list_sessions*
+名称: *msrp_ua:list_sessions*
 
 
-Parameters
+参数
 
 
-- *None*.
+- *无*。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式:
 
 
 ```c
@@ -345,23 +324,23 @@ opensips-cli -x mi msrp_ua:list_sessions
 #### msrp_ua:end_session
 
 
-Replaces obsolete MI command: *msrp_ua_end_session*.
+替代已废弃的 MI 命令: *msrp_ua_end_session*。
 
 
-Terminate an ongoing MSRP session.
+终止正在进行的 MSRP 会话。
 
 
-Name: *msrp_ua:end_session*
+名称: *msrp_ua:end_session*
 
 
-Parameters
+参数
 
 
-- *session_id* (string) - the MSRP session
-				identifier ("session-id" part of the MSRP URI).
+- *session_id* (string) - MSRP 会话
+标识符(MSRP URI 的 "session-id" 部分)。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式:
 
 
 ```c
@@ -371,165 +350,156 @@ opensips-cli -x mi msrp_ua:end_session \
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_MSRP_SESSION_NEW
 
 
-This event is triggered when a new MSRP session is successfully
-			established(ACK sent/received).
+当成功建立新的 MSRP 会话(ACK 发送/接收)时触发此事件。
 
 
-Parameters:
+参数:
 
 
-- *from_uri* - The URI in the SIP From header
-				of the answered INVITE.
-- *to_uri* - The URI in the SIP To header
-				of the answered INVITE.
-- *ruri* - The SIP Request URI of the answered
-				INVITE.
-- *session_id* - The MSRP session identifier
-				("session-id" part of the MSRP URI).
-- *content_types* - The content types offered
-				by the peer in the *accept-types* SDP attribute.
+- *from_uri* - 已应答 INVITE 的 SIP From 头中的 URI。
+- *to_uri* - 已应答 INVITE 的 SIP To 头中的 URI。
+- *ruri* - 已应答 INVITE 的 SIP Request URI。
+- *session_id* - MSRP 会话标识符
+(MSRP URI 的 "session-id" 部分)。
+- *content_types* - 对方在 *accept-types* SDP 属性中提供的内容类型。
 
 
 #### E_MSRP_SESSION_END
 
 
-This event is triggered when an ongoing MSRP session is terminted (session
-			expires or BYE is received; terminating a session via the
-			*msrp_ua:end_session* MI function is not included).
+当正在进行的 MSRP 会话终止时触发此事件(会话
+过期或收到 BYE;不包括通过
+*msrp_ua:end_session* MI 函数终止会话)。
 
 
-Parameters:
+参数:
 
 
-- *session_id* - The MSRP session identifier
-				("session-id" part of the MSRP URI).
+- *session_id* - MSRP 会话标识符
+(MSRP URI 的 "session-id" 部分)。
 
 
 #### E_MSRP_MSG_RECEIVED
 
 
-This event is triggered when receiving a new, non-empty MSRP SEND
-			request from the peer.
+当从对方收到新的非空 MSRP SEND 请求时触发此事件。
 
 
-Parameters:
+参数:
 
 
-- *session_id* - The MSRP session identifier
-				("session-id" part of the MSRP URI).
-- *content_type* - The content type of this message.
-- *body* - The actual message body.
+- *session_id* - MSRP 会话标识符
+(MSRP URI 的 "session-id" 部分)。
+- *content_type* - 此消息的内容类型。
+- *body* - 实际的消息体。
 
 
 #### E_MSRP_REPORT_RECEIVED
 
 
-This event is triggered when:
+在以下情况下触发此事件:
 
 
-- a MSRP REPORT request is received
-- a failure transaction response is received
-- a local timeout for a SEND request occured.
+- 收到 MSRP REPORT 请求
+- 收到失败的事务响应
+- SEND 请求的本地超时发生。
 
 
-Parameters:
+参数:
 
 
-- *session_id* - The MSRP session identifier
-				("session-id" part of the MSRP URI).
-- *message_id* - The value of the Message-ID
-				header field.
-- *status* - The value of the Status header field.
-- *byte_range* - The value of the Byte-Range header
-				field.
+- *session_id* - MSRP 会话标识符
+(MSRP URI 的 "session-id" 部分)。
+- *message_id* - Message-ID
+头字段的值。
+- *status* - Status 头字段的值。
+- *byte_range* - Byte-Range 头
+字段的值。
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Overview
+### 概述
 
 
-In order to answer a SIP session carying MSRP the [init uas](#dev_init_uas)
-	function should be used. Conversely for starting a MSRP call as a UAC, one
-	can use the [init uac](#dev_init_uac) function.
+要应答携带 MSRP 的 SIP 会话,应使用 [init uas](#dev_init_uas)
+函数。相反,对于作为 UAC 发起 MSRP 呼叫,
+可以使用 [init uac](#dev_init_uac) 函数。
 
 
-After initializing the session with either of the above functions, the SIP call
-	will be further handled by the module and notifications regarding significant SIP
-	level events and received MSRP requests and responses will be delivered via
-	registering callback functions.
+使用上述任一函数初始化会话后,SIP 呼叫将
+由模块进一步处理,有关重要 SIP 级别事件和收到的 MSRP 请求
+及响应的通知将通过注册回调函数传递。
 
 
-MSRP SEND requests can be sent with the [send message](#dev_send_message) function
-    after the sessions is established, which will be signaled by the
-    *msrp_ua_notify_cb_f* callback with the
-    *MSRP_UA_SESS_ESTABLISHED* event.
+会话建立后,可以使用 [send message](#dev_send_message) 函数发送 MSRP SEND 请求,
+这将通过带有 *MSRP_UA_SESS_ESTABLISHED* 事件的
+*msrp_ua_notify_cb_f* 回调进行信号通知。
 
 
-Received MSRP requests, transaction responses and local send timeouts will be
-    signaled via the *msrp_ua_req_cb_f* and
-    *msrp_ua_rpl_cb_f* callbacks.
+收到的 MSRP 请求、事务响应和本地发送超时将通过
+*msrp_ua_req_cb_f* 和
+*msrp_ua_rpl_cb_f* 回调进行信号通知。
 
 
-### Available Functions
+### 可用函数
 
 
 #### init_uas(msg, accept_types, hdl)
 
 
-This function will intialize a MSRP UA session based on a received SIP
-        INVITE.
+此函数将基于收到的 SIP INVITE 初始化 MSRP UA 会话。
 
 
-Meaning of the parameters is as follows:
+参数含义如下:
 
 
-- *struct sip_msg *msg* - the SIP message
-- *str *accept_types* - the value of the
-                "accept-types" attribute to include in the SDP offer.
-- *struct msrp_ua_handler *hdl* - handler
-                structure used to register the callbacks for SIP level and MSRP
-                level notifications.
+- *struct sip_msg *msg* - SIP 消息
+- *str *accept_types* - 要包含在 SDP offer 中的
+"accept-types" 属性的值。
+- *struct msrp_ua_handler *hdl* - 处理程序
+结构,用于注册 SIP 级别和 MSRP
+级别通知的回调。
 
 
-```c title="struct msrp_ua_handler structure"
+```c title="struct msrp_ua_handler 结构"
 struct msrp_ua_handler {
-	/* name of this registration */
+	/* 此注册的名称 */
 	str *name;
-	/* parameter to be passed to msrp_req_cb and msrp_rpl_cb callbacks */
+	/* 要传递给 msrp_req_cb 和 msrp_rpl_cb 回调的参数 */
 	void *param;
-	/* callback for SIP level notifications */
+	/* SIP 级别通知的回调 */
 	msrp_ua_notify_cb_f notify_cb;
-	/* callback for receving MSRP requests */
+	/* 接收 MSRP 请求的回调 */
 	msrp_ua_req_cb_f msrp_req_cb;
-	/* callback for receving MSRP responses */
+	/* 接收 MSRP 响应的回调 */
 	msrp_ua_rpl_cb_f msrp_rpl_cb;
 };
 ```
 
 
-```c title="msrp_ua_notify_cb_f prototype"
+```c title="msrp_ua_notify_cb_f 原型"
 typedef int (*msrp_ua_notify_cb_f)(struct msrp_ua_notify_params *params,
 	void *hdl_param);
 ```
 
 
-```c title="struct msrp_ua_notify_params structure"
+```c title="struct msrp_ua_notify_params 结构"
 struct msrp_ua_notify_params {
-	/* event type */
+	/* 事件类型 */
 	enum msrp_ua_event_type event;
-	/* SIP message */
+	/* SIP 消息 */
 	struct sip_msg *msg;
-	/* SDP "accept-types" attribute in case of MSRP_UA_SESS_ESTABLISHED event */
+	/* MSRP_UA_SESS_ESTABLISHED 事件情况下的 SDP "accept-types" 属性 */
 	str *accept_types;
-	/* MSRP UA session ID */
+	/* MSRP UA 会话 ID */
 	str *session_id;
 };
 ```
@@ -537,24 +507,23 @@ struct msrp_ua_notify_params {
 
 ```c title="enum msrp_ua_event_type"
 enum msrp_ua_event_type {
-	/* session established (ACK sent/received) */
+	/* 会话已建立(ACK 已发送/接收) */
 	MSRP_UA_SESS_ESTABLISHED = 1,
-	/* failed to establish session (negative reply/timeout etc.) */
+	/* 会话建立失败(否定回复/超时等) */
 	MSRP_UA_SESS_FAILED,
-	/* BYE received/sent(in case of session timeout) */
+	/* 收到/发送 BYE(会话超时情况) */
 	MSRP_UA_SESS_TERMINATED
 };
 ```
 
 
-```c title="msrp_ua_req_cb_f prototype"
+```c title="msrp_ua_req_cb_f 原型"
 typedef int (*msrp_ua_req_cb_f)(struct msrp_msg *req, void *hdl_param);
 ```
 
 
-```c title="msrp_ua_rpl_cb_f prototype"
-/* an MSRP transaction timeout will be signaled by calling this callback
- * with a NULL rpl parameter */
+```c title="msrp_ua_rpl_cb_f 原型"
+/* MSRP 事务超时将通过使用 NULL rpl 参数调用此回调进行信号通知 */
 typedef int (*msrp_ua_rpl_cb_f)(struct msrp_msg *rpl, void *hdl_param);
 ```
 
@@ -562,56 +531,55 @@ typedef int (*msrp_ua_rpl_cb_f)(struct msrp_msg *rpl, void *hdl_param);
 #### init_uac(accept_types, from_uri, to_uri, ruri, hdl)
 
 
-This function will intialize a MSRP UA session by sending a SIP INVITE to
-        a destination.
+此函数通过向目标发送 SIP INVITE 来初始化 MSRP UA 会话。
 
 
-Meaning of the parameters is as follows:
+参数含义如下:
 
 
-- *str *accept_types* - the value of the
-                "accept-types" attribute to include in the SDP offer.
-- *str *from_uri* - URI to use in the From
-                header of the INVITE.
-- *str *to_uri* - URI to use in the To
-                header of the INVITE.
-- *str *ruri* - Request URI to use in the for
-                the INVITE.
-- *struct msrp_ua_handler *hdl* - handler
-                structure used to register the callbacks for SIP level and MSRP
-                level notifications.
+- *str *accept_types* - 要包含在 SDP offer 中的
+"accept-types" 属性的值。
+- *str *from_uri* - INVITE 中 From
+头使用的 URI。
+- *str *to_uri* - INVITE 中 To
+头使用的 URI。
+- *str *ruri* - INVITE 使用的
+Request URI。
+- *struct msrp_ua_handler *hdl* - 处理程序
+结构,用于注册 SIP 级别和 MSRP
+级别通知的回调。
 
 
 #### end_session(session_id)
 
 
-This function terminates an MSRP session.
+此函数终止 MSRP 会话。
 
 
-Meaning of the parameters is as follows:
+参数含义如下:
 
 
-- *str *session_id* - MSRP UA session ID.
+- *str *session_id* - MSRP UA 会话 ID。
 
 
 #### send_message(session_id, mime, body, failure_report, success_report)
 
 
-This functions sends an MSRP SEND request to the peer.
+此函数向对方发送 MSRP SEND 请求。
 
 
-Meaning of the parameters is as follows:
+参数含义如下:
 
 
-- *str *session_id* - MSRP UA session ID.
-- *str *mime* - MIME content
-				type of this message. If NULL, an empty message will be sent.
-- *str *body* - actual message
-				body. If NULL, an empty message will be sent.
+- *str *session_id* - MSRP UA 会话 ID。
+- *str *mime* - 此消息的 MIME 内容
+类型。如果为 NULL,将发送空消息。
+- *str *body* - 实际的消息
+体。如果为 NULL,将发送空消息。
 - *enum msrp_failure_report_type failure_report* -
-                MSRP Failure Report type - yes, no or partial.
-- *int success_report* - indication whether to
-                request an MSRP Failure Report or not.
+MSRP Failure Report 类型 - yes、no 或 partial。
+- *int success_report* - 指示是否
+请求 MSRP Failure Report。
 
 
 ```c title="enum msrp_failure_report_type"
@@ -623,6 +591,6 @@ enum msrp_failure_report_type {
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享许可证 4.0 版授权

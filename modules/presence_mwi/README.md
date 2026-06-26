@@ -1,68 +1,63 @@
 ---
-title: "Presence_MWI Module"
-description: "The module does specific handling for notify-subscribe message-summary (message waiting indication) events as specified in RFC 3842. It is used with the general event handling module, presence. It constructs and adds message-summary event to it."
+title: "Presence_MWI 模块"
+description: "该模块对 notify-subscribe message-summary（消息等待指示）事件进行特定处理，如 RFC 3842 中所规定。它与通用事件处理模块 presence 一起使用。它向其中构造并添加 message-summary 事件。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module does specific handling for notify-subscribe
-	      message-summary (message waiting indication) events
-	      as specified in RFC 3842.
-	      It is used with the general event handling module,
-   	      presence. It constructs and adds message-summary event to
-  	      it.
+该模块对 notify-subscribe
+message-summary（消息等待指示）事件进行特定处理，
+如 RFC 3842 中所规定。
+它与通用事件处理模块
+presence 一起使用。它向其中构造并添加 message-summary 事件。
 
 
-The module does not currently implement any authorization
-	      rules.  It assumes that publish requests are only issued by
-	      a voicemail application and subscribe requests only by
-	      the owner of voicemail box.  Authorization can thus
-	      be easily done by OpenSIPS configuration file before
-	      calling handle_publish() and handle_subscribe()
-	      functions.
+该模块目前未实现任何授权规则。它假设 publish 请求仅由
+语音邮件应用程序发布，而 subscribe 请求仅由
+语音邮件箱的所有者发布。因此，可以在 OpenSIPS 配置文件中
+在调用 handle_publish() 和 handle_subscribe()
+函数之前轻松完成授权。
 
 
-The module implements a simple check of content type
-	      application/simple-message-summary:  Content must start
-	      with Messages-Waiting status line followed by zero or
-	      more lines that consist of tabs and printable ASCII
-	      characters.
+该模块对内容类型 application/simple-message-summary
+实现简单的检查：内容必须以 Messages-Waiting 状态行开头，
+后跟零行或多行由制表符和可打印 ASCII 字符组成的行。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *presence*.
+- *presence*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-None.
+无。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-None.
+无。
 
 
-### Exported Functions
+### 导出的函数
 
 
-None to be used in configuration file.
+配置文件中无需使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0

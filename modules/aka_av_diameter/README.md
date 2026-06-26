@@ -1,140 +1,130 @@
 ---
-title: "AKA Authentication Vector Diameter Module"
-description: "This module is an extension to the *AKA_AUTH* module providing a Diameter AKA AV Manager that implements the Multimedia-Auth-Request and Multimedia-Auth-Answer Diameter commands defined in the *Cx* interface of the *ETSI TS 129 229* specifications in order to fetch a set of authentication..."
+title: "AKA 认证向量 Diameter 模块"
+description: "此模块是 *AKA_AUTH* 模块的扩展，提供 Diameter AKA AV Manager，实现了 *Cx* 接口的 *ETSI TS 129 229* 规范中定义的多媒体认证请求和多媒体认证答案 Diameter 命令，以获取一组认证向量并将其馈送到 AKA 认证过程。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module is an extension to the *AKA_AUTH* module
-		providing a Diameter AKA AV Manager that implements the Multimedia-Auth-Request
-		and Multimedia-Auth-Answer Diameter commands defined in the
-		*Cx* interface of the *ETSI TS 129 229*
-		specifications in order to fetch a set of authentication vectors and feed
-		them in the AKA authentication process.
+此模块是 *AKA_AUTH* 模块的扩展，
+		提供 Diameter AKA AV Manager，实现了
+		*Cx* 接口的 *ETSI TS 129 229*
+		规范中定义的多媒体认证请求和多媒体认证答案 Diameter 命令，
+        以获取一组认证向量并将其馈送到 AKA 认证过程。
 
 
-When the *AKA_AUTH* module needs a new authentication
-		vector to do an *aka_challenge()*, it may require this
-		module to fetch a set of authentication vectors for the purpose. The module
-		packs the query in a *MAR* (Multimedia-Auth-Request)
-		command and sends it to an *HSS* Diameter server. When an
-		*MAA* (Multimedia-Auth-Answer) command is received in
-		response, the corresponding authentication vectors are gathered and fed back
-		to the *AUTH_AKA* engine.
+当 *AKA_AUTH* 模块需要新的认证向量来执行 *aka_challenge()* 时，
+		它可能需要此模块获取一组认证向量。
+        该模块将查询打包成 *MAR*（多媒体认证请求）命令，
+        并将其发送到 *HSS* Diameter 服务器。
+        当收到响应中的 *MAA*（多媒体认证答案）命令时，
+        相应的认证向量被收集并反馈给 *AUTH_AKA* 引擎。
 
 
-It uses the *AAA_Diameter* module to perform the Diameter
-		requests. It may run in both a synchronous and asynchronous mode,
-		depending on how the *AUTH_AKA* module performs the query.
+它使用 *AAA_Diameter* 模块执行 Diameter 请求。
+		根据 *AUTH_AKA* 模块执行查询的方式，
+        它可以同步和异步模式运行。
 
 
-### Setup
+### 设置
 
 
-The module requires an *aaa_diameter* connection to an
-		*HSS* Diameter server that implements the
-		*Cx* interfaces and is able to provide authentication vectors
-		through the Multimedia-Auth-Request and Multimedia-Auth-Answer commands.
+该模块需要到 *HSS* Diameter 服务器的 *aaa_diameter* 连接，
+		该服务器实现 *Cx* 接口，
+        并能够通过多媒体认证请求和多媒体认证答案命令提供认证向量。
 
 
-The format of the command, along with the required fields can be found in the
-		*example/aka_av_diameter.dictionary* file located in the
-		module's source directory, as well as in the
-		[example diameter commands](#diameter_commands_file) section.
+命令的格式以及必需字段可以在模块源代码目录中的
+		*example/aka_av_diameter.dictionary* 文件中找到，
+        也可以在 [示例 diameter 命令](#diameter_commands_file) 部分中找到。
 
 
-*Note:* the module internals uses the AVPs names
-		found in the provided dictionary - changing the file may break the behavior
-		of the module.
+*注意：* 模块内部使用提供的字典中找到的 AVP 名称
+		——更改文件可能会破坏模块的行为。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The module depends on the following modules (in the other words
-			the listed modules must be loaded before this module):
+该模块依赖以下模块（换句话说，
+			列出的模块必须在此模块之前加载）：
 
 
-- *auth_aka* -- AKA Authentication
-				module that triggers the AKA authentication process
-- *aaa_diameter* -- AAA Diameter
-				module that implements the Diameter communication to the
-				*HSS* Server.
+- *auth_aka* -- 触发 AKA 认证过程的
+				AKA 认证模块
+- *aaa_diameter* -- 实现到 *HSS* 服务器的
+				Diameter 通信的 AAA Diameter 模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-This module does not depend on any external library.
+此模块不依赖任何外部库。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### aaa_url (string)
+#### aaa_url (字符串)
 
 
-This is the url representing the connection to the AAA server.
-		*Note:* Currently the module only supports 
-		connections to a Diameter server. The path to the AVPs
-		configuration file is also required, otherwise the module will
-		not start, or not work properly.
+这是表示到 AAA 服务器连接的 URL。
+		*注意：* 目前该模块仅支持到 Diameter 服务器的连接。
+        还需要 AVPs 配置文件路径，否则模块将无法启动或无法正常工作。
 
 
-```c title="aaa_url parameter usage"
+```c title="aaa_url 参数使用"
 modparam("auth_aaa", "aaa_url", "diameter:freeDiameter.conf;extra-avps-file:/etc/freeDiameter/aka_av_diameter.dictionary")
-		
+			
 ```
 
 
-#### realm (string)
+#### realm (字符串)
 
 
-The Realm used in the Origin Diameter commands.
+在 Origin Diameter 命令中使用的 Realm。
 
 
-Default value is "diameter.test".
+默认值为 "diameter.test"。
 
 
-```c title="realm parameter usage"
-		
+```c title="realm 参数使用"
+			
 modparam("aka_av_diameter", "realm", "scscf.ims.mnc001.mcc001.3gppnetwork.org")
-		
+			
 ```
 
 
-#### server_uri (string)
+#### server_uri (字符串)
 
 
-The Server-URI used in the Diameter commands.
+在 Diameter 命令中使用的 Server-URI。
 
 
-If it is left empty, the Server-Name will be created by adding "sip:" in front of the realm
-		parameter value
-		(e.g. "sip:scscf.ims.mnc001.mcc001.3gppnetwork.org").
+如果留空，Server-Name 将通过在 realm 参数值前面添加 "sip:" 来创建
+		（例如 "sip:scscf.ims.mnc001.mcc001.3gppnetwork.org"）。
 
 
-```c title="server_uri parameter usage"
-		
+```c title="server_uri 参数使用"
+			
 modparam("aka_av_diameter", "server_uri", "sip:scscf.ims.mnc001.mcc001.3gppnetwork.org")
-		
+			
 ```
 
 
-### Diameter Commands File
+### Diameter 命令文件
 
 
-File that should be provided to the *aaa_diameter* connection.
+应提供给 *aaa_diameter* 连接的文件。
 
 
-```c title="Diameter Commands File Example"
+```c title="Diameter 命令文件示例"
 VENDOR 10415 TGPP
 
 ATTRIBUTE Public-Identity                     601 string     10415
@@ -195,6 +185,6 @@ ANSWER 303 Multimedia-Auth Answer
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

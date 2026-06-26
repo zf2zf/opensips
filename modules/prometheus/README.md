@@ -1,267 +1,164 @@
 ---
-title: "Prometheus Module"
-description: "This module provides a HTTP interface for the [Prometheus](https://prometheus.io/) monitoring system, allowing it to fetch different statistics from OpenSIPS."
+title: "Prometheus 模块"
+description: "此模块为 [Prometheus](https://prometheus.io/) 监控系统提供 HTTP 接口，允许其从 OpenSIPS 获取各种统计数据。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+此模块为 [Prometheus](https://prometheus.io/) 监控系统提供 HTTP 接口，允许其从 OpenSIPS 获取各种统计数据。
 
+要使用它，您必须通过[统计](#param_statistics)参数列出要提供的统计数据来明确定义统计数据。
 
-This module provides a HTTP interface for the
-		[Prometheus](https://prometheus.io/)
-		monitoring system, allowing it to fetch different
-		statistics from OpenSIPS.
+目前该模块仅支持 *counter* 和 *gauge* 指标类型，为特定统计选择其中一种取决于统计的定义方式（内部定义或通过 *statistics* 模块的 *variable* 参数明确定义）。
 
+每个导出的统计信息都带有一个 *group* 标签，指示其所属的组。
 
-In order to use it, you have to explicitely define the
-		statistics you want to provide by listing them in the
-		[statistics](#param_statistics) parameter.
+### 依赖
 
+#### 外部库或应用程序
 
-Currently only *counter* and *gauge*
-		metrics types are supported by the module, and whether to choose
-		one or the other for a specific statistic is dictated by the way that
-		statistic was defined either internally, or explicitely through the
-		*variable* parameter of the *statistics*
-		module.
+无
 
+#### OpenSIPS 模块
 
-Each exported statistic comes with a *group* label that
-		indicates the group it belongs to.
+以下模块必须在此模块之前加载：
 
+- *httpd* 模块。
 
-### Dependencies
-
-
-#### External Libraries or Applications
-
-
-None
-
-
-#### OpenSIPS Modules
-
-
-The following modules must be loaded before this module:
-
-
-- *httpd* module.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### root(string)
 
+指定 Prometheus 用于查询统计信息的根路径：
+http://[opensips_IP]:[opensips_httpd_port]/[root]
 
-Specifies the root metrics path Promethus uses to query the stats:
-		http://[opensips_IP]:[opensips_httpd_port]/[root]
+*默认值为 "metrics"。*
 
-
-*The default value is "metrics".*
-
-
-```c title="Set root parameter"
+```c title="设置 root 参数"
 ...
 modparam("prometheus", "root", "prometheus")
 ...
 ```
 
-
 #### prefix(string)
 
+为每个导出的统计信息添加前缀。
 
-Appends a prefix to each statistic exported.
+*默认值为 "opensips"。*
 
-
-*The default value is "opensips".*
-
-
-```c title="Set prefix parameter"
+```c title="设置 prefix 参数"
 ...
 modparam("prometheus", "prefix", "opensips_1")
 ...
 ```
 
-
 #### group_prefix(string)
 
+为统计信息所属组的名称添加前缀。
 
-Appends a prefix to the name of the group the statistic belongs to.
+*默认值为 ""（无组前缀）。*
 
-
-*The default value is "" (no group prefix).*
-
-
-```c title="Set group_prefix parameter"
+```c title="设置 group_prefix 参数"
 ...
 modparam("prometheus", "group_prefix", "opensips")
 ...
 ```
 
-
 #### delimiter(string)
 
+指定用于分隔 *prefix* 和 *group_prefix* 的分隔符。
 
-Specifies the delimiter to be used to separate *prefix*
-		and *group_prefix*.
+*默认值为 "_"。*
 
-
-*The default value is "_".*
-
-
-```c title="Set delimiter parameter"
+```c title="设置 delimiter 参数"
 ...
 modparam("prometheus", "delimiter", "-")
 ...
 ```
 
-
 #### group_label(string)
 
+指定当 *group_mode* 为 2 时用于存储组的标签。
 
-Specifies the label used to store the group when *group_mode* is 2.
+*默认值为 "group"。*
 
-
-*The default value is "group".*
-
-
-```c title="Set group_label parameter"
+```c title="设置 group_label 参数"
 ...
 modparam("prometheus", "group_label", "grp")
 ...
 ```
 
-
 #### group_mode(int)
 
+指定应如何向 Prometheus 提供统计信息的组。可用模式：
 
-Specifies how the group of the statistic should be provisioned to
-		Prometheus. Available modes are:
+- *0* - 不发送统计信息组。
+- *1* - 在统计信息的名称中发送组。
+- *2* - 将组作为统计信息的标签发送。
 
+*默认值为 0（不指定组）。*
 
-- *0* - do not send the statistics groups.
-- *1* - send the group in the name of the statstic.
-timestamp
-core
-opensips_core_timestamp
-group_prefix
-- *2* - send the group as a label of the statstic.
-group_label
-
-
-*The default value is 0 (do not specify the group).*
-
-
-```c title="Set group_mode parameter"
+```c title="设置 group_mode 参数"
 ...
 modparam("prometheus", "group_mode", 1)
 ...
 ```
 
-
 #### statistics(string)
 
+OpenSIPS 导出的统计信息，用空格分隔。该列表也可以包含统计信息组的名称——要做到这一点，您应该在组名称末尾添加冒号（*:*）。
 
-The statistics that are being exported by OpenSIPS, separated by space.
-			The list can also contain statistics groups's names - to do that, you shall
-			add a colon (*:*) at the end of the groups's name.
+如果使用 *all* 值，则模块将暴露所有可用统计信息——因此此参数的任何其他设置都将无效；
 
+此参数可以定义多次。
 
-If the *all* value is used, then the module will expose
-			all available statistics - therefore any other settings of this parameter
-			is useless;
+*默认值为空：不导出任何指标。*
 
-
-This parameter can be defined multiple times.
-
-
-*The default value is empty: no metric is exported.*
-
-
-```c title="Set statistics parameter"
+```c title="设置 statistics 参数"
 ...
-# export the number of active dialogs and the load statistics class
+# 导出活跃对话数量和负载统计类
 modparam("prometheus", "statistics", "active_dialogs load:")
 ...
 ```
 
-
 #### labels(string)
 
+定义如何将组内统计信息名称转换为在 Prometheus 中推送的名称和标签集的规则。
 
-Rules that define how to convert the name of a statistic
-			within a group to obtain the name and set of labels to be
-			pushed in Prometheus.
+格式为 *group: regex*，其中 *group* 表示应用正则表达式的统计信息组，*regexp* 是用于匹配统计信息名称并将其转换为所需名称和标签的正则表达式。
 
+*regex* 格式为 */matching_expression/substitution_expression/flags*。替换后得到的 *substitution_expression* 应产生格式为 *name:labels* 的字符串，其中 *name* 表示将推送到 Prometheus 的统计信息名称，*labels* 表示为标签，以 *key=value* 对的形式表示，用逗号分隔，从 Prometheus 接收。
 
-The format is *group: regex*, where
-			*group* represents the group of statistics
-			for whom the regular expression should be applied for, and
-			*regexp* is a regular expression used to
-			match the statistic's name and convert it to the desired name
-			and labels.
+如果声明的组内统计信息名称与正则表达式不匹配，或者结果格式不符合 *name:labels* 格式，则统计信息转换将被忽略，并将按常规统计信息打印，就像未使用该规则一样。
 
+此参数可以定义多次，甚至可以为单个组定义。但是，如果统计信息匹配多个正则表达式，则仅考虑匹配的第一个正则表达式。检查它们的顺序是脚本中声明的顺序。
 
-The *regex* format is
-			*/matching_expression/substitution_expression/flags*.
-			The *substitution_expression* resulted after
-			the substituion should result in a string with the following
-			format: *name:labels*, where
-			*name* represents the name of the statistic
-			as it will be pushed towards Prometheus, and *labels*
-			the labels, expressed as *key=value* pairs
-			separated by comma, as they are received by Prometheus.
-			*Note* that the *labels*
-			string resulted is concatenated to the other labeles as
-			plain string - no other transformations are performed.
+*默认值为空：提供统计信息名称。*
 
-
-If a statistic's name within the declared group does not match the
-			regular, or the resulted format does not comply with the
-			*name:labels* format, the statistics transformations
-			are ignored and it shall be printed as a regular statistic, as if
-			the rule was not even used.
-
-
-This parameter can be defined multiple times, even for a single group.
-			However, if the statistic matches multiple regular expressions, only
-			the first regular expression that matches is considered. The order
-			they are checked is the order declared in the script.
-
-
-*The default value is empty: statistic name is provided.*
-
-
-```c title="Set statistics parameter"
+```c title="设置 statistics 参数"
 ...
-# convert duration_gateway to stat duration with gateway as a label
+# 将 duration_gateway 转换为以 gateway 为标签的 stat duration
 modparam("prometheus", "labels", "group: /^(.*)_(.*)$/\1:gateway=\"\2\"/")
 ...
 ```
 
-
 #### script_route(string)
 
+指定用于添加自定义 prometheus 信息的路由名称。
 
-Specifies the route name to be used to for adding custom prometheus information.
+*默认值为 "" - 不调用自定义路由。*
 
-
-*The default value is "" - no custom route called.*
-
-
-```c title="Set script_route parameter"
+```c title="设置 script_route 参数"
 ...
 modparam("prometheus", "script_route", "my_custom_prometheus_route")
 ...
 route[my_custom_prometheus_route] {
-	# * the returned JSON needs to contain an array of objects
-	#   containing a header and a values field
-	# * the header field to contain the custom prometheus stats header
-	# * the values field is an array itself, of name/value objects
-	#   used for individual stats publishing
+	# * 返回的 JSON 需要包含一个对象数组
+	#   每个对象包含 header 和 values 字段
+	# * header 字段包含自定义 prometheus 统计信息头
+	# * values 字段本身是一个数组，包含用于单个统计信息发布的 name/value 对象
 	return (1, '[{
         "header": "# TYPE opensips_total_cps gauge",
         "values": [
@@ -283,37 +180,23 @@ route[my_custom_prometheus_route] {
 ...
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### prometheus_declare_stat(name, [type], [help])
 
+*注意：*此函数只能在[脚本路由](#param_script_route)参数声明的路由中使用。
 
-*NOTE:* this function can only be used in the
-			route declared in the [script route](#param_script_route) parameter.
+声明要导出到 Prometheus 服务器的自定义统计信息。它指定其类型和可选的帮助字符串。
 
+参数
 
-Declares a custom statistic exported to Prometheus server. It specifies
-			its type and optionally a help string.
+- *name* (string) - 统计信息的名称
+- *type* (string，可选) - 统计信息的类型（即 *counter* 或 *gauge*）。如果缺失，统计信息将被声明为 *gauge*。
+- *help* (string，可选) - 用于描述统计信息含义的可选值。如果缺失，则不使用。
 
+此函数只能在[脚本路由](#param_script_route)参数声明的请求路由中使用。
 
-Parameters
-
-
-- *name* (string) - the name of the statistic
-*type* (string, optional) - the type of the
-			statistic (i.e. *counter* or *gauge*).
-			If missing the statistic is declared as *gauge*.
-*help* (string, optional) - an optional value
-			used to describe the statistic meaning. If missing, it is not used.
-
-
-This function can only be used in the request
-			route declared in the [script route](#param_script_route) parameter.
-
-
-```c title="prometheus_declare_stat usage"
+```c title="prometheus_declare_stat 用法"
 ...
 modparam("prometheus", "script_route", "my_custom_prometheus_route")
 ...
@@ -325,70 +208,43 @@ route[my_custom_prometheus_route] {
 }
 ```
 
-
 #### prometheus_push_stat(value, [label_name], [label_value])
 
+*注意：*此函数只能在[脚本路由](#param_script_route)参数声明的路由中使用。
 
-*NOTE:* this function can only be used in the
-			route declared in the [script route](#param_script_route) parameter.
+将自定义统计信息值和可选的标签集推送到 Prometheus 服务器。
 
+*注意：*统计信息值只能在使用[prometheus declare stat](#func_prometheus_declare_stat)函数声明后才能推送。
 
-Pushes a custom statistic value and optionally a set of labels
-			to the Prometheus server.
+参数
 
+- *value* (integer) - 统计信息的值
+- *label_name* (string，可选) - 用于为推送的统计信息定义标签。如果 *label_value* 参数缺失，则此参数将附加到统计信息名称——这意味着它应包含值的完整标签集（包括大括号）。如果也提供了 *label_value*，则该参数应仅包含一个标签的名称。
+- *label_value* (string，可选) - 应用于 *label_name* 参数标签的值。
 
-*NOTE:* a statistic's value should only be pushed
-			after it had been declared using the
-			[prometheus declare stat](#func_prometheus_declare_stat) function.
+此函数只能在[脚本路由](#param_script_route)参数声明的请求路由中使用。
 
-
-Parameters
-
-
-- *value* (integer) - the value of the statistic
-*label_name* (string, optional) - used to define
-			labels for the pushed statistic. If the *label_value*
-			parameter is missing, this parameter is appended to the name of the
-			statisic - this means that it should contain the whole set of labels
-				for the value (including curly brackets). If the
-			*label_value* is provided as well, then the parameter
-			should only contain one label's name.
-*label_value* (string, optional) - the value that
-			should be used for the *label_name* parameter label.
-
-
-This function can only be used in the request
-			route declared in the [script route](#param_script_route) parameter.
-
-
-```c title="prometheus_push_stat usage"
+```c title="prometheus_push_stat 用法"
 ...
 modparam("prometheus", "script_route", "my_custom_prometheus_route")
 ...
 route[my_custom_prometheus_route] {
 	...
 	prometheus_declare_stat("opensips_cps");
-	prometheus_push_stat(3); # no label is being used
+	prometheus_push_stat(3); # 未使用标签
 	prometheus_declare_stat("opensips_cc");
-	# the next two are equivalent
-	prometheus_push_stat(10, "{gateway=\"gw1\"}"); # no label is being used
-	prometheus_push_stat(10, "gateway", "gw1"); # same as the above
+	# 下面两个是等价的
+	prometheus_push_stat(10, "{gateway=\"gw1\"}"); # 未使用标签
+	prometheus_push_stat(10, "gateway", "gw1"); # 与上面相同
 	...
 }
 ```
 
+### 示例
 
-### Examples
+为了让 Prometheus 查询 OpenSIPS 的统计信息，您需要告诉它从哪里获取统计信息。为此，您应该在 Prometheus 的 *scrape_configs* 配置中定义一个 scrape job，指明您配置 *httpd* 模块监听 IP 和端口（默认：*0.0.0.0:8888*）。
 
-
-In order to have Prometheus query OpenSIPS for statistics, you need to
-			tell him where to get statistics from. To do that, you should define
-			a scarpe job in Prometheus's *scrape_configs* config,
-			indicating the IP and port you've configured the *httpd*
-			module to listen on (default: *0.0.0.0:8888*).
-
-
-```c title="Prometheus Scrape Config"
+```c title="Prometheus Scrape 配置"
 scrape_configs:
   - job_name: opensips
 
@@ -397,6 +253,6 @@ scrape_configs:
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

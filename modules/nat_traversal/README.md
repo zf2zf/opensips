@@ -1,326 +1,241 @@
 ---
-title: "NAT Traversal Module"
-description: "The nat_traversal module provides support for handling far-end NAT traversal for SIP signaling. The module includes functionality to detect user agents behind NAT, to modify SIP headers to allow user agents to work transparently behind NAT and to send keepalive messages to..."
+title: "NAT 穿越模块"
+description: "nat_traversal 模块提供处理 SIP 信令远端 NAT 穿越的支持。该模块包括检测 NAT 后面的用户代理、修改 SIP 头以使用户代理透明地在 NAT 后面工作以及向 NAT 后面的用户代理发送保活消息以保持其在网络中的可见性等功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The nat_traversal module provides support for handling far-end NAT
-      traversal for SIP signaling. The module includes functionality to
-      detect user agents behind NAT, to modify SIP headers to allow user
-      agents to work transparently behind NAT and to send keepalive messages
-      to user agents behind NAT in order to preserve their visibility in the
-      network. The module can handle user agents behind multiple cascaded
-      NAT boxes as easily as user agents behind a single level of NAT.
+nat_traversal 模块提供处理 SIP 信令远端 NAT
+穿越的支持。该模块包括检测 NAT 后面的用户代理、
+修改 SIP 头以使用户代理透明地在 NAT 后面工作,
+以及向 NAT 后面的用户代理发送保活消息
+以保持其在网络中的可见性等功能。该模块可以处理多个级联
+NAT 盒子后面的用户代理,就像处理单层 NAT 后面的用户代理一样简单。
 
 
-The module is designed to work in complex environments where multiple
-      SIP proxies may be involved in handling registration and routing and
-      where the incoming and outgoing paths may not necessarily be the same,
-      or where the routing path may even change between consecutive dialogs.
+该模块设计用于在复杂环境中工作,其中可能涉及多个
+SIP 代理处理注册和路由,且入站和出站路径不一定相同,
+或者路由路径可能在连续对话之间甚至会改变。
 
 
-### Keepalive functionality
+### 保活功能
 
 
-#### Overview
+#### 概述
 
 
-The nat_traversal module implements a very sophisticated keepalive
-        mechanism, that is able to handle the most complex environments and
-        use cases, including distributed environments with multiple proxies.
-        Unlike existing keepalive solutions that only send keepalive messages
-        to user agents that have registered (during their registration), the
-        nat_traversal module can keepalive an user agent based on multiple
-        conditions, making it not only more flexible and more efficient, but
-        also able to work in environments and with use cases where a simple
-        keepalive implementation based on keeping alive registrations alone
-        cannot work.
+nat_traversal 模块实现了一个非常复杂的保活机制,
+能够处理最复杂的环境和用例,包括具有多个代理的分布式环境。
+与现有的仅向已注册用户代理发送保活消息的保活解决方案不同,
+nat_traversal 模块可以基于多个条件保持用户代理的存活,
+使其不仅更加灵活和高效,
+而且能够在我持活注册 alone 无法工作的环境和用例中工作。
 
 
-The keepalive mechanism works by sending a SIP request to a user agent
-        behind NAT to make that user agent send back a reply. The purpose is
-        to have packets sent from inside the NAT to the proxy often enough to
-        prevent the NAT box from timing out the connection. Many NAT boxes do
-        not consider packets that travel from the outside to the inside of the
-        NAT to reset the connection expiration timer, thus to keepalive a user
-        agent we need to trigger an answer from it.
+保活机制通过向 NAT 后面的用户代理发送 SIP 请求来工作,
+以使该用户代理发送回复。目的是从 NAT 内部经常向代理发送数据包,
+以防止 NAT 盒子超时连接。许多 NAT 盒子不认为从外部到内部的数据包
+会重置连接到期计时器,因此，为了保持用户代理的存活,
+我们需要从它触发一个回复。
 
 
-#### Background
+#### 背景
 
 
-One of the major limitations of an implementation that only sends
-        keepalive messages to registered user agents, is that it creates an
-        artificial association between the concept of network visibility with
-        the concept of user registration. The registration process only creates
-        network visibility for incoming INVITE requests, in other words for
-        incoming calls. However, there are other cases where a user agent needs
-        to preserve its network visibility when behind NAT, that have nothing
-        to do with receiving incoming calls. One of them is the ability of the
-        user agent to keep receiving NOTIFY requests for a presence subscription
-        it has made. Another situation is where the user agent should be able
-        to receive all messages within a dialog it has initiated, even if it is
-        not registered. In the first case, a presence agent is required to
-        register to be able to receive notifications for its subscriptions and
-        it has to keep the registration active the whole time. In the second
-        case a user agent that wants to make an outgoing call has to register
-        and keep the registration active during the call, otherwise it may
-        not be able to receive future in-dialog messages, including the BYE
-        that closes the dialog.
+仅向已注册用户代理发送保活消息的实现的一个主要限制是,
+它在与网络可见性概念和用户注册概念之间创建了一个人为的关联。
+注册过程仅为入站 INVITE 请求(即入站呼叫)创建网络可见性。
+但是,在其他情况下,用户代理需要在 NAT 后面保持其网络可见性,
+这些与接收入站呼叫无关。其中之一是用户代理能够继续接收其存在的订阅的 NOTIFY 请求。
+另一种情况是用户代理应该能够接收对话中它所发起的所有消息,即使它没有注册。
+在第一种情况下,存在代理需要注册才能接收其订阅的通知,
+并且在整个订阅期间必须保持注册活动。
+在第二种情况下,想要发起出站呼叫的用户代理需要注册,
+并在呼叫期间保持注册活动,否则可能无法接收未来的对话内消息,
+包括关闭对话的 BYE。
 
 
-Not only we have this forced association shown above, that requires a
-        user agent to register to be able to do anything, but a simple keepalive
-        implementation based on sending keepalive messages only to registered
-        user agents, will also fail to work in common cases, exactly because of
-        this artificial association. For example lets assume that we have an
-        user agent that is registered. If during an outgoing call initiated by
-        this user agent, the agent stops registering, then it will not be able
-        to receive further in-dialog messages after the NAT binding expires.
-        The same is true for a presence agent, receiving notifications for its
-        subscriptions.
+不仅我们有上面显示的强制关联,要求用户代理注册才能做任何事情,
+而且基于仅向已注册用户代理发送保活消息的简单保活实现,
+由于这种人为关联,在常见情况下也会失败。
+例如,假设我们有一个已注册的用户代理。
+如果该用户代理在发起的出站呼叫期间停止注册,
+则在 NAT 绑定到期后,它将无法接收进一步的对话内消息。
+对于接收其订阅通知的存在代理也是如此。
 
 
-In environments with multiple proxies handling the same domains, the
-        problem gets even more acute. In this case the incoming and outgoing
-        paths for a call may be completely different: the user agent may
-        register using one proxy as an entry point to the network, but may
-        make an outgoing call using a different proxy as the network entry
-        point. Even more a registration may use a different proxy as the entry
-        point to the network with each renewal of the registration, making it
-        volatile and unreliable for anything else except incoming calls.
-        A keepalive implementation that only sends keepalive messages to
-        registered user agents will not be able to guarantee the delivery of
-        in-dialog messages for outgoing calls even if it requires the user
-        agent to register before making a call. In this case, even if we
-        assume that the user agent would pick the same proxy for an outgoing
-        call as the one it has used for the last registration, at the next
-        registration it may pick another one (as returned by DNS), and will
-        dissociate the incoming and outgoing paths rendering the outgoing
-        path unusable (assuming the outgoing call takes longer than the
-        registration period).
+在多个代理处理相同域的环境中,问题变得更加严峻。
+在这种情况下,呼叫的入站和出站路径可能完全不同:
+用户代理可能使用一个代理作为网络入口点进行注册,
+但可能使用不同的代理作为网络入口点发起出站呼叫。
+甚至注册可能每次续订时使用不同的代理作为网络入口点,
+使其变得不稳定和不可靠,除了入站呼叫。
+仅向已注册用户代理发送保活消息的保活实现,
+将无法保证为出站呼叫提供对话内消息的传递,
+即使它要求用户代理在发起呼叫之前注册。
+在这种情况下,即使我们假设用户代理会为其最后一次注册选择相同的代理,
+但在下次注册时,它可能会选择另一个(由 DNS 返回),
+并将分离入站和出站路径,使出站路径不可用
+(假设呼叫持续时间超过注册期限)。
 
 
-All this leads to the conclusion that a keepalive implementation based
-        solely on sending keepalive messages to registered user agents can only
-        work in single proxy environments and then only work reliably if it
-        requires the user agent to register before doing anything else, even
-        though some actions would not require a user agent to register.
+所有这些导致这样的结论:基于仅向已注册用户代理发送保活消息的保活实现,
+只能在中单代理环境中工作,并且只有在与要求用户代理在任何其他操作之前注册的情况下才能可靠地工作,
+即使某些操作不需要用户代理注册。
 
 
-#### Implementation
+#### 实现
 
 
-To avoid the above mentioned issues, this implementation introduces
-        the concept of network visibility for a given condition. This way we
-        can keepalive a user agent for multiple independent conditions, thus
-        avoiding all the problems presented above.
+为避免上述问题,此实现引入了给定条件的网络可见性概念。
+这样,我们可以为多个独立条件保持用户代理的存活,
+从而避免上述所有问题。
 
 
-The conditions for which the module will send keepalive messages are:
+模块将发送保活消息的条件如下:
 
 
-- *Registration* - for user agents that have
-              registered to preserve their visibility for incoming calls. This
-              is the result of triggering keepalive for a REGISTER request.
-- *Subscription* - for presence agents that
-              have subscribed to some events to preserve their visibility for
-              receiving back notifications. This is the result of triggering
-              keepalive for a SUBSCRIBE request.
-- *Dialogs* - for user agents that have
-              initiated an outgoing call to preserve their visibility for
-              receiving further in-dialog messages. This is the result of
-              triggering keepalive for an outgoing INVITE request.
+- *注册* - 对于已注册以保持入站呼叫可见性的用户代理。
+这是为 REGISTER 请求触发保活的结果。
+- *订阅* - 对于已订阅某些事件以保持接收通知可见性的存在代理。
+这是为 SUBSCRIBE 请求触发保活的结果。
+- *对话* - 对于已发起出站呼叫以保持接收进一步对话内消息可见性的用户代理。
+这是为出站 INVITE 请求触发保活的结果。
 
 
-A user agent's NAT entry point may be kept alive for one or multiple
-        of the conditions listed above. Even when a NAT endpoint is kept alive
-        for more than one condition, only one keepalive message is sent to
-        that NAT endpoint. The presence of multiple conditions for a NAT
-        endpoint, only guarantees that the network visibility for a user agent
-        based on a certain condition will be available while that condition is
-        true, independently of the other conditions. When all the conditions
-        to keepalive a NAT endpoint will disappear, that endpoint will be
-        removed from the list with the NAT endpoints that need to be kept
-        alive.
+用户代理的 NAT 入口点可能为上述一个或多个条件保持存活。
+即使为 NAT 入口点保持多个条件,
+也只向该 NAT 入口点发送一条保活消息。
+NAT 入口点的多个条件的存在,
+仅保证基于某个条件的用户代理网络可见性在该条件为真时可用,
+而与其他条件无关。当保持 NAT 入口点存活的所有条件消失时,
+该入口点将从需要保持存活的 NAT 入口点列表中删除。
 
 
-The user interface for the keepalive functionality is very simple. It
-        consists of a single function called nat_keepalive() that needs to be
-        called only once for the requests that trigger the need for network
-        visibility. These requests are: REGISTER, SUBSCRIBE and outgoing
-        INVITEs. After such a request arrives it makes the user agent visible
-        for the purpose of receiving back other messages. Thus, after a
-        REGISTER the user agent may receive back incoming calls, after a
-        SUBSCRIBE it may receive back notifications and after an outgoing
-        INVITE it may receive back further in-dialog messages including the
-        BYE that ends the dialog. The nat_keepalive() function needs to be
-        called on the proxy that directly receives the request from the user
-        agent, if it determines that the user agent making the request is
-        behind NAT. The function needs to be called before the request gets
-        either a stateless reply or it is relayed with t_relay(). Calling the
-        nat_keepalive() function has no effect if the request gets no stateless
-        reply or it is not relayed.
+保活功能的用户界面非常简单。它由一个名为 nat_keepalive() 的函数组成,
+只需要为触发网络可见性需求的请求调用一次。
+这些请求是:REGISTER、SUBSCRIBE 和出站 INVITE。
+请求到达后,它使用户代理可见用于接收其他消息。
+因此,REGISTER 后,用户代理可以接收入站呼叫;
+SUBSCRIBE 后,可以接收通知;
+出站 INVITE 后,可以接收进一步的对话内消息,包括结束对话的 BYE。
+nat_keepalive() 函数需要在直接接收用户代理请求的代理上调用,
+如果它确定发出请求的用户代理在 NAT 后面。
+该函数需要在请求得到无状态回复或通过 t_relay() 转发之前调用。
+如果请求没有得到无状态回复或未被转发,则调用 nat_keepalive() 函数无效。
 
 
-For environments with multiple proxies, where the proxy that acts as
-        an entry point to the network for a given request is not the one that
-        actually handles the request, then the nat_keepalive() function needs
-        to be called on the proxy that is the entry point and after that the
-        request must be sent to the proxy that actually handles the request
-        using t_relay(). This is needed because the keepalive functionality
-        detects from the stateless replies or the TM relayed replies if the
-        NAT endpoint needs to be kept alive for the condition triggered by
-        the request for which the nat_keepalive() function was called.
-        For example assume a network where a proxy P1 receives a REGISTER
-        from an user agent behind NAT. P1 will determine that the user agent
-        is behind NAT so it needs keepalive functionality, but another proxy
-        called P2 is actually handling the subscriber registrations. In this
-        case P1 has to call nat_keepalive() even though it doesn't yet know
-        the answer P2 will give to the REGISTER request (which may even be a
-        negative reply) or if P2 will restrict the proposed expiration time
-        in any way. Thus P1 calls nat_keepalive() after which it calls
-        t_relay(). When the reply from P2 arrives, a callback is triggered
-        which will determine if the request did get a positive reply, and if
-        so it will extract the registration expiration time and enable the
-        keepalive functionality for that endpoint for the registration
-        condition for the time given by the registration expiration.
-        For single proxy environments, or if P1 is the same as P2, then
-        t_relay() is not called, instead save_location() is called if the
-        registration is accepted. Then the same process described above
-        happens only this time triggered by a stateless reply callback.
-        In both cases, calling nat_keepalive() when the REGISTER is received
-        has no other effect that to trigger some callbacks that will determine
-        from the reply if the caller endpoint should be kept alive or not.
+对于具有多个代理的环境,其中充当给定请求网络入口点的代理
+不是实际处理请求的代理,
+则需要在入口点代理上调用 nat_keepalive() 函数,
+然后使用 t_relay() 将请求发送到实际处理请求的代理。
+这是必需的,因为保活功能从无状态回复或 TM 转发的回复中检测
+NAT 入口点是否需要为触发请求的条件保持存活。
+例如,假设网络中有代理 P1 接收来自 NAT 后面用户代理的 REGISTER。
+P1 将确定用户代理在 NAT 后面,需要保活功能,
+但另一个名为 P2 的代理实际处理订户注册。
+在这种情况下,P1 必须调用 nat_keepalive(),即使它还不知道 P2 将对 REGISTER 请求
+给出的答案(甚至可能是否定回复),或者 P2 将如何以任何方式限制建议的到期时间。
+因此,P1 调用 nat_keepalive(),然后调用 t_relay()。
+当来自 P2 的回复到达时,触发一个回调,该回调将确定请求是否得到肯定回复,
+如果是,将提取注册到期时间,并为该入口点启用注册条件的保活功能,
+时间为注册到期时间。
+对于单代理环境,或者如果 P1 与 P2 相同,
+则不调用 t_relay(),而是调用 save_location()(如果注册被接受)。
+然后发生上述相同的过程,只是这次由无状态回复回调触发。
+在这两种情况下,在收到 REGISTER 时调用 nat_keepalive()
+没有其他作用,只是触发一些回调,这些回调将从回复中确定
+呼叫端点是否应该保持存活。
 
 
-Below is described how nat_keepalive() should be called and what it
-        does for each of the requests that need keepalive functionality (the
-        function should only be called if it is determined that the user agent
-        that generated the request is behind NAT):
+下面描述了如何为需要保活功能的每个请求调用 nat_keepalive() 及其作用
+(仅当生成请求的用户代理在 NAT 后面时才应调用):
 
 
-- *REGISTER* - called before save_location() or
-              t_relay() (depending on whether the proxy that received the
-              REGISTER is also handling registration for that subscriber or
-              not). It will determine from either the stateless reply 
-              generated by save_location() or the TM relayed reply if the
-              registration was successful and what is its expiration time. If
-              the registration was successful it will mark the given NAT
-              endpoint for keepalive for the registration condition using the
-              detected expiration time. If the REGISTER request is discarded
-              after nat_keepalive() was called or if it intercepts a negative
-              reply it will have no effect and the registration condition will
-              not be activated for that endpoint.
-- *SUBSCRIBE* - called before handle_subscribe()
-              or t_relay() (depending on whether the proxy that received the
-              SUBSCRIBE is also handling subscriptions for that subscriber or
-              not). It will determine from either the stateless reply
-              generated by handle_subscribe() or the TM relayed reply if the
-              subscription was successful and what is its expiration time. If
-              the subscription was successful it will mark the given NAT
-              endpoint for keepalive for the subscription condition using the
-              detected expiration time. If the SUBSCRIBE request is discarded
-              after nat_keepalive() was called or if it intercepts a negative
-              reply it will have no effect and the subscription condition will
-              not be activated for that endpoint. It should be called for
-              every SUBSCRIBE received, not only the ones that start a
-              subscription (do not have a to tag), because it needs to update
-              (extend) the expiration time for the subscription.
-- *INVITE* - called before t_relay() for the
-              first INVITE in a dialog. It will automatically trigger dialog
-              tracing for that dialog and will use the dialog callbacks to
-              detect changes in the dialog state. It will add a keepalive
-              entry with the dialog condition for the caller NAT endpoint as
-              soon as the dialog is created (this happens when t_relay() is
-              called). It will then keep that condition for the given endpoint
-              until the dialog is destroyed (either terminated, failed or
-              expired). If the INVITE request cannot be relayed after
-              nat_keepalive() was called it will have no effect and the
-              dialog condition will not be activated for that endpoint.
-In addition an INVITE that starts a dialog will automatically
-              trigger keepalive functionality for the destination endpoints
-              if they are behind NAT. This is done by detecting if any of the
-              destination endpoints already has a keepalive entry for the
-              register condition. If so, a dialog condition will be added to
-              that entry thus preserving that endpoint visibility even if the 
-              registration expires during the dialog or is moved to another
-              proxy. During the call setup stage, multiple entries for the
-              callee may be added with the dialog condition if parallel
-              forking is used, however only the destination endpoints behind
-              NAT will have the extra dialog condition set. Later when the
-              dialog is confirmed, only the endpoint that answered the call
-              will keep the dialog condition activated (if present), while all
-              the endpoints from the unanswered branches will have it removed.
-              This is done automatically without any need to call any function.
+- *REGISTER* - 在 save_location() 或
+t_relay()(取决于接收 REGISTER 的代理是否也处理该订户的注册)之前调用。
+它将从 save_location() 生成的无状态回复或 TM 转发的回复中确定注册是否成功及其到期时间。
+如果注册成功,它将使用检测到的到期时间将给定 NAT 入口点标记为注册条件的保活。
+如果 nat_keepalive() 被调用后 REGISTER 请求被丢弃,
+或者如果它截获了否定回复,则它将不起作用,并且该入口点将不会激活注册条件。
+- *SUBSCRIBE* - 在 handle_subscribe()
+或 t_relay()(取决于接收 SUBSCRIBE 的代理是否也处理该订户的订阅)之前调用。
+它将从 handle_subscribe() 生成的无状态回复或 TM 转发的回复中确定订阅是否成功及其到期时间。
+如果订阅成功,它将使用检测到的到期时间将给定 NAT 入口点标记为订阅条件的保活。
+如果 nat_keepalive() 被调用后 SUBSCRIBE 请求被丢弃,
+或者如果它截获了否定回复,则它将不起作用,并且该入口点将不会激活订阅条件。
+应该为收到的每个 SUBSCRIBE 调用,而不仅仅是启动订阅的 SUBSCRIBE(没有 to tag),
+因为它需要更新(扩展)订阅的到期时间。
+- *INVITE* - 在对话框第一次 INVITE 的 t_relay() 之前调用。
+它将自动触发该对话框的对话框跟踪,
+并使用对话框回调来检测对话框状态的变化。
+它将在对话框创建时(调用 t_relay() 时发生)为呼叫者 NAT 入口点添加一个带有对话框条件的保活条目。
+然后它将为该入口点保持该条件,直到对话框被销毁(终止、失败或过期)。
+如果 nat_keepalive() 被调用后无法转发 INVITE 请求,
+则它将不起作用,并且该入口点将不会激活对话框条件。
+此外,启动对话框的 INVITE 将自动为目的地入口点触发保活功能,
+如果它们在 NAT 后面。这是通过检测任何目的地入口点是否已有注册条件的保活条目来完成的。
+如果是,则将对话框条件添加到该条目,从而在注册期间或被移动到另一个代理时保持该入口点的可见性。
+在呼叫建立阶段,如果使用并行分叉,可以为被叫者添加多个带有对话框条件的条目,
+但只有在 NAT 后面的目的地入口点才会设置额外的对话框条件。
+稍后,当对话框被确认时,只有应答呼叫的入口点将保持对话框条件激活(如果存在),
+而所有未应答分支的入口点将移除该条件。这是自动完成的,无需调用任何函数。
 
 
-Considering the elements presented in this section, we can say that
-        the nat_traversal module provides a flexible and efficient keepalive
-        functionality that is very easy to use. Because only the border
-        proxies send keepalive messages, the network traffic is minimized.
-        For the same reason, message processing in the proxies is also
-        minimized, as border proxies generate keepalive messages themselves
-        and send them stateless, instead of having to relay messages
-        generated by the registrars. Network traffic is also minimized by only
-        sending a single keepalive message for an endpoint no matter for how
-        many reasons the endpoint is kept alive. Keepalive messages are also
-        distributed over the keepalive interval to avoid overloading the
-        proxy by generating too many messages at a time. The nat_traversal
-        module keeps its internal state about endpoints that need keepalive,
-        state that is build while messages are processed by the proxy and
-        thus it doesn't need to transfer any information from the usrloc
-        module, which should also improve its efficiency.
+考虑到本节中呈现的元素,我们可以说 nat_traversal 模块提供了一种灵活高效的保活功能,
+非常易于使用。因为只有边界代理发送保活消息,所以网络流量被最小化。
+同样,代理中的消息处理也被最小化,因为边界代理自己生成保活消息并以无状态方式发送,
+而不是必须中继由注册中心生成的消息。
+通过仅为一个入口点发送一条保活消息(无论该入口点出于多少原因保持存活)也可以最小化网络流量。
+保活消息也会在保活间隔上分布,以避免一次生成太多消息而使代理过载。
+nat_traversal 模块保持关于需要保活的入口点的内部状态,
+这些状态是在代理处理消息时构建的,
+因此它不需要从 usrloc 模块传输任何信息,这也应该提高其效率。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
-- *sl* module - if keepalive is enabled.
-- *tm* module - if keepalive is enabled.
-- *dialog* module - if keepalive is enabled
-              and keeping alive INVITE dialogs is needed.
-- *clusterer* - only if "cluster_id"
-              option is enabled.
+- *sl* 模块 - 如果启用保活。
+- *tm* 模块 - 如果启用保活。
+- *dialog* 模块 - 如果启用保活且需要保持 INVITE 对话存活。
+- *clusterer* - 仅当启用 "cluster_id" 选项时。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-        running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前必须安装以下库或应用程序:
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### keepalive_interval (integer)
 
 
-The time interval (in seconds) required to send a keepalive message to
-        all the endpoints that need being kept alive. During this interval,
-        each endpoint will receive exactly one keepalive message. A negative
-        value or zero will disable the keepalive functionality.
+向所有需要保持存活的端点发送保活消息的时间间隔(秒)。
+在此间隔内,每个端点将正好收到一条保活消息。
+负值或零将禁用保活功能。
 
 
-*Default value is "60".*
+*默认值为 "60"。*
 
 
-```c title="Setting the keepalive_interval parameter"
+```c title="设置 keepalive_interval 参数"
 ...
 modparam("nat_traversal", "keepalive_interval", 90)
 ...
@@ -331,30 +246,25 @@ modparam("nat_traversal", "keepalive_interval", 90)
 #### keepalive_method (string)
 
 
-What SIP method to use to send keepalive messages. Typical methods
-        used for this purpose are NOTIFY and OPTIONS. NOTIFY generates smaller
-        replies from user agents, but they are almost entirely negative replies.
-        Apparently almost none of the user agents understand that the purpose
-        of the NOTIFY with a "keep-alive" event is to keep NAT
-        open, even though many user agents send such NOTIFY requests themselves.
-        However this does not affect the result at all, since the purpose is
-        to trigger a response from the user agent behind NAT, positive or
-        negative replies having little relevance as they are discarded anyway.
-        The OPTIONS method on the other hand has a much higher rate of positive
-        replies, but at the same time those positive replies are much bigger,
-        mostly because the OPTIONS method is used to inform about the user
-        agent capabilities and thus it includes a lot of extra headers to
-        indicate those capabilities. Many user agents also include a SDP body
-        with a bogus media session, probably to indicate media capabilities.
-        All of this makes that positive replies to OPTIONS requests are 2 to
-        3 times bigger than negative replies or replies to NOTIFY requests.
-        For this reason the default value for the used method is NOTIFY.
+用于发送保活消息的 SIP 方法。用于此目的的典型方法是 NOTIFY 和 OPTIONS。
+NOTIFY 从用户代理生成较小的回复,但它们几乎都是否定回复。
+显然,几乎没有任何用户代理理解带有 "keep-alive" 事件的 NOTIFY 的目的是保持 NAT 开放,
+尽管许多用户代理自己发送这样的 NOTIFY 请求。
+然而,这完全不影响结果,因为目的是从 NAT 后面的用户代理触发响应,
+肯定或否定回复几乎没有区别,因为它们无论如何都会被丢弃。
+另一方面,OPTIONS 方法具有高得多的肯定回复率,
+但同时那些肯定回复也大得多,主要是因为 OPTIONS 方法用于通知用户代理能力,
+因此包含大量额外的头来指示这些能力。
+许多用户代理还包括带有虚假媒体会话的 SDP 体,
+可能是为了指示媒体能力。
+所有这些使得对 OPTIONS 请求的肯定回复比对 NOTIFY 请求的回复大 2 到 3 倍。
+因此,所用方法的默认值为 NOTIFY。
 
 
-*Default value is "NOTIFY".*
+*默认值为 "NOTIFY"。*
 
 
-```c title="Setting the keepalive_method parameter"
+```c title="设置 keepalive_method 参数"
 ...
 modparam("nat_traversal", "keepalive_method", "OPTIONS")
 ...
@@ -365,18 +275,16 @@ modparam("nat_traversal", "keepalive_method", "OPTIONS")
 #### keepalive_from (string)
 
 
-Indicates what SIP URI to use in the From header of the keepalive
-        requests. If not specified it will use sip:keepalive@proxy_ip, where
-        proxy_ip is the IP address of the outgoing interface used to send the
-        keepalive message, which is the same interface on which the request
-        that triggered keepalive functionality arrived.
+指示在保活请求的 From 头中使用的 SIP URI。
+如果未指定,它将使用 sip:keepalive@proxy_ip,其中
+proxy_ip 是用于发送保活消息的传出接口的 IP 地址,
+这是请求到达的传入接口的 IP 地址。
 
 
-*Default value is "sip:keepalive@proxy_ip" with proxy_ip
-          being the actual IP of the outgoing interface.*
+*默认值为 "sip:keepalive@proxy_ip",其中 proxy_ip 是实际传出接口的 IP。*
 
 
-```c title="Setting the keepalive_from parameter"
+```c title="设置 keepalive_from 参数"
 ...
 modparam("nat_traversal", "keepalive_from", "sip:keepalive@my-domain.com")
 ...
@@ -387,16 +295,15 @@ modparam("nat_traversal", "keepalive_from", "sip:keepalive@my-domain.com")
 #### keepalive_extra_headers (string)
 
 
-Specifies extra headers that should be added to the keepalive messages
-        that are sent by the proxy. The header specification must also include
-        the CRLF (\r\n) line separator. Multiple headers can be specified by
-        concatenating them and each of them must include the \r\n separator.
+指定应添加到代理发送的保活消息的额外头。
+头规范还必须包括 CRLF(\r\n) 行分隔符。
+可以通过连接指定多个头,每个都必须包含 \r\n 分隔符。
 
 
-*Default value is undefined (send no extra headers).*
+*默认值为未定义(不发送额外头)。*
 
 
-```c title="Setting the keepalive_extra_headers parameter"
+```c title="设置 keepalive_extra_headers 参数"
 ...
 modparam("nat_traversal", "keepalive_extra_headers", "User-Agent: OpenSIPS\r\nX-MyHeader: some_value\r\n")
 ...
@@ -407,26 +314,22 @@ modparam("nat_traversal", "keepalive_extra_headers", "User-Agent: OpenSIPS\r\nX-
 #### keepalive_state_file (string)
 
 
-Specifies a filename where information about the NAT endpoints and the
-        conditions for which they are being kept alive is saved when OpenSIPS
-        exits. The information in this file is then used when OpenSIPS starts
-        to restore its internal state and continue to send keepalive messages
-        to the NAT endpoints that have not expired in the meantime. This is
-        useful when restarting OpenSIPS to avoid losing keepalive state
-        information about the NAT endpoints. The internal keepalive state is
-        guaranteed to be saved in this file on exit, even when OpenSIPS
-        crashes.
+指定一个文件名,在 OpenSIPS 退出时保存有关 NAT 端点及其保持存活条件的信息。
+此文件中的信息在 OpenSIPS 启动时使用,以恢复其内部状态,
+并继续向在此期间未过期的 NAT 端点发送保活消息。
+这在重启 OpenSIPS 时很有用,可避免丢失有关 NAT 端点的保活状态信息。
+保证在退出时将此文件中的内部保活状态保存,
+即使 OpenSIPS 崩溃也是如此。
 
 
-The value of this parameter can be either a relative path, in which
-        case it will store it in the OpenSIPS working directory, or an
-        absolute path.
+此参数的值可以是相对路径,在这种情况下,
+它将存储在 OpenSIPS 工作目录中,或者是绝对路径。
 
 
-*Default value is undefined "keepalive_state".*
+*默认值为未定义 "keepalive_state"。*
 
 
-```c title="Setting the keepalive_state_file parameter"
+```c title="设置 keepalive_state_file 参数"
 ...
 modparam("nat_traversal", "keepalive_state_file", "/run/opensips/keepalive_state")
 ...
@@ -437,28 +340,23 @@ modparam("nat_traversal", "keepalive_state_file", "/run/opensips/keepalive_state
 #### cluster_id (integer)
 
 
-The ID of the cluster the module is part of. The clustering support is 
-      used by the nat_traversal module for controlling the pinging process.
-      When part of a cluster of multiple nodes, the nodes can agree upon which
-      node is the one responsible for pinging.
+模块所属集群的 ID。集群支持由 nat_traversal 模块用于控制 ping 过程。
+当作为多个节点的集群的一部分时,节点可以商定哪个节点是负责 ping 的节点。
 
 
-The clustering with sharing tag support may be used to control which 
-      node in the cluster will perform the pinging/probing to the
-      contacts. See the
-      [cluster sharing tag](#param_cluster_sharing_tag) option.
+可以使用带共享标签的集群来控制集群中的哪个节点将对联系人执行 ping/探测。
+请参阅 [cluster sharing tag](#param_cluster_sharing_tag) 选项。
 
 
-For more info on how to define and populate a cluster (with OpenSIPS 
-      nodes) see the "clusterer" module.
+有关如何定义和填充集群(使用 OpenSIPS 节点)的更多信息,请参阅 "clusterer" 模块。
 
 
-*Default value is "0 (none)".*
+*默认值为 "0(无)。"*
 
 
-```c title="Set cluster_id parameter"
+```c title="设置 cluster_id 参数"
 ...
-# Be part of cluster ID 9
+# 成为集群 ID 9 的一部分
 modparam("nat_traversal", "cluster_id", 9)
 ...
 ```
@@ -467,65 +365,54 @@ modparam("nat_traversal", "cluster_id", 9)
 #### cluster_sharing_tag (string)
 
 
-The name of the sharing tag (as defined per clusterer modules) to 
-      control which node is responsible for perform pinging of the 
-      contacts.
-      If defined, only the node with active status of this tag will 
-      perform the pinging.
+共享标签的名称(按 clusterer 模块定义)用于控制哪个节点负责对联系人执行 ping。
+如果定义,则只有具有此标签活动状态的节点将执行 ping。
 
 
-The [cluster id](#param_cluster_id) must be defined for this option
-      to work.
+此选项必须定义 [cluster id](#param_cluster_id) 才能工作。
 
 
-This is an optional parameter. If not set, all the nodes in the cluster
-      will individually do the pinging.
+这是一个可选参数。如果未设置,集群中的所有节点将单独执行 ping。
 
 
-*Default value is "empty (none)".*
+*默认值为 "空(无)。"*
 
 
-```c title="Set cluster_sharing_tag parameter"
+```c title="设置 cluster_sharing_tag 参数"
 ...
-# only the node with the active "vip" sharing tag will perform pinging
+# 只有具有活动 "vip" 共享标签的节点将执行 ping
 modparam("nat_traversal", "cluster_id", 9)
 modparam("nat_traversal", "cluster_sharing_tag", "vip")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### client_nat_test(type)
 
 
-Check if the client is behind NAT. What tests are performed is
-        specified by the type parameter which is an integer given by the sum
-        of the numbers corresponding to the tests that one wishes to perform.
-        The numbers corresponding to individual tests are shown below:
+检查客户端是否在 NAT 后面。执行的测试由 type 参数指定,
+该参数是一个整数,由希望执行的测试对应数字的总和组成。
+各个测试对应的数字如下所示:
 
 
-- 1 - tests if client has a private IP address (as defined by RFC1918)
-              in the Contact field of the SIP message.
-- 2 - tests if client has contacted OpenSIPS from an address that
-              is different from the one in the Via field. Both the IP and
-              port are compared by this test.
-- 4 - tests if client has a private IP address (as defined by RFC1918)
-              in the top Via field of the SIP message.
-- 8 - tests if client has contacted OpenSIPS from an address that
-              is different from the one in the Contact field. Only IP is 
-              compared by this test.
+- 1 - 测试客户端是否在 SIP 消息的 Contact 字段中有私有 IP 地址(如 RFC1918 所定义)
+- 2 - 测试客户端是否从与 Via 字段中不同的地址联系 OpenSIPS。
+此测试比较 IP 和端口。
+- 4 - 测试客户端是否在 SIP 消息的顶层 Via 字段中有私有 IP 地址(如 RFC1918 所定义)
+- 8 - 测试客户端是否从与 Contact 字段中不同的地址联系 OpenSIPS。
+仅比较 IP。
+
+例如,调用 client_nat_test(3) 将执行测试 1 和测试 2,
+如果至少一个成功则返回 true,否则返回 false。
 
 
-For example calling client_nat_test(3) will perform test 1 and
-        test 2 and return true if at least one succeeds, otherwise false.
+此函数可用于 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE。
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE.
-
-
-```c title="Using the client_nat_test function"
+```c title="使用 client_nat_test 函数"
 ...
 if (client_nat_test(3)) {
     .....
@@ -538,15 +425,14 @@ if (client_nat_test(3)) {
 #### fix_contact()
 
 
-Will replace the IP and port in the Contact header with the
-        IP and port the SIP message was received from. Usually called
-        after a successful call to client_nat_test(type)
+将 Contact 头中的 IP 和端口替换为接收 SIP 消息的 IP 和端口。
+通常在成功调用 client_nat_test(type) 后调用。
 
 
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE。
 
 
-```c title="Using the fix_contact function"
+```c title="使用 fix_contact 函数"
 ...
 if (client_nat_test(3)) {
     fix_contact();
@@ -559,29 +445,22 @@ if (client_nat_test(3)) {
 #### nat_keepalive()
 
 
-Trigger keepalive functionality for the source address of the request.
-        When called it only sets some internal flags, which will trigger
-        later the addition of the endpoint to the keepalive list if a
-        positive reply is generated/received (for REGISTER and SUBSCRIBE)
-        or when the dialog is started/replied (for INVITEs).
-        For this reason, it can be called early or late in the script. The
-        only condition is to call it before replying to the request or before
-        sending it to another proxy. If the request needs to be sent to
-        another proxy, t_relay() must be used to be able to intercept replies
-        via TM or dialog callbacks. If stateless forwarding is used, the
-        keepalive functionality will not work. Also for outgoing INVITEs,
-        record_route() should also be used to make sure the proxy that keeps
-        the caller endpoint alive stays in the path. For multi-proxy setups,
-        this function should always be called on the border proxies (the ones
-        that received the request directly from the user agent). For more
-        details about this function, see the *Implementation*
-        subsection from the *Keepalive functionality* section.
+为请求的源地址触发保活功能。调用时,它仅设置一些内部标志,
+这些标志将在稍后(对于 REGISTER 和 SUBSCRIBE)在生成/收到肯定回复时,
+或(对于 INVITE)在对话框开始/回复时触发将端点添加到保活列表。
+因此,可以早或晚在脚本中调用它。
+唯一条件是在回复请求之前或将其发送到另一个代理之前调用它。
+如果需要将请求发送到另一个代理,必须使用 t_relay() 才能通过 TM 或对话框回调截获回复。
+如果使用无状态转发,保活功能将不起作用。
+同样,对于出站 INVITE,还应使用 record_route() 以确保保持呼叫者端点存活的代理留在路径中。
+对于多代理设置,此函数应始终在边界代理(直接接收用户代理请求的代理)上调用。
+有关此函数的更多详细信息,请参阅 *保活功能* 部分的 *实现* 小节。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="Using the nat_keepalive function"
+```c title="使用 nat_keepalive 函数"
 ...
 if (($rm=="REGISTER" || $rm=="SUBSCRIBE" ||
     ($rm=="INVITE" && !has_totag())) && client_nat_test(3))
@@ -593,76 +472,69 @@ if (($rm=="REGISTER" || $rm=="SUBSCRIBE" ||
 ```
 
 
-### Exported Statistics
+### 导出的统计
 
 
 #### keepalive_endpoints
 
 
-Indicates the total number of NAT endpoints that are being kept alive.
+指示正在保持存活的 NAT 端点的总数。
 
 
 #### registered_endpoints
 
 
-Indicates how many of the NAT endpoints are kept alive for registrations.
+指示有多少 NAT 端点为注册而保持存活。
 
 
 #### subscribed_endpoints
 
 
-Indicates how many of the NAT endpoints are kept alive for subscriptions.
+指示有多少 NAT 端点为订阅而保持存活。
 
 
 #### dialog_endpoints
 
 
-Indicates how many of the NAT endpoints are kept alive for taking part
-        in an INVITE dialog.
+指示有多少 NAT 端点为参与 INVITE 对话而保持存活。
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $keepalive.socket(nat_endpoint)
 
 
-Returns the local socket used to send messages to the given NAT
-        endpoint URI. The socket has the form proto:ip:port. The NAT endpoint
-        URI is in the form: sip:ip:port[;transport=xxx] with transport missing
-        if UDP. If the requested NAT endpoint URI is present in the internal
-        keepalive table for any condition, it will return its associated local
-        socket, else it will return null. The nat_endpoint can be a string or
-        another pseudo-variable.
+返回用于向给定 NAT 端点 URI 发送消息的本地套接字。
+套接字格式为 proto:ip:port。NAT 端点 URI 格式为 sip:ip:port[;transport=xxx],
+如果使用 UDP 则 transport 缺失。
+如果请求的 NAT 端点 URI 在任何条件的内部保活表中存在,
+它将返回其关联的本地套接字,否则返回 null。
+nat_endpoint 可以是字符串或其他伪变量。
 
 
-This can be useful to restore the sending socket when relaying messages
-        to a given user agent in multi-proxy environments. Consider an example
-        where 2 proxies are involved, P1 and P2. A user agent registers by
-        sending a REGISTER request to P1. P1 will call nat_keepalive() but
-        because it determines that P2 should actually handle the user
-        registration will forward the request to P2. Now assume P2 receives an
-        incoming INVITE for this user. It will determine that the registration
-        came through P1 and will forward the request to P1. P2 should also
-        include the NAT endpoint URI where this request is to be relayed.
-        This information should have been provided by P1 when it relayed the
-        REGISTER request to P2. The means to do this is out of the scope of
-        this example, but one can either use the path extension or custom
-        headers to do this. When P1 receives the INVITE it will use the NAT
-        endpoint URI it has received along with the request to determine the
-        socket to send out the request, which should be the same as the one
-        where the registration request was originally received. In the example
-        below lets assume that P2 provided the original NAT endpoint address
-        in a custom header called X-NAT-URI and that it also provides a custom
-        header called X-Scope to indicate that the message is sent to P1 for
-        being relayed back to the user agent by P1 which has the NAT open
-        with it.
+这可用于在多代理环境中中继消息到给定用户代理时恢复发送套接字。
+考虑一个涉及 2 个代理 P1 和 P2 的示例。
+用户代理通过向 P1 发送 REGISTER 请求进行注册。
+P1 将调用 nat_keepalive(),但因为它确定 P2 实际上应该处理用户注册,
+会将请求转发给 P2。
+现在假设 P2 收到该用户的入站 INVITE。
+它将确定注册是通过 P1 进行的,
+并将请求转发给 P1。
+P2 还应包含此请求要转发到的 NAT 端点 URI。
+此信息应在 P1 将 REGISTER 请求转发给 P2 时由 P1 提供。
+做到这一点的手段超出了此示例的范围,
+但可以使用路径扩展或自定义头来做到这一点。
+当 P1 收到 INVITE 时,它将使用随请求一起收到的 NAT 端点 URI 来确定发送请求的套接字,
+这应该与最初接收注册请求的套接字相同。
+在下面的示例中,我们假设 P2 在名为 X-NAT-URI 的自定义头中提供了原始 NAT 端点地址,
+并且还提供了一个名为 X-Scope 的自定义头来指示消息被发送到 P1,
+以由 P1 中继回用户代理,因为 P1 与它保持着 NAT 开放。
 
 
-```c title="Using $keepalive.socket in multi-proxy environments"
+```c title="在多代理环境中使用 $keepalive.socket"
 ...
-# This code runs on P1 which has received an INVITE from P2 to forward
-# it to the user agent behind NAT (because P1 has the NAT open with it).
+# 此代码在 P1 上运行,P1 已收到来自 P2 的 INVITE 以转发到 NAT 后面的用户代理(因为 P1 与它保持着 NAT 开放)。
 if ($rm=="INVITE" && $hdr(X-Scope)=="nat-relay") {
     $du = $hdr(X-NAT-URI);
     $fs = $keepalive.socket($du);
@@ -677,45 +549,39 @@ if ($rm=="INVITE" && $hdr(X-Scope)=="nat-relay") {
 #### $source_uri
 
 
-Returns the URI specification from where a request was received in the
-        form sip:ip:port[;transport=xxx] with transport missing if UDP.
+返回请求接收位置的 URI,格式为 sip:ip:port[;transport=xxx],
+如果使用 UDP 则 transport 缺失。
 
 
-This pseudo-variable can be used to set the received AVP for the
-        registrar module to indicate that a user agent is behind NAT. This is
-        meant as a more flexible replacement for the fix_nated_register()
-        function, because it allows one to modify the source uri by appending
-        some extra parameters before saving it to the received AVP.
+此伪变量可用于设置 registrar 模块的 received AVP,
+以指示用户代理在 NAT 后面。
+这是作为 fix_nated_register() 函数的更灵活的替代方案,
+因为它允许在保存到 received AVP 之前通过附加一些额外参数来修改源 URI。
 
 
-Another use for this pseudo-variable is in multi-proxy environments to
-        indicate the NAT endpoint URI to the next proxy (if needed). Consider
-        the previous example with two proxies P1 and P2. P1 receives the
-        REGISTER request from a user agent and forwards it to P2 which does
-        the actual registration. P1 needs to indicate the NAT endpoint URI to
-        P2, so that P2 can include it later for incoming INVITE requests to
-        this user agent.
+此伪变量的另一个用途是在多代理环境中向下一个代理指示 NAT 端点 URI(如果需要)。
+考虑前面带有两个代理 P1 和 P2 的示例。
+P1 接收用户代理的 REGISTER 请求并将其转发给实际执行注册的 P2。
+P1 需要向 P2 指示 NAT 端点 URI,以便 P2 稍后可以在入站 INVITE 请求中包含它。
 
 
-```c title="Using $source_uri to set the received AVP on registrars"
+```c title="使用 $source_uri 设置 registrar 的 received AVP"
 ...
 modparam("registrar", "received_avp", "$avp(received_uri)")
 modparam("registrar", "tcp_persistent_flag", 10)
 ...
-# This code runs on the registrar, assuming it has received the
-# REGISTER request directly from the user agent.
+# 此代码在 registrar 上运行,假设它已直接从用户代理接收 REGISTER 请求。
 if ($rm=="REGISTER") {
     if (client_nat_test(3)) {
         if ($socket_in(proto)==UDP) {
             nat_keepalive();
         } else {
-            # Keep TCP/TLS connections open until the registration
-            # expires, by setting the tcp_persistent_flag
+            # 保持 TCP/TLS 连接打开直到注册到期,通过设置 tcp_persistent_flag
             setflag(10);
         }
         force_rport();
         $avp(received_uri) = $source_uri;
-        # or we could add some extra parameters to it if needed
+        # 或者如果需要我们可以向它添加一些额外参数
         # $avp(received_uri) = $source_uri + ";relayed=false" 
     }
     if (!www_authorize("", "subscriber")) {
@@ -736,10 +602,9 @@ if ($rm=="REGISTER") {
 ```
 
 
-```c title="Using $source_uri in multi-proxy environments"
+```c title="在多代理环境中使用 $source_uri"
 ...
-# This code runs on P1 which received the REGISTER request and has to
-# forward it to the registrar P2.
+# 此代码在 P1 上运行,P1 接收 REGISTER 请求并必须将其转发给 registrar P2。
 if ($rm=="REGISTER") {
     if (client_nat_test(3)) {
         force_rport();
@@ -758,112 +623,106 @@ if ($rm=="REGISTER") {
 #### $nat_traversal.track_dialog
 
 
-Returns a boolean value (0 or 1) indicating if dialog tracking will
-        be enabled by the nat_traversal module. The nat_traversal module will
-        always track the dialog (by calling create_dialog internally) unless
-        told otherwise.
+返回一个布尔值(0 或 1),指示 nat_traversal 模块是否将启用对话框跟踪。
+nat_traversal 模块将始终跟踪对话框(通过内部调用 create_dialog),
+除非被告知不要这样做。
 
 
-This is an advanced setting which is only meant to be used by multi-proxy
-        setups where a proxy doesn't want to keep track of a dialog, that is, if
-        it won't stay in the signaling path.
+这是一个高级设置,仅适用于多代理环境,
+在这种情况下,代理不想跟踪对话框,即如果它不会保持在信令路径中。
 
 
-By setting this pv to 0 the nat_traversal module will not attempt to
-        create the dialog.
+通过将此 pv 设置为 0,nat_traversal 模块将不会尝试创建对话框。
 
 
-### Keepalive use cases
+### 保活用例
 
 
-#### Single proxy environments
+#### 单代理环境
 
 
-In this case the usage is straight forward. The nat_keepalive() function
-        needs to be called before save_location() for REGISTER requests, before
-        handle_subscribe() for SUBSCRIBE requests and before t_relay() for the
-        first INVITE of a dialog.
+在这种情况下,用法很简单。
+nat_keepalive() 函数需要在 REGISTER 请求的 save_location() 之前、
+SUBSCRIBE 请求的 handle_subscribe() 之前,
+以及对话框第一次 INVITE 的 t_relay() 之前调用。
 
 
-#### Registration in multi-proxy environments
+#### 多代理环境中的注册
 
 
-If the proxy receiving the REGISTER request is the same as the proxy
-        handling it, then the case is reduced to the single proxy case. For
-        this example, lets assume they are different. We have a user agent UA1
-        for which the registration is handled by the proxy P1. However UA1
-        sends the REGISTER to P0 which in turn forwards it to P1 like this:
-        UA1 --> P0 --> P1. In this case P0 calls nat_keepalive(), adds the NAT
-        endpoint URI to the request (for example using a custom header) and
-        forwards the request to P1. P1 will save the user in the user location
-        together with the NAT endpoint URI.
+如果接收 REGISTER 请求的代理与处理它的代理相同,
+则情况归结为单代理情况。
+对于此示例,我们假设它们不同。
+我们有一个用户代理 UA1,其注册由代理 P1 处理。
+然而 UA1 将 REGISTER 发送到 P0,P0 再将其转发给 P1,如下所示:
+UA1 --> P0 --> P1。在这种情况下,P0 调用 nat_keepalive(),
+将 NAT 端点 URI 添加到请求(例如使用自定义头),
+并将请求转发给 P1。
+P1 将把用户连同 NAT 端点 URI 保存到用户位置。
 
 
-When an incoming INVITE request arrives on P1 for UA1, P1, will lookup
-        the location and determine that it has to relay it to P0 because P0
-        has the NAT open with UA1. P1 will include the original NAT endpoint
-        URI in the request and an indication that the only role P0 has in this
-        transaction is to relay it to UA1. P0 will receive this request and
-        determine that is has to act as a relay for it. It will extract the
-        NAT endpoint URI, then based on it the corresponding local socket
-        using $keepalive.socket(endpoint_uri). It will then set both $du and
-        $fs to the values it has found, call record_route() to stay in the
-        path and call t_relay() to send it to UA1.
+当入站 INVITE 请求到达 P1 时,P1 将查找位置,
+并确定它必须转发给 P0,因为 P0 与 UA1 保持着 NAT 开放。
+P1 将包括原始 NAT 端点 URI 和一个指示,
+表明 P0 在此事务中的唯一角色是将其转发给 UA1。
+P0 将收到此请求并确定它必须充当其中继。
+它将提取 NAT 端点 URI,然后基于它使用 $keepalive.socket(endpoint_uri) 找到相应的本地套接字。
+然后它将设置 $du 和 $fs 为找到的值,
+调用 record_route() 以保持在路径中,
+然后调用 t_relay() 将其发送给 UA1。
 
 
-Handling other type of requests (like for example SUBSCRIBE or
-        MESSAGE) that arrive on P1 for UA1 is done the same way as with the
-        first INVITE, on both P1 and P0.
+处理其他类型的请求(如 SUBSCRIBE 或 MESSAGE)的方式与 P1 和 P0 上第一次 INVITE 的处理方式相同。
 
 
-#### Subscription in multi-proxy environments
+#### 多代理环境中的订阅
 
 
-If the proxy receiving the SUBSCRIBE request is the same as the proxy
-        handling it, then the case is reduced to the single proxy case. For
-        this example, lets assume they are different. We have a user agent UA1
-        for which subscriptions are handled by the proxy P1. However UA1
-        sends the SUBSCRIBE to P0 which in turn forwards it to P1 like this:
-        UA1 --> P0 --> P1. In this case P0 calls nat_keepalive(), then calls
-        record_route() to stay in the path and forwards the request to P1
-        using t_relay(). Further SUBSCRIBE and NOTIFY requests will follow
-        the record route and use P0 as a NAT entry point to have access to UA1.
-        Further in-dialog SUBSCRIBE requests should also call record_route().
+如果接收 SUBSCRIBE 请求的代理与处理它的代理相同,
+则情况归结为单代理情况。
+对于此示例,我们假设它们不同。
+我们有一个用户代理 UA1,其订阅由代理 P1 处理。
+然而 UA1 将 SUBSCRIBE 发送到 P0,P0 再将其转发给 P1,如下所示:
+UA1 --> P0 --> P1。在这种情况下,P0 调用 nat_keepalive(),
+然后调用 record_route() 以保持在路径中,
+然后使用 t_relay() 将请求转发给 P1。
+后续的 SUBSCRIBE 和 NOTIFY 请求将遵循记录路由,
+并使用 P0 作为 NAT 入口点来访问 UA1。
+后续的对话内 SUBSCRIBE 请求也应该调用 record_route()。
 
 
-#### Outgoing INVITEs in multi-proxy environments
+#### 多代理环境中的出站 INVITE
 
 
-If the proxy receiving the INVITE request is the same as the proxy
-        handling it, then the case is reduced to the single proxy case. For
-        this example, lets assume they are different. We have a user agent UA1
-        which is handled by the proxy P1 and UA2 which is handled by P2. UA2
-        has registered with P2 going through P3, while UA1 calls UA2 by sending
-        the first INVITE to P0. The call flow for the first INVITE looks like
-        this: UA1 --> P0 --> P1 --> P2 --> P3 --> UA2.
-        In this case P0 calls nat_keepalive(), then calls record_route() to
-        stay in the path and forwards the request to P1. P1 authenticates UA1
-        then forwards the request to P2, which is the home proxy for UA2. P1
-        doesn't have to use record_route to stay in the path, but it can do
-        that if needed for other purposes. P2 will lookup UA2 and find out
-        that it is reachable through P3. It will take the original NAT
-        endpoint URI that is has saved in the user location when UA2 has
-        registered and include it in the message along with an indication that
-        P3 only has to relay the message to UA2. If P2 does accounting or
-        starts a media relay, it should also call record_route() to stay in
-        the path. Then it forwards the request to P3 using t_relay(). P3 will
-        detect that it only has to relay the request to UA2 because it has the
-        NAT open with it. It will extract the NAT endpoint URI from the message
-        and the local sending socket using $keepalive.socket(endpoint_uri) and
-        will set both $du and $fs. After that it will call record_route() to
-        stay in the path, and forward the request to UA2 using t_relay().
-        Further in-dialog requests will follow the recorded route and use
-        P0 and P3 as access points to UA1 respectively UA2. All the proxies
-        that have used record_route() during the first INVITE should also
-        call record_route() during further in-dialog requests to keep staying
-        in the path.
+如果接收 INVITE 请求的代理与处理它的代理相同,
+则情况归结为单代理情况。
+对于此示例,我们假设它们不同。
+我们有一个由代理 P1 处理的 UA1 和一个由 P2 处理的 UA2。
+UA2 已通过 P3 注册到 P2,而 UA1 通过发送第一次 INVITE 到 P0 来调用 UA2。
+第一次 INVITE 的呼叫流程如下:
+UA1 --> P0 --> P1 --> P2 --> P3 --> UA2。
+在这种情况下,P0 调用 nat_keepalive(),
+然后调用 record_route() 以保持在路径中,
+并将请求转发给 P1。
+P1 对 UA1 进行身份验证,然后将请求转发给 P2,P2 是 UA2 的主代理。
+P1 不必使用 record_route 保持在路径中,但如果需要可以这样做。
+P2 将查找 UA2,并发现它可以通过 P3 访问。
+它将采用在 UA2 注册时保存在用户位置中的原始 NAT 端点 URI,
+并将其包含在消息中,以及一个指示,表明 P3 只需要将消息中继给 UA2。
+如果 P2 进行记帐或启动媒体中继,它也应该调用 record_route() 以保持在路径中。
+然后使用 t_relay() 将请求转发给 P3。
+P3 将检测到它只需要将请求中继给 UA2,因为它与 UA2 保持着 NAT 开放。
+它将从消息中提取 NAT 端点 URI,
+并使用 $keepalive.socket(endpoint_uri) 找到本地发送套接字,
+然后设置 $du 和 $fs。
+之后,它将调用 record_route() 以保持在路径中,
+然后使用 t_relay() 将请求转发给 UA2。
+后续的对话内请求将遵循记录的路由,
+并分别使用 P0 和 P3 作为 UA1 和 UA2 的接入点。
+所有在第一次 INVITE 期间使用 record_route() 的代理也应在后续的对话内请求中调用 record_route(),
+以继续保持在该路径中。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享许可证 4.0 版授权

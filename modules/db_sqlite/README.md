@@ -1,69 +1,68 @@
 ---
-title: "db_sqlite Module"
-description: "This is a module which provides SQLite support for OpenSIPS. It implements the DB API defined in OpenSIPS."
+title: "db_sqlite 模块"
+description: "这是为 OpenSIPS 提供 SQLite 支持的模块。它实现了 OpenSIPS 中定义的 DB API。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is a module which provides SQLite support for OpenSIPS.
-		It implements the DB API defined in OpenSIPS.
+这是为 OpenSIPS 提供 SQLite 支持的模块。
+它实现了 OpenSIPS 中定义的 DB API。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-Also this module provides two ways of creating the query. One is to use
-		sqlite3_bind_* functions after opensips creates the prepared statement query.
-		The second one directly uses only sqlite3_snprintf function to print the
-		values into the opensips created query. In theory, the second one should
-		be faster and should allow you to make more queries to the database in
-		the same time, so by default this one will be active. You can use the
-		sqlite3_bind_* interface by simply uncommenting the SQLITE_BIND line
-		the Makefile.
+此外，此模块提供两种创建查询的方式。一种是使用
+sqlite3_bind_* 函数，在 opensips 创建预处理语句查询之后。
+第二种直接使用 sqlite3_snprintf 函数将值打印到
+opensips 创建的查询中。理论上，第二种方式应该
+更快，并且应该允许您同时对数据库进行更多查询，
+因此默认情况下会激活这种方式。您可以通过简单取消注释
+Makefile 中的 SQLITE_BIND 行来使用 sqlite3_bind_* 接口。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+加载了此模块的 OpenSIPS 之前安装：
 
 
-- *libsqlite3-dev* - the development libraries of sqlite.
+- *libsqlite3-dev* - sqlite 的开发库。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### alloc_limit (integer)
 
 
-Since the library does not support a function to return the number of rows
-		in a query, this number is obtained using "count(*)" query. If we use multiple
-		processes there is the risk ,since "count(*)" query and the actual "select"
-		query, the number of rows in the result query to have changed, so realloc
-		will be needed if the number is bigger. Using *alloc_limit*
-		parameter you can specify the number with which the number of allocated rows in the
-		result is raised.
+由于库不支持返回查询行数的函数，
+因此使用 "count(*)" 查询来获取此数字。如果我们使用多个进程，
+存在风险，因为在 "count(*)" 查询和实际的 "select"
+查询之间，结果查询中的行数可能已更改，
+因此如果数字更大，将需要 realloc。
+使用 *alloc_limit* 参数，您可以指定
+结果中分配行数增加的次数。
 
 
-*Default value is 10.*
+*默认值为 10。*
 
 
-```c title="Set alloc_limit parameter"
+```c title="设置 alloc_limit 参数"
 ...
 modparam("db_sqlite", "alloc_limit", 25)
 ...
@@ -73,19 +72,20 @@ modparam("db_sqlite", "alloc_limit", 25)
 #### load_extension (string)
 
 
-This parameter enables extension loading, similiar to ".load" functionality in sqlite3,
-		extenions like sqlite3-pcre which enables REGEX function. In order to use this functionality
-		you must specify the library path (.so file) and the entry point which represents the function
-		to be called by the sqlite library (read more at sqlite
-		[load_extension](https://www.sqlite.org/capi3ref.html#sqlite3_load_extension)
-		official documentation), separated by   ";"   delimiter. The entry point paramter
-		can miss, so you won't need to use the delimitier in this case.
+此参数启用扩展加载，类似于 sqlite3 中的 ".load" 功能，
+允许 REGEX 函数的 sqlite3-pcre 等扩展。为了使用此功能，
+您必须指定库路径（.so 文件）和入口点，
+入口点表示将由 sqlite 库调用的函数
+（请参阅 sqlite
+[load_extension](https://www.sqlite.org/capi3ref.html#sqlite3_load_extension)
+官方文档），以 ";" 分隔符分隔。
+入口点参数可以省略，因此您不需要在这种情况下使用分隔符。
 
 
-*By default, no extension is loaded.*
+*默认情况下，不加载任何扩展。*
 
 
-```c title="Set load_extension parameter"
+```c title="设置 load_extension 参数"
 ...
 modparam("db_sqlite", "load_extension", "/usr/lib/sqlite3/pcre.so")
 modparam("db_sqlite", "load_extension", "/usr/lib/sqlite3/pcre.so;sqlite3_extension_init")
@@ -96,19 +96,16 @@ modparam("db_sqlite", "load_extension", "/usr/lib/sqlite3/pcre.so;sqlite3_extens
 #### busy_timeout (integer)
 
 
-This parameter sets the default busy_handler for the SQLite library, that sleeps for 
-		a specified amount of time when a table is locked. The handler will sleep multiple 
-		times until at least the specified "busy_timeout" duration (in milliseconds) has been 
-		reached. Setting this parameter to a value less than or equal to zero turns off all 
-		busy handlers. (read more in the  
-		[SQLite 
-		official documentation](https://www.sqlite.org/capi3ref.html#sqlite3_busy_timeout))
+此参数设置 SQLite 库的默认 busy_handler，当表被锁定时，它会睡眠
+指定的时间。处理程序将多次睡眠，直到至少达到指定的 "busy_timeout" 持续时间（以毫秒为单位）。
+将此参数设置为小于或等于零的值将关闭所有忙处理程序。（请参阅
+[SQLite 官方文档](https://www.sqlite.org/capi3ref.html#sqlite3_busy_timeout)）
 
 
-*Default value is 500.*
+*默认值为 500。*
 
 
-```c title="Set busy_timeout parameter"
+```c title="设置 busy_timeout 参数"
 ...
 modparam("db_sqlite", "busy_timeout", 5000)
 ...
@@ -118,18 +115,18 @@ modparam("db_sqlite", "busy_timeout", 5000)
 #### exec_pragma (string)
 
 
-This parameter allows configuring an SQLite database with "PRAGMA" statements, (read 
-		more in the [SQLite official documentation](https://sqlite.org/pragma.html))
-		To use this functionality you must specify the exec_pragma parameter value as
-		"pragma-name=pragma-value". Multiple parameters with the same name can be specified, 
-		and they will be executed one by one on every database connection. If a parameter has an 
-		incorrect name or syntax, it will be ignored by SQLite without any error messages.
+此参数允许使用 "PRAGMA" 语句配置 SQLite 数据库（请参阅
+[SQLite 官方文档](https://sqlite.org/pragma.html)）。
+要使用此功能，您必须将 exec_pragma 参数值指定为
+"pragma-name=pragma-value"。可以指定具有相同名称的多个参数，
+它们将在每个数据库连接上一一执行。如果参数具有
+不正确的名称或语法，它将被 SQLite 忽略而不会产生任何错误消息。
 
 
-*By default, no PRAGMA statements are executed.*
+*默认情况下，不执行任何 PRAGMA 语句。*
 
 
-```c title="Set exec_pragma parameter"
+```c title="设置 exec_pragma 参数"
 ...
 modparam("db_sqlite", "exec_pragma", "journal_mode=wal")
 modparam("db_sqlite", "exec_pragma", "synchronous=normal")
@@ -138,26 +135,26 @@ modparam("db_sqlite", "exec_pragma", "cache_size=-2000")
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+配置文件中没有导出可使用的函数。
 
 
-### Installation
+### 安装
 
 
-Because it dependes on an external library, the sqlite module is not
-		compiled and installed by default. You can use one of the next options.
+由于该模块依赖外部库，sqlite 模块默认不会
+被编译和安装。您可以使用以下选项之一：
 
 
-- - edit the "Makefile" and remove "db_sqlite" from "excluded_modules"
-			list. Then follow the standard procedure to install OpenSIPS:
-			"make all; make install".
-- - from command line use: 'make all include_modules="db_sqlite";
-			make install include_modules="db_sqlite"'.
+- 编辑 "Makefile" 并从 "excluded_modules"
+列表中删除 "db_sqlite"。然后按照标准程序安装 OpenSIPS：
+"make all; make install"。
+- 从命令行使用：'make all include_modules="db_sqlite";
+make install include_modules="db_sqlite"'。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

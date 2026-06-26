@@ -1,480 +1,450 @@
 ---
-title: "jabber Module"
-description: "This is new version of Jabber module that integrates XODE XML parser for parsing Jabber messages. That introduces a new module dependency: expat library."
+title: "Jabber 模块"
+description: "这是集成 XODE XML 解析器用于解析 Jabber 消息的新版本 Jabber 模块。这引入了一个新的模块依赖：expat 库。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is new version of Jabber module that integrates XODE 
-		XML parser for parsing Jabber messages. That 
-		introduces a new module dependency: expat library.
+这是集成 XODE XML 解析器用于解析 Jabber 消息的新版本 Jabber 模块。
+		这引入了一个新的模块依赖：expat 库。
 
 
-Expat is a common XML library and is the fastest 
-		available for Linux/Unix, the second over all, after msxml library. It 
-		is integrated in most of well known Linux distributions.
+Expat 是一个常见的 XML 库，是 Linux/Unix 上最快的 XML 库，
+		在所有库中排名第二，仅次于 msxml 库。它已集成在大多数知名 Linux 发行版中。
 
 
-#### New Features
+#### 新功能
 
 
-- Presence support (see doc/xxjab.cfg for a sample cfg file) 
-			(January 2003).
-- SIP to Jabber conference support (December 2003).
-- Possibility to manage all kinds of Jabber messages 
-			(message/presence/iq) (December 2003).
-- Aliases -- Possibility to set host aliases for addresses 
-			(see parameter's desc.) (December 2003).
-- Send received SIP MESSAGE messages to different IM networks 
-			(Jabber, ICQ,MSN, AIM, Yahoo) using a Jabber server (December 2003).
-- Send incoming Jabber instant messages as SIP MESSAGE messages.
-- Gateways detection -- Ability to see whether an IM gateway is up 
-			or down.
+- 支持存在状态（参见 doc/xxjab.cfg 获取示例 cfg 文件）（2003 年 1 月）。
+- SIP 到 Jabber 会议支持（2003 年 12 月）。
+- 管理各种 Jabber 消息的可能性
+			（message/presence/iq）（2003 年 12 月）。
+- 别名 -- 为地址设置主机别名的可能性
+			（参见参数说明）（2003 年 12 月）。
+- 发送接收到的 SIP MESSAGE 消息到不同的 IM 网络
+			（Jabber、ICQ、MSN、AIM、Yahoo），使用 Jabber 服务器（2003 年 12 月）。
+- 将收到的 Jabber 即时消息作为 SIP MESSAGE 消息发送。
+- 网关检测 -- 能够查看 IM 网关是上线还是下线。
 
 
-### Admin's Guide
+### 管理员指南
 
 
 > [!NOTE]
-> A more complete guide about SIMPLE2Jabber gateway can be found 
-		at [https://opensips.org/](https://opensips.org/). The part below will be removed soon, only the manual 
-		from web will be updated.
+> 关于 SIMPLE2Jabber 网关的更完整指南可以在
+		[https://opensips.org/](https://opensips.org/) 找到。以下部分将很快被删除，只有网页上的手册会更新。
 
 
-The Jabber server setup is not a subject of this guide. Check [http://www.jabber.org](http://www.jabber.org) for that.
+Jabber 服务器设置不是本指南的主题。请查看 [http://www.jabber.org](http://www.jabber.org) 获取相关信息。
 
 
-Useful scripts, for creating Jabber Gateway database, or for managing 
-		the Jabber accounts form web are located in 'doc' subdirectory of the 
-		module.
+用于创建 Jabber 网关数据库或从 Web 管理 Jabber 账户的有用脚本
+		位于模块的 'doc' 子目录中。
 
 
-Main steps of using the Jabber gateway:
+使用 Jabber 网关的主要步骤：
 
 
-- Create the MySQL database.
-- Setup the local Jabber server.
-- Set the module parameter values in cfg file of OpenSIPS, load the 
-			dependent modules, set up the routing rules for Jabber gateway.
-- Run OpenSIPS.
+- 创建 MySQL 数据库。
+- 设置本地 Jabber 服务器。
+- 在 OpenSIPS 的 cfg 文件中设置模块参数值，加载依赖模块，设置 Jabber 网关的路由规则。
+- 运行 OpenSIPS。
 
 
-The administrator of OpenSIPS/Jabber gateway *must* 
-		inform the users what are the aliases for Jabber/Other IM networks. 
-		Other IMs could be AIM, ICQ, 
-		MSN, Yahoo, and so on.
+OpenSIPS/Jabber 网关管理员 *必须*
+		告知用户 Jabber/其他 IM 网络的别名是什么。
+		其他 IM 可以是 AIM、ICQ、
+		MSN、Yahoo 等。
 
 
-These aliases depend on the server hostname where runs OpenSIPS and 
-		how local Jabber server is setup.
+这些别名取决于运行 OpenSIPS 的服务器主机名以及本地 Jabber 服务器的设置方式。
 
 
-Next is presented a use case. Prologue:
+接下来是一个用例。前言：
 
 
-- OpenSIPS is running on "server.org".
-- Local Jabber server is running on "jabsrv.server.org".
-- Jabber network alias (first part of "jdomain") is
-			"jabber.server.org"
+- OpenSIPS 运行在 "server.org" 上。
+- 本地 Jabber 服务器运行在 "jabsrv.server.org" 上。
+- Jabber 网络别名（"jdomain" 的第一部分）是 "jabber.server.org"
 
 
-The aliases for other IM networks *must* be the 
-		same as JID set in Jabber configuration file for 
-		each IM transport.
+其他 IM 网络的别名 *必须* 与 Jabber 配置文件中为每个 IM 传输设置的 JID 相同。
 
 
-The JIDs of Jabber transports 
-		*must* start with the name of the network. 
-		For AIM, JID must start
-		with "aim.", for ICQ with 
-		"icq" (that because I use icqv7-t), for 
-		MSN with "msn." and for
-		Yahoo with "yahoo.". The gateway needs these to find 
-		out what transport is working and which not. For our use case these 
-		could be like "aim.server.org", 
-		"icq.server.org",
-		"msn.server.org", "yahoo.server.org".
+Jabber 传输的 JID *必须* 以网络名称开头。
+		对于 AIM，JID 必须以 "aim." 开头；对于 ICQ，
+		以 "icq" 开头（因为我使用 icqv7-t）；
+		对于 MSN，以 "msn." 开头；
+		对于 Yahoo，以 "yahoo." 开头。网关需要这些来查明哪个传输正在工作，哪个不工作。对于我们的用例，这些可能是 "aim.server.org"、
+		"icq.server.org"、
+		"msn.server.org"、"yahoo.server.org"。
 
 
-It is indicated to have these aliases in DNS, thus 
-		the client application can resolve the DNS name. 
-		Otherwise there must be set the outbound proxy to OpenSIPS server.
+建议在 DNS 中设置这些别名，以便客户端应用程序可以解析 DNS 名称。
+		否则必须将出站代理设置为 OpenSIPS 服务器。
 
 
-*** Routing rules for Jabber gateway First step is to configure OpenSIPS 
-		to recognize messages for Jabber gateway. Look at 
-		"doc/xjab.cfg" to see a sample. The idea is to look in 
-		messages for destination address and if it contains Jabber alias or
-		other IM alias, that means the message is for Jabber gateway.
+*** Jabber 网关的路由规则 第一步是配置 OpenSIPS
+		以识别发往 Jabber 网关的消息。查看
+		"doc/xjab.cfg" 了解示例。思路是查看消息中的目标地址，
+		如果包含 Jabber 别名或其他 IM 别名，则意味着该消息是发往 Jabber 网关的。
 
 
-Next step is to find out what means that message for Jabber gateway. 
-		It could be a special message what triggers the gateway to take an 
-		action or is a simple message which should be delivered to Jabber 
-		network (using the method "jab_send_message").
+下一步是了解发往 Jabber 网关的消息意味着什么。
+		它可能是一条触发网关执行操作的特殊消息，
+		或者是一条应使用 "jab_send_message" 方法传递到 Jabber 网络的简单消息。
 
 
-The special messages are for:
+特殊消息用于：
 
 
-- Registering to Jabber server (go online in Jabber network)--here 
-			must be called "jab_go_online" method.
-- Leaving the Jabber network (go offline in Jabber network)--here 
-			must be called "jab_go_offline" method.
-- Joining a Jabber conference room--here must be called 
-			"jab_join_jconf".
-- Leaving a Jabber conference room--here must be called 
-			"jab_exit_jconf".
+- 注册到 Jabber 服务器（在 Jabber 网络中上线）-- 这里必须调用 "jab_go_online" 方法。
+- 离开 Jabber 网络（在 Jabber 网络中下线）-- 这里必须调用 "jab_go_offline" 方法。
+- 加入 Jabber 会议室 -- 这里必须调用 "jab_join_jconf"。
+- 离开 Jabber 会议室 -- 这里必须调用 "jab_exit_jconf"。
 
 
-The destination address *must* follow the 
-		following patterns:
+目标地址 *必须* 遵循以下格式：
 
 
-- For Jabber network: 
-			"username<delim>jabber_server@jabber_alias".
-- For Jabber conference: "nickname<delim>room<delim>conference_server@jabber_alias".
-- For AIM network: 
-			"aim_username@aim_alias".
-- For ICQ network: 
-			"icq_number@icq_alias".
-- For MSN network:
-			"msn_username<delim>msn_server@msn_alias".
-			msn_server can be "msn.com" or 
-			"hotmail.com".
-- For YAHOO network: "yahoo_username@yahoo_alias".
+- 对于 Jabber 网络：
+			"username<delim>jabber_server@jabber_alias"。
+- 对于 Jabber 会议："nickname<delim>room<delim>conference_server@jabber_alias"。
+- 对于 AIM 网络：
+			"aim_username@aim_alias"。
+- 对于 ICQ 网络：
+			"icq_number@icq_alias"。
+- 对于 MSN 网络：
+			"msn_username<delim>msn_server@msn_alias"。
+			msn_server 可以是 "msn.com" 或 "hotmail.com"。
+- 对于 YAHOO 网络："yahoo_username@yahoo_alias"。
 
 
 > [!NOTE]
-> "jabber_alias" is the first part of "jdomain".
+> "jabber_alias" 是 "jdomain" 的第一部分。
 
 
-### Admin Guide
+### 管理指南
 
 
-The user must activate his Jabber account associated with his SIP id. For each other
-		IM network on which he wants to send messages, he must set an account for that IM
-		network. The gateway is not able to create new account in foreign networks, excepting
-		local Jabber server.
+用户必须激活与其 SIP ID 关联的 Jabber 账户。对于他想要发送消息的其他每个 IM 网络，
+		他必须为该 IM 网络设置一个账户。网关无法在外来网络中创建新账户，本地 Jabber 服务器除外。
 
 
-When you want to send a message to someone in other IM network, you must set the
-		destination of the message according with the pattern corresponding to that IM network
-		(see last part of "Admin guide" chapter).
+当您想向其他 IM 网络中的某用户发送消息时，
+		必须根据该 IM 网络对应的格式设置消息目标
+		（参见"管理指南"章节的最后部分）。
 
 
-Sending a message to user@jabber.xxx.org which is in Jabber network, the
-		destination must be: user<delim>jabber.xxx.org@jabber_alias.
+对于 Jabber 网络中位于 user@jabber.xxx.org 的用户，
+		目标必须是：user<delim>jabber.xxx.org@jabber_alias。
 
 
-For someone who is in Yahoo network the destination must be:
-		user@yahoo_alias
+对于位于 Yahoo 网络的用户，目标必须是：
+	user@yahoo_alias
 
 
 > [!NOTE]
-> The OpenSIPS administrator have to set the Jabber transports for each IM network in
-		order to be able to send messages to those networks. The alias of each IM network
-		can be found out from OpenSIPS admin. You cannot send messages from your SIP client to your associated Jabber
-		account--is something like sending messages to yourself.
+> OpenSIPS 管理员必须为每个 IM 网络设置 Jabber 传输，
+		以便能够向这些网络发送消息。每个 IM 网络的别名可以从 OpenSIPS 管理员处获取。
+		您无法从 SIP 客户端向关联的 Jabber 账户发送消息 -- 这类似于向自己发送消息。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+加载此模块之前必须加载以下模块：
 
 
-- A database module.
-- *pa* (Optionally) - Presence Agent.
-- *tm* - Transaction Manager.
+- 数据库模块。
+- *pa*（可选）-- 存在代理。
+- *tm* -- 事务管理器。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *Expat* library.
+- *Expat* 库。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### db_url (string)
+#### db_url (字符串)
 
 
-SQL URL of database.
+数据库的 SQL URL。
 
 
-*Default value is "mysql://root@127.0.0.1/sip_jab".*
+*默认值为 "mysql://root@127.0.0.1/sip_jab"*。
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("jabber", "db_url", "mysql://username:password@host/sip_jab")
 ...
 ```
 
 
-#### jaddress (string)
+#### jaddress (字符串)
 
 
-IP or hostname of Jabber server -- it must be the same as the value from <host>
-		tag of Jabber server config file.
+Jabber 服务器的 IP 或主机名 -- 它必须与 Jabber 服务器配置文件 <host> 标签中的值相同。
 
 
-*Default value is "127.0.0.1".*
+*默认值为 "127.0.0.1"*。
 
 
-```c title="Set jaddress parameter"
+```c title="设置 jaddress 参数"
 ...
 modparam("jabber", "jaddress", "1.2.3.4")
 ...
 ```
 
 
-#### jport (integer)
+#### jport (整数)
 
 
-Port number of Jabber server.
+Jabber 服务器端口号。
 
 
-*Default value is "5222".*
+*默认值为 "5222"*。
 
 
-```c title="Set jport parameter"
+```c title="设置 jport 参数"
 ...
 modparam("jabber", "jport", 1234)
 ...
 ```
 
 
-#### jdomain (string)
+#### jdomain (字符串)
 
 
-Format: jabber.sipserver.com=<delim>. If the destination is for Jabber network
-		the URI should be like: username<delim>jabber_server@jdomain or
+格式：jabber.sipserver.com=<delim>。如果目标是 Jabber 网络，
+		则 URI 应为：username<delim>jabber_server@jdomain 或
 		nickname<delim>roomname<delim>conference_server@jdomain
 
 
-<delim> must be a un-reserved character. By default this character is * .  The
-		destination will be transformed to username@jabber_server or
-		roomname@conference_server/nickname before the message is sent to Jabber server.
+<delim> 必须是一个非保留字符。默认情况下，此字符是 *。目标将被转换为
+		username@jabber_server 或 roomname@conference_server/nickname，
+		然后再发送到 Jabber 服务器。
 
 
-*Default value is none.*
+*默认值为无。*
 
 
-```c title="Set jdomain parameter"
+```c title="设置 jdomain 参数"
 ...
 modparam("jabber", "jdomain", "jabber.sipserver.com=*")
 ...
 ```
 
 
-#### aliases (string)
+#### aliases (字符串)
 
 
-Aliases for IM networks.
+IM 网络的别名。
 
 
-Format: "N;alias1=<delim1>;...;aliasN=<delimN>;"
-		Destinations like '*@aliasX' could have other format than those specified for Jabber
-		network.  All <delim> from user part of the destination address will be
-		changed to <delimX> if the destination address contains <aliasX>.
+格式："N;alias1=<delim1>;...;aliasN=<delimN>;"
+		像 '*@aliasX' 这样的目标可以具有与 Jabber 网络指定的格式不同的格式。
+		如果目标地址包含 <aliasX>，
+		则目标地址用户部分中的所有 <delim> 将被更改为 <delimX>。
 
 
-(Ex: jdomain is 'jabber.x.com=*' and msn_alias is 'msn.x.com=%'. The destination
-		address forM MSN Network, on SIP side, is like
-		'username*hotmail.com@msn.x.com'. The destination address will be transformed to
-		'username%hotmail.com@msn.x.com'.  'msn.x.com' must be the same as the
-		JID associated with MSN transport in Jabber
-		configuration file (usually is 'jabberd.xml'))
+（例如，jdomain 是 'jabber.x.com=*'，msn_alias 是 'msn.x.com=%'。
+		SIP 端 MSN 网络的目标地址格式为 'username*hotmail.com@msn.x.com'。
+		目标地址将被转换为 'username%hotmail.com@msn.x.com'。
+		'msn.x.com' 必须与 Jabber 配置文件中与 MSN 传输关联的 JID 相同
+		（通常是 'jabberd.xml'）
 
 
-*Default value is none.*
+*默认值为无。*
 
 
-```c title="Set jdomain parameter"
+```c title="设置 jdomain 参数"
 ...
 modparam("jabber", "aliases", "1;msn.x.com=%")
 ...
 ```
 
 
-#### proxy (string)
+#### proxy (字符串)
 
 
-Outbound proxy address.
+出站代理地址。
 
 
-Format: ip_address:port hostname:port
+格式：ip_address:port hostname:port
 
 
-All SIP messages generated by gateway will be sent to that address. If is
-		missing, the message will be delivered to the hostname of the destination address
+所有网关生成的 SIP 消息都将发送到该地址。如果缺失，
+		消息将被传递到目标地址的主机名
 
 
-Default value is none.
+默认值为无。
 
 
-```c title="Set proxy parameter"
+```c title="设置 proxy 参数"
 ...
 modparam("jabber", "proxy", "10.0.0.1:5060 sipserver.com:5060")
 ...
 ```
 
 
-#### registrar (string)
+#### registrar (字符串)
 
 
-The address in whose behalf the INFO and ERROR messages are sent.
+代表其发送 INFO 和 ERROR 消息的地址。
 
 
-*Default value is "jabber_gateway@127.0.0.1".*
+*默认值为 "jabber_gateway@127.0.0.1"*。
 
 
-```c title="Set registrar parameter"
+```c title="设置 registrar 参数"
 ...
 modparam("jabber", "registrar", "jabber_gateway@127.0.0.1")
 ...
 ```
 
 
-#### workers (integer)
+#### workers (整数)
 
 
-Number of workers.
+工作进程数。
 
 
-*Default value is 2.*
+*默认值为 2。*
 
 
-```c title="Set workers parameter"
+```c title="设置 workers 参数"
 ...
 modparam("jabber", "workers", 2)
 ...
 ```
 
 
-#### max_jobs (integer)
+#### max_jobs (整数)
 
 
-Maximum jobs per worker.
+每个工作进程的最大作业数。
 
 
-*Default value is 10.*
+*默认值为 10。*
 
 
-```c title="Set max_jobs parameter"
+```c title="设置 max_jobs 参数"
 ...
 modparam("jabber", "max_jobs", 10)
 ...
 ```
 
 
-#### cache_time (integer)
+#### cache_time (整数)
 
 
-Cache time of a Jabber connection.
+Jabber 连接的缓存时间。
 
 
-*Default value is 600.*
+*默认值为 600。*
 
 
-```c title="Set cache_time parameter"
+```c title="设置 cache_time 参数"
 ...
 modparam("jabber", "cache_time", 600)
 ...
 ```
 
 
-#### delay_time (integer)
+#### delay_time (整数)
 
 
-Time to keep a SIP message (in seconds).
+保留 SIP 消息的时间（秒）。
 
 
-*Default value is 90 seconds.*
+*默认值为 90 秒。*
 
 
-```c title="Set delay_time parameter"
+```c title="设置 delay_time 参数"
 ...
 modparam("jabber", "delay_time", 90)
 ...
 ```
 
 
-#### sleep_time (integer)
+#### sleep_time (整数)
 
 
-Time between expired Jabber connections checking (in seconds).
+检查过期 Jabber 连接之间的时间（秒）。
 
 
-*Default value is 20 seconds.*
+*默认值为 20 秒。*
 
 
-```c title="Set sleep_time parameter"
+```c title="设置 sleep_time 参数"
 ...
 modparam("jabber", "sleep_time", 20)
 ...
 ```
 
 
-#### check_time (integer)
+#### check_time (整数)
 
 
-Time between checking the status of JabberGW workers (in seconds).
+检查 JabberGW 工作进程状态的时间间隔（秒）。
 
 
-*Default value is 20 seconds.*
+*默认值为 20 秒。*
 
 
-```c title="Set check_time parameter"
+```c title="设置 check_time 参数"
 ...
 modparam("jabber", "check_time", 20)
 ...
 ```
 
 
-#### priority (str)
+#### priority (字符串)
 
 
-Presence priority for Jabber gateway.
+Jabber 网关的存在状态优先级。
 
 
-*Default value is "9".*
+*默认值为 "9"。*
 
 
-```c title="Set priority parameter"
+```c title="设置 priority 参数"
 ...
 modparam("jabber", "priority", "3")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### jab_send_message()
 
 
-Converts SIP MESSAGE message to a Jabber message and sends it to Jabber server.
+将 SIP MESSAGE 消息转换为 Jabber 消息并发送到 Jabber 服务器。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jab_send_message() usage"
+```c title="jab_send_message() 用法"
 ...
 jab_send_message();
 ...
@@ -484,15 +454,15 @@ jab_send_message();
 #### jab_join_jconf()
 
 
-Join a Jabber conference--the nickname, room name and conference server address
-		should be included in To header as: nickname%roomname%conference_server@jdomain . If
-		the nickname is missing, then the SIP username is used.
+加入 Jabber 会议 -- 昵称、会议室名称和会议服务器地址
+		应包含在 To 头中，格式为：nickname%roomname%conference_server@jdomain。
+		如果昵称缺失，则使用 SIP 用户名。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jab_join_jconf() usage"
+```c title="jab_join_jconf() 用法"
 ...
 jab_join_jconf();
 ...
@@ -502,14 +472,14 @@ jab_join_jconf();
 #### jab_exit_jconf()
 
 
-Leave a Jabber conference--the nickname, room name and conference server address
-		should be included in To header as: nickname%roomname%conference_server@jdomain .
+离开 Jabber 会议 -- 昵称、会议室名称和会议服务器地址
+		应包含在 To 头中，格式为：nickname%roomname%conference_server@jdomain。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jab_exit_jconf() usage"
+```c title="jab_exit_jconf() 用法"
 ...
 jab_exit_jconf();
 ...
@@ -519,13 +489,13 @@ jab_exit_jconf();
 #### jab_go_online()
 
 
-Register to the Jabber server with associated Jabber ID of the SIP user.
+使用 SIP 用户的关联 Jabber ID 注册到 Jabber 服务器。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jab_go_online() usage"
+```c title="jab_go_online() 用法"
 ...
 jab_go_online();
 ...
@@ -535,19 +505,19 @@ jab_go_online();
 #### jab_go_offline()
 
 
-Log off from Jabber server the associated Jabber ID of the SIP user.
+从 Jabber 服务器注销 SIP 用户的关联 Jabber ID。
 
 
-This function can be used from REQUEST_ROUTE.
+此函数可用于 REQUEST_ROUTE。
 
 
-```c title="jab_go_offline() usage"
+```c title="jab_go_offline() 用法"
 ...
 jab_go_offline();
 ...
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

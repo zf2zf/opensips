@@ -1,43 +1,38 @@
 ---
-title: "lua Module"
-description: "The time needed when writing a new OpenSIPS module unfortunately is quite high, while the options provided by the configuration file are limited to the features implemented in the modules."
+title: "Lua 模块"
+description: "编写新的 OpenSIPS 模块所需的时间不幸地相当高，而配置文件提供的选项仅限于模块中实现的功能。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The time needed when writing a new OpenSIPS module
-   unfortunately is quite high, while the options provided by the
-   configuration file are limited to the features implemented in
-   the modules.
+编写新的 OpenSIPS 模块所需的时间不幸地相当高，
+   而配置文件提供的选项仅限于模块中实现的功能。
 
 
-With this Lua module, you can easily implement your own
-   OpenSIPS extensions in Lua.
+通过此 Lua 模块，您可以轻松地用 Lua 实现自己的 OpenSIPS 扩展。
 
 
-### Installing the module
+### 安装模块
 
 
-This Lua module is loaded in opensips.cfg (just like all the
-    other modules) with loadmodule("/path/to/lua.so");.
+此 Lua 模块在 opensips.cfg 中加载（就像所有其他模块一样），
+    使用 `loadmodule("/path/to/lua.so");`。
 
 
-For the Lua module to compile, you need a recent version of
-    Lua (tested with 5.1) linked dynamically. The default version
-    of your favorite Linux distribution should work fine.
+为了编译 Lua 模块，您需要链接动态库的较新版本的 Lua（使用 5.1 测试）。
+    您最喜欢的 Linux 发行版的默认版本应该可以正常工作。
 
 
-### Using the module
+### 使用模块
 
 
-With the Lua module, you can access to lua function on the
-    OpenSIPS side. You need to define a file to load and call
-    a function from it. Write a function "mongo_alias" and then
-    write in your opensips.cfg
+通过 Lua 模块，您可以访问 OpenSIPS 端的 Lua 函数。
+    您需要定义要加载的文件并从中调用函数。
+    编写一个函数 "mongo_alias"，然后在您的 opensips.cfg 中编写
 
 
 ```c
@@ -49,37 +44,34 @@ if (lua_exec("mongo_alias")) {
 ```
 
 
-On the Lua side, you have access to opensips functions and
-    variables (AVP, pseudoVar, ...). Read the documentation below
-    for further informations.
+在 Lua 端，您可以访问 OpenSIPS 函数和变量（AVP、pseudoVar 等）。
+    请阅读下面的文档以获取更多信息。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None ;-)
+无 ;-)
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed
-      before running OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- Lua 5.1.x or later
+- Lua 5.1.x 或更高版本
 - memcached
 
 
-This module has been developed and tested with Lua 5.1.?, but
-      should work with any 5.1.x release. Earlier versions do not work.
+此模块使用 Lua 5.1.? 开发并测试，
+      但应该适用于任何 5.1.x 版本。早期版本不工作。
 
 
-On current Debian systems, at least the following packages
-      should be installed:
+在当前的 Debian 系统上，至少应安装以下软件包：
 
 
 - lua5.1
@@ -88,31 +80,30 @@ On current Debian systems, at least the following packages
 - libmysqlclient-dev
 
 
-It was reported that other Debian-style distributions (such as Ubuntu) need the same packages.
+据报告，其他 Debian 风格的发行版（如 Ubuntu）需要相同的软件包。
 
 
-On OpenBSD systems, at least the following packages should be
-      installed:
+在 OpenBSD 系统上，至少应安装以下软件包：
 
 
 - Lua
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### luafilename (string)
+#### luafilename (字符串)
 
 
-This is the file name of your script. This may be set once
-      only, but it may include an arbitary number of functions and
-      "use" as many Lua module as necessary.
+这是脚本的文件名。这只能设置一次，
+      但它可以包含任意数量的函数，
+      并根据需要使用尽可能多的 Lua 模块。
 
 
-The default value is "/etc/opensips/opensips.lua"
+默认值为 "/etc/opensips/opensips.lua"
 
 
-```c title="Set luafilename parameter"
+```c title="设置 luafilename 参数"
 ...
 modparam("lua", "luafilename", "/etc/opensips/opensips.lua")
 ...
@@ -120,52 +111,51 @@ modparam("lua", "luafilename", "/etc/opensips/opensips.lua")
 ```
 
 
-#### lua_auto_reload (int)
+#### lua_auto_reload (整数)
 
 
-Define this value to 1 if you want to reload automatically
-      the lua script.
-      Disabled by default.
+如果您想自动重新加载 Lua 脚本，请将此值定义为 1。
+      默认禁用。
 
 
-#### warn_missing_free_fixup (int)
+#### warn_missing_free_fixup (整数)
 
 
-When you call a function via moduleFunc() you could have a memleak.
-      Enable this warns you when you're doing it.
-      Enabled by default.
+当您通过 moduleFunc() 调用函数时，可能会出现内存泄漏。
+      启用此选项会在您这样做时发出警告。
+      默认启用。
 
 
-#### lua_allocator (string)
+#### lua_allocator (字符串)
 
 
-Change the default memory allocator for the lua module.
-      Possible values are :
+更改 Lua 模块的默认内存分配器。
+      可能值为：
 
 
-- opensips (default)
+- opensips（默认）
 - malloc
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### lua_exec(func, [param])
 
 
-Calls a Lua function with passing it the current SIP message.
-      This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-      ONREPLY_ROUTE and BRANCH_ROUTE.
+调用 Lua 函数，并将当前 SIP 消息传递给它。
+      此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、
+      ONREPLY_ROUTE 和 BRANCH_ROUTE。
 
 
-Parameters:
+参数：
 
 
-- *func* (string) - Lua function name
-- *param* (string, optional) - Parameter to be passed to the Lua function.
+- *func* (字符串) - Lua 函数名
+- *param* (字符串，可选) - 要传递给 Lua 函数的参数。
 
 
-```c title="lua_exec() usage"
+```c title="lua_exec() 用法"
 ...
 if (lua_exec("mongo_alias")) {
 	...
@@ -177,27 +167,26 @@ if (lua_exec("mongo_alias")) {
 #### lua_meminfo()
 
 
-Logs informations about memory.
+记录有关内存的信息。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### watch
 
 
-Name: *watch*
+名称：*watch*
 
 
-Parameters: *none*
+参数：*无*
 
 
-- *action* (optional) - 'add' or 'delete'
-- *extension* (optional) - required if
-        *action* is provided
+- *action* (可选) - 'add' 或 'delete'
+- *extension* (可选) - 如果提供了 *action* 则需要
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -209,24 +198,22 @@ MI FIFO Command Format:
 ## OpenSIPS Lua API
 
 
-### Available functions
+### 可用函数
 
 
-This module provides access to a limited number of OpenSIPS
-    core functions.
+此模块提供对有限数量的 OpenSIPS 核心函数的访问。
 
 
 #### xdbg(message)
 
 
-An alias for xlog(DBG, message)
+xlog(DBG, message) 的别名
 
 
 #### xlog([level],message)
 
 
-Logs the message with OpenSIPS's logging facility. The logging
-      level is one of the following:
+使用 OpenSIPS 的日志工具记录消息。日志级别为以下之一：
 
 
 - ALERT
@@ -241,160 +228,159 @@ Logs the message with OpenSIPS's logging facility. The logging
 #### WarnMissingFreeFixup
 
 
-Dynamically change the variable warn_missing_free_fixup.
+动态更改变量 warn_missing_free_fixup。
 
 
 #### getpid
 
 
-Returns the current pid.
+返回当前进程 ID。
 
 
 #### getmem
 
 
-Returns a table with the size of allocated memory and the fragmentation.
+返回一个包含已分配内存大小和碎片化程度的表。
 
 
 #### getmeminfo
 
 
-Returns a table with memory infos.
+返回一个包含内存信息的表。
 
 
 #### gethostname
 
 
-Returns the value of the current hostname.
+返回当前主机名的值。
 
 
 #### getType(msg)
 
 
-Returns "SIP_REQUEST" or "SIP_REPLY".
+返回 "SIP_REQUEST" 或 "SIP_REPLY"。
 
 
 #### isMyself(host, port)
 
 
-Test if the host and optionally the port represent one of the addresses
-      that OpenSIPS listens on.
+测试主机和可选端口是否代表 OpenSIPS 监听的地址之一。
 
 
 #### grepSockInfo(host, port)
 
 
-Similar to isMyself(), but without taking a look into the aliases.
+类似于 isMyself()，但不查看别名。
 
 
 #### getURI_User(msg)
 
 
-Returns the user of the To URI.
+返回 To URI 的用户部分。
 
 
 #### getExpires(msg)
 
 
-Returns the expires header of the current message.
+返回当前消息的过期头。
 
 
 #### getHeader(msg, header)
 
 
-Returns the value of the specified header.
+返回指定头部的值。
 
 
 #### getContact(msg)
 
 
-Returns a table with the contact header.
+返回一个包含联系头部的表。
 
 
 #### getRoute(msg)
 
 
-Returns a table with the Route header.
+返回一个包含 Route 头的表。
 
 
 #### moduleFunc(msg, function, args1, args2, ...)
 
 
-You can pass arguments to this function.
+您可以将参数传递到此函数。
 
 
 #### getStatus(msg)
 
 
-Returns the current status if the SIP message is a SIP_REPLY.
+如果 SIP 消息是 SIP_REPLY，则返回当前状态。
 
 
 #### getMethod(msg)
 
 
-Returns the current method.
+返回当前方法。
 
 
 #### getSrcIp(msg)
 
 
-Returns the IP address of the source.
+返回源 IP 地址。
 
 
 #### getDstIp(msg)
 
 
-Returns the IP address of the destination.
+返回目标 IP 地址。
 
 
 #### AVP_get(name)
 
 
-Returns an AVP variable.
+返回一个 AVP 变量。
 
 
 #### AVP_set(name, value)
 
 
-Defines an AVP variable.
+定义一个 AVP 变量。
 
 
 #### AVP_destroy(name)
 
 
-Destroys an AVP variable.
+销毁一个 AVP 变量。
 
 
 #### pseudoVar(msg, variable)
 
 
-Returns a pseudoVar.
+返回一个伪变量。
 
 
 #### pseudoVarSet(msg, variable, value)
 
 
-Sets the value of a pseudoVar.
+设置伪变量的值。
 
 
 #### scriptVarGet(variable)
 
 
-Returns a script variable.
+返回一个脚本变量。
 
 
 #### scriptVarSet(variable, value)
 
 
-Sets the value of a script variable.
+设置脚本变量的值。
 
 
 #### add_lump_rpl(msg, header)
 
 
-Add header to the reply.
+向回复添加头部。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

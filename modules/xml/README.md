@@ -1,70 +1,75 @@
 ---
-title: "XML Module"
-description: "This module exposes a script variable that provides basic parsing and manipulation of XML documents or blocks of XML data. The variable provides ways to access entire XML elements, their text content or their attributes. You can modify the content and attributes as well as adding or removing node..."
+title: "XML 模块"
+description: "该模块提供了一个脚本变量，可对 XML 文档或 XML 数据块进行基本的解析和操作。该变量提供访问整个 XML 元素、其文本内容或属性的方法。您可以修改内容和属性，也可以在 XML 树中添加或删除节点..."
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module exposes a script variable that provides basic parsing and manipulation of XML documents or blocks of XML data. The variable provides ways to access entire XML elements, their text content or their attributes. You can modify the content and attributes as well as adding or removing nodes in the XML tree.
+该模块提供了一个脚本变量，可对 XML 文档或 XML 数据块进行基本的解析和操作。
+该变量提供访问整个 XML 元素、其文本内容或属性的方法。
+您可以修改内容和属性，也可以在 XML 树中添加或删除节点。
 
 
-The processing does not take into account any DTDs or schemas in terms of validation.
+该处理不会根据任何 DTD 或模式进行验证。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-This module does not depend on other modules.
+该模块不依赖其他模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-- *libxml2* Most Linux and BSD distributions include libxml but the library can also be downloaded from: xmlsoft.org
+- *libxml2* 大多数 Linux 和 BSD 发行版都包含 libxml，但也可以从 xmlsoft.org 下载该库。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-The module does not export any parameters.
+该模块不导出任何参数。
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $xml(path)
 
 
-This module exports the *$xml(path)* variable.
+该模块导出 *$xml(path)* 变量。
 
 
-##### Variable lifetime
+##### 变量生命周期
 
 
-The xml variables will be available to the
-			process that created them from the moment they were
-			initialized. They will not reset per message or per
-			transaction. If you want to use them on a per message
-			basis you should initialize them each time.
+xml 变量从初始化时起将对创建它的进程可用。
+它们不会在每个消息或每个事务时重置。
+如果您想在每个消息的基础上使用它们，应该每次都初始化它们。
 
 
-##### Accessing the $xml(path) variable
+##### 访问 $xml(path) 变量
 
 
-Accessing elements and attributes is based on the tree representation of the XML document thus a complete path from the root node is required. The in-memory equivalent of an XML document is an "XML object" which must be initilized with a well-formed block of XML data before use. In consequence, the path must start with the object name, followed by any number of nodes leading to the desired element.
+对元素和属性的访问基于 XML 文档的树表示形式，
+因此需要从根节点开始的完整路径。
+XML 文档的内存等效形式是一个"XML 对象"，
+该对象必须在使用前用格式良好的 XML 数据块进行初始化。
+因此，路径必须以对象名称开头，后跟任意数量的节点，
+直到到达所需的元素。
 
 
-The grammar that describes the path is:
+描述路径的语法如下：
 
 
-path = name | name(identifier)+(acces)?
+path = name | name(identifier)+(access)?
 
 
 identifier = element(index)?
@@ -79,95 +84,105 @@ index = [integer] | [$var]
 access = .val | .attr/string | .attr/$var
 
 
-In order to select between nodes with identical names on a certain level in the tree, an index can be provided, starting from 0.
+为了在同一树层级选择具有相同名称的节点，
+可以提供一个索引，从 0 开始。
 
 
-The sequence of nodes in the path can be followed by *.val* in order to access the last node's text content or by *.attr/attr_name* in order to access it's attribute named *attr_name*. Otherwise the entire element (start-tag, end-tag, children elements and content) is accessed.
+路径中节点的序列后面可以跟 *.val* 以访问最后一个节点的文本内容，
+或跟 *.attr/attr_name* 以访问其名为 *attr_name* 的属性。
+否则将访问整个元素（包括开始标签、结束标签、子元素和内容）。
 
 
-Assiging NULL to the variable removes the entire element or it's text content or attribute acording to the access mode.
+为变量分配 NULL 将根据访问模式删除整个元素、其文本内容或属性。
 
 
-If you want to insert an element, you must assign a string value (containg a well-formed block of XML data that has a root node) to the parent node. Note that assigning a value directly to a node does not replace it with that value.
+如果要插入元素，必须为父节点分配一个字符串值
+（包含具有根节点的格式良好的 XML 数据块）。
+请注意，直接为节点分配值不会用该值替换它。
 
 
-IMPORTANT: In XML all characters in the content of the document are significant including blanks and formatting line breaks. An element and it's content will be returned WITH all the whitespaces and newlines and when adding a new node under an existing one, if you want to insert it with indentation, you must include the needed characters in the assigned string.
+重要提示：XML 中文档内容的所有字符都是有效的，包括空格和格式化的换行符。
+元素及其内容将保留所有空白字符和换行符返回，
+当在现有节点下添加新节点时，
+如果希望用缩进插入它，必须在分配的字符串中包含所需的字符。
 
 
-Other script variables can be used as element names, attribute names and indexes in the path. Variables that will be used as indexes must contain integer values. Variables that will be used as element or attribute names should contain string values.
+其他脚本变量可以用作路径中的元素名称、属性名称和索引。
+用作索引的变量必须包含整数值。
+用作元素或属性名称的变量应包含字符串值。
 
 
-```c title="Creating a document"
+```c title="创建文档"
 ...
-$xml(my_doc) = "<doc></doc>";        # init object
+$xml(my_doc) = "<doc></doc>";        # 初始化对象
 
-$xml(my_doc/doc) = "<list></list>";  # add a "list" node
+$xml(my_doc/doc) = "<list></list>";  # 添加一个 "list" 节点
 
-$xml(my_doc/doc/list) = "<item>some_value</item>";    # add an "item" node to the list
+$xml(my_doc/doc/list) = "<item>some_value</item>";    # 向列表添加一个 "item" 节点
 
-$xml(my_doc/doc/list) = "<item>another_value</item>"; # add another item to the list
+$xml(my_doc/doc/list) = "<item>another_value</item>"; # 向列表添加另一个 item
 
-$xml(my_doc/doc/list/item[1].val) = "new_val";        # set text content of previous item
+$xml(my_doc/doc/list/item[1].val) = "new_val";        # 设置前一个 item 的文本内容
 
-$xml(my_doc/doc/list.attr/sort) = "asc";              # add attribute "sort" to list node
+$xml(my_doc/doc/list.attr/sort) = "asc";              # 向 list 节点添加 "sort" 属性
 
-$xml(my_doc/doc/list.attr/sort) = NULL;               # remove previous attribute
+$xml(my_doc/doc/list.attr/sort) = NULL;               # 删除前一个属性
 
-$xml(my_doc/doc/list/item[1]) = NULL;                 # remove second item
+$xml(my_doc/doc/list/item[1]) = NULL;                 # 删除第二个 item
 
-$xml(my_doc/doc/list.val) = "end";                    # add text content to list which now has
-                                                      # mixed content
+$xml(my_doc/doc/list.val) = "end";                    # 向列表添加文本内容，现在列表有
+                                                      # 混合内容
 
-$xml(my_doc/doc/list.val) = NULL;                     # remove the text content
+$xml(my_doc/doc/list.val) = NULL;                     # 删除文本内容
 
-xlog("$xml(my_doc/doc/list)\n");                      # display the entire list
+xlog("$xml(my_doc/doc/list)\n");                      # 显示整个列表
 
-xlog("$xml(my_doc)\n");                               # display the entire document
+xlog("$xml(my_doc)\n");                               # 显示整个文档
 
-$xml(my_doc) = NULL;                                  # clear the entire document
+$xml(my_doc) = NULL;                                  # 清除整个文档
 ...
-				
+					
 ```
 
 
-```c title="Inserting nodes with indentation"
+```c title="用缩进插入节点"
 ...
 $xml(my_doc) = "<doc>\n</doc>";
 $xml(my_doc/doc) = "\t<list></list>\n";
 $xml(my_doc/doc/list) = "\n\t\t<item></item>\n\t";
 
-# this creates the following document:
+# 这将创建以下文档：
 # <doc>
 #	<list>
 #		<item></item>
 #	</list>
 # </doc>
 #
-# without the explicit formating characters the document would be:
+# 没有显式格式化字符的文档将是：
 # <doc><list><item></item></list></doc>
 ...
-				
+					
 ```
 
 
-```c title="Using script variables in path"
+```c title="在路径中使用脚本变量"
 ...
-# accessing the attribute of second item in list
+# 访问列表中第二个 item 的属性
 $var(my_list) = "list";
 $var(my_idx) = 1;
 $var(my_attr) = "sort";
 xlog("$xml(my_doc/doc/$var(my_list)/item[$var(my_idx)].attr/$var(my_attr))\n");
 ...
-				
+					
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-The module does not export any script functions.
+该模块不导出任何脚本函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

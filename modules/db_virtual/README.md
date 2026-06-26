@@ -1,138 +1,132 @@
 ---
-title: "db_virtual Module"
+title: "db_virtual 模块"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-#### The idea
+#### 思路
 
 
-A virtual DB will expose the same front DB api however, it will
-				backed by many real DB. This means that a virtual DB URL 
-				translates to many real DB URLs. This virtual layer also 
-				enables us to use the real dbs in multiple ways such as: 
-				parallel, failover(hotswap) and round-robin.
+虚拟 DB 将公开相同的前端 DB API，但是，
+它由许多真实的 DB 支持。这意味着一个虚拟 DB URL 
+会转换为许多真实的 DB URL。这个虚拟层还使我们能够以多种方式使用真实的 DB：
+并行、故障转移（热切换）和轮询。
 
-				Therefore:
-					each virtual DB URL with associated real dbs and
-					a way to use(mode) it's real dbs must be specified.
-
-
-#### Modes
+因此：
+每个虚拟 DB URL 必须与关联的真实 DB 和
+使用其真实 DB 的方式（模式）一起指定。
 
 
-The implemented modes are:
+#### 模式
+
+
+实现的模式有：
 
 
 - FAILOVER
-Use the first URL; if it fails, take the next
-								URL and redo the operation.
+使用第一个 URL；如果失败，使用下一个
+URL 并重做操作。
 - PARALLEL
-Use all the URLs in the virtual DB URL set.
-								Fails if all the URLs fail.
-- ROUND (round-robin)
-Use the next URL each time; if it fails, 
-								use the next one, redo operation.
+使用虚拟 DB URL 集合中的所有 URL。
+如果所有 URL 都失败，则失败。
+- ROUND（轮询）
+每次使用下一个 URL；如果失败，
+使用下一个，重做操作。
 
 
-When choosing the db virtual mode, be sure that there is a full
-			compatibility between the DB operations you want to do (inserts, 
-			updates, deletes,...) and the relation (if any) between the real
-			DB URLs you have in the set - can be completely independent, can be
-			nodes of the same cluster, or any other combination.
+选择 db virtual 模式时，请确保您想要执行的 DB 操作（插入、
+更新、删除，...）与集合中真实 DB URL 之间的关系（如果有）完全兼容 - 它们可以完全独立，可以是同一集群的节点，或任何其他组合。
 
 
-#### Capabilities
+#### 功能
 
 
-For each set (or new virtual DB URL), the capabilities are
-			automatically calculated based on the capabilities provided by the
-			real DB URLs from the set. A logical AND is done for each
-			cabability over all the URLs in the set. Shortly, in order for the
-			virtual URL to provide a certain capability, ALL its real URLs 
-			must provide that capability.
+对于每个集合（或新的虚拟 DB URL），功能是
+根据集合中真实 DB URL 提供的能力自动计算的。
+对每个功能进行逻辑 AND。
+简而言之，为了使虚拟 URL 提供某种能力，
+其所有真实 URL 必须都提供该能力。
 
 
-Note that starting with version 2.2 db_virtual supports 
-			async_raw_query and async_raw_resume functions currently
-			implemented only by the mysql database engine.
+请注意，从版本 2.2 开始，db_virtual 支持
+目前仅由 mysql 数据库引擎实现的 async_raw_query 和 async_raw_resume 函数。
 
 
-#### Failures
+#### 故障
 
 
 ```c
-	When an operation from a process on a real DB fails:
-		it is marked (global and local CAN flag down)
-		its connection closed
+	当某个进程在真实 DB 上的操作失败时：
+		它被标记（全局和本地 CAN 标志关闭）
+		其连接关闭
 
-	Later a timer process (probe):
-	foreach virtual db_url
-		foreach real db_url
-			if global CAN down
-				try to connect
-			if ok
-				global CAN up
-				close connection
+	稍后，定时器进程（探测器）：
+		对于每个虚拟 db_url
+			对于每个真实 db_url
+				如果全局 CAN 关闭
+					尝试连接
+				如果成功
+					全局 CAN 开启
+					关闭连接
 
-	Later each process:
-		if local CAN down and global CAN up
-			if db_max_consec_retrys *
-				try to connect
-		if ok
-			local CAN up
+	稍后每个进程：
+		如果本地 CAN 关闭且全局 CAN 开启
+			如果 db_max_consec_retrys *
+				尝试连接
+		如果成功
+			本地 CAN 开启
 
 				
 ```
 
 
-Note *: there could be inconsistencies between the probe and each process so a retry limit is in order.
-				It is reset and ignored by an MI command.
+注意 *：探测器和每个进程之间可能存在不一致，因此需要重试限制。
+它通过 MI 命令重置和忽略。
 
 
-#### The timer process
+#### 定时器进程
 
 
-The timer process(probe) is a process that tries to reconnect to failed dbs from time to time.
-				It is a separate process so that when it blocks (for a timeout on the connection) it doesn't matter.
+定时器进程（探测器）是一个定期尝试重新连接到失败 DB 的进程。
+它是一个单独的进程，这样当它阻塞（连接超时）时，不会影响其他操作。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *At least one real DB module*.
+- *至少一个真实 DB 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+以下库或应用程序必须在运行
+加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_urls (str)
 
 
-Multiple value parameter used for virtual DB URLs declaration.
+用于虚拟 DB URL 声明的多值参数。
 
 
-```c title="Set db_urls parameter"
+```c title="设置 db_urls 参数"
 ...
 
 modparam("group","db_url","virtual://set1")
@@ -152,15 +146,14 @@ modparam("db_virtual", "db_urls", "mysql://opensips:opensipsrw@localhost/testa")
 #### db_probe_time (integer)
 
 
-Time interval after which a registered timer process attempts to check
-		failed(as reported by other processes) connections to real dbs. The probe will connect and
-		disconnect to the failed real DB and announce others.
+定时器进程在注册后尝试检查失败 DB 连接的时间间隔（由其他进程报告）。
+探测器将连接到失败的真实 DB 并断开连接，然后向其他进程宣布。
 
 
-*Default value is 10 (10 sec).*
+*默认值为 10（10 秒）。*
 
 
-```c title="Set db_probe_time parameter"
+```c title="设置 db_probe_time 参数"
 ...
 modparam("db_virtual", "db_probe_time", 20)
 ...
@@ -171,17 +164,17 @@ modparam("db_virtual", "db_probe_time", 20)
 #### db_max_consec_retrys (integer)
 
 
-After the timer process has reported that it can connect to the real db,
-		other processes will try to reconnect to it. There are cases where although
-		the probe could connect some might fail. This parameter represents the number
-		of consecutive failed retries that a process will do before it gives up.
-		This value is reset and suppressed by a MI function (db_virtual:set).
+在定时器进程报告可以连接到真实 DB 后，
+其他进程将尝试重新连接到它。
+在某些情况下，虽然探测器可以连接，但某些进程可能会失败。
+此参数表示进程放弃之前将执行的连续失败重试次数。
+此值通过 MI 函数（db_virtual:set）重置和取消。
 
 
-*Default value is 10 (10 consecutive times).*
+*默认值为 10（连续 10 次）。*
 
 
-```c title="Set db_max_consec_retrys parameter"
+```c title="设置 db_max_consec_retrys 参数"
 ...
 modparam("db_virtual", "db_max_consec_retrys", 20)
 ...
@@ -190,29 +183,29 @@ modparam("db_virtual", "db_max_consec_retrys", 20)
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### db_virtual:get
 
 
-Replaces obsolete MI command: *db_get*.
+替换过时的 MI 命令：*db_get*。
 
 
-Return information about global state of the real dbs.
+返回有关真实 DB 全局状态的信息。
 
 
-Name:
-				*db_virtual:get*
+名称：
+*db_virtual:get*
 
 
-Parameters:
+参数：
 
 
-- None.
+- 无。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -224,38 +217,38 @@ MI FIFO Command Format:
 #### db_virtual:set
 
 
-Replaces obsolete MI command: *db_set*.
+替换过时的 MI 命令：*db_set*。
 
 
-Sets the permissions for real dbs access per set per db.
+设置每个集合每个 DB 的真实 DB 访问权限。
 
 
-Sets the reconnect reset flag.
+设置重新连接重置标志。
 
 
-Name:
-				*db_virtual:set*
+名称：
+*db_virtual:set*
 
 
-Parameters:
+参数：
 
 
 - set_index [int]
 - db_url_index [int]
 - may_use_db_flag [boolean]
-- ignore_retries[boolean](optional)
+- ignore_retries[boolean]（可选）
 
 
-db_virtual:set 3 2 0 1 means:
+db_virtual:set 3 2 0 1 表示：
 
 
-- 3 - the fourth set (must exist)
-- 2 - the third URL in the fourth set(must exist)
-- 0 - processes are not allowed to use that URL
-- 1 - reset and suppress db_max_consec_retrys
+- 3 - 第四个集合（必须存在）
+- 2 - 第四个集合中的第三个 URL（必须存在）
+- 0 - 不允许进程使用该 URL
+- 1 - 重置并取消 db_max_consec_retrys
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -264,6 +257,6 @@ MI FIFO Command Format:
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

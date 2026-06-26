@@ -1,203 +1,202 @@
 ---
-title: "The Web3 Auth Module"
+title: "Web3 Auth 模块"
 ---
 
-## Overview
+## 概述
 
 
-The *auth_web3* module provides Web3-based authentication 
-            for OpenSIPS, enabling SIP authentication through blockchain technology and 
-            ENS (Ethereum Name Service) resolution.
+*auth_web3* 模块为 OpenSIPS 提供基于 Web3 的认证，
+            通过区块链技术和 ENS（以太坊名称服务）解析实现 SIP 认证。
 
 
-This module integrates with the Oasis Sapphire blockchain network to verify 
-            SIP digest authentication responses and resolve ENS names to wallet addresses.
+此模块与 Oasis Sapphire 区块链网络集成，
+            以验证 SIP 摘要认证响应并将 ENS 名称解析为钱包地址。
 
 
-### Dependencies
+### 依赖
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *none* - No dependencies on other OpenSIPS modules
+- *无* - 不依赖其他 OpenSIPS 模块
 
 
-External libraries or applications:
+外部库或应用程序：
 
 
-- *libcurl* - For HTTP RPC calls to blockchain networks
-- *OpenSSL* - For cryptographic operations
+- *libcurl* - 用于对区块链网络的 HTTP RPC 调用
+- *OpenSSL* - 用于加密操作
 
 
-### ENS Technical Details
+### ENS 技术细节
 
 
-The module supports ENS (Ethereum Name Service) authentication with the following features:
+该模块支持以下功能的 ENS（以太坊名称服务）认证：
 
 
-- *Namehash Resolution* - Converts ENS names to namehash for contract calls
-- *Multi-network Support* - ENS resolution on Ethereum mainnet, authentication on Oasis Sapphire
-- *Wrapped Domain Support* - Handles .eth domains and custom TLDs
-- *Resolver Path* - Follows standard ENS resolver contract pattern
+- *Namehash 解析* - 将 ENS 名称转换为 namehash 以进行合约调用
+- *多网络支持* - 以太坊主网上的 ENS 解析，在 Oasis Sapphire 上认证
+- *包装域名支持* - 处理 .eth 域名和自定义 TLD
+- *解析器路径* - 遵循标准 ENS 解析器合约模式
 
 
-### Authentication Function Comparison
+### 认证函数比较
 
 
-The following table compares the authentication functions:
+下表比较了认证函数：
 
 
-| Function | Header Type | Use Case | Challenge Function |
+| 函数 | 头域类型 | 使用场景 | 挑战函数 |
 | --- | --- | --- | --- |
-| web3_www_authenticate | Authorization | End-user authentication | www_challenge |
-| web3_proxy_authenticate | Proxy-Authorization | Proxy authentication | proxy_challenge |
+| web3_www_authenticate | Authorization | 最终用户认证 | www_challenge |
+| web3_proxy_authenticate | Proxy-Authorization | 代理认证 | proxy_challenge |
 
 
-## Multi-Network Configuration
+## 多网络配置
 
 
-The auth_web3 module supports dual-network authentication, allowing ENS resolution
-            and authentication to operate on different blockchain networks. This enables production
-            deployments where ENS resolution happens on Ethereum mainnet while authentication
-            happens on Oasis Sapphire.
+auth_web3 模块支持双网络认证，
+            允许 ENS 解析和认证在不同区块链网络上运行。
+            这使得生产部署能够：
+            ENS 解析在以太坊主网上进行，而认证在 Oasis Sapphire 上进行。
 
 
-### Network Operation Modes
+### 网络操作模式
 
 
-#### Single Network Mode (Fallback)
+#### 单网络模式（后备）
 
 
-When web3_ens_rpc_url is not configured, all blockchain operations use
-                    the same RPC endpoint specified in web3_authentication_rpc_url. This mode
-                    is suitable when both ENS and authentication contracts are deployed on
-                    the same network.
+当 web3_ens_rpc_url 未配置时，
+                    所有区块链操作都使用 web3_authentication_rpc_url 中指定的相同 RPC 端点。
+                    此模式适用于 ENS 和认证合约部署在同一网络上的情况。
 
 
 ```c
-# Single network configuration
+# 单网络配置
 modparam("auth_web3", "web3_authentication_rpc_url", "https://ethereum-sepolia-rpc.publicnode.com")
 modparam("auth_web3", "web3_authentication_contract_address", "0xYourContract")
-# ens_rpc_url not set - will use authentication_rpc_url for ENS
+# ens_rpc_url 未设置 - 将使用 authentication_rpc_url 进行 ENS
                 
 ```
 
 
-#### Dual Network Mode
+#### 双网络模式
 
 
-When web3_ens_rpc_url is configured, ENS resolution queries use the
-                    specified Ethereum RPC endpoint while authentication queries use the
-                    Oasis Sapphire RPC endpoint. This is the recommended production configuration.
+当 web3_ens_rpc_url 已配置时，
+                    ENS 解析查询使用指定的以太坊 RPC 端点，
+                    而认证查询使用 Oasis Sapphire RPC 端点。
+                    这是推荐的生产配置。
 
 
 ```c
-# Dual network configuration
-# Authentication on Oasis Sapphire
+# 双网络配置
+# 在 Oasis Sapphire 上认证
 modparam("auth_web3", "web3_authentication_rpc_url", "https://testnet.sapphire.oasis.dev")
 modparam("auth_web3", "web3_authentication_contract_address", "0xYourOasisContract")
 
-# ENS resolution on Ethereum
+# 在以太坊上进行 ENS 解析
 modparam("auth_web3", "web3_ens_rpc_url", "https://eth.drpc.org")
 modparam("auth_web3", "web3_ens_registry_address", "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e")
                 
 ```
 
 
-### Common Network Configurations
+### 常见网络配置
 
 
-#### Production Setup
+#### 生产设置
 
 
-Production deployments typically use Ethereum mainnet for ENS and
-                    Oasis Sapphire mainnet for authentication:
+生产部署通常使用以太坊主网进行 ENS，
+                    使用 Oasis Sapphire 主网进行认证：
 
 
 ```c
 loadmodule "auth_web3.so"
 
-# Oasis Sapphire Mainnet
+# Oasis Sapphire 主网
 modparam("auth_web3", "web3_authentication_rpc_url", "https://sapphire.oasis.io")
 modparam("auth_web3", "web3_authentication_contract_address", "0xYourProductionContract")
 
-# Ethereum Mainnet for ENS
+# 用于 ENS 的以太坊主网
 modparam("auth_web3", "web3_ens_rpc_url", "https://eth.drpc.org")
 modparam("auth_web3", "web3_ens_registry_address", "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e")
 
-# Optional: Enable debug logging
+# 可选：启用调试日志
 modparam("auth_web3", "web3_contract_debug_mode", 0)
                 
 ```
 
 
-#### Testing Setup
+#### 测试设置
 
 
-For testing and development, use Sepolia testnet for ENS and
-                    Oasis Sapphire testnet for authentication:
+对于测试和开发，使用 Sepolia 测试网进行 ENS，
+                    使用 Oasis Sapphire 测试网进行认证：
 
 
 ```c
 loadmodule "auth_web3.so"
 
-# Oasis Sapphire Testnet
+# Oasis Sapphire 测试网
 modparam("auth_web3", "web3_authentication_rpc_url", "https://testnet.sapphire.oasis.dev")
 modparam("auth_web3", "web3_authentication_contract_address", "0xYourTestContract")
 
-# Ethereum Sepolia for ENS
+# 用于 ENS 的以太坊 Sepolia
 modparam("auth_web3", "web3_ens_rpc_url", "https://ethereum-sepolia-rpc.publicnode.com")
 modparam("auth_web3", "web3_ens_registry_address", "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e")
 
-# Enable debug logging for testing
+# 启用调试日志进行测试
 modparam("auth_web3", "web3_contract_debug_mode", 1)
                 
 ```
 
 
-### ENS Resolution Process
+### ENS 解析过程
 
 
-The module implements standard ENS resolution with automatic Name Wrapper detection:
+该模块实现标准的 ENS 解析，自动检测 Name Wrapper：
 
 
-1. *Query ENS Registry* - Call owner(bytes32) to get the domain owner
-2. *Check Contract Identity* - Call name() on owner contract to detect Name Wrapper
-3. *Get Resolver* - Call resolver(bytes32) on ENS Registry
-4. *Resolve Address* - Call addr(bytes32) on resolver contract
+1. *查询 ENS Registry* - 调用 owner(bytes32) 获取域名所有者
+2. *检查合约身份* - 在所有者合约上调用 name() 以检测 Name Wrapper
+3. *获取解析器* - 在 ENS Registry 上调用 resolver(bytes32)
+4. *解析地址* - 在解析器合约上调用 addr(bytes32)
 
 
-This follows the standard ENS resolution pattern (EIP-137) and supports both
-                wrapped and unwrapped domains across all Ethereum networks.
+这遵循标准的 ENS 解析模式（EIP-137），
+                并支持所有以太坊网络上的包装和未包装域名。
 
 
-### Benefits of Multi-Network Configuration
+### 多网络配置的优势
 
 
-- *Network Separation* - Keep ENS queries on Ethereum while using Oasis for authentication
-- *Cost Optimization* - Use cheaper testnets for ENS during development
-- *Performance* - Separate network load between ENS and authentication calls
-- *Flexibility* - Easy migration between networks without code changes
-- *Backward Compatibility* - Existing single-network setups continue to work
+- *网络分离* - 将 ENS 查询保持在以太坊上，同时使用 Oasis 进行认证
+- *成本优化* - 在开发期间使用更便宜的测试网进行 ENS
+- *性能* - 在 ENS 和认证调用之间分担网络负载
+- *灵活性* - 无需代码更改即可轻松地在网络之间迁移
+- *向后兼容* - 现有单网络设置继续工作
 
 
-### Troubleshooting Multi-Network Setup
+### 多网络设置故障排除
 
 
-*Common Issues:*
+*常见问题：*
 
 
-- *Network Connectivity* - Ensure RPC endpoints are accessible from your server
-- *Network Mismatch* - Verify contract addresses match the configured network
-- *Fallback Behavior* - If ens_rpc_url is empty, ENS uses authentication_rpc_url
-- *Rate Limiting* - Public RPC providers may have usage limits
+- *网络连接* - 确保 RPC 端点可从您的服务器访问
+- *网络不匹配* - 验证合约地址与配置的网络匹配
+- *后备行为* - 如果 ens_rpc_url 为空，ENS 使用 authentication_rpc_url
+- *速率限制* - 公共 RPC 提供商可能有使用限制
 
 
-*Debug Information:*
+*调试信息：*
 
 
-Enable debug mode to see which RPC is used for each call:
+启用调试模式以查看每个调用使用的 RPC：
 
 
 ```c
@@ -206,54 +205,54 @@ modparam("auth_web3", "web3_contract_debug_mode", 1)
 ```
 
 
-Look for log messages indicating network usage:
+查找指示网络使用情况的日志消息：
 
 
 - ENS call using RPC: [url] (ENS-specific: yes/no)
 - Oasis call using main RPC: [url]
 
 
-## Functions
+## 函数
 
 
 ### web3_www_authenticate(realm, method)
 
 
-Performs Web3-based authentication for WWW-Authenticate challenges.
-                Verifies SIP digest authentication through blockchain contracts and ENS resolution.
+对 WWW-Authenticate 挑战执行基于 Web3 的认证。
+                通过区块链合约和 ENS 解析验证 SIP 摘要认证。
 
 
-This function extracts digest parameters from the Authorization header,
-                resolves ENS names to wallet addresses, and verifies the digest response
-                on the blockchain.
+此函数从 Authorization 头域提取摘要参数，
+                将 ENS 名称解析为钱包地址，
+                并在区块链上验证摘要响应。
 
 
-*Parameters:*
+*参数：*
 
 
-- *realm* (string, mandatory) - Authentication realm (usually the domain name)
-- *method* (string, optional) - SIP method (REGISTER, INVITE, etc.). If not provided, uses the actual SIP method from the request
+- *realm* (字符串，必需) - 认证领域（通常为域名）
+- *method* (字符串，可选) - SIP 方法（REGISTER、INVITE 等）。如果未提供，使用请求中的实际 SIP 方法
 
 
-*Return value:*
+*返回值：*
 
 
-- *1 (AUTHORIZED)* - Authentication successful
-- *-1 (ERROR)* - Authentication failed or error occurred
+- *1 (AUTHORIZED)* - 认证成功
+- *-1 (ERROR)* - 认证失败或发生错误
 
 
-*Example:*
+*示例：*
 
 
 ```c
-# REGISTER authentication
+# REGISTER 认证
 if (is_method("REGISTER")) {
     if (!$hdr(Authorization)) {
         www_challenge("$td", "0");
         exit;
     }
     if (web3_www_authenticate("$td", "REGISTER")) {
-        # Authentication successful
+        # 认证成功
         save("location");
         exit;
     } else {
@@ -268,40 +267,40 @@ if (is_method("REGISTER")) {
 ### web3_proxy_authenticate(realm, method)
 
 
-Performs Web3-based authentication for Proxy-Authenticate challenges.
-                Similar to web3_www_authenticate but for proxy authentication scenarios.
+对 Proxy-Authenticate 挑战执行基于 Web3 的认证。
+                类似于 web3_www_authenticate，但用于代理认证场景。
 
 
-This function works identically to web3_www_authenticate but is designed
-                for proxy authentication flows where Proxy-Authorization headers are used.
+此函数的工作方式与 web3_www_authenticate 完全相同，
+                但专为使用 Proxy-Authorization 头域的代理认证流程设计。
 
 
-*Parameters:*
+*参数：*
 
 
-- *realm* (string, mandatory) - Authentication realm (usually the domain name)
-- *method* (string, optional) - SIP method (REGISTER, INVITE, etc.). If not provided, uses the actual SIP method from the request
+- *realm* (字符串，必需) - 认证领域（通常为域名）
+- *method* (字符串，可选) - SIP 方法（REGISTER、INVITE 等）。如果未提供，使用请求中的实际 SIP 方法
 
 
-*Return value:*
+*返回值：*
 
 
-- *1 (AUTHORIZED)* - Authentication successful
-- *-1 (ERROR)* - Authentication failed or error occurred
+- *1 (AUTHORIZED)* - 认证成功
+- *-1 (ERROR)* - 认证失败或发生错误
 
 
-*Example:*
+*示例：*
 
 
 ```c
-# INVITE authentication with proxy auth
+# 使用代理认证的 INVITE 认证
 if (is_method("INVITE")) {
     if (!$hdr(Authorization)) {
         www_challenge("$fd", "0");
         exit;
     }
     if (web3_proxy_authenticate("$fd", "INVITE")) {
-        # Authentication successful
+        # 认证成功
     } else {
         send_reply(407, "Proxy Authentication Required");
         exit;
@@ -311,20 +310,20 @@ if (is_method("INVITE")) {
 ```
 
 
-## Parameters
+## 参数
 
 
-### authentication_rpc_url (string)
+### authentication_rpc_url (字符串)
 
 
-RPC URL for the blockchain network (e.g., Oasis Sapphire testnet or mainnet).
-                This parameter specifies the endpoint for blockchain communication.
+区块链网络的 RPC URL（例如 Oasis Sapphire 测试网或主网）。
+                此参数指定区块链通信的端点。
 
 
-*Default value:* None (must be configured)
+*默认值：* 无（必须配置）
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -333,17 +332,17 @@ modparam("auth_web3", "authentication_rpc_url", "https://testnet.sapphire.oasis.
 ```
 
 
-### authentication_contract_address (string)
+### authentication_contract_address (字符串)
 
 
-Address of the smart contract that handles authentication verification.
-                This contract must implement the authenticateUser function for digest verification.
+处理认证验证的智能合约地址。
+                此合约必须实现 authenticateUser 函数进行摘要验证。
 
 
-*Default value:* None (must be configured)
+*默认值：* 无（必须配置）
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -352,17 +351,17 @@ modparam("auth_web3", "authentication_contract_address", "0xE773BB79689379d32Ad1
 ```
 
 
-### ens_rpc_url (string)
+### ens_rpc_url (字符串)
 
 
-RPC URL for the Ethereum network used for ENS resolution.
-                This should point to an Ethereum mainnet RPC endpoint for ENS name resolution.
+用于 ENS 解析的以太坊网络 RPC URL。
+                这应指向用于 ENS 名称解析的以太坊主网 RPC 端点。
 
 
-*Default value:* None (must be configured)
+*默认值：* 无（必须配置）
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -371,17 +370,17 @@ modparam("auth_web3", "ens_rpc_url", "https://eth-mainnet.g.alchemy.com/v2/YOUR_
 ```
 
 
-### ens_registry_address (string)
+### ens_registry_address (字符串)
 
 
-Address of the ENS registry contract on Ethereum mainnet.
-                This is used for resolving ENS names to wallet addresses.
+以太坊主网上 ENS 注册表合约的地址。
+                用于将 ENS 名称解析为钱包地址。
 
 
-*Default value:* 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e (ENS Registry)
+*默认值：* 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e (ENS Registry)
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -390,17 +389,17 @@ modparam("auth_web3", "ens_registry_address", "0x00000000000C2E074eC69A0dFb2997B
 ```
 
 
-### contract_debug_mode (integer)
+### contract_debug_mode (整数)
 
 
-Enable debug logging for blockchain contract interactions.
-                When enabled, detailed logs are generated for debugging purposes.
+启用区块链合约交互的调试日志。
+                启用后，将生成用于调试目的的详细日志。
 
 
-*Default value:* 0 (disabled)
+*默认值：* 0（禁用）
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -409,17 +408,17 @@ modparam("auth_web3", "contract_debug_mode", 1)
 ```
 
 
-### rpc_timeout (integer)
+### rpc_timeout (整数)
 
 
-Timeout in seconds for blockchain RPC calls.
-                This parameter controls how long to wait for blockchain responses.
+区块链 RPC 调用的超时时间（秒）。
+                此参数控制等待区块链响应的时间。
 
 
-*Default value:* 10 seconds
+*默认值：* 10 秒
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -431,30 +430,30 @@ modparam("auth_web3", "rpc_timeout", 15)
 ## C API
 
 
-The module provides a C-level API for other OpenSIPS modules to use Web3 authentication.
+该模块为其他 OpenSIPS 模块提供 C 级 API 以使用 Web3 认证。
 
 
 ### bind_web3_auth(api)
 
 
-Binds the Web3 authentication API to a module interface structure.
-                This allows other modules to use Web3 authentication functions directly.
+将 Web3 认证 API 绑定到模块接口结构。
+                这允许其他模块直接使用 Web3 认证函数。
 
 
-*Parameters:*
+*参数：*
 
 
-- *api* (web3_auth_api_t*) - Pointer to API structure to bind
+- *api* (web3_auth_api_t*) - 要绑定的 API 结构指针
 
 
-*Return value:*
+*返回值：*
 
 
-- *0* - Success
-- *-1* - Failure
+- *0* - 成功
+- *-1* - 失败
 
 
-*Example:*
+*示例：*
 
 
 ```c
@@ -463,110 +462,106 @@ Binds the Web3 authentication API to a module interface structure.
 web3_auth_api_t web3_api;
 
 if (bind_web3_auth(&web3_api) < 0) {
-    LM_ERR("Failed to bind Web3 auth API");
+    LM_ERR("绑定 Web3 认证 API 失败");
     return -1;
 }
 
-// Use web3_api.web3_digest_authenticate(...)
+// 使用 web3_api.web3_digest_authenticate(...)
             
 ```
 
 
-## FAQ
+## 常见问题
 
 
-**Q: What is Web3 authentication and how does it work?**
+**问：什么是 Web3 认证，它如何工作？**
 
 
-Web3 authentication uses blockchain technology to verify SIP digest authentication.
-                        Instead of storing passwords in a database, the module verifies authentication
-                        responses against a smart contract deployed on the Oasis Sapphire blockchain.
-                        ENS (Ethereum Name Service) names are resolved to wallet addresses for user identification.
+Web3 认证使用区块链技术来验证 SIP 摘要认证。
+                        不在数据库中存储密码，
+                        模块通过部署在 Oasis Sapphire 区块链上的智能合约验证认证响应。
+                        ENS（以太坊名称服务）名称解析为钱包地址以进行用户标识。
 
 
-**Q: What blockchain networks are supported?**
+**问：支持哪些区块链网络？**
 
 
-Currently, the module supports Oasis Sapphire testnet and mainnet.
-                        The module can be extended to support other EVM-compatible networks
-                        by modifying the RPC URL configuration.
+目前，该模块支持 Oasis Sapphire 测试网和主网。
+                        通过修改 RPC URL 配置，可以扩展该模块以支持其他 EVM 兼容网络。
 
 
-**Q: How do I set up ENS names for authentication?**
+**问：如何设置用于认证的 ENS 名称？**
 
 
-Users need to register ENS names (e.g., alice.eth) and ensure their
-                        wallet addresses are properly configured in the Oasis contract.
-                        The module will resolve ENS names to wallet addresses and verify
-                        that the wallet owner matches the authentication request.
+用户需要注册 ENS 名称（例如 alice.eth），
+                        并确保其钱包地址在 Oasis 合约中正确配置。
+                        模块将解析 ENS 名称为钱包地址，
+                        并验证钱包所有者与认证请求匹配。
 
 
-**Q: What smart contract functions are required?**
+**问：需要哪些智能合约函数？**
 
 
-The smart contract must implement the authenticateUser function with
-                        the following signature:
+智能合约必须实现以下签名的 authenticateUser 函数：
                         authenticateUser(string username, string realm, string method, string uri, string nonce, bytes response)
-                        This function should return true if the digest authentication is valid.
+                        如果摘要认证有效，此函数应返回 true。
 
 
-**Q: Is this module compatible with standard SIP clients?**
+**问：这个模块与标准 SIP 客户端兼容吗？**
 
 
-Yes, the module uses standard SIP digest authentication (RFC 3261).
-                        SIP clients will work normally - they just need to use ENS names
-                        as usernames instead of traditional usernames.
+是的，该模块使用标准 SIP 摘要认证（RFC 3261）。
+                        SIP 客户端将正常工作——它们只需要使用 ENS 名称
+                        作为用户名，而不是传统用户名。
 
 
-**Q: How do I debug authentication issues?**
+**问：如何调试认证问题？**
 
 
-Enable debug mode by setting web3_contract_debug_mode to 1.
-                        This will provide detailed logs of blockchain interactions,
-                        ENS resolution, and digest verification processes.
+通过将 web3_contract_debug_mode 设置为 1 来启用调试模式。
+                        这将提供区块链交互、ENS 解析和摘要验证过程的详细日志。
 
 
-**Q: What are the performance implications?**
+**问：性能影响是什么？**
 
 
-Each authentication requires blockchain RPC calls, which may add
-                        latency compared to traditional database authentication.
-                        Consider using appropriate RPC timeouts and potentially caching
-                        ENS resolution results for better performance.
+每次认证都需要区块链 RPC 调用，
+                        这可能比传统数据库认证增加延迟。
+                        考虑使用适当的 RPC 超时，
+                        并可能缓存 ENS 解析结果以获得更好的性能。
 
 
-**Q: Can I use this module alongside traditional authentication?**
+**问：我可以同时使用传统认证吗？**
 
 
-Yes, you can configure different realms or routes to use different
-                        authentication methods. The module only handles requests that
-                        explicitly call the web3_www_authenticate or web3_proxy_authenticate functions.
+是的，您可以配置不同的领域或路由使用不同的认证方法。
+                        该模块仅处理明确调用 web3_www_authenticate
+                        或 web3_proxy_authenticate 函数的请求。
 
 
-**Q: How do I handle environment variable overrides?**
+**问：如何处理环境变量覆盖？**
 
 
-The module supports environment variable overrides for container deployments:
-                        WEB3_AUTH_RPC_URL, WEB3_AUTH_CONTRACT_ADDRESS, ENS_RPC_URL, ENS_REGISTRY_ADDRESS,
-                        CONTRACT_DEBUG_MODE, and RPC_TIMEOUT. These override configuration file settings.
+该模块支持容器部署的环境变量覆盖：
+                        WEB3_AUTH_RPC_URL、WEB3_AUTH_CONTRACT_ADDRESS、ENS_RPC_URL、ENS_REGISTRY_ADDRESS、
+                        CONTRACT_DEBUG_MODE 和 RPC_TIMEOUT。这些会覆盖配置文件设置。
 
 
-**Q: What happens if ENS resolution fails?**
+**问：如果 ENS 解析失败会发生什么？**
 
 
-If ENS resolution fails, the module falls back to direct Web3 authentication
-                        using the username as a wallet address. This allows non-ENS users to still
-                        authenticate using their wallet addresses directly.
+如果 ENS 解析失败，模块将回退到直接使用用户名作为钱包地址进行 Web3 认证。
+                        这允许非 ENS 用户仍然可以直接使用其钱包地址进行认证。
 
 
-**Q: How do I monitor authentication success rates?**
+**问：如何监控认证成功率？**
 
 
-Enable debug mode and monitor OpenSIPS logs for authentication attempts.
-                        The module logs detailed information about ENS resolution, contract calls,
-                        and authentication results when debug mode is enabled.
+启用调试模式并监控 OpenSIPS 日志中的认证尝试。
+                        启用调试模式时，模块会记录有关 ENS 解析、合约调用
+                        和认证结果的详细信息。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

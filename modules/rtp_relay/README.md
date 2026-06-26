@@ -1,191 +1,169 @@
 ---
-title: "RTP Relay Module"
-description: "The purpose of this module is to simplify the usage of different RTP Relays Servers (such as RTPProxy, RTPEngine, Media Proxy) in OpenSIPS scripting, as well as to provide various complex features that rely on the usage of RTP relays (such as media re-anchoring)."
+title: "RTP 中继模块"
+description: "此模块的目的是简化在 OpenSIPS 脚本中使用不同 RTP 中继服务器（如 RTPProxy、RTPEngine、Media Proxy）的操作，并提供依赖于 RTP 中继使用的各种复杂功能（如媒体重新锚定）。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The purpose of this module is to simplify the usage of different
-		RTP Relays Servers (such as RTPProxy, RTPEngine, Media Proxy)
-		in OpenSIPS scripting, as well as to provide various complex
-		features that rely on the usage of RTP relays (such as media re-anchoring).
+此模块的目的是简化在 OpenSIPS 脚本中使用不同
+		RTP 中继服务器（如 RTPProxy、RTPEngine、Media Proxy）
+		的操作，并提供依赖于 RTP 中继使用的各种复杂
+		功能（如媒体重新锚定）。
 
 
-The module provides the logic to engage a specific RTP relay in
-		a call during initial INVITE, and then it will handle the entire
-		communication with the RTP relay, until the call terminates.
+该模块提供了在初始 INVITE 期间参与特定 RTP 中继的逻辑，
+		然后它将处理与 RTP 中继的整个通信，直到呼叫终止。
 
 
-Moreover, one can specify various flags that modify the way RTP
-		engines use each user agent's SDP - these flags are persistent
-		throughout the entire RTP session, and are being used for further
-		in-dialog requests. These flags can be specified through the 
-		[rtp relay](#pv_rtp_relay) and/or
-		[rtp relay peer](#pv_rtp_relay_peer) variables at initial INVITE,
-		or through the absolute
-		[rtp relay caller](#pv_rtp_relay_caller) and
-		[rtp relay callee](#pv_rtp_relay_callee) variables, and are then
-		passed along with the RTP relay context until the end of the call.
-		They can also be modified during sequential in-dialog requests.
+此外，可以指定各种标志来修改 RTP 引擎使用每个用户代理 SDP 的方式
+		- 这些标志在整个 RTP 会话期间保持有效，
+		并用于后续的同-dialog 请求。这些标志可以通过
+		[rtp relay](#pv_rtp_relay) 和/或
+		[rtp relay peer](#pv_rtp_relay_peer) 变量在初始 INVITE 时指定，
+		或通过绝对的
+		[rtp relay caller](#pv_rtp_relay_caller) 和
+		[rtp relay callee](#pv_rtp_relay_callee) 变量指定，
+		然后随 RTP 中继上下文一起传递直到呼叫结束。
+		它们也可以在同-dialog 顺序请求期间修改。
 
 
-This is not a stand-alone module that communicates directly with RTP relays,
-		but rather a generic interface that is able to interact with the
-		modules that interact with each specific RTP Relay
-		(such as *rtpproxy* or *rtpengine*)
-		and implement their specific communication protocol.
+这不是一个直接与 RTP 中继通信的独立模块，
+		而是一个通用接口，能够与和每个特定 RTP 中继
+		（如 *rtpproxy* 或 *rtpengine*）交互的模块进行交互，
+		并实现它们特定的通信协议。
 
 
-### Multiple Branches
+### 多分支
 
 
-The module is able to handle RTP relay for multiple branches, with
-		different flags flavors. Each branch can have its flags tuned through
-		the [rtp relay](#pv_rtp_relay) variable - if the variable
-		is provisioned in the main route, then the flags are inherited
-		by all further branches, unless specifically modified per branch.
-		To modify a specific branch, one needs to specify the desired
-		branch index as variable index
-		(i.e. *$(rtp_relay[1]) = "cor"*).
-		When provisioned in a branch route, the flags are only changed
-		for that specific branch.
+该模块能够处理多分支的 RTP 中继，具有不同的标志风格。
+		每个分支可以通过 [rtp relay](#pv_rtp_relay) 变量调整其标志
+		- 如果在主路由中配置了变量，则标志将被所有后续分支继承，
+		除非特定修改每个分支。
+		要修改特定分支，需要指定所需的分支索引作为变量索引
+		（即 *$(rtp_relay[1]) = "cor"*）。
+		如果在分支路由中配置，标志仅针对该特定分支更改。
 
 
-Starting with OpenSIPS 3.3, branches can be identified based
-		on their participant's to_tag. This features becomes handy when
-		using *rtp_relay* in B2B mode, where peers
-		can no longer be identified simply by an index. However, this
-		feature works in dialog secenatios as well.
+从 OpenSIPS 3.3 开始，分支可以基于其参与者的 to_tag 进行识别。
+		当在 B2B 模式下使用 *rtp_relay* 时，此功能变得方便，
+		因为对等方不能再简单地通过索引进行识别。
+		但是，此功能也可用于对话场景。
 
 
-The multiple branches behavior is handled differently by the
-		back-end engine, depending on its capabilities. For example,
-		*rtpengine* is able to natively support calls
-		with multiple branches, whereas for *rtpproxy*,
-		each branch is emulated in a different session with a different
-		call-id.
+多分支行为由后端引擎根据其能力以不同方式处理。
+		例如，*rtpengine* 能够本机支持多分支呼叫，
+		而对于 *rtpproxy*，每个分支在不同的会话中以不同的 call-id 进行模拟。
 
 
-When the call gets answered and a single branch remains active,
-		all the other branches are destroyed and only the established
-		branches remain active throughout the call.
+当呼叫被应答且只剩一个活动分支时，
+		所有其他分支都被销毁，只有建立的分支在呼叫期间保持活动状态。
 
 
-### RTP Relay Engines
+### RTP 中继引擎
 
 
-The module does not perform any SDP mangling itself, it is just an
-		enabler of the different backends supported, such as RTPProxy
-		or RTPEngine. These backends are called RTP Relay angines and they
-		need to be specified when RTP Relay is being engaged.
+该模块本身不执行任何 SDP 处理，它只是不同后端的启用器，
+		如 RTPProxy 或 RTPEngine。这些后端称为 RTP 中继引擎，
+		在参与 RTP 中继时需要指定。
 
 
-Starting with OpenSIPS 3.6, the module has been enhanced with an
-		internal RTP Engine, which can be used to perform
-		*manual/custom* SDP mangling by running a set of
-		routes when an RTP event (such as offer, answer, delete) happens.
-		This can be enabled by engaging RTP Relay with the *route*
-		engine. If the defined routes are not being defined, then the SDP does not
-		change. For more information, please check the
-		[route offer](#param_route_offer),
-		[route answer](#param_route_answer) and
-		[route delete](#param_route_delete) parameters.
+从 OpenSIPS 3.6 开始，该模块增加了内部 RTP 引擎，
+		可用于通过在发生 RTP 事件（如 offer、answer、delete）时运行一组路由来执行
+		*手动/自定义* SDP 处理。
+		可以通过使用 *route* 引擎参与 RTP 中继来启用此功能。
+		如果未定义定义的路由，则 SDP 不会更改。
+		有关更多信息，请参阅
+		[route offer](#param_route_offer)、
+		[route answer](#param_route_answer) 和
+		[route delete](#param_route_delete) 参数。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *Dialog* module - used to keep track of in-dialog requests.
-- *RTP Relay* module(s) - such *rtpproxy*, or
-				*rtpengine*, or any module that implements the
-				*rtp_relay* interface.
+- *Dialog 模块* - 用于跟踪同-dialog 请求。
+- *RTP 中继模块* - 如 *rtpproxy*、*rtpengine*，
+				或任何实现 *rtp_relay* 接口的模块。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+以下库或应用程序必须在运行加载了此模块的 OpenSIPS 之前安装：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### route_offer (string)
 
 
-Route that is being run when an SDP offer happens (i.e.
-			an INVITE with SDP is being processed).
+当发生 SDP offer 时运行的路由（即。
+			正在处理带有 SDP 的 INVITE 时）。
 
 
-When the route is executed, the following parameters are
-			being populated:
+当路由执行时，以下参数被填充：
 
 
-- *callid* - the callid of the call being processed.
-- *from_tag* - the from_tag of the call being processed.
-- *to_tag* - the to_tag, if exists, of the call being processed.
-- *branch* - the branch that RTP relay is being engaed
-				on - if engaged in the main branch, *-1* is used.
-- *body* - optional, if an explicit body is being used,
-				otherwise the message's body should be considered.
-- *set* - the rtp relay set being used for the call.
-- *node* - optional, an node Engine idenfifier - this
-				is a user populated value returned after running a
-				*route_offer* route (see the return values section
-				below).
-- *ip* - optional, the IP being specified in the
-				[rtp relay](#pv_rtp_relay) variable for the current peer.
-- *type* - optional, the RTP type being specified in the
-				[rtp relay](#pv_rtp_relay) variable for the current peer.
-- *in-iface* - optional, the inbound interface
-				that should be used for this peer.
-- *out-iface* - optional, the outbound interface
-				that should be used for this peer.
-- *ctx-flags* - optional, global flags that are
-				being specified in the [rtp relay ctx](#pv_rtp_relay_ctx) variable.
-- *flags* - optional, flags specified for this peer.
-- *peer* - optional, peer flags specified for
-				the corresponding peer;
+- *callid* - 正在处理的呼叫的 callid。
+- *from_tag* - 正在处理的呼叫的 from_tag。
+- *to_tag* - 正在处理的呼叫的 to_tag（如果存在）。
+- *branch* - RTP 中继参与的分支
+				- 如果在主分支参与，则使用 *-1*。
+- *body* - 可选，如果使用显式正文，
+				否则应考虑消息的正文。
+- *set* - 用于呼叫的 rtp 中继集。
+- *node* - 可选，节点引擎标识符 - 这是
+				在运行 *route_offer* 路由后返回的用户填充值（请参阅下面的返回值部分）。
+- *ip* - 可选，在当前对等方的
+				[rtp relay](#pv_rtp_relay) 变量中指定的 IP。
+- *type* - 可选，在当前对等方的
+				[rtp relay](#pv_rtp_relay) 变量中指定的 RTP 类型。
+- *in-iface* - 可选，应该用于此对等方的入站接口。
+- *out-iface* - 可选，应该用于此对等方的出站接口。
+- *ctx-flags* - 可选，在 [rtp relay ctx](#pv_rtp_relay_ctx) 变量中指定的全局标志。
+- *flags* - 可选，为此对等方指定的标志。
+- *peer* - 可选，为相应对等方指定的对等标志；
 
 
-When running the route, the following values are expected to be returned:
+运行路由时期望返回以下值：
 			
 			
-			*body* - the newly created body to be offered. If
-				not returned, the body is left unchanged.
+			*body* - 要提供的新创建的正文。如果
+				未返回，则正文保持不变。
 			
 			
-			*node* - optional, a node to be identified for further
-				routes/commands executed.
-		*Default value is "rtp_relay_offer".*
+			*node* - 可选，要为进一步识别的节点
+				路由/执行的命令。
+		*默认值为 "rtp_relay_offer"。*
 
 
-```c title="Set route_offer parameter"
+```c title="设置 route_offer 参数"
 ...
 modparam("rtp_relay", "route_offer", "custom_rtp_offer")
 ...
 ```
 
 
-```c title="route_offer route usage"
+```c title="route_offer 路由用法"
 ...
 route[rtp_relay_offer] {
-	# manually engaging RTPEngine, get the SDP, and replace it in the message
-	return (1, $var(body));
+	# 手动参与 RTPEngine，获取 SDP，并将其替换到消息中
+	返回 (1, $var(body));
 }
 ...
 ```
@@ -194,61 +172,55 @@ route[rtp_relay_offer] {
 #### route_answer (string)
 
 
-Route that is being run when an SDP answer happens (i.e.
-			a 183 or 200 OK reply with SDP is being processed).
+当发生 SDP answer 时运行的路由（即。
+			正在处理带有 SDP 的 183 或 200 OK 回复时）。
 
 
-When the route is executed, the following parameters are
-			being populated:
+当路由执行时，以下参数被填充：
 
 
-- *callid* - the callid of the call being processed.
-- *from_tag* - the from_tag of the call being processed.
-- *to_tag* - the to_tag, if exists, of the call being processed.
-- *branch* - the branch that RTP relay is being engaed
-				on - if engaged in the main branch, *-1* is used.
-- *body* - optional, if an explicit body is being used,
-				otherwise the message's body should be considered.
-- *set* - the rtp relay set being used for the call.
-- *node* - optional, an node Engine idenfifier - this
-				is a user populated value returned after running a
-				*route_offer* route.
-- *ip* - optional, the IP being specified in the
-				[rtp relay](#pv_rtp_relay) variable for the current peer.
-- *type* - optional, the RTP type being specified in the
-				[rtp relay](#pv_rtp_relay) variable for the current peer.
-- *in-iface* - optional, the inbound interface
-				that should be used for this peer.
-- *out-iface* - optional, the outbound interface
-				that should be used for this peer.
-- *ctx->flags* - optional, global flags that are
-				being specified in the [rtp relay ctx](#pv_rtp_relay_ctx) variable.
-- *flags* - optional, flags specified for this peer.
-- *peer* - optional, peer flags specified for
-				the corresponding peer;
+- *callid* - 正在处理的呼叫的 callid。
+- *from_tag* - 正在处理的呼叫的 from_tag。
+- *to_tag* - 正在处理的呼叫的 to_tag（如果存在）。
+- *branch* - RTP 中继参与的分支
+				- 如果在主分支参与，则使用 *-1*。
+- *body* - 可选，如果使用显式正文，
+				否则应考虑消息的正文。
+- *set* - 用于呼叫的 rtp 中继集。
+- *node* - 可选，节点引擎标识符 - 这是
+				在运行 *route_offer* 路由后返回的用户填充值。
+- *ip* - 可选，在当前对等方的
+				[rtp relay](#pv_rtp_relay) 变量中指定的 IP。
+- *type* - 可选，在当前对等方的
+				[rtp relay](#pv_rtp_relay) 变量中指定的 RTP 类型。
+- *in-iface* - 可选，应该用于此对等方的入站接口。
+- *out-iface* - 可选，应该用于此对等方的出站接口。
+- *ctx->flags* - 可选，在 [rtp relay ctx](#pv_rtp_relay_ctx) 变量中指定的全局标志。
+- *flags* - 可选，为此对等方指定的标志。
+- *peer* - 可选，为相应对等方指定的对等标志；
 
 
-When running the route, the following values are expected to be returned:
+运行路由时期望返回以下值：
 			
 			
-			*body* - the newly created body to be answered. If
-				not returned, the body is left unchanged.
-		*Default value is "rtp_relay_answer".*
+			*body* - 要应答的新创建的正文。如果
+				未返回，则正文保持不变。
+		*默认值为 "rtp_relay_answer"。*
 
 
-```c title="Set route_answer parameter"
+```c title="设置 route_answer 参数"
 ...
 modparam("rtp_relay", "route_answer", "custom_rtp_answer")
 ...
 ```
 
 
-```c title="route_answer route usage"
+```c title="route_answer 路由用法"
 ...
 route[rtp_relay_answer] {
-	# again, manually engaging RTPEngine
+	# 再次手动参与 RTPEngine
 	rtpengine_answer(,, $var(body), $rb);
-	return (1, $var(body));
+	返回 (1, $var(body));
 }
 ...
 ```
@@ -257,47 +229,42 @@ route[rtp_relay_answer] {
 #### route_delete (string)
 
 
-Route that is being run when media should be disconnected
-			(i.e. a CANCEL or BYE is received).
+当媒体应断开连接时运行的路由（即。
+			收到 CANCEL 或 BYE 时）。
 
 
-When the route is executed, the following parameters are
-			being populated:
+当路由执行时，以下参数被填充：
 
 
-- *callid* - the callid of the call being processed.
-- *from_tag* - the from_tag of the call being processed.
-- *to_tag* - the to_tag, if exists, of the call being processed.
-- *branch* - the branch that RTP relay is being engaed
-				on - if engaged in the main branch, *-1* is used.
-- *body* - optional, if an explicit body is being used,
-				otherwise the message's body should be considered.
-- *set* - the rtp relay set being used for the call.
-- *node* - optional, an node Engine idenfifier - this
-				is a user populated value returned after running a
-				*route_offer* route (see the return values section
-				below).
-- *ctx->flags* - optional, global flags that are
-				being specified in the [rtp relay ctx](#pv_rtp_relay_ctx) variable.
-- *delete* - optional, delete flags specified in the
-				[rtp relay ctx](#pv_rtp_relay_ctx) variable.
+- *callid* - 正在处理的呼叫的 callid。
+- *from_tag* - 正在处理的呼叫的 from_tag。
+- *to_tag* - 正在处理的呼叫的 to_tag（如果存在）。
+- *branch* - RTP 中继参与的分支
+				- 如果在主分支参与，则使用 *-1*。
+- *body* - 可选，如果使用显式正文，
+				否则应考虑消息的正文。
+- *set* - 用于呼叫的 rtp 中继集。
+- *node* - 可选，节点引擎标识符 - 这是
+				在运行 *route_offer* 路由后返回的用户填充值（请参阅下面的返回值部分）。
+- *ctx->flags* - 可选，在 [rtp relay ctx](#pv_rtp_relay_ctx) 变量中指定的全局标志。
+- *delete* - 可选，在 [rtp relay ctx](#pv_rtp_relay_ctx) 变量中指定的删除标志。
 
 
-Return values are not needed.
-		*Default value is "rtp_relay_delete".*
+不需要返回值。
+		*默认值为 "rtp_relay_delete"。*
 
 
-```c title="Set route_delete parameter"
+```c title="设置 route_delete 参数"
 ...
 modparam("rtp_relay", "route_delete", "custom_rtp_delete")
 ...
 ```
 
 
-```c title="rtp_relay_delete route usage"
+```c title="rtp_relay_delete 路由用法"
 ...
 route[rtp_relay_delete] {
-	# manually removing RTPEngine session
+	# 手动移除 RTPEngine 会话
 	rtpengine_delete();
 }
 ...
@@ -307,52 +274,47 @@ route[rtp_relay_delete] {
 #### route_copy_offer (string)
 
 
-Route that is being executed when a new call's SDP is being copied.
+当新呼叫的 SDP 被复制时执行的路由。
 
 
-When the route is executed, the following parameters are
-			being populated:
+当路由执行时，以下参数被填充：
 
 
-- *callid* - the callid of the call being processed.
-- *from_tag* - the from_tag of the call being processed.
-- *to_tag* - the to_tag, if exists, of the call being processed.
-- *branch* - the branch that RTP relay is being engaed
-				on - if engaged in the main branch, *-1* is used.
-- *set* - the rtp relay set being used for the call.
-- *node* - optional, an node Engine idenfifier - this
-				is a user populated value returned after running a
-				*route_offer* route (see the return values section
-				below).
-- *flags* - optional, flags that are being specified
-				by the module which is copying the SDP.
-- *copy-ctx* - optional, an copy context identifier -
-				this is a user populated value returned after running a
-				*route_copy_offer* route (see the return values
-				section below).
+- *callid* - 正在处理的呼叫的 callid。
+- *from_tag* - 正在处理的呼叫的 from_tag。
+- *to_tag* - 正在处理的呼叫的 to_tag（如果存在）。
+- *branch* - RTP 中继参与的分支
+				- 如果在主分支参与，则使用 *-1*。
+- *set* - 用于呼叫的 rtp 中继集。
+- *node* - 可选，节点引擎标识符 - 这是
+				在运行 *route_offer* 路由后返回的用户填充值（请参阅下面的返回值部分）。
+- *flags* - 可选，由正在复制 SDP 的模块指定的标志。
+- *copy-ctx* - 可选，复制上下文标识符 -
+				这是用户填充值，在运行
+				*route_copy_offer* 路由后返回（请参阅下面的返回值部分）。
 
 
-When running the route, the following values are expected to be returned:
+运行路由时期望返回以下值：
 			
 			
-			*copy-ctx* - optional, a copy context identifier
-				that can be later used to identify the current copy session.
-		*Default value is "rtp_relay_copy_offer".*
+			*copy-ctx* - 可选，复制上下文标识符，
+				以后可用于识别当前复制会话。
+		*默认值为 "rtp_relay_copy_offer"。*
 
 
-```c title="Set rtp_relay_copy_offer parameter"
+```c title="设置 rtp_relay_copy_offer 参数"
 ...
 modparam("rtp_relay", "route_copy_offer", "custom_rtp_copy_offer")
 ...
 ```
 
 
-```c title="Set rtp_relay_copy_offer usage"
+```c title="设置 rtp_relay_copy_offer 用法"
 ...
 route[rtp_relay_copy_offer] {
-	# instruct a media engine to fork media and assign an identifier
-	# that shall be stored in the $var(handle) variable
-	return (1, $var(handle));
+	# 指示媒体引擎分叉媒体并分配一个标识符
+	# 应存储在 $var(handle) 变量中
+	返回 (1, $var(handle));
 }
 ...
 ```
@@ -361,48 +323,44 @@ route[rtp_relay_copy_offer] {
 #### route_copy_answer (string)
 
 
-Route that is being run when an SDP for the copied stream is received.
-			(i.e. a CANCEL or BYE is received).
+当收到复制的流的 SDP 时运行的路由。
+			（即收到 CANCEL 或 BYE 时）。
 
 
-When the route is executed, the following parameters are
-			being populated:
+当路由执行时，以下参数被填充：
 
 
-- *callid* - the callid of the call being processed.
-- *from_tag* - the from_tag of the call being processed.
-- *to_tag* - the to_tag, if exists, of the call being processed.
-- *branch* - the branch that RTP relay is being engaed
-				on - if engaged in the main branch, *-1* is used.
-- *body* - optional, if an explicit body is being used,
-				otherwise the message's body should be considered.
-- *set* - the rtp relay set being used for the call.
-- *node* - optional, an node Engine idenfifier - this
-				is a user populated value returned after running a
-				*route_offer* route (see the return values section
-				below).
-- *flags* - optional, flags that are being specified
-				by the module which is copying the SDP.
-- *copy-ctx* - optional, an copy context identifier -
-				this is a user populated value returned at the end of
-				*route_copy_offer* execution.
+- *callid* - 正在处理的呼叫的 callid。
+- *from_tag* - 正在处理的呼叫的 from_tag。
+- *to_tag* - 正在处理的呼叫的 to_tag（如果存在）。
+- *branch* - RTP 中继参与的分支
+				- 如果在主分支参与，则使用 *-1*。
+- *body* - 可选，如果使用显式正文，
+				否则应考虑消息的正文。
+- *set* - 用于呼叫的 rtp 中继集。
+- *node* - 可选，节点引擎标识符 - 这是
+				在运行 *route_offer* 路由后返回的用户填充值（请参阅下面的返回值部分）。
+- *flags* - 可选，由正在复制 SDP 的模块指定的标志。
+- *copy-ctx* - 可选，复制上下文标识符 -
+				这是用户填充值，在
+				*route_copy_offer* 执行结束时返回。
 
 
-*Default value is "rtp_relay_copy_answer".*
+*默认值为 "rtp_relay_copy_answer"。*
 
 
-```c title="Set rtp_relay_copy_answer parameter"
+```c title="设置 rtp_relay_copy_answer 参数"
 ...
 modparam("rtp_relay", "route_copy_answer", "custom_rtp_copy_answer")
 ...
 ```
 
 
-```c title="Set rtp_relay_copy_answer usage"
+```c title="设置 rtp_relay_copy_answer 用法"
 ...
 route[rtp_relay_copy_answer] {
-	# feed the received $param(body) to the media engine that is forking the call
-	# copy instance is identified by the $param(copy-ctx) variable
+	# 将收到的 $param(body) 提供给正在分叉呼叫的媒体引擎
+	# 复制实例由 $param(copy-ctx) 变量标识
 }
 ...
 ```
@@ -411,113 +369,102 @@ route[rtp_relay_copy_answer] {
 #### route_copy_delete (string)
 
 
-Route that is being run when media fork should be removed.
+当应移除媒体分叉时运行的路由。
 
 
-When the route is executed, the following parameters are
-			being populated:
+当路由执行时，以下参数被填充：
 
 
-- *callid* - the callid of the call being processed.
-- *from_tag* - the from_tag of the call being processed.
-- *to_tag* - the to_tag, if exists, of the call being processed.
-- *branch* - the branch that RTP relay is being engaed
-				on - if engaged in the main branch, *-1* is used.
-- *body* - optional, if an explicit body is being used,
-				otherwise the message's body should be considered.
-- *set* - the rtp relay set being used for the call.
-- *node* - optional, an node Engine idenfifier - this
-				is a user populated value returned after running a
-				*route_offer* route (see the return values section
-				below).
-- *flags* - optional, flags that are being specified
-				by the module which is copying the SDP.
-- *copy-ctx* - optional, an copy context identifier -
-				this is a user populated value returned at the end of
-				*route_copy_offer* execution.
+- *callid* - 正在处理的呼叫的 callid。
+- *from_tag* - 正在处理的呼叫的 from_tag。
+- *to_tag* - 正在处理的呼叫的 to_tag（如果存在）。
+- *branch* - RTP 中继参与的分支
+				- 如果在主分支参与，则使用 *-1*。
+- *body* - 可选，如果使用显式正文，
+				否则应考虑消息的正文。
+- *set* - 用于呼叫的 rtp 中继集。
+- *node* - 可选，节点引擎标识符 - 这是
+				在运行 *route_offer* 路由后返回的用户填充值（请参阅下面的返回值部分）。
+- *flags* - 可选，由正在复制 SDP 的模块指定的标志。
+- *copy-ctx* - 可选，复制上下文标识符 -
+				这是用户填充值，在
+				*route_copy_offer* 执行结束时返回。
 
 
-Return values are not needed.
+不需要返回值。
 
 
-*Default value is "rtp_relay_copy_delete".*
+*默认值为 "rtp_relay_copy_delete"。*
 
 
-```c title="Set rtp_relay_copy_delete parameter"
+```c title="设置 rtp_relay_copy_delete 参数"
 ...
 modparam("rtp_relay", "route_copy_delete", "custom_rtp_copy_delete")
 ...
 ```
 
 
-```c title="Set rtp_relay_copy_delete usage"
+```c title="设置 rtp_relay_copy_delete 用法"
 ...
 route[rtp_relay_copy_delete] {
-	# remove the copy instance is identified by the $param(copy-ctx) variable
+	# 移除由 $param(copy-ctx) 变量标识的复制实例
 }
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### rtp_relay_engage(engine, [set])
 
 
-Engages the RTP Relay *engine* for the current initial
-		INVITE. After calling this function, the entire RTP relay communication
-		will be handled by the module itself, without having to intervene for any
-		further in-dialog requests/replies (unless you specifically want to).
+为当前初始 INVITE 参与 RTP 中继 *engine*。
+		调用此函数后，整个 RTP 中继通信将由模块本身处理，
+		无需为任何进一步的同-dialog 请求/回复进行干预（除非您特别希望这样做）。
 
 
-The function is not performing the media requests on the spot,
-		but rather registers the hooks to automatically handle any
-		further media requests.
+该函数不是立即执行媒体请求，而是注册钩子以自动处理任何进一步的媒体请求。
 
 
-The RTP session modifiers used are the ones provisioned through the
-		[rtp relay](#pv_rtp_relay),
-		[rtp relay peer](#pv_rtp_relay_peer),
-		[rtp relay caller](#pv_rtp_relay_caller) and/or
-		[rtp relay callee](#pv_rtp_relay_callee) variables.
+使用的 RTP 会话修改器是通过
+		[rtp relay](#pv_rtp_relay)、
+		[rtp relay peer](#pv_rtp_relay_peer)、
+		[rtp relay caller](#pv_rtp_relay_caller) 和/或
+		[rtp relay callee](#pv_rtp_relay_callee) 变量配置的。
 
 
-The function can be called from the main request route - in this case
-		the RTP relay will be engaged for any further branches created, or from
-		the branch route - in this case the RTP relay will only be engaged for
-		the branch where it was called, or that has an associated
-		*rtp_relay* provisioned.
+该函数可以从主请求路由调用 - 在这种情况下，
+		RTP 中继将为任何进一步的分支参与；或者从分支路由调用 - 在这种情况下，
+		RTP 中继将仅在为它调用的分支或具有关联 *rtp_relay* 配置的分支参与。
 
 
-When using the scope-relative [rtp relay](#pv_rtp_relay)
-		variable together with this function, note that its meaning depends
-		on where it is used. In the main request route of the initial INVITE,
-		[rtp relay](#pv_rtp_relay) refers to the caller and
-		[rtp relay peer](#pv_rtp_relay_peer) refers to the callee. In a
-		branch route, [rtp relay](#pv_rtp_relay) refers to the callee
-		branch and [rtp relay peer](#pv_rtp_relay_peer) refers to the
-		caller. To avoid depending on this route scope, use
-		[rtp relay caller](#pv_rtp_relay_caller) and
-		[rtp relay callee](#pv_rtp_relay_callee) instead.
+将作用域相关的 [rtp relay](#pv_rtp_relay) 变量与此函数一起使用时，
+		请注意其含义取决于使用位置。在初始 INVITE 的主请求路由中，
+		[rtp relay](#pv_rtp_relay) 指呼叫者，
+		[rtp relay peer](#pv_rtp_relay_peer) 指被呼叫者。
+		在分支路由中，[rtp relay](#pv_rtp_relay) 指被呼叫者分支，
+		[rtp relay peer](#pv_rtp_relay_peer) 指呼叫者。
+		为避免依赖此路由作用域，请改用
+		[rtp relay caller](#pv_rtp_relay_caller) 和
+		[rtp relay callee](#pv_rtp_relay_callee)。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *engine(string)* - the RTP relay engine
-				to be used for the call (i.e. *rtpproxy*,
-				*rtpengine* or *route*)
-- *set(int, optional)* - the set used for this call.
+- *engine(string)* - 用于呼叫的 RTP 中继引擎
+				（即 *rtpproxy*、*rtpengine* 或 *route*）
+- *set(int, 可选)* - 用于此呼叫的集合。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE.
+此函数可用于 REQUEST_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE。
 
 
-```c title="rtp_relay_engage usage"
+```c title="rtp_relay_engage 用法"
 ...
-if (is_method("INVITE") && !has_totag()) {
-	xlog("SCRIPT: engaging RTPProxy relay for all branches\n");
+如果（是方法("INVITE") && !has_totag()）{
+	xlog("脚本：为所有分支参与 RTPProxy 中继\n");
 	$rtp_relay = "co";
 	$rtp_relay_peer = "co";
 	rtp_relay_engage("rtpproxy");
@@ -527,38 +474,38 @@ if (is_method("INVITE") && !has_totag()) {
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### rtp_relay:list
 
 
-Replaces obsolete MI command: *rtp_relay_list*.
+替换已弃用的 MI 命令：*rtp_relay_list*。
 
 
-Lists all the RTP Relay sessions engaged.
+列出所有参与的 RTP 中继会话。
 
 
-Parameters:
+参数：
 
 
-- *engine* - (optional) the RTP
-					relay engine (i.e. *rtpproxy*
-					or *rtpengine*).
-- *set* - (optional) the RTP
-					relay set. When used, the *engine*
-					parameter must also be specified.
-- *node* - (optional) the RTP
-					relay node. When used, the *engine*
-					parameter must also be specified.
+- *engine* -（可选）RTP
+					中继引擎（即 *rtpproxy*
+					或 *rtpengine*）。
+- *set* -（可选）RTP
+					中继集合。当使用时，*engine*
+					参数也必须指定。
+- *node* -（可选）RTP
+					中继节点。当使用时，*engine*
+					参数也必须指定。
 
 
-```c title="rtp_relay:list usage"
+```c title="rtp_relay:list 用法"
 ...
-## list all sessions
+## 列出所有会话
 $ opensips-cli -x mi rtp_relay:list
 
-## list all sessions going through a specific RTP node
+## 列出通过特定 RTP 节点的所有会话
 $ opensips-cli -x mi rtp_relay:list rtpproxy udp:127.0.0.1:2222
 ...
 			
@@ -568,60 +515,53 @@ $ opensips-cli -x mi rtp_relay:list rtpproxy udp:127.0.0.1:2222
 #### rtp_relay:update
 
 
-Replaces obsolete MI command: *rtp_relay_update*.
+替换已弃用的 MI 命令：*rtp_relay_update*。
 
 
-Updates/Re-engages the RTP relays in all ongoing RTP relay sessions.
+更新/重新参与所有正在进行的 RTP 中继会话。
 
 
-This function can be used to trigger dialog in-dialog
-				updates for certain ongoing RTP sessions. For all matched
-				sessions, it re-engages an RTP Relay offer/answer session,
-				then sends re-INVITEs to call's participants to with
-				the updated SDP.
+此函数可用于触发某些正在进行的 RTP 会话的同-dialog
+				更新。对于所有匹配的会话，它重新参与 RTP 中继 offer/answer 会话，
+				然后向呼叫参与者发送带有更新 SDP 的 re-INVITE。
 
 
-*Note:*Running the command without a filter
-				(such as *engine* or *set*)
-				will cause all RTP relay sessions to be
-				re-engaged.
+*注意：*运行没有过滤器（如 *engine* 或 *set*）的命令
+				将导致所有 RTP 中继会话被重新参与。
 
 
-*Note:*When enforcing a new node,
-				it is not guaranteed to be used - if the node is not
-				avaialble, but a different one is, the active one will
-				be chosen.
+*注意：*当强制新节点时，
+				不能保证使用该节点 - 如果节点不可用，
+				但另一个节点可用，则将选择活动节点。
 
 
-*Note:*If the node is being changed,
-				the module tries to unforce the previous RTP relay
-				session, even though it might not work.
+*注意：*如果节点正在更改，
+				模块会尝试 unforce 之前的 RTP 中继会话，
+				即使它可能不起作用。
 
 
-Parameters:
+参数：
 
 
-- *engine* - (optional) the RTP
-					relay engine (i.e. *rtpproxy*
-					or *rtpengine*) to be used
-					as filter.
-- *set* - (optional) the RTP
-					relay set to be used as filter. If missing, the
-					same set will be used as it was initially engaged
-					for.
-- *node* - (optional) the RTP
-					relay node to be used as filter.
-- *new_set* - (optional) a new RTP
-					Relay set to be used for the call.
-- *new_node* - (optional) a new RTP
-					node to be used for the call. If
-					*new_set* is missing, the
-					same set will be used.
+- *engine* -（可选）RTP
+					中继引擎（即 *rtpproxy*
+					或 *rtpengine*）用作过滤器。
+- *set* -（可选）RTP
+					中继集合用作过滤器。如果缺失，
+					将使用与最初参与的相同集合。
+- *node* -（可选）RTP
+					中继节点用作过滤器。
+- *new_set* -（可选）新的 RTP
+					中继集合用于此呼叫。
+- *new_node* -（可选）新的 RTP
+					节点用于此呼叫。如果
+					*new_set* 缺失，
+					将使用相同的集合。
 
 
-```c title="rtp_relay:update usage"
+```c title="rtp_relay:update 用法"
 ...
-## update all sessions that are using rtpproxy
+## 更新使用 rtpproxy 的所有会话
 $ opensips-cli -x mi rtp_relay:update rtpproxy
 ...
 			
@@ -631,49 +571,45 @@ $ opensips-cli -x mi rtp_relay:update rtpproxy
 #### rtp_relay:update_callid
 
 
-Replaces obsolete MI command: *rtp_relay_update_callid*.
+替换已弃用的 MI 命令：*rtp_relay_update_callid*。
 
 
-Updates/Re-engages the RTP relays in all ongoing RTP relay sessions.
+更新/重新参与所有正在进行的 RTP 中继会话。
 
 
-The function basically works in the same manner as
-				[mi update](#mi_update), but is to be
-				used to update a specific callid. In addition, one can
-				also update the *engine* and
-				*flags* used for the particular
-				session.
+该函数基本上以与 [mi update](#mi_update) 相同的方式工作，
+				但用于更新特定 callid。此外，还可以
+				为特定会话更新使用的 *engine* 和 *flags*。
 
 
-Parameters:
+参数：
 
 
-- *callid* - the callid used to
-					match the dialog to be updated.
-- *engine* - (optional) the new RTP
-					relay engine (i.e. *rtpproxy*
-					or *rtpengine*) to be used. If
-					missing, the same initial engine is used.
-- *set* - (optional) the new RTP
-					relay set to be used. If missing, the default
-					same set will be used as it was initially engaged
-					for.
-- *node* - (optional) the RTP
-					relay node to be used. If not specified, the first
-					available node is used.
-- *flags* - (optional) a JSON
-					contining the *caller* and/or
-					*callee* nodes, which contain
-					new flags that should be used for the session. Only
-					explicitely specified flags will be overwritten.
+- *callid* - 用于
+					匹配要更新的对话的 callid。
+- *engine* -（可选）新的 RTP
+					中继引擎（即 *rtpproxy*
+					或 *rtpengine*）使用。如果
+					缺失，将使用相同的初始引擎。
+- *set* -（可选）新的 RTP
+					中继集合使用。如果缺失，
+					将使用与最初参与的相同默认集合。
+- *node* -（可选）RTP
+					中继节点使用。如果未指定，
+					使用第一个可用节点。
+- *flags* -（可选）一个 JSON，
+					包含 *caller* 和/或
+					*callee* 节点，
+					其中包含应用于会话的新标志。仅
+					显式指定的标志将被覆盖。
 
 
-```c title="rtp_relay:update_callid usage"
+```c title="rtp_relay:update_callid 用法"
 ...
-## update a call with a working RTPproxy node
+## 使用工作的 RTPproxy 节点更新呼叫
 $ opensips-cli -x mi rtp_relay:update_callid 1-3758963@127.0.0.1 rtpproxy
 
-## update a call to use RTPEngine with a SRTP SDP for caller
+## 更新呼叫以使用 RTPEngine，呼叫者使用 SRTP SDP
 $ opensips-cli -x mi rtp_relay:update_callid callid=1-3758963@127.0.0.1 \
 	flags='{ "caller":{"type":"SRTP", "flags":"replace-origin"},
 		"callee":{"type":"RTP", "flags"="replace-origin"}}'
@@ -682,128 +618,104 @@ $ opensips-cli -x mi rtp_relay:update_callid callid=1-3758963@127.0.0.1 \
 ```
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
 #### $rtp_relay
 
 
-Is used to provision the RTP back-end flags for the
-				current peer. This variable is scope-relative: in the
-				main request route of the initial INVITE it provisions
-				the caller, while in the branch route or replies of the
-				initial INVITE transaction it provisions the callee branch.
+用于为当前对等方配置 RTP 后端标志。
+				此变量是作用域相关的：在初始 INVITE 的主请求路由中，
+				它配置呼叫者，而在初始 INVITE 的分支路由或回复中，
+				它配置被呼叫者分支。
 
 
-For a sequential request, the variable represents the
-				flags used for the UAC that generated the request. When
-				used in a reply, the other UAC's flags are provisioned.
+对于顺序请求，该变量表示用于生成请求的 UAC 的标志。
+				当在回复中使用时，配置另一个 UAC 的标志。
 
 
-Use [rtp relay caller](#pv_rtp_relay_caller) and
-				[rtp relay callee](#pv_rtp_relay_callee) when the script
-				needs to address the caller or callee side directly,
-				independent of the route scope.
+当脚本需要直接寻址呼叫者或被呼叫者一侧时，
+				请使用 [rtp relay caller](#pv_rtp_relay_caller) 和
+				[rtp relay callee](#pv_rtp_relay_callee)，
+				独立于路由作用域。
 
 
-In an initial INVITE scope, the variable can be
-				provisioned per branch, by using the variable's index.
+在初始 INVITE 作用域中，变量可以通过使用变量索引
+				按分支配置。
 
 
-For each UAC/peer, there are several flags that can be
-				configured:
+对于每个 UAC/对等方，有多个可以配置的标志：
 
 
-- *flags* (default, when
-					variable is used without a name) - are the flags associated
-					with the current UAC - they are passed along with the offer
-					command
-- *peer* - these flags are
-					passed along in the offer command, but they are flags associated
-					with the other UAC/peer
-- *ip* - the IP that should be
-					advertised in the resulted SDP.
-- *type* - the RTP type used
-					by the current UAC (currently only used by *rtpengine*)
-- *iface* - the interface
-					used for the traffic coming from this UAC.
-- *body* - the body to be used
-					for the UAC.
-- *delete* - flags to be used
-					when the media session is terminated/deleted.
-- *disabled* - provisioned
-					as an integer, it is used to disable RTP relay for this UAC.
+- *flags*（默认，当
+					变量不带名称使用时） - 与当前 UAC 关联的标志，
+					它们与 offer 命令一起传递
+- *peer* - 这些标志
+					在 offer 命令中传递，但它们是与另一个 UAC/对等方关联的标志
+- *ip* - 应在结果 SDP 中公布的 IP。
+- *type* - 当前 UAC 使用的 RTP 类型（目前仅由 *rtpengine* 使用）
+- *iface* - 用于来自此 UAC 的流量的接口。
+- *body* - 用于 UAC 的正文。
+- *delete* - 媒体会话终止/删除时使用的标志。
+- *disabled* - 配置为整数，
+					用于禁用此 UAC 的 RTP 中继。
 
 
 #### $rtp_relay_peer
 
 
-This variable has the same meaning and parameters as the
-				[rtp relay](#pv_rtp_relay) variable, except that it
-				is used to provision the other UAC's flags, except the
-				current one. All other fields are similar.
+此变量具有与 [rtp relay](#pv_rtp_relay) 变量相同的含义和参数，
+				只是用于配置除当前 UAC 之外的其他 UAC 的标志。所有其他字段类似。
 
 
 #### $rtp_relay_caller
 
 
-This variable has the same parameters as
-				[rtp relay](#pv_rtp_relay), but always provisions
-				the caller side of the RTP relay session, independent of
-				the route where it is used.
+此变量具有与 [rtp relay](#pv_rtp_relay) 相同的参数，
+				但总是配置 RTP 中继会话的呼叫者一侧，
+				独立于使用它的路由。
 
 
-In the main request route of the initial INVITE this is
-				equivalent to [rtp relay](#pv_rtp_relay). In a branch
-				route or in replies of the initial INVITE transaction this
-				is equivalent to [rtp relay peer](#pv_rtp_relay_peer).
-				After the dialog is established, it addresses the stored
-				caller leg directly.
+在初始 INVITE 的主请求路由中，这等同于 [rtp relay](#pv_rtp_relay)。
+				在初始 INVITE 的分支路由或回复中，
+				等同于 [rtp relay peer](#pv_rtp_relay_peer)。
+				对话建立后，它直接寻址存储的呼叫者一方。
 
 
 #### $rtp_relay_callee
 
 
-This variable has the same parameters as
-				[rtp relay](#pv_rtp_relay), but always provisions
-				the callee side of the RTP relay session, independent of
-				the route where it is used.
+此变量具有与 [rtp relay](#pv_rtp_relay) 相同的参数，
+				但总是配置 RTP 中继会话的被呼叫者一侧，
+				独立于使用它的路由。
 
 
-In the main request route of the initial INVITE this is
-				equivalent to [rtp relay peer](#pv_rtp_relay_peer). In a
-				branch route or in replies of the initial INVITE
-				transaction this is equivalent to
-				[rtp relay](#pv_rtp_relay). After the dialog is
-				established, it addresses the stored callee leg directly.
+在初始 INVITE 的主请求路由中，这等同于 [rtp relay peer](#pv_rtp_relay_peer)。
+				在初始 INVITE 的分支路由或回复中，
+				等同于 [rtp relay](#pv_rtp_relay)。
+				对话建立后，它直接寻址存储的被呼叫者一方。
 
 
 #### $rtp_relay_ctx()
 
 
-This variable can be used to provide information about the
-				RTP context, information that is not associated with any of
-				the involved peers.
+此变量可用于提供有关 RTP 上下文的信息，
+				这些信息与任何涉及的对等方都没有关联。
 
 
-The following settings can be used:
+可以使用以下设置：
 
 
-- *callid* - The callid
-					to be used for all communication with the rtp server.
-					If not specified, it is taken from the message/dialog.
-- *from_tag* - The from-tag
-					to be used for all communication with the rtp server.
-					If not specified, it is taken from the message/dialog.
-- *to_tag* - The to-tag
-					to be used for all communication with the rtp server.
-					If not specified, it is taken from the message/dialog.
-- *flags* - Generic flags
-					to be sent to all offer/answer requests.
-- *delete* - flags sent
-					when the relay session is terminated.
+- *callid* - 用于与 rtp 服务器的所有通信的 callid。
+					如果未指定，则从消息/对话中获取。
+- *from_tag* - 用于与 rtp 服务器的所有通信的 from-tag。
+					如果未指定，则从消息/对话中获取。
+- *to_tag* - 用于与 rtp 服务器的所有通信的 to-tag。
+					如果未指定，则从消息/对话中获取。
+- *flags* - 发送到所有 offer/answer 请求的通用标志。
+- *delete* - 中继会话终止时发送的标志。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0 版授权

@@ -1,612 +1,335 @@
 ---
-title: "rtpproxy Module"
-description: "This module is used by OpenSIPS to communicate with RTPProxy, a media relay proxy used to make the communication between user agents behind NAT possible."
+title: "rtpproxy 模块"
+description: "此模块用于 OpenSIPS 与 RTPProxy 通信，RTPProxy 是一个媒体中继代理，用于使 NAT 背后的用户代理之间的通信成为可能。"
 ---
 
-## Admin Guide
+## 管理指南
 
+### 概述
 
-### Overview
+此模块用于 OpenSIPS 与 RTPProxy 通信，RTPProxy 是一个媒体中继代理，用于使 NAT 背后的用户代理之间的通信成为可能。
 
+此模块还可与 RTPProxy 一起用于在用户代理之间录制媒体流或向 UAC 或 UAS 播放媒体。
 
-This module is used by OpenSIPS to communicate with RTPProxy, a media
-		relay proxy used to make the communication between user agents behind
-		NAT possible.
+### 多个 RTPProxy 使用
 
+目前，rtpproxy 模块可以支持多个 rtpproxy 用于负载均衡/分发和控制/选择目的。
 
-This module is also used along with RTPProxy to record media streams
-		between user agents or to play media to either UAc or UAs.
+该模块允许定义多组 rtpproxy——负载均衡将在一个集合上执行，用户可以选择应使用哪个集合。集合通过其 ID 选择——ID 与集合一起定义。请参阅 "rtpproxy_sock" 模块参数定义了解语法描述。
 
+集合内的负载均衡由模块根据集合中每个 rtpproxy 的权重自动执行。请注意，如果 rtpproxy 的权重为 0，则仅当没有其他 rtpproxy（权重值不为 0）响应时才会使用它。默认权重为 1。
 
-### Multiple RTPProxy usage
+从 OpenSIPS 2.1 开始，engage_rtp_proxy()、unforce_rtp_proxy() 和 start_recording() 函数已被完全替换为 rtpproxy_engage()、rtpproxy_unforce() 和 rtpproxy_start_recording()。
 
+重要提示：如果您使用多个集合，请确保对 rtpproxy_offer()/rtpproxy_answer() 和 rtpproxy_unforce() 使用相同的集合！
 
-Currently, the rtpproxy module can support multiple rtpproxies for
-		balancing/distribution and control/selection purposes.
+### RTPProxy 超时通知
 
+Nathelper 模块还可以从多个 rtpproxy 接收超时通知。RTPProxy 可以配置为在一段时间（可配置的间隔）未收到任何媒体时发送通知。rtpproxy 模块实现了一个此类通知的监听器，收到通知时会终止 SIP 级别的对话（向两端发送 BYE），借助 dialog 模块的帮助。
 
-The module allows the definition of several sets of rtpproxies - 
-		load-balancing will be performed over a set and the user has the
-		ability to choose what set should be used. The set is selected via
-		its id - the id being defined along with the set. Refer to the 
-		"rtpproxy_sock" module parameter definition for syntax
-		description.
+在我们与 RTPProxy 的测试中，我们观察到一些限制，并提供了针对 git 提交 "600c80493793bafd2d69427bc22fcb43faad98c5" 的补丁。它包含一个补充，并为会话建立阶段和持续会话阶段实现了单独的超时参数。在官方代码中，单个超时参数控制会话建立和 rtp 超时，并且在会话建立阶段也会发送超时通知。这是一个问题，因为我们希望快速检测 rtp 超时，但也允许更长的会话建立时间。
 
+请注意，RTPProxy 版本 [v2.0.0](http://www.rtpproxy.org/post/v2release/) 已将此功能集成到上游，因此不再需要此补丁。
 
-The balancing inside a set is done automatically by the module based on
-		the weight of each rtpproxy from the set. Note that if rtpproxy has weight
-		0, it will be used only when no other rtpproxies  (with a different
-		weight value than 0) respond. Default weight is 1.
+要启用超时通知，您必须遵循几个步骤：通过在配置脚本中设置 "rtpp_notify_socket" 模块参数来启动 OpenSIPS 超时检测。这是将从 rtpproxy 接收进一步通知的套接字。此套接字必须是 TCP 或 UNIX 套接字。此外，对于需要通知的所有调用，必须使用 "n" 标志调用 rtpproxy_engage()、rtpproxy_offer() 和 rtpproxy_answer() 函数。
+配置 RTPProxy 使用超时通知，添加以下命令行参数：
 
+- " -n timeout_socket" - 指定通知将发送到的位置。此套接字必须与 "rtpp_notify_socket" OpenSIPS 模块参数相同。此参数是必需的。
+- " -T ttl" - 将 rtp 会话超时限制为 "ttl"。此参数是可选的，默认值为 60 秒。
+- " -W ttl" - 将会话建立超时限制为 "ttl"。此参数是可选的，默认值为 60 秒。
 
-Starting with OpenSIPS 2.1, engage_rtp_proxy(), unforce_rtp_proxy()
-		and start_recording() functions have been fully replaced by
-		rtpproxy_engage(), rtpproxy_unforce() and rtpproxy_start_recording().
+所有先前的参数都可以与官方 RTPProxy 版本一起使用，除了最后一个。它与 RTPProxy 的其他修改一起添加，以便正常工作。补丁位于模块的 *patches* 目录中。
+要从 git 获取打补丁的版本，您必须遵循以下步骤：
 
+- 获取最新的源代码："git clone git://sippy.git.sourceforge.net/gitroot/sippy/rtpproxy"
+- 从提交创建分支："git checkout -b branch_name 600c80493793bafd2d69427bc22fcb43faad98c5"
+- 修补 RTPProxy："patch < path_to_rtpproxy_patch"
 
-IMPORTANT: if you use multiple sets, make sure you use the same set for
-		both rtpproxy_offer()/rtpproxy_answer() and rtpproxy_unforce()!!
+打补丁的版本也可以在以下位置找到：https://opensips.org/pub/rtpproxy/
 
+### 依赖
 
-### RTPProxy timeout notifications
+#### OpenSIPS 模块
 
+以下模块必须在此模块之前加载：
 
-Nathelper module can also receive timeout notifications from multiple
-		rtpproxies. RTPProxy can be configured to send notifications when
-		a session doesn't receive any media for a configurable interval of
-		time. The rtpproxy modules has implemented a listener for such
-		notifications and when received it terminates the dialog at SIP
-		level (send BYE to both ends), with the help of dialog module.
+- *数据库* 模块——仅当您想使用数据库表加载 rtp proxy 集合时。
+- *dialog* 模块——如果使用 rtpproxy_engage 函数或 RTPProxy 超时通知。
 
+#### 外部库或应用程序
 
-In our tests with RTPProxy we observed some limitations and also
-		provide a patch for it against git commit
-		"600c80493793bafd2d69427bc22fcb43faad98c5".
-		It contains an addition and implements separate timeout parameters
-		for the phases of session establishment and ongoing sessions.
-		In the official code a single timeout parameter controls
-		both session establishment and rtp timeout and the timeout
-		notification is also sent in the call establishment phase.
-		This is a problem since we want to detect rtp timeout fast, but also
-		allow a longer period for call establishment.
+运行加载此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
+- *无*。
 
-Note that RTPProxy version
-		[v2.0.0](http://www.rtpproxy.org/post/v2release/)
-		has integrated this feature upstream, therefore this patch is no
-		longer needed.
-
-
-To enable timeout notification there are several steps that you must follow:
-		Start OpenSIPS timeout detection by setting the "rtpp_notify_socket"
-			module parameter in your configuration script. This is the socket where further
-			notification will be received from rtpproxies. This socket must be a TCP or 
-			UNIX socket. Also, for all the calls that require notification, the
-			rtpproxy_engage(), rtpproxy_offer() and rtpproxy_answer() functions must
-			be called with the "n" flag.
-		Configure RTPProxy to use timeout notification by adding
-			the following command line parameters:
-			
-				
-					" -n timeout_socket" - specifies
-						where the notifications will be sent. This socket
-						must be the same as "rtpp_notify_socket"
-						OpenSIPS module parameter. This parameter is mandatory.
-				
-				
-					" -T ttl" - limits the rtp session
-						timeout to "ttl". This parameter
-						is optional and the default value is 60 seconds.
-				
-				
-					" -W ttl" - limits the session
-						establishment timeout to "ttl".
-						This parameter is optional and the default value 
-						is 60 seconds.
-			All of the previous parameters can be used with the offical
-				RTPProxy release, except for the last one. It has been
-				added, together with other modifications to RTPProxy in order
-				to work properly. The patch is located in the
-				*patches* directory in the module.
-			To get the patched version from git you must follow theese steps:
-				
-					
-						Get the latest source code: "git clone git://sippy.git.sourceforge.net/gitroot/sippy/rtpproxy"
-					
-					
-						Make a branch from the commit: "git checkout
-								-b branch_name 600c80493793bafd2d69427bc22fcb43faad98c5"
-					
-					
-						Patch RTPProxy: "patch <
-								path_to_rtpproxy_patch"
-			The patched version can also be found at:
-				https://opensips.org/pub/rtpproxy/
-
-
-### Dependencies
-
-
-#### OpenSIPS Modules
-
-
-The following modules must be loaded before this module:
-
-
-- *a database* module - only if you want
-				to load use a database table from where to load the rtp proxies
-				sets.
-- *dialog* module - if using the rtpproxy_engage
-				functions or RTPProxy timeout notifications.
-
-
-#### External Libraries or Applications
-
-
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
-
-
-- *None*.
-
-
-### Exported Parameters
-
+### 导出的参数
 
 #### rtpproxy_sock (string)
 
+用于连接（一组）RTPProxy 的套接字定义。它可以指定 UNIX 套接字、IPv4/IPv6 UDP 套接字或 IPv4/IPv6 TCP 套接字。如果缺少协议部分（即 "udp:"），则套接字被视为 UNIX 套接字。
 
-Definition of socket(s) used to connect to (a set) RTPProxy. It may 
-		specify a UNIX socket, an IPv4/IPv6 UDP socket or an IPv4/IPv6 TCP socket.
-		If the protocol part (i.e. "udp:") is missing, the socket is
-		treated as a UNIX socket.
+该定义还支持指定不同的 IP 来广告，而不是 RTPProxy 返回的 IP。当有多个 RTPProxy 服务器位于 NAT 背后、仅监听私有接口但需要广告一个公有接口时，这很有用。
 
+*默认值为 "NONE"（禁用）。*
 
-The definition also supports to specify a different IP that will
-			be advertised instead of the one returned by RTPProxy. This is
-			useful when having multiple RTPProxy servers that are located
-			behind NAT, and listen only on private intefaces, but need to
-			advertise a public one.
-
-
-*Default value is "NONE" (disabled).*
-
-
-```c title="Set rtpproxy_sock parameter"
+```c title="设置 rtpproxy_sock 参数"
 ...
-# single rtpproxy with specific weight
+# 具有特定权重的单个 rtpproxy
 modparam("rtpproxy", "rtpproxy_sock", "udp:localhost:22222=2")
 
-# single rtpproxy with advertised address + weight
+# 具有广告地址 + 权重的单个 rtpproxy
 modparam("rtpproxy", "rtpproxy_sock", "udp:localhost:22222|8.8.8.8=2")
 
-# multiple rtproxies for LB
+# 用于 LB 的多个 rtpproxy
 modparam("rtpproxy", "rtpproxy_sock",
 	"udp:localhost:22222 udp:localhost:22223 tcp:remote1:33422 tcp6:remote2:32322")
 
-# multiple sets of multiple rtproxies
+# 多组多个 rtpproxy
 modparam("rtpproxy", "rtpproxy_sock", "1 == udp:localhost:22222 udp:localhost:22223")
 modparam("rtpproxy", "rtpproxy_sock", "2 == udp:localhost:22223")
 modparam("rtpproxy", "rtpproxy_sock", "2 == udp:localhost:22223|8.8.8.8")
 ...
 ```
 
-
 #### rtpproxy_disable_tout (integer)
 
+一旦 RTPProxy 被确定为不可达并被标记为禁用，rtpproxy 将在 rtpproxy_disable_tout 秒内不尝试与 RTPProxy 建立通信。
 
-Once RTPProxy was found unreachable and marked as disable, rtpproxy
-		will not attempt to establish communication to RTPProxy for 
-		rtpproxy_disable_tout seconds.
+*默认值为 "60"。*
 
-
-*Default value is "60".*
-
-
-```c title="Set rtpproxy_disable_tout parameter"
+```c title="设置 rtpproxy_disable_tout 参数"
 ...
 modparam("rtpproxy", "rtpproxy_disable_tout", 20)
 ...
 ```
 
-
 #### rtpproxy_timeout (string)
 
+等待 RTPProxy 回复的超时值。
 
-Timeout value in waiting for reply from RTPProxy.
+*默认值为 "1"。*
 
-
-*Default value is "1".*
-
-
-```c title="Set rtpproxy_timeout parameter to 200ms"
+```c title="将 rtpproxy_timeout 设置为 200ms"
 ...
 modparam("rtpproxy", "rtpproxy_timeout", "0.2")
 ...
 ```
 
-
 #### rtpproxy_autobridge (integer)
 
+启用自动桥接功能。在执行串行/并行分叉时无法正常工作！
 
-Enable auto-bridging feature. Does not properly function when doing serial/parallel forking!
+*默认值为 "0"。*
 
-
-*Default value is "0".*
-
-
-```c title="Enable auto-bridging feature"
+```c title="启用自动桥接功能"
 ...
 modparam("rtpproxy", "rtpproxy_autobridge", 1)
 ...
 ```
 
-
 #### rtpproxy_retr (integer)
 
+rtpproxy 应在发生超后重试发送和接收的次数。
 
-How many times rtpproxy should retry to send and receive after
-		timeout was generated.
+*默认值为 "5"。*
 
-
-*Default value is "5".*
-
-
-```c title="Set rtpproxy_retr parameter"
+```c title="设置 rtpproxy_retr 参数"
 ...
 modparam("rtpproxy", "rtpproxy_retr", 2)
 ...
 ```
 
-
 #### default_set (integer)
 
+该参数指示在配置文件中配置引擎时未指定显式集合时，或调用 *rtpproxy_*() 函数时未指定显式集合时要使用的默认 RTPProxy 集合。
 
-The parameter indicates the default RTPProxy set to be used when
-			provisioning an engine in the config file without an explicit set,
-			or when calling one of the *rtpproxy_*()*
-			functions without an explicit set.
+*默认值为集合 "0"。*
 
-
-*Default value is set "0".*
-
-
-```c title="Set default_set parameter"
+```c title="设置 default_set 参数"
 ...
 modparam("rtpproxy", "default_set", 1)
 ...
 ```
 
-
 #### nortpproxy_str (string)
 
+该参数设置 rtpproxy 用于标记数据包 SDP 信息已被修改的 SDP 属性。
 
-The parameter sets the SDP attribute used by rtpproxy to mark
-		the packet SDP informations have already been mangled.
-
-
-If empty string, no marker will be added or checked.
-
+如果为空字符串，则不会添加或检查标记。
 
 > [!NOTE]
-> The string must be a complete SDP line, including the EOH (\r\n).
+> 该字符串必须是完整的 SDP 行，包括 EOH（\r\n）。
 
+*默认值为 "a=nortpproxy:yes\r\n"。*
 
-*Default value is "a=nortpproxy:yes\r\n".*
-
-
-```c title="Set nortpproxy_str parameter"
+```c title="设置 nortpproxy_str 参数"
 ...
 modparam("rtpproxy", "nortpproxy_str", "a=sdpmangled:yes\r\n")
 ...
 ```
 
-
 #### db_url (string)
 
+数据库 URL。如果您想使用数据库表来加载或重新加载用于连接（一组）RTPProxy 的套接字定义，则应设置此参数。数据库表的记录将在启动时读取（添加到使用 rtpproxy_sock 模块参数定义的记录），并在发出 MI 命令 rtpproxy_reload 时读取（定义将被数据库表中的定义替换）。
 
-The database url. This parameter should be set if you want to 
-			use a database table from where to load or reload definitions of
-			socket(s) used to connect to (a set) RTPProxy. The record from
-			the database table will be read at start up (added to the ones
-			defined with the rtpproxy_sock module parameter) and when the MI command
-			rtpproxy_reload is issued(the definitions will be replaced with the
-			ones from the database table).
+*默认值为 "NULL"。*
 
-
-*Default value is "NULL".*
-
-
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("rtpproxy", "db_url", 
 		"mysql://opensips:opensipsrw@192.168.2.132/opensips")
 ...
 ```
 
-
 #### db_table (string)
 
+包含用于连接（一组）RTPProxy 的套接字定义的数据库表名称。
 
-The name of the database table containing definitions of
-			socket(s) used to connect to (a set) RTPProxy.
+*默认值为 "rtpproxy_sockets"。*
 
-
-*Default value is "rtpproxy_sockets".*
-
-
-```c title="Set db_table parameter"
+```c title="设置 db_table 参数"
 ...
 modparam("rtpproxy", "db_table", "nh_sockets") 
 ...
 ```
 
-
 #### rtpp_socket_col (string)
 
+数据库表中 rtpp 套接字列的名称。
 
-The name rtpp socket column in the database table.
+*默认值为 "rtpproxy_sock"。*
 
-
-*Default value is "rtpproxy_sock".*
-
-
-```c title="Set rtpp_socket_col parameter"
+```c title="设置 rtpp_socket_col 参数"
 ...
 modparam("rtpproxy", "rtpp_socket_col", "rtpp_socket") 
 ...
 ```
 
-
 #### set_id_col (string)
 
+数据库表中集合 ID 列的名称。
 
-The name set id column in the database table.
+*默认值为 "set_id"。*
 
-
-*Default value is "set_id".*
-
-
-```c title="Set set_id parameter"
+```c title="设置 set_id 参数"
 ...
 modparam("rtpproxy", "set_id_col", "rtpp_set_id") 
 ...
 ```
 
-
 #### rtpp_notify_socket (string)
 
+OpenSIPS 监听 RTPProxy 通知的套接字。目前 OpenSIPS 可以接收 RTP 超时和 DTMF 事件。
 
-The socket OpenSIPS listens for notifications from RTPProxy.
-			Currently OpenSIPS can receive RTP timeout and DTMF events.
+*默认值为 "NULL" - 不接收通知。*
 
-
-*Default value is "NULL" - no notifications are received.*
-
-
-```c title="Set rtpp_notify_socket parameter"
+```c title="设置 rtpp_notify_socket 参数"
 ...
 modparam("rtpproxy", "rtpp_notify_socket", "tcp:10.10.10.10:9999")
 
-# use an UNIX socket
+# 使用 UNIX 套接字
 modparam("rtpproxy", "rtpp_notify_socket", "unix:/tmp/rtpproxy.unix")
-# or
+# 或
 modparam("rtpproxy", "rtpp_notify_socket", "/tmp/rtpproxy.unix")
 ...
 ```
 
-
 #### generated_sdp_port_min (integer)
 
+当 RTPProxy 模块需要生成 SDP 正文时，使用此值作为端口的最小值。
 
-When RTPProxy module needs to generate an SDP body,
-			use this value as the minimum value of the port.
+*默认值为 "35000"。*
 
-
-*Default value is "35000".*
-
-
-```c title="Set generated_sdp_port_min parameter"
+```c title="设置 generated_sdp_port_min 参数"
 ...
 modparam("rtpproxy", "generated_sdp_port_min", 10000)
 ...
 		
 ```
 
-
 #### generated_sdp_port_max (integer)
 
+当 RTPProxy 模块需要生成 SDP 正文时，使用此值作为端口的最大值。
 
-When RTPProxy module needs to generate an SDP body,
-			use this value as the maximum value of the port.
+*默认值为 "65000"。*
 
-
-*Default value is "65000".*
-
-
-```c title="Set generated_sdp_port_max parameter"
+```c title="设置 generated_sdp_port_max 参数"
 ...
 modparam("rtpproxy", "generated_sdp_port_max", 30000)
 ...
 		
 ```
 
-
 #### generated_sdp_media_ip (string)
 
+当 RTPProxy 模块需要生成 SDP 正文时，使用此值作为 *c=* 和 *o=* 中的 media_ip。
 
-When RTPProxy module needs to generate an SDP body,
-			use this value as the media_ip in the *c=*
-			and the *o=*.
+*默认值为 "127.0.0.1"。*
 
-
-*Default value is "127.0.0.1".*
-
-
-```c title="Set generated_sdp_media_ip parameter"
+```c title="设置 generated_sdp_media_ip 参数"
 ...
 modparam("rtpproxy", "generated_sdp_media_ip", "10.0.0.1")
 ...
 		
 ```
 
-
-### Exported Functions
-
+### 导出的函数
 
 #### rtpproxy_engage([[flags][, [ip_address][, [set_id][, [sock_var][, ret_var]]]]])
 
+重写 SDP 正文以确保媒体通过 RTP 代理。它使用 dialog 模块功能来跟踪何时需要更新 rtpproxy 会话。函数只能为初始 INVITE 调用，并内部负责重写 200 OK 和 ACK 的正文。请注意，当在桥接模式下使用时，此函数可能在 SDP 中广告错误的接口（由于 OpenSIPS 不知道 RTPProxy 配置），因此您可能面临未定义的行为。
 
-Rewrites SDP body to ensure that media is passed through
-		an RTP proxy. It uses the dialog module facilities to keep track
-		when the rtpproxy session must be updated. Function must only be
-		called for the initial INVITE
-		and internally takes care of rewriting the body of 200 OKs and ACKs.
-		Note that when used in bridge mode, this function might advertise wrong
-		interfaces in SDP (due to the fact that OpenSIPS is not aware of the RTPProxy
-		configuration), so you might face an undefined behavior.
+参数的含义如下：
 
+- *flags(string，可选)* - 用于开启某些功能的标志：
+  - *a* - 标志表示收到消息的 UA 不支持对称 RTP。
+  - *l* - 强制"查找"，即，仅当相应会话已在 RTP 代理中存在时才重写 SDP。默认情况下，当会话将要完成时启用（在非交换模式的回复或交换模式的 ACK 中）。
+  - *k* - 仅创建 RTPProxy 会话，但不修改 SDP 正文。当您只想注入一些媒体但不想在整个呼叫中参与 RTPProxy 时，这很有用。
+  - *i/e* - 当 RTPProxy 用于桥接模式时，这些标志用于指示当前请求/回复的媒体流方向。'i' 指的是 LAN（内部网络），对应于 RTPProxy 的第一个接口（如 -l 参数所指定）。'e' 指的是 WAN（外部网络），对应于 RTPProxy 的第二个接口。这些标志应始终一起使用。例如，来自 Internet（WAN）到本地媒体服务器（LAN）的 INVITE（offer）应使用 'ei' 标志。应答应使用 'ie' 标志。根据场景，也支持 'ii' 和 'ee' 组合。仅在 RTPProxy 以桥接模式运行时才有意义。
+  - *注意：*当在桥接模式下使用 RTPProxy 时，所有会话都被视为非对称的（与在正常模式下使用的对称相反）。如果您有对称客户端（这是最常见的场景），您将必须强制使用 *s*！
+  - *f* - 指示 rtpproxy 忽略另一个 rtpproxy 在中继插入的标记，以指示会话已经通过另一个代理。允许创建代理链。
+  - *r* - 标志表示 SDP 中的 IP 地址应该是可信的。没有此标志，rtpproxy 忽略 SDP 中的地址，使用 SIP 消息的源地址作为传递给 RTP 代理的媒体地址。
+  - *o* - 标志表示也应该更改源描述（o=）中的 IP。
+  - *c* - 标志用于在媒体描述也包含连接信息时更改会话级 SDP 连接（c=）IP。
+  - *s/w* - 标志用于强制收到消息的 UA 支持对称 RTP。
+  - *n[<SOCKET>]* - 标志为此会话启用超时通知。可以选择在 < 和 > 标签之间指定可选的"广告"套接字。如果未指定套接字，则使用 *rtpp_notify_socket* 的值。
+  - *d[NNN]* - 为此呼叫启用 DTMF 通知。可以选择指定 DTMF 将用于此呼叫的有效载荷类型——如果未指定，RTPProxy 使用 *101* pt。请注意，此功能目前仅在 RTPProxy *rtpp_2_1_dtmf* 分支中可用。
+  - *tNN* - 可用于为呼叫方指定 RTP ttl。NN 表示该流的超时秒数。这在呼叫保持场景中很有用，因为只有一个客户端在发送 RTP。
+  - *TNN* - 与 *tNN* 参数类似，但用于调整被呼叫方的 RTP ttl。
+  - *zNN* - 请求 RTPproxy 执行来自已发送当前消息的 UA 的 RTP 流量的重新打包，以尽可能增加或减少每个 RTP 数据包转发的有效载荷大小。NN 是目标有效载荷大小（以毫秒为单位），对于大多数编解码器，其值应为 10 毫秒的增量，但是对于某些编解码器，增量可能不同（例如 GSM 为 30 毫秒，G.723 为 20 毫秒）。RTPproxy 将选择编解码器支持的最接近的值。此功能可用于显著降低低比特率编解码器的带宽开销，例如 G.729 从 10ms 到 100ms 可节省三分之二的网络带宽。
+- *ip_address(string，可选)* - 新的 SDP IP 地址。
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。请注意，变量仅在初始请求中填充。
+- *ret_var(var，可选)* - 用于打印 RTPProxy 服务器用于此呼叫的 IP 和端口的变量。这在使用 *rtp_cluster* 时特别有用，它可以广告其背后的多个服务器。返回值的格式为 *IP:port*。请注意，变量仅在初始请求中填充。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
-
-- *flags(string, optional)* - flags to turn on some features.
-
-  - *a* - flags that UA from which message is
-				received doesn't support symmetric RTP.
-  - *l* - force "lookup", that is,
-				only rewrite SDP when corresponding session is already exists 
-				in the RTP proxy. By default is on when the session is to be
-				completed (reply in non-swap or ACK in swap mode).
-  - *k* - only create RTPProxy session, but do
-				not modify the SDP body. This is useful when you only want to
-				inject some media, but do not want to engage RTPProxy in the
-				entire call.
-  - *i/e* - when RTPProxy is used in bridge mode,
-				these flags are used to indicate the direction of the media flow
-				for the current request/reply. 'i' refers to the LAN (internal
-				network) and corresponds to the first interface of RTPProxy (as
-				specified by the -l parameter). 'e' refers to the WAN (external
-				network) and corresponds to the second interface of RTPProxy.
-				These flags should always be used together. For example, an
-				INVITE (offer) that comes from the Internet (WAN) to goes to a
-				local media server (LAN) should use the 'ei' flags. The answer
-				should use the 'ie' flags. Depending on the scenario, the 'ii'
-				and 'ee' combination are also supported. Only makes sense when
-				RTPProxy is running in the bridge mode.
-*NOTE:* when using RTPProxy in bridge mode,
-				all sessions are considered asymmetric (as oposed to symmetric
-				if used in normal mode). If you have symmetric clients (this
-				is the most common scenario), you'll have to force the
-				*s*!
-  - *f* - instructs rtpproxy to ignore marks 
-				inserted by another rtpproxy in transit to indicate that the 
-				session is already goes through another proxy. Allows creating 
-				chain of proxies.
-  - *r* - flags that IP address in SDP should 
-				be trusted. Without this flag, rtpproxy ignores address in 
-				the SDP and uses source address of the SIP message as media 
-				address which is passed to the RTP proxy.
-  - *o* - flags that IP from the origin 
-				description (o=) should be also changed.
-  - *c* - flags to change the session-level 
-				SDP connection (c=) IP if media-description also includes 
-				connection information.
-  - *s/w* - flags that for the UA from which 
-				message is received, support symmetric RTP must be forced.
-  - *n[<SOCKET>]* - flags that enables
-				the notification timeout for the session. One can specify an
-				optional "advertised" socket between the < and > tags.
-				If the socket is not specified, the value of
-				*rtpp_notify_socket* is used.
-  - *d[NNN]* - enables DTMF notifications for this
-				call. One can optionally specify the payload type that DTMF will
-				be used for this call - it it is not specified, RTPProxy uses the
-				*101* pt. *NOTE:* this feature
-				is currently only available in the RTPProxy
-				*rtpp_2_1_dtmf* branch.
-  - *tNN* - can be used to specify a RTP
-				ttl for the caller. The NN represents the timeout in seconds
-				for that stream. This can be useful in music on hold scenarios
-				where only one client is sending RTP.
-  - *TNN* - Similar to the *tNN*
-				paramaeter, but used for tuning the calllee's ttl for RTP.
-  - *zNN* - requests the RTPproxy to perform
-				re-packetization of RTP traffic coming from the UA which
-				has sent the current message to increase or decrease payload
-				size per each RTP packet forwarded if possible.  The NN is the
-				target payload size in ms, for the most codecs its value should
-				be in 10ms increments, however for some codecs the increment
-				could differ (e.g. 30ms for GSM or 20ms for G.723).  The
-				RTPproxy would select the closest value supported by the codec.
-				This feature could be used for significantly reducing bandwith
-				overhead for low bitrate codecs, for example with G.729 going
-				from 10ms to 100ms saves two thirds of the network bandwith.
-- *ip_address(string, optional)* - new SDP IP address.
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-		socket chosen for this call. Note that the variable will only be populated in the
-		initial request.
-- *ret_var(var, optional)* - variable used to print the IP and port
-		the RTPProxy server is using for this call. This is useful especially when using
-		the *rtp_cluster*, which can advertise multiple servers behind it.
-		The format of the value returned is *IP:port*.
-		Note that the variable will only be populated in the initial request.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE.
-
-
-```c title="rtpproxy_engage usage"
+```c title="rtpproxy_engage 用法"
 ...
 if (is_method("INVITE") && has_totag()) {
 	if ($var(setid) != 0) {
 		rtpproxy_engage(,,$var(setid), $var(proxy));
-		xlog("SCRIPT: RTPProxy server used is $var(proxy)\n");
+		xlog("脚本: 使用的 RTPProxy 服务器是 $var(proxy)\n");
 	} else {
 		rtpproxy_engage();
-		xlog("SCRIPT: using default RTPProxy set\n");
+		xlog("脚本: 使用默认 RTPProxy 集合\n");
 	}
 }
 ...
 		
 ```
 
-
 #### rtpproxy_offer([[flags][, [ip_address][, [set_id][, [sock_var][, [ret_var][, [body_var][, [bind_local]]]]]]]])
 
+重写 SDP 正文以确保媒体通过 RTP 代理。应在 SDP 在 INVITE 和 200 OK 中时对 INVITE 调用，以及 SDP 在 200 OK 和 ACK 中时对 200 OK 调用。
 
-Rewrites SDP body to ensure that media is passed through
-                an RTP proxy. To be invoked
-		on INVITE for the cases the SDPs are in INVITE and 200 OK and on 200 OK
-		when SDPs are in 200 OK and ACK.
+该函数接收与 `rtpproxy_engage()` 相同的参数，以及名为 *body_var* 和 *bind_local* 的额外参数。*body_var* 参数用作挑战 RTP 代理服务器应使用的正文的输入输出变量。如果指定了变量，函数使用其内容作为挑战的正文，并在其中返回结果正文。如果未使用，则使用消息的正文，并且更改传出正文。
 
+可选的 *bind_local* 参数直接在整个呼叫上提供本地绑定/接口值。当设置为字符串时，其值作为 *l<value>* 附加到 RTPProxy U/L 命令（例如，"[1:2:3]" 用于 IPv6）。这适用于 `rtpproxy_offer()` 和 `rtpproxy_answer()`。
 
-The function receives the same parameters as
-					`rtpproxy_engage()`, as well as extra
-					parameters named *body_var* and
-					*bind_local*. The *body_var*
-					parameter is used as an in-out variable for the body that
-					should be used to challenge RTP proxy server. If the variable
-					is specified, the function uses its content as the body to
-					challenge, and returns the resulting body in it. If not used,
-					the message's body is used, and the outgoing body is changed.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
-
-The optional *bind_local* parameter provides
-					the local bind/interface value directly on the call. When set
-					to a string, its value is appended as
-					*l<value>* to the RTPProxy U/L command
-					(for example, "[1:2:3]" for IPv6). This applies to both
-					`rtpproxy_offer()` and
-					`rtpproxy_answer()`.
-
-
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE,
-		FAILURE_ROUTE, BRANCH_ROUTE.
-
-
-```c title="rtpproxy_offer usage"
+```c title="rtpproxy_offer 用法"
 route {
 ...
     if (is_method("INVITE")) {
@@ -639,96 +362,51 @@ onreply_route[2]
 }
 ```
 
-
 #### rtpproxy_answer([[flags][, [ip_address][, [set_id][, [sock_var][, [ret_var][, [body_var][, [bind_local]]]]]]]])
 
+重写 SDP 正文以确保媒体通过 RTP 代理。应在 SDP 在 INVITE 和 200 OK 中时对 200 OK 调用，以及 SDP 在 200 OK 和 ACK 中时对 ACK 调用。
 
-Rewrites SDP body to ensure that media is passed through
-		an RTP proxy. To be invoked
-		on 200 OK for the cases the SDPs are in INVITE and 200 OK and on ACK
-		when SDPs are in 200 OK and ACK.
+有关参数含义，请参阅上面的 `rtpproxy_offer()` 函数描述。
 
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
-See `rtpproxy_offer()` function description
-			above for the meaning of the parameters.
-
-
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE,
-		FAILURE_ROUTE, BRANCH_ROUTE.
-
-
-See rtpproxy_offer() function example above for example.
-
+上面的 rtpproxy_offer() 函数示例请参见该函数示例。
 
 #### rtpproxy_unforce([[set_id][, sock_var]])
 
+拆除当前呼叫的 RTPProxy 会话。
 
-Tears down the RTPProxy session for the current call.
+参数的含义如下：
 
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE 使用。
 
-
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-			socket chosen for this call.
-
-
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE.
-
-
-```c title="rtpproxy_unforce usage"
+```c title="rtpproxy_unforce 用法"
 ...
 rtpproxy_unforce();
 ...
 ```
 
-
 #### rtpproxy_stream2uac(prompt_name, count[, [set_id][, sock_var]]), rtpproxy_stream2uas(prompt_name, count[, [set_id][, sock_var]])
 
+指示 RTPproxy 流式传输使用 RTPproxy 分发中的 makeann 命令预编码的提示/公告。uac/uas 后缀选择谁将听到与当前事务相关的公告——UAC 或 UAS。例如，在请求处理块中对 ACK 事务调用 `rtpproxy_stream2uac` 将向生成原始 INVITE 和 ACK 的 UA 播放提示，而在 183 回复处理块中调用 `rtpproxy_stop_stream2uas` 将向生成 183 的 UA 播放提示。
 
-Instruct the RTPproxy to stream prompt/announcement pre-encoded with
-	    the makeann command from the RTPproxy distribution. The uac/uas
-	    suffix selects who will hear the announcement relatively to the current
-	    transaction - UAC or UAS. For example invoking the
-	    `rtpproxy_stream2uac` in the request processing
-	    block on ACK transaction will play the prompt to the UA that has
-	    generated original INVITE and ACK while
-	    `rtpproxy_stop_stream2uas` on 183 in reply
-	    processing block will play the prompt to the UA that has generated 183.
+除了生成公告，此函数的另一个可能应用是实现呼叫保持（MOH）功能。当 count 为 -1 时，流将无限循环，直到发出适当的 `rtpproxy_stop_stream2xxx`。
 
+为了正确工作，函数要求会话已存在于 RTPproxy 中。此外，这些函数不修改 SDP，因此它们不能替代调用 `rtpproxy_offer` 或 `rtpproxy_answer`。
 
-Apart from generating announcements, another possible application
-	    of this function is implementing music on hold (MOH) functionality.
-	    When count is -1, the streaming will be in loop indefinitely until
-	    the appropriate `rtpproxy_stop_stream2xxx` is issued.
+此函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE 使用。
 
+参数的含义如下：
 
-In order to work correctly, functions require that the session in the
-	    RTPproxy already exists. Also those functions don't alted SDP, so that
-	    they are not substitute for calling `rtpproxy_offer`
-	    or `rtpproxy_answer`.
+- *prompt_name* (string) - 要流式传输的提示名称。应该是绝对路径名或相对于 RTPproxy 运行目录的路径名。
+- *count* (int) - 提示应重复的次数。值 -1 表示它将无限循环流式传输，直到发出适当的 `rtpproxy_stop_stream2xxx`。
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。
 
-
-This function can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
-
-
-Meaning of the parameters is as follows:
-
-
-- *prompt_name* (string) - name of the prompt to
-		    stream.  Should be either absolute pathname or pathname
-		    relative to the directory where RTPproxy runs.
-- *count* (int) - number of times the prompt
-		    should be repeated.  The value of -1 means that it will
-		    be streaming in loop indefinitely, until appropriate
-		    `rtpproxy_stop_stream2xxx` is issued.
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-			socket chosen for this call.
-
-
-```c title="rtpproxy_stream2xxx usage"
+```c title="rtpproxy_stream2xxx 用法"
 ...
     if (is_method("INVITE")) {
         rtpproxy_offer();
@@ -742,336 +420,205 @@ Meaning of the parameters is as follows:
 	    
 ```
 
-
 #### rtpproxy_stop_stream2uac([[set_id][, sock_var]]), rtpproxy_stop_stream2uas([[set_id][, sock_var]])
 
+停止之前由相应的 `rtpproxy_stream2xxx` 启动的公告/提示/MOH 流式传输。uac/uas 后缀选择应停止哪个与当前事务相关的公告——UAC 或 UAS。
 
-Stop streaming of announcement/prompt/MOH started previously by the
-	    respective `rtpproxy_stream2xxx`.  The uac/uas
-	    suffix selects whose announcement relatively to tha current
-	    transaction should be stopped - UAC or UAS.
+参数的含义如下：
 
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。
 
-Meaning of the parameters is as follows:
-
-
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-			socket chosen for this call.
-
-
-These functions can be used from REQUEST_ROUTE, ONREPLY_ROUTE.
-
+这些函数可以从 REQUEST_ROUTE、ONREPLY_ROUTE 使用。
 
 #### rtpproxy_start_recording([[set_id][, [sock_var][, [flags][, [destination][, mediastream]]]]])
 
+此命令将向 RTP-Proxy 发送信号以在 RTP-Proxy 上录制 RTP 流。
 
-This command will send a signal to the RTP-Proxy to record 
-		the RTP stream on the RTP-Proxy.
+参数的含义如下：
 
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。
+- *flags(string，可选)* - 传递给 RTPProxy 用于录制的标志列表。目前仅支持 *s*，它指示 RTPProxy 应将两个音频腿录制在单个文件中。请注意，此功能从 RTPProxy 2.0 开始可用。
+- *destination(string，可选)* - 录制的目的地。如果格式为 *udp:IP:port*，RTPProxy 将 RTP 流发送到该 *IP:port* 远程目的地。否则，目的地表示录制目录中的文件名。
+- *mediastream(int，可选)* - 仅当指定了 *destination* 时才使用此参数，表示要录制/拷贝的媒体流的索引，从 1 开始。如果此参数缺失，OpenSIPS 指示 RTPProxy 拷贝所有流。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE 和 ONREPLY_ROUTE 使用。
 
-
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-			socket chosen for this call.
-- *flags(string, optional)* - a list of flags passed to
-					RTPProxy for the recording. Currently only *s*
-					is supported, and it indicates that RTPProxy should record both
-					audio legs in a single file. Note that this feature is available
-					starting with RTPProxy 2.0.
-- *destination(string, optional)* - the destination of
-					the recording. If it has the  *udp:IP:port*
-					format, RTPProxy sends the RTP stream to that *IP:port*
-					remote destination. Otherwise, destination represents the name
-					of the file in the recording directory.
-- *mediastream(int, optional)* - this parameter is only used
-					if the *destination* is specified, and represents
-					the index of media stream to record/copy, starting from 1. If this parameter
-					is missing, OpenSIPS instructs RTPProxy to copy all the streams.
-
-
-This function can be used from REQUEST_ROUTE and ONREPLY_ROUTE.
-
-
-```c title="rtpproxy_start_recording usage"
+```c title="rtpproxy_start_recording 用法"
 ...
 rtpproxy_start_recording();
 
-# copy RTP stream to a different listener
+# 将 RTP 流拷贝到不同的监听器
 rtpproxy_start_recording(,,,"udp:127.0.0.1:60000");
 
-# copy only first RTP stream (audio stream)
+# 仅拷贝第一个 RTP 流（音频流）
 rtpproxy_start_recording(,,,"udp:127.0.0.1:60000", 1);
 ...
 		
 ```
 
-
 #### rtpproxy_stats(up_pvar, down_var, sent_var, fail_var[, [set_id][, sock_var]])
 
+此命令从 RTP-Proxy 收集呼叫 RTP 统计信息。
 
-This command gathers call RTP statistics from RTP-Proxy.
+参数的含义如下：
 
+- *up_var* (var) - 用于返回此呼叫的 *上游* 发送的数据包数的变量。
+- *down_var* (var) - 用于返回此呼叫的 *下游* 发送的数据包数的变量。
+- *sent_var* (var) - 用于返回此呼叫发送的数据包总数的变量。
+- *up_var* (var) - 用于返回此呼叫失败的数据包数的变量。
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。
 
-Meaning of the parameters is as follows:
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE 和 LOCAL_ROUTE 使用。
 
-
-- *up_var* (var) - the variable used to return the
-					packets sent by *upstream* for this call.
-- *down_var* (var) - the variable used to return the
-					packets sent by *downstream* for this call.
-- *sent_var* (var) - the variable used to return the
-					total number of packets sent for this call.
-- *up_var* (var) - the variable used to return the
-					number of failed packets for this call.
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-			socket chosen for this call.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE,
-			BRANCH_ROUTE and LOCAL_ROUTE.
-
-
-```c title="rtpproxy_stats usage"
+```c title="rtpproxy_stats 用法"
 ...
 rtpproxy_stats($var(up),$var(down),$var(sent),$var(fail));
-xlog("RTP statistics for $ci: up=$var(up) down=$var(down) sent=$var(sent) fail=$var(fail)\n");
+xlog("$ci 的 RTP 统计信息: up=$var(up) down=$var(down) sent=$var(sent) fail=$var(fail)\n");
 ...
 		
 ```
-
 
 #### rtpproxy_all_stats(stats_avp[, [set_id][, sock_var]])
 
+此命令从 RTP-Proxy 收集所有可用的 RTP 统计信息。所有返回值存储在一个 AVP 中，可以通过索引进一步读取。
 
-This command gathers all RTP statistics available from RTP-Proxy.
-			All the returned values stored in an AVP that can be further read by
-			indexing the AVP.
+此命令仅在 RTPProxy 2.1 发布版开始可用。
 
+参数的含义如下：
 
-This command is only available starting with RTPProxy 2.1 realease.
+- *stats_avp* (var) - 将存储统计信息的 AVP。可以进一步索引此 AVP 以获取特定统计信息。
+- *set_id(int，可选)* - 此呼叫使用的集合。
+- *sock_var(var，可选)* - 用于存储为此呼叫选择的 RTPProxy 套接字的变量。
 
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、ONREPLY_ROUTE、BRANCH_ROUTE 和 LOCAL_ROUTE 使用。
 
-Meaning of the parameters is as follows:
+每个统计信息按以下特定索引存储：
 
+- *ttl* - *$avp(ret)* / *$(avp(ret)[0])*
+- *pkts_ia* - *$(avp(ret)[1])*
+- *pkts_io* - *$(avp(ret)[2])*
+- *relayed* - *$(avp(ret)[3])*
+- *dropped* - *$(avp(ret)[4])*
+- *rtpa_set* - *$(avp(ret)[5])*
+- *rtpa_rcvd* - *$(avp(ret)[6])*
+- *rtpa_dups* - *$(avp(ret)[7])*
+- *rtpa_lost* - *$(avp(ret)[8])*
+- *rtpa_perrs* - *$(avp(ret)[9])*
 
-- *stats_avp* (var) - an AVP where the
-					statistics will be stored. This AVP can be further
-					indexed to get a specific statistic.
-- *set_id(int, optional)* - the set used for this call.
-- *sock_var(var, optional)* - variable used to store the RTPProxy
-			socket chosen for this call.
-
-
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, ONREPLY_ROUTE,
-			BRANCH_ROUTE and LOCAL_ROUTE.
-
-
-Each statistic is stored at a specific index as it follows:
-
-
-- *ttl* -
-						*$avp(ret)* /
-						*$(avp(ret)[0])*
-- *pkts_ia* -
-						*$(avp(ret)[1])*
-- *pkts_io* -
-						*$(avp(ret)[2])*
-- *relayed* -
-						*$(avp(ret)[3])*
-- *dropped* -
-						*$(avp(ret)[4])*
-- *rtpa_set* -
-						*$(avp(ret)[5])*
-- *rtpa_rcvd* -
-						*$(avp(ret)[6])*
-- *rtpa_dups* -
-						*$(avp(ret)[7])*
-- *rtpa_lost* -
-						*$(avp(ret)[8])*
-- *rtpa_perrs* -
-						*$(avp(ret)[9])*
-
-
-```c title="rtpproxy_all_stats usage"
+```c title="rtpproxy_all_stats 用法"
 ...
 rtpproxy_all_stats($avp(stats));
-xlog("RTP statistics for $ci: dropped=$(avp(stats)[4])\n");
+xlog("$ci 的 RTP 统计信息: dropped=$(avp(stats)[4])\n");
 ...
 		
 ```
 
-
-### Exported MI Functions
-
+### 导出的 MI 函数
 
 #### rtpproxy:enable
 
+替换已弃用的 MI 命令：*rtpproxy_enable*。
 
-Replaces obsolete MI command: *rtpproxy_enable*.
+启用/禁用 rtp 代理。
 
+参数：
 
-Enables/Disables a rtp proxy.
+- *url* - rtp 代理 URL（与配置文件中定义的方式完全相同）。
+- *rtpproxy:enable* - 1 启用，0 禁用 RTPproxy 节点，2 将 RTPproxy 节点置于探测模式。
+- *setid* (可选) - rtpproxy 集合 ID（用于更好地识别要启用的 rtpproxy 实例，例如当 rtpproxy 在多个集合中使用时）。
 
+注意：如果 rtpproxy 被多次定义（在同一或不同集合中），如果未提供集合 ID（作为第二个参数），所有实例都将被启用/禁用。
 
-Parameters:
-
-
-- *url* - the rtp proxy url (exactly as defined in 
-					the config file).
-- *rtpproxy:enable* - 1 - enable, 0 - disable the RTPproxy node, 2 - put the RTPproxy node in probing mode.
-- *setid* (optional) - the rtpproxy set ID (used
-					for better indentification of the rtpproxy instance to be enabled,
-					for example when a rtpproxy is used in multiple sets).
-
-
-NOTE: if a rtpproxy is defined multiple times (in the same or
-			different set), all its instances will be enables/disabled IF
-			no set ID provided (as second param).
-
-
-```c title="rtpproxy:enable usage"
+```c title="rtpproxy:enable 用法"
 ...
-## disable a RTPProxy by URL only
+## 仅通过 URL 禁用 RTPProxy
 $ opensips-cli -x mi rtpproxy:enable udp:192.168.2.133:8081 0
-## disable a RTPProxy by URL and set ID (3)
+## 通过 URL 和集合 ID (3) 禁用 RTPProxy
 $ opensips-cli -x mi rtpproxy:enable udp:192.168.2.133:8081 0 3
 ...
 			
 ```
 
-
 #### rtpproxy:show
 
+替换已弃用的 MI 命令：*rtpproxy_show*。
 
-Replaces obsolete MI command: *rtpproxy_show*.
+显示所有 rtp 代理及其信息：集合和状态（是否禁用、权重和重新检查滴答数）。
 
+无参数。
 
-Displays all the rtp proxies and their information: set and 
-			status (disabled or not, weight and recheck_ticks).
-
-
-No parameter.
-
-
-```c title="rtpproxy:show usage"
+```c title="rtpproxy:show 用法"
 ...
 $ opensips-cli -x mi rtpproxy:show
 ...
 			
 ```
 
-
 #### rtpproxy:reload
 
+替换已弃用的 MI 命令：*rtpproxy_reload*。
 
-Replaces obsolete MI command: *rtpproxy_reload*.
+从数据库重新加载 rtp 代理集合。该函数将删除所有先前的记录，并用数据库表中的条目填充列表。如果您想使用此命令，则必须设置 db_url 参数。
 
+无参数。
 
-Reload rtp proxies sets from database. The function will delete all
-			previous records and populate the list with the entries from the
-			database table. The db_url parameter must be set if you want to use
-			this command.
-
-
-No parameter.
-
-
-```c title="rtpproxy:reload usage"
+```c title="rtpproxy:reload 用法"
 ...
 $ opensips-cli -x mi rtpproxy:reload
 ...
 			
 ```
 
-
-### Exported Events
-
+### 导出的事件
 
 #### E_RTPPROXY_STATUS
 
+当 RTPProxy 服务器状态变为启用/禁用时触发此事件。
 
-This event is raised when a RTPProxy server changes it's status to
-			enabled/disabled.
+参数：
 
-
-Parameters:
-
-
-- *socket* - the socket that identifies the 
-				RTPProxy instance.
-- *status* - *active* if
-				the RTPProxy instance responds to probing or
-				*inactive* if the instance was deactivated.
-
+- *socket* - 标识 RTPProxy 实例的套接字。
+- *status* - 如果 RTPProxy 实例响应探测，则为 *active*；如果实例被停用，则为 *inactive*。
 
 #### E_RTPPROXY_DTMF
 
+当 RTPProxy 服务器向 OpenSIPS 发送 DTMF 通知时触发此事件。为了捕获 RFC 2833/4733 DTMF 事件，您需要向 *rtpproxy_offer()*/ *rtpproxy_answer()* 提供 *d* 标志。
 
-This event is raised when a RTPProxy server sends a DTMF
-			notification to OpenSIPS. In order to catch RFC 2833/4733
-			DTMF events, you need to provide the *d*
-			flag to *rtpproxy_offer()*/
-			*rtpproxy_answer()*.
+参数：
 
+- *digit* - 按下的数字。
+- *duration* - 事件的持续时间。
+- *volume* - 事件的音量。
+- *id* - 表示接收事件的呼叫的标识符。
+- *is_callid* - 当 *id* 参数表示 Dialog ID 时为 *0*，当它是 callid 时为 *1*。
+- *stream* - 指示 RTPProxy 会话的流索引。通常为 0（如果呼叫方发送了 DTMF），或 1（如果被呼叫方发送了 DTMF）。
 
-Parameters:
+## 常见问题
 
+**Q: "rtpproxy_disable" 参数发生了什么？**
 
-- *digit* - the digit pressed.
-- *duration* - the duration of the event.
-- *volume* - the volume of the event.
-- *id* - represents the identifier of
-				the call for which that event was received.
-- *is_callid* - is *0*
-				if the *id* parameter represents the
-				Dialog ID, or *1* if it is a callid.
-- *stream* - indicates the stream index
-				of the RTPProxy session. It is normally 0 if the caller
-				sent the DTMF, or 1 if the callee sent it.
+它被移除了，因为它已过时——现在 "rtpproxy_sock" 可以使用空值来禁用 rtpproxy 功能。
 
+**Q: 在哪里可以找到更多关于 OpenSIPS 的信息？**
 
-## Frequently Asked Questions
+请查看 [https://opensips.org/](https://opensips.org/)。
 
+**Q: 在哪里可以发布关于此模块的问题？**
 
-**Q: What happened with "rtpproxy_disable" parameter?**
+首先请检查您的问题是否已在我们的邮件列表中回答：
 
+任何稳定 OpenSIPS 版本的相关邮件应发送至 users@lists.opensips.org，开发版本的相关邮件应发送至 devel@lists.opensips.org。
 
-It was removed as it became obsolete - now 
-			"rtpproxy_sock" can take empty value to disable the
-			rtpproxy functionality.
+如果您想保持邮件私密，请发送至 users@lists.opensips.org。
 
+**Q: 如何报告错误？**
 
-**Q: Where can I find more about OpenSIPS?**
-
-
-Take a look at [https://opensips.org/](https://opensips.org/).
-
-
-**Q: Where can I post a question about this module?**
-
-
-First at all check if your question was already answered on one of
-			our mailing lists:
-
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
-
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
-
-
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+请遵循以下指南：[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议授权。

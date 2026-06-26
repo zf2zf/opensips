@@ -1,96 +1,89 @@
 ---
-title: "dispatcher Module"
-description: "This modules implements a dispatcher for destination addresses. It computes hashes over various parts of the request and selects an address from a destination set. The selected address may then either overwrite the R-URI of a SIP request or be used as an outbound proxy."
+title: "调度器模块"
+description: "此模块实现目标地址的调度器。它对请求的各个部分计算哈希值，并从目标集中选择一个地址。所选地址可以覆盖 SIP 请求的 R-URI 或用作出站代理。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This modules implements a dispatcher for destination addresses. It
-		computes hashes over various parts of the request and selects an
-		address from a destination set. The selected address may then either
-		overwrite the R-URI of a SIP request or be used as an outbound proxy.
+此模块实现目标地址的调度器。它
+		对请求的各个部分计算哈希值，并从
+		目标集中选择一个地址。所选地址可以覆盖 SIP 请求的 R-URI 或用作出站代理。
 
 
-The module can be used as a stateless load balancer, having no
-		guarantee of fair distribution.
+该模块可用作无状态负载均衡器，不保证公平分配。
 
 
-For the distribution algorithm, the module allows the definition of
-		weights for the destination. This is useful in order to get a different
-		ratio of traffic between destinations.
+对于分配算法，该模块允许定义
+		目标的权重。这对于在目标之间获得不同的流量分配比例很有用。
 
 
-Starting with version 2.1, the dispatcher module keeps its destination sets 
-		into different partitions. Each partition is described by its own
-		"db_url", "table_name", "dst_avp", "grp_avp", "cnt_avp", "sock_avp",
-                "attr_avp", "blacklists", "ping_from", "ping_method" and
-                "persistent_state" set of attributes. Setting any of these
-                module parameters will only alter the "default" partition's properties.
+从版本 2.1 开始，调度器模块将其目标集
+		保存到不同的分区中。每个分区由其自己的
+		"db_url"、"table_name"、"dst_avp"、"grp_avp"、"cnt_avp"、"sock_avp"、
+                "attr_avp"、"blacklists"、"ping_from"、"ping_method" 和
+                "persistent_state" 属性集描述。设置任何这些
+                模块参数将仅更改"默认"分区的属性。
 
 
-In order to create a new partition, the [partition](#param_partition)
-		parameter can be used.  If none of the 8 partition specific parameters
-		are defined for the "default" partition, then this partition will not
-		be created.  Once the "default" partition is created, any undefined
-		parameter from other partitions will inherit the value of the
-		corresponding parameter of the "default" partition.  If there is no
-		"default" partition, the default value specified in the parameter's
-		description will be used.  Finally, note that each dispatcher table
-		specified using the "table_name" partition attribute requires a
-		corresponding "version" table record within the partition's database,
-		specified through "db_url".
+为了创建新分区，可以使用 [partition](#param_partition)
+		参数。如果未为"默认"分区定义任何 8 个分区特定参数，
+		则不会创建此分区。一旦创建了"默认"分区，任何未定义的
+		参数将从"默认"分区的相应参数继承值。如果没有
+		"默认"分区，则使用参数描述中指定的默认值。最后，请注意，每个使用"table_name"分区属性指定的调度器表
+		需要该分区数据库中相应的"version"表记录，
+		通过"db_url"指定。
 
 
-Since version 2.1, the "flags" parameter has been moved to 
-		ds_select_dst() and ds_select_domain() along with "force_dst" and
-		"use_default" flags.
+从版本 2.1 开始，"flags"参数已移至
+		ds_select_dst() 和 ds_select_domain()，以及"force_dst"和
+		"use_default"标志。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *TM - only if active recovery of failed hosts is required*.
-- *clusterer* - only if "cluster_id"
-				option is enabled.
-- *database* - one of the DB SQL modules
-- *freeswitch - only if "fetch_freeswitch_stats" is enabled.*.
+- *TM - 仅在需要主动恢复失败主机时使用*。
+- *clusterer* - 仅在启用"cluster_id"
+				选项时。
+- *database* - 某个数据库 SQL 模块
+- *freeswitch - 仅在启用"fetch_freeswitch_stats"时使用。*。
 
 
-#### External libraries or applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module:
+以下库或应用程序必须在运行
+		OpenSIPS 与此模块一起使用之前安装：
 
 
-- *none*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url (string)
 
 
-The default DB connection of the module, overriding the global
-		'db_default_url' setting.  Once specified, partitions which are missing
-		the 'db_url' property will inherit their URL from this value.
+模块的默认数据库连接，覆盖全局
+		'db_default_url' 设置。一旦指定，缺少
+		'db_url' 属性的分区将从该值继承其 URL。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Setting the default database URL for dispatcher"
+```c title="设置调度器的默认数据库 URL"
 ...
 modparam("dispatcher", "db_url", "mysql://user:passwb@localhost/database")
 ...
@@ -100,20 +93,20 @@ modparam("dispatcher", "db_url", "mysql://user:passwb@localhost/database")
 #### attrs_avp (str)
 
 
-The name of the avp to contain the attributes string of the current
-		destination. When a destination is selected, automatically, this AVP
-		will provide the attributes string - this is an opaque string (from
-		OpenSIPS point of view) : it is loaded from destination definition (
-		via DB) and blindly provided in the script.
-		Setting this parameter will only change the default partition's
-		attrs_avp. Use the partition parameter to create and alter
-		other partitions.
+用于包含当前目标属性字符串的 avp 名称。
+		选择目标时，自动地，此 AVP
+		将提供属性字符串 - 这是一个不透明字符串（从
+		OpenSIPS 角度看）：它从目标定义加载（通过
+		数据库）并在脚本中盲目提供。
+		设置此参数将仅更改默认分区的
+		attrs_avp。使用 partition 参数创建和更改
+		其他分区。
 
 
-*Default value is "null" - don't provide ATTRIBUTEs.*
+*默认值为 "null" - 不提供 ATTRIBUTEs。*
 
 
-```c title="Set the 'default' partition's 'attrs_avp' parameter"
+```c title="设置'默认'分区的'attrs_avp'参数"
 ...
 modparam("dispatcher", "attrs_avp", "$avp(272)")
 ...
@@ -123,17 +116,17 @@ modparam("dispatcher", "attrs_avp", "$avp(272)")
 #### script_attrs_avp (str)
 
 
-Name of the avp to contain the script attributes string of the current
-		destination. When a destination is selected, automatically, this AVP
-		will provide the attributes string - this is an opaque string (from
-		OpenSIPS point of view) : it is provided via the ds_push_script_attrs
-		MI or SCRIPT function.
+用于包含当前目标脚本属性字符串的 avp 名称。
+		选择目标时，自动地，此 AVP
+		将提供属性字符串 - 这是一个不透明字符串（从
+		OpenSIPS 角度看）：它通过
+		ds_push_script_attrs MI 或 SCRIPT 函数提供。
 
 
-*Default value is "null" - don't provide SCRIPT ATTRIBUTEs.*
+*默认值为 "null" - 不提供 SCRIPT ATTRIBUTEs。*
 
 
-```c title="Set the 'default' partition's 'script_attrs_avp' parameter"
+```c title="设置'默认'分区的'script_attrs_avp'参数"
 ...
 modparam("dispatcher", "attrs_avp", "$avp(script_attrs)")
 ...
@@ -143,29 +136,26 @@ modparam("dispatcher", "attrs_avp", "$avp(script_attrs)")
 #### algo_route (str)
 
 
-Name of the route to be called when using algo 10.
-		The route will get as param the dst_uri, attrs and script_attrs for the
-		dispatcher entry that currently needs to be evaluated ( available via 
-		$param(1), $param(2) and $param(3) or via $param(dst_uri), $param(attrs) and $param(script_attrs) when the route gets called ).
-		The return value of the route is considered by the dispatcher module to
-		be the current weight of the dispatcher entry, and when using the 10
-		algo, the dispatcher entries are sorted in ascending weight order.
+使用算法 10 时要调用的路由名称。
+		该路由将获得当前需要评估的调度器条目的 dst_uri、attrs 和 script_attrs 作为参数（可通过
+		$param(1)、$param(2) 和 $param(3) 或通过 $param(dst_uri)、$param(attrs) 和 $param(script_attrs) 获取）。
+		调度器模块考虑路由的返回值作为当前调度器条目的权重，使用算法 10 时，调度器条目按权重升序排序。
 
-		If the returned value from the algo route is negative, the current dispatcher entry will be automatically skipped from usage
+		如果从算法路由返回的值是负数，则当前调度器条目将自动跳过使用
 
 
-*Default value is "null" - disabled.*
+*默认值为 "null" - 禁用。*
 
 
-```c title="Use algo_route for hashing:"
+```c title="使用 algo_route 进行哈希："
 ...
-modparam("dispatcher", "algo_route", "my_dispatcher_logic)")
+modparam("dispatcher", "algo_route", "my_dispatcher_logic)"
 ...
 route[my_dispatcher_logic] {
         $var(curent_score) = 0;
-        xlog("DISPATCHER - Running logic for $param(dst_uri) with attrs $param(attrs) and script attrs $param(script_attrs) \n");
+        xlog("DISPATCHER - 为 $param(dst_uri) 运行逻辑，属性 $param(attrs) 和脚本属性 $param(script_attrs) \n");
 
-	# decide to penalize current dispatcher entry, based on your logic
+	# 根据您的逻辑决定惩罚当前调度器条目
 	if (my_condition_here)
 		$var(current_score) = $var(current_score) + 10;
 
@@ -177,25 +167,24 @@ route[my_dispatcher_logic] {
 #### hash_pvar (str)
 
 
-String with PVs used for the hashing algorithm 7.
+用于哈希算法 7 的 PV 字符串。
 
 
-> [!NOTE]
-> You must set this parameter if you want do hashing over custom message
-		parts.
+> [!注意]
+> 如果您想对自定义消息部分进行哈希，则必须设置此参数。
 
 
-*Default value is "null" - disabled.*
+*默认值为 "null" - 禁用。*
 
 
-```c title="Use $avp(273) for hashing:"
+```c title="使用 $avp(273) 进行哈希："
 ...
 modparam("dispatcher", "hash_pvar", "$avp(273)")
 ...
 ```
 
 
-```c title="Use combination of PVs for hashing:"
+```c title="使用 PV 组合进行哈希："
 ...
 modparam("dispatcher", "hash_pvar", "hash the $fU@$ci")
 ...
@@ -205,14 +194,14 @@ modparam("dispatcher", "hash_pvar", "hash the $fU@$ci")
 #### setid_pvar (str)
 
 
-The name of the PV where to store the set ID (group ID) when calling
-		ds_is_in_list() without group parameter (third parameter).
+在不带组参数调用 ds_is_in_list()（第三个参数）时，
+		存储设置 ID（组 ID）的 PV 名称。
 
 
-*Default value is "null" - don't set PV.*
+*默认值为 "null" - 不设置 PV。*
 
 
-```c title="Set the 'setid_pvar' parameter"
+```c title="设置'setid_pvar'参数"
 ...
 modparam("dispatcher", "setid_pvar", "$var(setid)")
 ...
@@ -222,19 +211,19 @@ modparam("dispatcher", "setid_pvar", "$var(setid)")
 #### ds_ping_method (string)
 
 
-With this Method you can define, with which method you want to probe
-		the failed gateways. This method is only available, if compiled with
-		the probing of failed gateways enabled.
+通过此方法，您可以定义使用哪种方法探测
+		失败网关。此方法仅在编译时
+		启用了失败网关探测才可用。
 
 
-Use the 'partition' parameter if you want to define the ping method
-		other partitions.
+如果要为其他分区定义 ping 方法，
+		请使用'partition'参数。
 
 
-*Default value is "OPTIONS".*
+*默认值为 "OPTIONS"。*
 
 
-```c title="Set the 'ds_ping_method' parameter"
+```c title="设置'ds_ping_method'参数"
 ...
 modparam("dispatcher", "ds_ping_method", "INFO")
 ...
@@ -244,19 +233,19 @@ modparam("dispatcher", "ds_ping_method", "INFO")
 #### ds_ping_from (string)
 
 
-With this Method you can define the "From:"-Line for the request,
-		sent to the failed gateways. This method is only available, if
-		compiled with the probing of failed gateways enabled.
+通过此方法，您可以定义发送到
+		失败网关的请求的"From:"行。此方法仅在
+		编译时启用了失败网关探测才可用。
 
 
-Use the 'partition' parameter if you want to define the "From:"
-		ping header of other partitions.
+如果要为其他分区的"From:"
+		ping 头定义，请使用'partition'参数。
 
 
-*Default value is "sip:dispatcher@localhost".*
+*默认值为 "sip:dispatcher@localhost"。*
 
 
-```c title="Set the 'ds_ping_from' parameter"
+```c title="设置'ds_ping_from'参数"
 ...
 modparam("dispatcher", "ds_ping_from", "sip:proxy@sip.somehost.com")
 ...
@@ -266,16 +255,16 @@ modparam("dispatcher", "ds_ping_from", "sip:proxy@sip.somehost.com")
 #### ds_ping_interval (int)
 
 
-With this Method you can define the interval for sending a request to
-		a failed gateway. This parameter is only used, when the TM-Module is
-		loaded. If set to "0", the pinging of failed requests
-		is disabled.
+通过此方法，您可以定义向
+		失败网关发送请求的间隔。此参数仅在 TM 模块
+		加载时使用。如果设置为"0"，则
+		禁用失败请求的 ping。
 
 
-*Default value is "0" (disabled).*
+*默认值为 "0"（禁用）。*
 
 
-```c title="Set the 'ds_ping_interval' parameter"
+```c title="设置'ds_ping_interval'参数"
 ...
 modparam("dispatcher", "ds_ping_interval", 30)
 ...
@@ -285,17 +274,17 @@ modparam("dispatcher", "ds_ping_interval", 30)
 #### ds_ping_maxfwd (int)
 
 
-This parameter allows you to enforce a specific Max-Forward value
-		for the SIP pinging requests generated by the Dispatcher modules.
-		If not explicitly set, no value will be enforced and it let the
-		Transaction Layer (TM module) to set a default Max-Forward value.
+此参数允许您为调度器模块
+		生成的 SIP ping 请求强制执行特定的 Max-Forward 值。
+		如果未明确设置，则不会强制执行任何值，而由
+		事务层（TM 模块）设置默认的 Max-Forward 值。
 
 
-The accepted values are any positive integer values, including the
-		"0" value.
+接受的值包括任何正整数值，包括
+		"0"值。
 
 
-```c title="Set the 'ds_ping_maxfwd' parameter"
+```c title="设置'ds_ping_maxfwd'参数"
 ...
 modparam("dispatcher", "ds_ping_maxfwd", 2)
 ...
@@ -305,15 +294,15 @@ modparam("dispatcher", "ds_ping_maxfwd", 2)
 #### ds_probing_sock (str)
 
 
-A socket description [proto:]host[:port] of the local socket (which
-		is used by OpenSIPS for SIP traffic) to be used (if multiple) for
-		sending the probing messages from.
+本地套接字（OpenSIPS
+		用于 SIP 流量的 [proto:]host[:port]）的描述，如果存在多个，用于
+		发送探测消息。
 
 
-*Default value is "NULL(none)".*
+*默认值为 "NULL(none)"。*
 
 
-```c title="Set the 'ds_probing_sock' parameter"
+```c title="设置'ds_probing_sock'参数"
 ...
 modparam("dispatcher", "ds_probing_sock", "udp:192.168.1.100:5077")
 ...
@@ -323,15 +312,14 @@ modparam("dispatcher", "ds_probing_sock", "udp:192.168.1.100:5077")
 #### ds_probing_threshold (int)
 
 
-If you want to set a gateway into probing mode, you will need a
-		specific number of requests until it will change from "active" to
-		probing. The number of attempts can be set with this parameter.
+如果要使网关进入探测模式，您将需要一定数量的请求，直到它从"active"变为
+		探测。尝试次数可以通过此参数设置。
 
 
-*Default value is "3".*
+*默认值为 "3"。*
 
 
-```c title="Set the 'ds_probing_threshold' parameter"
+```c title="设置'ds_probing_threshold'参数"
 ...
 modparam("dispatcher", "ds_probing_threshold", 10)
 ...
@@ -341,16 +329,16 @@ modparam("dispatcher", "ds_probing_threshold", 10)
 #### ds_probing_mode (int)
 
 
-Controls what gateways are tested to see if they are reachable. If set
-		to 0, only the gateways with state PROBING are tested, if set to 1, all
-		gateways are tested. If set to 1 and the response is 408 (timeout),
-		an active gateway is set to PROBING state.
+控制测试哪些网关以查看它们是否可访问。如果设置为
+		0，则仅测试状态为 PROBING 的网关；如果设置为 1，则测试所有
+		网关。如果设置为 1 且响应为 408（超时），
+		则活动网关将设置为 PROBING 状态。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set the 'ds_probing_mode' parameter"
+```c title="设置'ds_probing_mode'参数"
 ...
 modparam("dispatcher", "ds_probing_mode", 1)
 ...
@@ -360,17 +348,14 @@ modparam("dispatcher", "ds_probing_mode", 1)
 #### ds_probing_list (str)
 
 
-Defines a list of one or more setids that limits which
-                destinations are probed if probing is active.  This is useful
-                when multiple proxies share the same dispatcher table, but you
-                want to limit which ones are responsible for probing specific
-                destinations.
+定义一个或多个 setid 的列表，用于限制
+		哪些目标在探测处于活动状态时被探测。当多个代理共享同一调度器表，但您希望限制哪些代理负责探测特定目标时，这很有用。
 
 
-*Default value is "NULL (probe all sets)".*
+*默认值为 "NULL（探测所有集合）"。*
 
 
-```c title="Set the 'ds_probing_list' parameter"
+```c title="设置'ds_probing_list'参数"
 ...
 modparam("dispatcher", "ds_probing_list", "1,2,3")
 ...
@@ -380,21 +365,21 @@ modparam("dispatcher", "ds_probing_list", "1,2,3")
 #### ds_define_blacklist (str)
 
 
-Defines a blacklist based on a dispatching setid from the 'default'
-		partition.
-		This list will contain the IPs (no port, all protocols) of the
-		destinations matching the given setid.
-		Use the 'partition' parameter if you want to define blacklists
-		based on other partitions' sets.
+根据'默认'
+		分区的调度 setid 定义黑名单。
+		此列表将包含与给定 setid 匹配的
+		目标的 IP（无端口，所有协议）。
+		如果要根据其他分区的集合定义黑名单，
+		请使用'partition'参数。
 
 
-Multiple instances of this param are allowed.
+允许此参数的多个实例。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set the 'default' partition's 'ds_define_blacklist' parameter"
+```c title="设置'默认'分区的'ds_define_blacklist'参数"
 ...
 modparam("dispatcher", "ds_define_blacklist", "list= 1,4,3")
 modparam("dispatcher", "ds_define_blacklist", "blist2= 2,10,6")
@@ -405,15 +390,15 @@ modparam("dispatcher", "ds_define_blacklist", "blist2= 2,10,6")
 #### options_reply_codes (str)
 
 
-This parameter must contain a list of SIP reply codes separated by
-		comma. The codes defined here will be considered as valid reply codes
-		for OPTIONS messages used for pinging, apart for 200.
+此参数必须包含以逗号分隔的 SIP 回复代码列表。
+		这里定义的代码，除了 200 之外，
+		将被视为用于 ping 的 OPTIONS 消息的有效回复代码。
 
 
-*Default value is "NULL".*
+*默认值为 "NULL"。*
 
 
-```c title="Set the 'options_reply_codes' parameter"
+```c title="设置'options_reply_codes'参数"
 ...
 modparam("dispatcher", "options_reply_codes", "501, 403")
 ...
@@ -423,24 +408,23 @@ modparam("dispatcher", "options_reply_codes", "501, 403")
 #### dst_avp (str)
 
 
-This is mainly for internal usage and represents the name of the avp
-		which will hold the list with addresses, in the order
-		they have been selected by the chosen algorithm. If use_default is 1,
-		the value of last dst_avp_id is the last address in destination set. The
-		first dst_avp_id is the selected destinations. All the other addresses
-		from the destination set will be added in the avp list to be able to
-		implement serial forking.
-		Setting this parameter will only change the default partition's
-		dst_avp. Use the partition parameter to create and alter
-		other partitions.
+这主要用于内部使用，代表将保存地址列表的 avp
+		的名称，按所选算法的
+		顺序排列。如果 use_default 为 1，
+		则最后一个 dst_avp_id 的值是目标集中的最后一个地址。第一个
+		dst_avp_id 是选定的目标。所有其他地址
+		将从目标集添加到 avp 列表中以实现顺序分支。
+		设置此参数将仅更改默认分区的
+		dst_avp。使用 partition 参数创建和更改
+		其他分区。
 
 
-*For the 'default' partition the default value
-			is "$avp(ds_dst_failover)". For any other partition,
-			the default value is "$avp(ds_dst_failover_partitionname)".*
+*对于'默认'分区，默认值为
+			"$avp(ds_dst_failover)"。对于任何其他分区，
+			默认值为 "$avp(ds_dst_failover_partitionname)"。*
 
 
-```c title="Set the 'default' partition's 'dst_avp' parameter"
+```c title="设置'默认'分区的'dst_avp'参数"
 ...
 modparam("dispatcher", "dst_avp", "$avp(271)")
 ...
@@ -450,20 +434,19 @@ modparam("dispatcher", "dst_avp", "$avp(271)")
 #### grp_avp (str)
 
 
-This is mainly for internal usage and represents the name of the avp
-		storing the group id of the destination set. Good
-		to have it for later usage or checks.
-		Setting this parameter will only change the default partition's
-		grp_avp. Use the partition parameter to create and alter
-		other partitions.
+这主要用于内部使用，代表存储目标集组 ID 的 avp
+		的名称。便于以后使用或检查。
+		设置此参数将仅更改默认分区的
+		grp_avp。使用 partition 参数创建和更改
+		其他分区。
 
 
-*For the 'default' partition the default value
-			is "$avp(ds_grp_failover)". For any other partition,
-			the default value is "$avp(ds_grp_failover_partitionname)".*
+*对于'默认'分区，默认值为
+			"$avp(ds_grp_failover)"。对于任何其他分区，
+			默认值为 "$avp(ds_grp_failover_partitionname)"。*
 
 
-```c title="Set the 'default' partition's 'grp_avp' parameter"
+```c title="设置'默认'分区的'grp_avp'参数"
 ...
 modparam("dispatcher", "grp_avp", "$avp(273)")
 ...
@@ -473,19 +456,19 @@ modparam("dispatcher", "grp_avp", "$avp(273)")
 #### cnt_avp (str)
 
 
-This is mainly for internal usage and represents the name of the avp
-		storing the number of destination addresses kept in dst_avp avps.
-		Setting this parameter will only change the default partition's
-		cnt_avp. Use the partition parameter to create and alter
-		other partitions.
+这主要用于内部使用，代表保存 dst_avp avp 中保留的目标地址数量的 avp
+		的名称。
+		设置此参数将仅更改默认分区的
+		cnt_avp。使用 partition 参数创建和更改
+		其他分区。
 
 
-*For the 'default' partition the default value
-			is "$avp(ds_cnt_failover)". For any other partition,
-			the default value is "$avp(ds_cnt_failover_partitionname)".*
+*对于'默认'分区，默认值为
+			"$avp(ds_cnt_failover)"。对于任何其他分区，
+			默认值为 "$avp(ds_cnt_failover_partitionname)"。*
 
 
-```c title="Set the 'default' partition's 'cnt_avp' parameter"
+```c title="设置'默认'分区的'cnt_avp'参数"
 ...
 modparam("dispatcher", "cnt_avp", "$avp(274)")
 ...
@@ -495,20 +478,19 @@ modparam("dispatcher", "cnt_avp", "$avp(274)")
 #### sock_avp (str)
 
 
-This is mainly for internal usage and represents the name of the avp
-		storing the sockets to be used for the destination addresses kept in
-		dst_avp avps.
-		Setting this parameter will only change the default partition's
-		sock_avp. Use the partition parameter to create and alter
-		other partitions.
+这主要用于内部使用，代表存储套接字的 avp
+		的名称，用于 dst_avp avp 中保存的目标地址。
+		设置此参数将仅更改默认分区的
+		sock_avp。使用 partition 参数创建和更改
+		其他分区。
 
 
-*For the 'default' partition the default value
-			is "$avp(ds_sock_failover)". For any other partition,
-			the default value is "$avp(ds_sock_failover_partitionname)".*
+*对于'默认'分区，默认值为
+			"$avp(ds_sock_failover)"。对于任何其他分区，
+			默认值为 "$avp(ds_sock_failover_partitionname)"。*
 
 
-```c title="Set the 'default' partition's 'sock_avp' parameter"
+```c title="设置'默认'分区的'sock_avp'参数"
 ...
 modparam("dispatcher", "sock_avp", "$avp(275)")
 ...
@@ -518,19 +500,17 @@ modparam("dispatcher", "sock_avp", "$avp(275)")
 #### pvar_algo_pattern (str)
 
 
-This parameter is used by the PVAR(9) algorithm to specify the
-		pseudovariable pattern used to detect the load of each destination. The
-		name of the pseudovariable should contain the string "%u",
-		which will be internally replaced by the module with the uri of the
-		destination. The string "%i" can also be used and will be
-		replaced with the set ID of the destination (useful in cases where same
-		uri exists in multiple sets).
+此参数由 PVAR(9) 算法使用，用于指定
+		用于检测每个目标负载的伪变量模式。伪变量的名称应包含字符串"%u"，
+		该字符串将被模块内部替换为目标的
+		URI。字符串"%i"也可以使用，将被
+		替换为目标集 ID（在同一 URI 存在于多个集中的情况下很有用）。
 
 
-*Default value is "none".*
+*默认值为 "none"。*
 
 
-```c title="Set the 'pvar_algo_pattern' parameter"
+```c title="设置'pvar_algo_pattern'参数"
 ...
 modparam("dispatcher", "pvar_algo_pattern", "$stat(load_%u)")
 ...
@@ -540,21 +520,21 @@ modparam("dispatcher", "pvar_algo_pattern", "$stat(load_%u)")
 #### persistent_state (int)
 
 
-Specifies whether the *state* column
-		should be loaded at startup and flushed during runtime or not
-		for the "default" partition.
+指定 *state* 列是否
+		应在启动时加载并在运行时刷新
+		（针对"默认"分区）。
 
 
-Use the 'partition' parameter if you want to define the persistent
-		state of other partitions.
+如果要为其他分区定义持久状态，
+		请使用'partition'参数。
 
 
-*Default value is "1" (enabled).*
+*默认值为 "1"（启用）。*
 
 
-```c title="Set the persistent_state parameter"
+```c title="设置 persistent_state 参数"
 ...
-# disable all DB operations with the state of a destination
+# 禁用与目标状态相关的所有数据库操作
 modparam("dispatcher", "persistent_state", 0)
 ...
 ```
@@ -563,44 +543,41 @@ modparam("dispatcher", "persistent_state", 0)
 #### cluster_id (integer)
 
 
-The ID of the cluster the module is part of. The clustering support is 
-		used in dispatcher module for two purposes: for sharing the status 
-		of the destinations and for controlling the pinging to destinations.
+模块所属集群的 ID。集群支持用于
+		调度器模块的两个目的：共享
+		目标的状态和控制对目标的 ping。
 
 
-If clustering enbled, the module will automatically share changes
-		over the status of the destinations with the other 
-		OpenSIPS instances that are part of a cluster. Whenever such a status 
-		changes (following an MI command, a probing result, a script command),
-		the module will replicate this status change to all the nodes in this 
-		given cluster.
+如果启用集群，模块将自动与属于集群的
+		其他 OpenSIPS 实例共享
+		目标状态的更改。每当状态发生此类更改（根据 MI 命令、探测结果、脚本命令），
+		模块会将此状态更改复制到给定集群中的所有节点。
 
 
-The clustering with sharing tag support may be used to control which 
-		node in the cluster will perform the pinging/probing to 
-		destinations. See the
-		[cluster sharing tag](#param_cluster_sharing_tag) option.
+具有共享标签支持的集群可用于控制
+		集群中的哪个节点将执行对
+		目标的 ping/探测。请参阅
+		[集群共享标签](#param_cluster_sharing_tag) 选项。
 
 
-This OpenSIPS cluster exposes the **"dispatcher-status-repl"**
-capability in order to mark nodes as eligible for becoming data donors during an
-arbitrary sync request. Consequently, the cluster must have *at least
-one node* marked with the **"seed"** value
-as the *clusterer.flags* column/property in order to be fully functional.
-Consult the [clusterer - Capabilities](../clusterer#capabilities)
-chapter for more details.
+此 OpenSIPS 集群公开 **"dispatcher-status-repl"**
+功能，以便在任意同步请求中将节点标记为合格的数据捐赠者。因此，集群必须至少有
+一个节点标记有 **"seed"** 值
+作为 *clusterer.flags* 列/属性才能完全正常运行。
+有关更多详细信息，请参阅 [clusterer - Capabilities](../clusterer#capabilities)
+章节。
 
 
-For more info on how to define and populate a cluster (with OpenSIPS 
-		nodes) see the [clusterer](../clusterer) module.
+有关如何定义和填充（使用 OpenSIPS
+		节点）集群的更多信息，请参阅 [clusterer](../clusterer) 模块。
 
 
-*Default value is "0 (none)".*
+*默认值为 "0（无）"。*
 
 
-```c title="Set cluster_id parameter"
+```c title="设置 cluster_id 参数"
 ...
-# replicate destination status with all OpenSIPS in cluster ID 9
+# 与集群 ID 9 中的所有 OpenSIPS 复制目标状态
 modparam("dispatcher", "cluster_id", 9)
 ...
 ```
@@ -609,30 +586,30 @@ modparam("dispatcher", "cluster_id", 9)
 #### cluster_sharing_tag (string)
 
 
-The name of the sharing tag (as defined per clusterer modules) to 
-		control which node is responsible for perform the self-triggered
-		actions in the module. Such actions may be the destination probing
-		(see also the [cluster probing mode](#param_cluster_probing_mode) parameter)
-		or sharing the changes in the destination status.
-		If defined, only the node with active status of this tag will 
-		perform the actions (pinging and sharing status).
+共享标签的名称（如 clusterer 模块所定义），
+		用于控制哪个节点负责执行模块中的自我触发
+		操作。此类操作可能是目标探测
+		（另请参阅 [集群探测模式](#param_cluster_probing_mode) 参数）
+		或共享目标状态的更改。
+		如果已定义，只有具有此标签 active 状态的节点才会
+		执行操作（ping 和共享状态）。
 
 
-The [cluster id](#param_cluster_id) must be defined for this option
-		to work.
+[cluster id](#param_cluster_id) 必须为此选项
+		定义才能工作。
 
 
-This is an optional parameter. If not set, all the nodes in the cluster
-		will share the status changes.
+这是一个可选参数。如果未设置，集群中的所有节点
+		将共享状态更改。
 
 
-*Default value is "empty (none)".*
+*默认值为"空（无）"。*
 
 
-```c title="Set cluster_sharing_tag parameter"
+```c title="设置 cluster_sharing_tag 参数"
 ...
-# only the node with the active "vip" sharing tag will perform pinging
-# and broadcast the status changes
+# 只有具有 active "vip" 共享标签的节点将执行 ping
+# 并广播状态更改
 modparam("dispatcher", "cluster_id", 9)
 modparam("dispatcher", "cluster_sharing_tag", "vip")
 ...
@@ -642,48 +619,46 @@ modparam("dispatcher", "cluster_sharing_tag", "vip")
 #### cluster_probing_mode (string)
 
 
-This paramter controls how the probing/pinging should be done when
-		using the clustering support. It is about which node in the cluster
-		pings which gateway/destination.
+此参数控制在使用
+		集群支持时如何进行探测/ping。它涉及集群中的哪个节点
+		ping 哪个网关/目标。
 
 
-The [cluster id](#param_cluster_id) must be defined for this option
-		to work.
+[cluster id](#param_cluster_id) 必须为此选项
+		定义才能工作。
 
 
-The supported probing modes are:
+支持的探测模式有：
 
 
-- **"all"** - all the nodes in the
-			cluster will independetly ping all the defined destinations,
-			an "all" pings "all" mode.
-- **"by-shtag"** - all the destinations
-			are pinged by only one node in the cluster, the node having the
-			[cluster sharing tag](#param_cluster_sharing_tag) active. By 
-			activating the sharing tag on a different node, the pinging
-			duty will be transfered to another node in the cluster.
-- **"distributed"** - the pinging
-			effort is distributed across all the nodes in the cluster, so each
-			node will ping a sub-set of the overall set of destinations. Still
-			all the destinations will get pinged (and only once per pinging 
-			cycle).
-			The re-partitioning of the pinging effort over the available nodes
-			in the cluster is automatically done when new nodes are joining or
-			nodes are dropping out. Still there is no guaratee on which node
-			will be responsible for pinging which destination.
+- **"all"** - 集群中的所有节点
+			将独立地 ping 所有定义的目标，
+			一种"全部 ping 全部"模式。
+- **"by-shtag"** - 所有目标
+			仅由集群中的一个节点 ping，该节点具有
+			[集群共享标签](#param_cluster_sharing_tag) active。通过
+			在不同的节点上激活共享标签，
+			ping 职责将转移到集群中的另一个节点。
+- **"distributed"** - ping
+			工作分布在集群中的所有节点上，因此每个
+			节点将 ping 目标整体集合的一个子集。仍然
+			所有目标都会被 ping（并且在每个 ping 周期中只 ping 一次）。
+			当新节点加入或
+			节点退出时，节点间的 ping 工作重新分配是自动完成的。仍然无法保证哪个节点
+			将负责 ping 哪个目标。
 
 
-*Default value is ""all"".*
+*默认值为 ""all""。*
 
 
-```c title="Set cluster_probing_mode parameter"
+```c title="设置 cluster_probing_mode 参数"
 ...
-# only the node with the active "vip" sharing tag will perform pinging
+# 只有具有 active "vip" 共享标签的节点将执行 ping
 modparam("dispatcher", "cluster_id", 9)
 modparam("dispatcher", "cluster_sharing_tag", "vip")
 modparam("dispatcher", "cluster_probing_mode", "by-shtag")
 ...
-# the pinging effort is distributed across all the nodes
+# ping 工作分布在所有节点上
 modparam("dispatcher", "cluster_id", 9)
 modparam("dispatcher", "cluster_probing_mode", "distributed")
 ...
@@ -693,23 +668,22 @@ modparam("dispatcher", "cluster_probing_mode", "distributed")
 #### partition (string)
 
 
-Define a new partition (data source) with the following properties:
-		"db_url", "table_name", "dst_avp", "grp_avp", "cnt_avp", "sock_avp",
-		"attrs_avp", "script_attrs", "ds_define_blacklist".  All these
-		properties are optional, having appropriate default values.
+使用以下属性定义新的分区（数据源）：
+		"db_url"、"table_name"、"dst_avp"、"grp_avp"、"cnt_avp"、"sock_avp"、
+		"attrs_avp"、"script_attrs"、"ds_define_blacklist"。所有这些
+		属性都是可选的，具有适当的默认值。
 
 
-The syntax is: "partition_name: param1 = value1; param2 = value2".
-		Each value format is the same as the one used to define a specific
-		parameter using modparam.
+语法是："partition_name: param1 = value1; param2 = value2"。
+		每个值的格式与使用 modparam 定义特定
+		参数时使用的格式相同。
 
 
-This parameter may be set multiple times, thus defining as many
-		partitions as needed.  The 'default' partition may also be defined
-		using this parameter.
+可以多次设置此参数，从而根据需要定义尽可能多的
+		分区。'default'分区也可以使用此参数定义。
 
 
-```c title="Define a new partition called 'voicemail'"
+```c title="定义名为'voicemail'的新分区"
 ...
 modparam("dispatcher", "partition",
                 "voicemail:
@@ -721,7 +695,7 @@ modparam("dispatcher", "partition",
 ```
 
 
-```c title="Define the 'trunks' partition and make it the 'default' partition, so we avoid loading the 'dispatcher' table"
+```c title="定义'trunks'分区并将其设为'default'分区，以避免加载'dispatcher'表"
 ...
 modparam("dispatcher", "partition",
                 "trunks:
@@ -736,15 +710,14 @@ modparam("dispatcher", "partition", "default: trunks")
 #### table_name (string)
 
 
-The default name of the table from which to load dispatcher
-		destinations.  Partitions which are missing the 'table_name' property
-		will inherit their table name from this value.
+从中加载调度器目标的默认表名。
+		缺少'table_name'属性的分区将从该值继承其表名。
 
 
-*Default value is "dispatcher".*
+*默认值为 "dispatcher"。*
 
 
-```c title="Set the default table name"
+```c title="设置默认表名"
 ...
 modparam("dispatcher", "table_name", "my_dispatcher")
 ...
@@ -754,13 +727,13 @@ modparam("dispatcher", "table_name", "my_dispatcher")
 #### setid_col (string)
 
 
-The column's name in the database storing the gateway's group id.
+数据库中存储网关组 ID 的列名。
 
 
-*Default value is "setid".*
+*默认值为 "setid"。*
 
 
-```c title="Set 'setid_col' parameter"
+```c title="设置'setid_col'参数"
 ...
 modparam("dispatcher", "setid_col", "groupid")
 ...
@@ -770,14 +743,14 @@ modparam("dispatcher", "setid_col", "groupid")
 #### destination_col (string)
 
 
-The column's name in the database storing the destination's
-			sip uri.
+数据库中存储目标的
+			sip uri 的列名。
 
 
-*Default value is "destination".*
+*默认值为 "destination"。*
 
 
-```c title="Set 'destination_col' parameter"
+```c title="设置'destination_col'参数"
 ...
 modparam("dispatcher", "destination_col", "uri")
 ...
@@ -787,14 +760,14 @@ modparam("dispatcher", "destination_col", "uri")
 #### state_col (string)
 
 
-The column's name in the database storing the state of the
-			destination uri.
+数据库中存储目标
+			uri 状态的列名。
 
 
-*Default value is "state".*
+*默认值为 "state"。*
 
 
-```c title="Set 'state_col' parameter"
+```c title="设置'state_col'参数"
 ...
 modparam("dispatcher", "state_col", "dststate")
 ...
@@ -804,14 +777,14 @@ modparam("dispatcher", "state_col", "dststate")
 #### weight_col (string)
 
 
-The column's name in the database storing the weight for
-			destination uri.
+数据库中存储目标 uri
+			权重的列名。
 
 
-*Default value is "weight".*
+*默认值为 "weight"。*
 
 
-```c title="Set 'weight_col' parameter"
+```c title="设置'weight_col'参数"
 ...
 modparam("dispatcher", "weight_col", "dstweight")
 ...
@@ -821,14 +794,14 @@ modparam("dispatcher", "weight_col", "dstweight")
 #### priority_col (string)
 
 
-The column's name in the database storing the priority for
-			destination uri.
+数据库中存储目标 uri
+			优先级的列名。
 
 
-*Default value is "priority".*
+*默认值为 "priority"。*
 
 
-```c title="Set 'priority_col' parameter"
+```c title="设置'priority_col'参数"
 ...
 modparam("dispatcher", "priority_col", "dstprio")
 ...
@@ -838,14 +811,14 @@ modparam("dispatcher", "priority_col", "dstprio")
 #### attrs_col (string)
 
 
-The column's name in the database storing the attributes (opaque
-			string) for destination uri.
+数据库中存储目标 uri
+			属性（不透明字符串）的列名。
 
 
-*Default value is "attrs".*
+*默认值为 "attrs"。*
 
 
-```c title="Set 'attrs_col' parameter"
+```c title="设置'attrs_col'参数"
 ...
 modparam("dispatcher", "attrs_col", "dstattrs")
 ...
@@ -855,14 +828,14 @@ modparam("dispatcher", "attrs_col", "dstattrs")
 #### socket_col (string)
 
 
-The column's name in the database storing the socket (as
-			string) for destination uri.
+数据库中存储目标 uri
+			套接字（作为字符串）的列名。
 
 
-*Default value is "socket".*
+*默认值为 "socket"。*
 
 
-```c title="Set 'socket_col' parameter"
+```c title="设置'socket_col'参数"
 ...
 modparam("dispatcher", "socket_col", "my_sock")
 ...
@@ -872,14 +845,14 @@ modparam("dispatcher", "socket_col", "my_sock")
 #### probe_mode_col (string)
 
 
-The column's name in the database storing the probe_mode (as
-			string) for destination.
+数据库中存储目标
+			probe_mode（作为字符串）的列名。
 
 
-*Default value is "probe_mode".*
+*默认值为 "probe_mode"。*
 
 
-```c title="Set 'probe_mode_col' parameter"
+```c title="设置'probe_mode_col'参数"
 ...
 modparam("dispatcher", "probe_mode_col", "probing")
 ...
@@ -889,40 +862,37 @@ modparam("dispatcher", "probe_mode_col", "probing")
 #### fetch_freeswitch_stats (integer)
 
 
-If enabled, FreeSWITCH destinations may have dynamic dispatching weights,
-		refreshed at runtime, using the FreeSWITCH Event Socket Layer.
-		For these destinations, an Event Socket Layer URL must be provisioned
-		into the "weight" column, instead of an integer string. Some example values:
+如果启用，FreeSWITCH 目标可以具有动态调度权重，
+		使用 FreeSWITCH Event Socket Layer 在运行时刷新。
+		对于这些目标，必须在"weight"列中配置 Event Socket Layer URL，而不是整数字符串。一些示例值：
 		*"fs://:password@freeswitch.example.com"*
-		or *"fs://user:password@127.0.0.1:8021"*.
-		The default ESL port is 8021.
+		或 *"fs://user:password@127.0.0.1:8021"*。
+		默认 ESL 端口为 8021。
 
 
-OpenSIPS will establish a connection with the given socket and
-		periodically calculate/update the weights of these destinations
-		using statistics pushed by the FreeSWITCH box.
+OpenSIPS 将与给定的套接字建立连接，并
+		使用 FreeSWITCH 推送的统计信息定期计算/更新这些目标的权重。
 
 
-The value for an automatically calculated weight ranges between
-		**0 - 100**.
-		This is helpful when grouping normal destinations with
-		FreeSWITCH ones.
+自动计算的权重值范围为
+		**0 - 100**。
+		这在将正常目标与 FreeSWITCH 目标分组时很有帮助。
 
 
-The dynamic weights are recalculated every
-		*event_heartbeat_interval* seconds (see the
-		"freeswitch" OpenSIPS module for more details regarding this setting),
-		as the stats from FreeSWITCH are expected to arrive.  The update formula
-		is shown below (FreeSWITCH stats are highlighted in bold):
+动态权重每
+		*event_heartbeat_interval* 秒重新计算（请参阅
+		"freeswitch" OpenSIPS 模块以了解更多详细信息），
+		因为统计信息预计会从 FreeSWITCH 到达。以下是更新公式
+		（FreeSWITCH 统计信息以粗体突出显示）：
 
 
 *weight = 100 * (**Idle-CPU** / 100) * (1 - **Session-Count** / **Max-Sessions**)*
 
 
-*Default value is **0** (disabled).*
+*默认值为 **0**（禁用）。*
 
 
-```c title="Set the fetch_freeswitch_load parameter"
+```c title="设置 fetch_freeswitch_load 参数"
 ...
 modparam("dispatcher", "fetch_freeswitch_stats", 1)
 ...
@@ -932,106 +902,94 @@ modparam("dispatcher", "fetch_freeswitch_stats", 1)
 #### max_freeswitch_weight (integer)
 
 
-The maximum weight of a FreeSWITCH ESL-enabled destination. This value
-		is also used during startup/reload, when no stats from FreeSWITCH are
-		available yet.
+FreeSWITCH ESL 启用目标的最大权重。此值
+		也在启动/重载时使用，当时还没有从 FreeSWITCH 获得统计信息。
 
 
-Important: When mixing normal destinations with FreeSWITCH-enabled ones in
-		the same dispatching set, OpenSIPS will truncate any weight values that
-		are larger than **max_freeswitch_weight**
-		to the value of this parameter!
+重要提示：当将正常目标与 FreeSWITCH 启用的目标混合在同一调度集中时，OpenSIPS 会将任何大于 **max_freeswitch_weight**
+		的权重值截断到此参数的值！
 
 
-NOTE: OpenSIPS internally rounds weights to nearest integer, so larger
-		max weight values will more accurately represent the current load on the
-		FreeSWITCH boxes! For example, if you set this parameter to 1, the box
-		will receive no traffic whenever either its CPU or session usage goes
-		past 50%!
+注意：OpenSIPS 在内部将权重四舍五入到最近的整数，因此更大的
+		最大权重值将更准确地表示 FreeSWITCH 盒子上的当前负载！例如，如果将此参数设置为 1，当 CPU 或会话使用率超过 50% 时，
+		该盒子将不会收到任何流量！
 
 
-*Default value is **100**.*
+*默认值为 **100**。*
 
 
-```c title="Set the max_freeswitch_weight parameter"
+```c title="设置 max_freeswitch_weight 参数"
 ...
 modparam("dispatcher", "max_freeswitch_weight", 1000)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### ds_select_dst(set, alg, [flags], [partition], [max_res])
 
 
-The method selects a destination from the given set of addresses. It will
-		overwrite the destination URI (*$du*) of a SIP request.
+该方法从给定的地址集中选择一个目标。它将
+		覆盖 SIP 请求的目标 URI (*$du*)。
 
 
-Meaning of the parameters is as follows:
+参数含义如下：
 
 
-- *set (int)* - a set identifier from which to select destinations
-- *alg (int)* - the algorithm used to select the
-			destination address
+- *set (int)* - 要从中选择目标的集合标识符
+- *alg (int)* - 用于选择
+			目标地址的算法
 
-  - "0" - hash over callid
-  - "1" - hash over from uri.
-  - "2" - hash over to uri.
-  - "3" - hash over request-uri.
-  - "4" - weighted round-robin (next destination).
-				the destination's weight determines how many times it is chosen
-				before going to the next one
-  - "5" - hash over authorization-username
-				(Proxy-Authorization or "normal" authorization).
-				If no username is found, weighted round-robin is used.
-  - "6" - random (using rand()).
-  - "7" - hash over the content of PVs string.
-				Note: This works only when the parameter hash_pvar is set.
-  - "8" - the first entry in set is chosen.
-  - "9" - The *pvar_algo_pattern*
-				parameter is used to determine the load on each server. If the
-				parameter is not specified, then the first entry in the set is
-				chosen.
-  - "10" - The *algo_route*
-				OpenSIPS route is called for each dispatcher entry in 
-				the setid, in order to decide the routing order.
-				See the algo_route parameter for usage examples
-  - "X" - if the algorithm is not implemented, the
-				first entry in set is chosen.
-- *flags (string, optional)* - a string of flag-settings
-				which tweak the function's behavior:
+  - "0" - 按 callid 哈希
+  - "1" - 按 from uri 哈希
+  - "2" - 按 to uri 哈希
+  - "3" - 按 request-uri 哈希
+  - "4" - 加权轮询（下一个目标）。
+				目标的权重决定了在转到下一个目标之前选择它的次数。
+  - "5" - 按 authorization-username 哈希
+				（Proxy-Authorization 或"普通"认证）。
+				如果找不到用户名，则使用加权轮询。
+  - "6" - 随机（使用 rand()）。
+  - "7" - 按 PV 字符串内容的哈希。
+				注意：这仅在设置 hash_pvar 参数时有效。
+  - "8" - 选择集合中的第一个条目。
+  - "9" - 使用 *pvar_algo_pattern*
+				参数确定每个服务器的负载。如果未指定该参数，
+				则选择集合中的第一个条目。
+  - "10" - 为 setid 中的每个调度器条目调用
+				*algo_route*
+				OpenSIPS 路由，以决定路由顺序。
+				请参阅 algo_route 参数以获取使用示例
+  - "X" - 如果算法未实现，则
+				选择集合中的第一个条目。
+- *flags (string, optional)* - 调整函数行为的标志字符串：
 
-  - 'f' (failover support): causes the remaining
-				addresses from the destination set to be stored within an
-				internally managed AVP.  You may then use
-				[ds next dst](#func_ds_next_dst) to switch to the next
-				address, thus achieving serial forking to all possible destinations
-  - 'u' (user only): will specify that only the URI user part
-					will be used for hashing
-  - 'd' (use default): use the last address in destination
-					set as last option to send the message
-  - 'a' (append destinations): append any new destinations to
-					the current destination list, rather than rewriting the list
-The flags are being kept per partition.
-- *partition (string, optional)* - name of a DB partition
-- *max_res (int, optional)* - signifies that only a maximum
-			number of destinations shall be included in the specified failover AVP. 
-			This allows having multiple destinations while
-			also preventing excessive failover attempts in case a number is
-			bound to fail globally.
+  - 'f'（故障转移支持）：将目标集中剩余的
+				地址存储在内部管理的 AVP 中。您可以使用
+				[ds next dst](#func_ds_next_dst) 切换到下一个
+				地址，从而实现到所有可能目标的顺序分支。
+  - 'u'（仅用户）：将仅指定 URI 用户部分
+					用于哈希。
+  - 'd'（使用默认）：使用目标集中的最后一个地址
+					作为发送消息的最后一个选项。
+  - 'a'（追加目标）：将任何新目标追加到
+					当前目标列表，而不是重写列表。
+标志按分区保存。
+- *partition (string, optional)* - 数据库分区名称
+- *max_res (int, optional)* - 表示仅最大数量的目标应包含在指定的故障转移 AVP 中。这允许有多个目标，同时
+			防止在某个数字全局失败的情况下进行过多的故障转移尝试。
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、BRANCH_ROUTE 和 FAILURE_ROUTE 使用。
 
 
-```c title="ds_select_dst usage"
+```c title="ds_select_dst 使用示例"
 ...
 if (!ds_select_dst(1, 0)) {
-	xlog("ERROR: no active destinations found!\n");
-	send_reply(503, "Service Unavailable");
+	xlog("ERROR: 未找到活动目标！\n");
+	send_reply(503, "服务不可用");
 	exit;
 }
 ...
@@ -1042,7 +1000,7 @@ ds_select_dst(1, 0, "fUD", "ask_boxes");
 ds_select_dst(2, 0, "fud", "pstn_gws", 5);
 ds_select_dst(3, 1, "fua", "pstn_gws", 2);
 ...
-# using variables
+# 使用变量
 $var(part) = "pstn_gws"
 $var(setid) = 1;
 $var(alg) = 4;
@@ -1056,108 +1014,94 @@ ds_select_dst($var(setid), $var(alg), $var(flags), $var(part), $var(max_res));
 #### ds_select_domain(set, alg, [flags], [partition], [max_res])
 
 
-The method selects a destination from addresses set and rewrites the
-		hostname and port parts of the Request-URI (*$ru*).
-		Its parameters have same meaning as in [ds select dst](#func_ds_select_dst).
+该方法从地址集中选择一个目标并重写
+		Request-URI (*$ru*) 的主机名和端口部分。
+		其参数与 [ds select dst](#func_ds_select_dst) 中的含义相同。
 
 
-If the "f" (failover support) flag is present, the rest of the
-		addresses from the destination set will be stored in an internally
-		managed AVP. You may then use [ds next domain](#func_ds_next_domain) to
-		switch to the next address in the list, thus achieving serial forking
-		to all possible destinations.
+如果存在"f"（故障转移支持）标志，则目标集中的其余地址将存储在内部
+		管理的 AVP 中。您可以使用 [ds next domain](#func_ds_next_domain) 切换到列表中的下一个地址，从而实现到所有可能目标的顺序分支。
 
 
-This function can be used from REQUEST_ROUTE, BRANCH_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE、BRANCH_ROUTE 和 FAILURE_ROUTE 使用。
 
 
 #### ds_next_dst([partition])
 
 
-Takes the next destination address from the AVPs with id
-		partition.'dst_avp_id' and sets the dst_uri (outbound proxy address).
-		If "partition" is omitted, the default partition will be used.This
-		function is using the flags set in ds_select_dst or ds_select_domain.
+从 partition.'dst_avp_id' 的 AVP 中获取下一个目标地址，并设置 dst_uri（出站代理地址）。
+		如果省略"partition"，则使用默认分区。此
+		函数使用 ds_select_dst 或 ds_select_domain 中设置的标志。
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
 #### ds_next_domain([partition])
 
 
-Takes the next destination address from the AVPs with id
-		partition.'dst_avp_id' and sets the domain part of the request uri.
-		If "partition" is omitted, the default partition will be used.This
-		function is using the flags set in ds_select_dst or ds_select_domain.
+从 partition.'dst_avp_id' 的 AVP 中获取下一个目标地址，并设置请求 uri 的域部分。
+		如果省略"partition"，则使用默认分区。此
+		函数使用 ds_select_dst 或 ds_select_domain 中设置的标志。
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
 #### ds_mark_dst([state], [partition])
 
 
-Mark the last used address from partition's destination set as
-		inactive ("i"/"I"/"0"), active ("a"/"A"/"1") or probing ("p"/"P"/"2").
-		With this function, an automatic detection of failed gateways can be implemented.
-		When an address is marked as inactive or probing, it will be ignored by
-		[ds select dst](#func_ds_select_dst) and [ds select domain](#func_ds_select_domain).
-		If "partition" is omitted, the default partition will be used. This function
-		is using the flags set in [ds select dst](#func_ds_select_dst) or
-		[ds select domain](#func_ds_select_domain).
+将分区目标集中最后使用的地址标记为
+		非活动（"i"/"I"/"0"）、活动（"a"/"A"/"1"）或探测（"p"/"P"/"2"）。
+		使用此函数，可以实现对失败网关的自动检测。当地址被标记为非活动或探测时，它将被
+		[ds select dst](#func_ds_select_dst) 和 [ds select domain](#func_ds_select_domain) 忽略。
+		如果省略"partition"，则使用默认分区。此函数使用 [ds select dst](#func_ds_select_dst) 或
+		[ds select domain](#func_ds_select_domain) 中设置的标志。
 
 
-Possible parameters:
+可能的参数：
 
 
-- state (string, optional) - new state for the last attempted
-				destination.  Possible values:
+- state (string, optional) - 上次尝试目标的
+				新状态。可能的值：
 
-  - *"i", "I" or "0" (default)* - the last
-					destination should be set to inactive and will be ignored
-					in future requests.
-  - *"a", "A" or "1"* - the last
-					destination should be set to active.
-  - *"p", "P" or "2"* - the last
-					destination will be set to probing. Note: You will need to
-					call this function "threshold"-times, before it will be
-					actually set to probing.
-- partition (string, optional) - name of a DB partition,
-			otherwise the default one will be used
+  - *"i", "I" 或 "0"（默认）* - 最后
+					一个目标应设置为非活动状态，并在将来被忽略。
+  - *"a", "A" 或 "1"* - 最后
+					一个目标应设置为活动状态。
+  - *"p", "P" 或 "2"* - 最后
+					一个目标将设置为探测状态。注意：您需要调用此函数"threshold"次，
+					它才会真正设置为探测。
+- partition (string, optional) - 数据库分区名称，
+			否则将使用默认分区。
 
 
-This function can be used from REQUEST_ROUTE and FAILURE_ROUTE.
+此函数可以从 REQUEST_ROUTE 和 FAILURE_ROUTE 使用。
 
 
 #### ds_count(set, state_filter, res_var, [partition])
 
 
-Returns the number of active, inactive or probing destinations in a
-		partition's set, or combinations between these properties.
+返回分区集合中活动、非活动或探测目标的数量，
+		或这些属性的组合。
 
 
-Meaning of the parameters:
+参数含义：
 
 
-- *set (int)* - a set of dispatching destinations
-- *state_filter (string)* - which destinations should be
-			counted. Either active ("a", "A" or "1"), inactive
-			("i", "I" or "0"), probing ("p", "P" or "2") destinations or
-			different combinations between these flags, such as
-			"pI", "1i", "ipA"...
-- *res_var (variable)* - a variable
-				which will hold the integer result
-- *partition (string, optional)* - name of a
-				DB partition.  If omitted, the "default" partition
-				will be used.
+- *set (int)* - 一组调度目标
+- *state_filter (string)* - 应该计数哪些目标。活动（"a"、"A" 或 "1"）、非活动
+			（"i"、"I" 或 "0"）、探测（"p"、"P" 或 "2"）目标或
+			这些标志的不同组合，如"pI"、"1i"、"ipA"...
+- *res_var (variable)* - 将保存整数结果的变量
+- *partition (string, optional)* - 数据库分区名称。如果省略，将使用"默认"分区。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE,
-		LOCAL_ROUTE, TIMER_ROUTE, EVENT_ROUTE
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE、
+		LOCAL_ROUTE、TIMER_ROUTE、EVENT_ROUTE 使用。
 
 
-```c title="ds_count usage"
+```c title="ds_count 使用示例"
 ...
 if (ds_count(1, "a", $avp(result))) {
 	...
@@ -1173,49 +1117,39 @@ if (ds_count($avp(set), "ip", $avp(result), $avp(partition))) {
 #### ds_is_in_list(ip, port, [set], [partition], [active_only], [pattern])
 
 
-This function returns *true* only if "ip" and "port" point to a
-		host from the given dispatcher "set".
+仅当"ip"和"port"指向给定调度器"集合"中的主机时，此函数才返回 *true*。
 
 
-Meaning of the parameters:
+参数含义：
 
 
-- *ip (string)* - an IPv4 or IPv6 address to
-				test against the dispatcher "set"
-- *port (int)* - a port to test against the
-			dispatcher list.  Use a *0* value in order to
-			match any port
-- *set (int, optional)* - a dispatcher set
-			identifier to test against.  If missing, all sets will be checked.
-			The *-1* set is a special value, acting as a
-			"check all sets" wildcard.
-- *partition (string, optional)* - name of
-				a DB partition
-- *active_only (int, optional)* - specify
-			a non-zero value in order to only search through the active
-			destinations (ignore the ones in probing and inactive states)
-- *pattern (string, optional)* - a glob
-			pattern used to match destination attributes. If the destination
-			ip and port matches but the pattern does not match the destination's
-			attribute, the function will fail.
+- *ip (string)* - 要根据调度器"集合"测试的 IPv4 或 IPv6 地址
+- *port (int)* - 要根据调度器列表测试的端口。
+			为匹配任何端口，请使用 *0* 值
+- *set (int, optional)* - 要根据其测试的调度器集合标识符。
+			如果缺失，将检查所有集合。
+			*-1* 集合是一个特殊值，充当"检查所有集合"的通配符。
+- *partition (string, optional)* - 数据库分区名称
+- *active_only (int, optional)* - 指定一个非零值以仅搜索活动目标（忽略探测和非活动状态的目标）
+- *pattern (string, optional)* - 用于匹配目标属性的 glob 模式。如果目标 IP 和端口匹配但模式与目标的属性不匹配，则函数将失败。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE,
-		BRANCH_ROUTE and ONREPLY_ROUTE.
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、
+		BRANCH_ROUTE 和 ONREPLY_ROUTE 使用。
 
 
-```c title="ds_is_in_list usage"
+```c title="ds_is_in_list 使用示例"
 ...
 if (ds_is_in_list($si, $sp)) {
-	# source IP:PORT is in a dispatcher list
+	# 源 IP:PORT 在调度器列表中
 }
 ...
 if (ds_is_in_list($rd, $rp, 2)) {
-	# the R-URI (IP and port) is in the dispatcher set 2 of the "default" partition
+	# R-URI（IP 和端口）在"默认"分区的调度器集合 2 中
 }
 ...
 if (ds_is_in_list($rd, $rp, 2, "part2")) {
-	# the R-URI (IP and port) is in the dispatcher set 2 of the "part2" partition
+	# R-URI（IP 和端口）在"part2"分区的调度器集合 2 中
 }
 ...
 ```
@@ -1224,27 +1158,24 @@ if (ds_is_in_list($rd, $rp, 2, "part2")) {
 #### ds_push_script_attrs(script_attr, ip, port, set, [partition])
 
 
-Set the script attrs for the dispatcher entry defined by IP, Port, setid and partition.
+为由 IP、Port、setid 和 partition 定义的调度器条目设置脚本属性。
 
 
-Meaning of the parameters:
+参数含义：
 
 
-- *script_attr (str or pvar)* - The new script attributes
-- *IP (string)* -
-			IP address for which we are pushing script attributes
-- *port (int)* Port for which we are pushing script attributes
-- *setid (int)* Setid for which we are pushing script attributes
-- *partition (string, optional)* - name of a
-				DB partition.  If omitted, the "default" partition
-				will be used.
+- *script_attr (str or pvar)* - 新的脚本属性
+- *IP (string)* - 我们正在推送脚本属性的 IP 地址
+- *port (int)* - 我们正在推送脚本属性的端口
+- *setid (int)* - 我们正在推送脚本属性的 Setid
+- *partition (string, optional)* - 数据库分区名称。如果省略，将使用"默认"分区。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE,
-		LOCAL_ROUTE, TIMER_ROUTE, EVENT_ROUTE
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE、
+		LOCAL_ROUTE、TIMER_ROUTE、EVENT_ROUTE 使用。
 
 
-```c title="ds_count usage"
+```c title="ds_count 使用示例"
 ...
 if (ds_push_script_attrs($var(my_attributes),$si , $sp, 1, 'my_partition')) {
 	...
@@ -1256,27 +1187,23 @@ if (ds_push_script_attrs($var(my_attributes),$si , $sp, 1, 'my_partition')) {
 #### ds_get_script_attrs(uri, set, [partition], out_attrs)
 
 
-Get the script attrs for the dispatcher entry defined by the URI, setid and partition.
+获取由 URI、setid 和 partition 定义的调度器条目的脚本属性。
 
 
-Meaning of the parameters:
+参数含义：
 
 
-- *URI (string)* -
-			URI address for which we are getting script attributes
-- *setid (int)* Setid for which we are pushing script attributes
-- *partition (string, optional)* - name of a
-				DB partition.  If omitted, the "default" partition
-				will be used.
-- *out_atrs (pvar)* - name of a
-				variable where we will store the script attrs.
+- *URI (string)* - 我们正在获取脚本属性的 URI 地址
+- *setid (int)* - 我们正在推送脚本属性的 Setid
+- *partition (string, optional)* - 数据库分区名称。如果省略，将使用"默认"分区。
+- *out_atrs (pvar)* - 用于存储脚本属性的变量名称。
 
 
-This function can be used from REQUEST_ROUTE, FAILURE_ROUTE, BRANCH_ROUTE,
-		LOCAL_ROUTE, TIMER_ROUTE, EVENT_ROUTE
+此函数可以从 REQUEST_ROUTE、FAILURE_ROUTE、BRANCH_ROUTE、
+		LOCAL_ROUTE、TIMER_ROUTE、EVENT_ROUTE 使用。
 
 
-```c title="ds_count usage"
+```c title="ds_count 使用示例"
 ...
 if (ds_push_script_attrs($var(my_attributes),$si , $sp, 1, 'my_partition')) {
 	...
@@ -1285,37 +1212,35 @@ if (ds_push_script_attrs($var(my_attributes),$si , $sp, 1, 'my_partition')) {
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### dispatcher:set_state
 
 
-Replaces obsolete MI command: *ds_set_state*.
+替换过时的 MI 命令：*ds_set_state*。
 
 
-Sets the status for a destination address (can be use to mark the destination
-		as active or inactive).
+设置目标地址的状态（可用于将目标标记为活动或非活动）。
 
 
-Name: *dispatcher:set_state*
+名称：*dispatcher:set_state*
 
 
-Parameters:
+参数：
 
 
-- *state* : state of the destination address
+- *state* : 目标地址的状态
 
-  - "a": active
-  - "i": inactive
-  - "p": probing
-- *group*: partition name followed by colon
-			and destination group id. If the partition name is omitted,
-			the default partition will be used
-- *address*: address of the destination in the group
+  - "a": 活动
+  - "i": 非活动
+  - "p": 探测
+- *group*: 分区名称，后跟冒号和目标组 ID。如果省略分区名称，
+			将使用默认分区。
+- *address*: 组中目标的地址
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1326,25 +1251,25 @@ opensips-cli -x mi dispatcher:set_state a 2 sip:10.0.0.202
 #### dispatcher:list
 
 
-Replaces obsolete MI command: *ds_list*.
+替换过时的 MI 命令：*ds_list*。
 
 
-It lists the groups and included destinations of all the partitions.
+它列出所有分区的组和包含的目标。
 
 
-Name: *dispatcher:list*
+名称：*dispatcher:list*
 
 
-Parameters:
+参数：
 
 
-- *full* (optional) - adds the weight,
-				priority and description fields to the listing
-- *partition* (optional) - return only
-				destinations and sets in the provided partition.
+- *full* (optional) - 在列表中添加权重、
+				优先级和描述字段
+- *partition* (optional) - 仅返回
+				提供分区中的目标和集合。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1355,28 +1280,27 @@ opensips-cli -x mi dispatcher:list
 #### dispatcher:reload
 
 
-Replaces obsolete MI command: *ds_reload*.
+替换过时的 MI 命令：*ds_reload*。
 
 
-It reloads the groups and included destinations for a
-		specified partition or all partitions.
+它重新加载指定分区或所有分区的组和包含的目标。
 
 
-Name: *dispatcher:reload*
+名称：*dispatcher:reload*
 
 
-Parameters:
+参数：
 
 
-- *partition* (optional) - name of
-				the partition to be reloaded. default partition is "default".
-- *inherit_state* (optional) : whether inherit old state of the destination , default is y.
+- *partition* (optional) - 要重新加载的
+				分区名称。默认分区是"default"。
+- *inherit_state* (optional) : 是否继承目标的旧状态，默认是 y。
 
-  - "n": no inherit state
-  - "y": inherit state
+  - "n": 不继承状态
+  - "y": 继承状态
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1388,26 +1312,26 @@ opensips-cli -x mi dispatcher:reload inherit_state=n
 #### dispatcher:push_script_attrs
 
 
-Replaces obsolete MI command: *ds_push_script_attrs*.
+替换过时的 MI 命令：*ds_push_script_attrs*。
 
 
-Pushes script attrs for the dispatcher entry defined by IP, Port, setid, and optionally partition.
+为由 IP、Port、setid 和可选 partition 定义的调度器条目推送脚本属性。
 
 
-Name: *dispatcher:push_script_attrs*
+名称：*dispatcher:push_script_attrs*
 
 
-Parameters:
+参数：
 
 
-- *attrs* : new attributes to be pushed
-- *ip*: IP for which we are pushing script attributes
-- *port*: Port for which we are pushing script attributes
-- *setid*: Setid for which we are pushing script attributes
-- *partition ( optional )*: Partition for which we are pushing script attributes
+- *attrs* : 要推送的新属性
+- *ip*: 我们正在推送脚本属性的 IP
+- *port*: 我们正在推送脚本属性的端口
+- *setid*: 我们正在推送脚本属性的 Setid
+- *partition ( optional )*: 我们正在推送脚本属性的分区
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
@@ -1415,57 +1339,54 @@ MI FIFO Command Format:
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_DISPATCHER_STATUS
 
 
-This event is raised when the dispatcher module marks a destination as
-			activated or deactivated.
+当调度器模块将目标标记为激活或停用时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *partition* - the partition name of the destination.
-- *group* - the group of the destination.
-- *address* - the address of the destination.
-- *status* - *active* if
-				the destination gets activated or *inactive* if the
-				destination is detected unresponsive.
+- *partition* - 目标所在分区名称。
+- *group* - 目标组。
+- *address* - 目标地址。
+- *status* - 如果
+				目标被激活则为 *active*，如果
+				目标被检测为无响应则为 *inactive*。
 
 
-### Exported Status/Report Identifiers
+### 导出的状态/报告标识符
 
 
-The module provides the "dispatcher" Status/Report group, where each
-	partition is defined as a separate SR identifier.
+该模块提供"dispatcher"状态/报告组，其中每个分区定义为单独的 SR 标识符。
 
 
 #### [partition_name]
 
 
-The status of these identifiers reflects the readiness/status of the 
-	cached data (if available or not when being loaded from DB):
+这些标识符的状态反映缓存数据的就绪/状态（从数据库加载时是否可用）：
 
 
-- *-2* - no data at all (initial status)
-- *-1* - no data, initial loading in progress
-- *1* - data loaded, partition ready
-- *2* - data available, a reload in progress
+- *-2* - 完全没有数据（初始状态）
+- *-1* - 没有数据，初始加载正在进行
+- *1* - 数据已加载，分区就绪
+- *2* - 数据可用，正在重新加载
 
 
-Reload reporting:
+重新加载报告：
 
 
-In terms of date reloading, the following events will be reported:
+在数据重新加载方面，将报告以下事件：
 
 
-- starting DB data loading
-- DB data loading failed, discarding
-- DB data loading successfully completed
-- N destination loaded (N discarded)
+- 启动数据库数据加载
+- 数据库数据加载失败，丢弃
+- 数据库数据加载成功完成
+- 已加载 N 个目标（已丢弃 N 个）
 
 
 ```c
@@ -1497,21 +1418,15 @@ In terms of date reloading, the following events will be reported:
 #### [partition_name];events
 
 
-Destination switching reporting:
+目标切换报告：
 
 
-For reporting events related to the state changes of the
-	destinations, the module provides separate identifiers (still
-	one per partition).
-	Why separate ones? The reports on state changing may be verbose and there
-	is the risk of loose/discard important reports on reloads due to the high
-	number of logs on state changes;
+对于与目标状态更改相关的事件报告，该模块提供单独的标识符（仍然是每个分区一个）。
+	为什么要单独的？状态更改报告可能很冗长，而且由于状态更改数量众多，存在丢失/丢弃重要重新加载报告的风险。
 
 
-So, each partition will provide the identified "partition_name;events" for
-	reporting state changes of destinations, along with the reason
-	of the change. This identifiers have a 200 records history before 
-	discarding the old ones.
+因此，每个分区将提供标识的"partition_name;events"用于报告目标的状态更改，以及
+		更改的原因。这些标识符有 200 条记录历史，之后丢弃旧的。
 
 
 ```c
@@ -1535,107 +1450,71 @@ So, each partition will provide the identified "partition_name;events" for
 ```
 
 
-For how to access and use the Status/Report information, please see
-	[https://www.opensips.org/Documentation/Interface-StatusReport-3-3](>https://www.opensips.org/Documentation/Interface-StatusReport-3-3).
+有关如何访问和使用状态/报告信息，请参阅
+	[https://www.opensips.org/Documentation/Interface-StatusReport-3-3](>https://www.opensips.org/Documentation/Interface-StatusReport-3-3)。
 
 
-### Installation and Running
+### 安装和运行
 
 
-#### OpenSIPS config file
+#### OpenSIPS 配置文件
 
 
-Next picture displays a sample usage of dispatcher.
+下一张图片显示调度器的示例用法。
 
 
-[OpenSIPS config script - sample dispatcher usage](./samples.md "include")
+[OpenSIPS 配置文件 - 调度器使用示例](./samples.md "include")
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Does *dispatcher* provide a fair distribution?**
+**Q: *dispatcher* 是否提供公平分配？**
 
 
-There is no guarantee of that. You should do some measurements
-			to decide what distribution algorithm fits better in your
-			environment.
+无法保证这一点。您应该进行一些测量以决定哪种分配算法更适合您的环境。
 
 
-**Q: Is *dispatcher* dialog stateful?**
+**Q: *dispatcher* 是有状态的吗？**
 
 
-No. Dispatcher is stateless, although some distribution algorithms
-			are designed to select same destination for subsequent requests of
-			the same dialog (e.g., hashing the call-id).
+不是。调度器是无状态的，尽管某些分配算法
+			设计为选择同一目标用于同一对话的后续请求（例如，对 call-id 进行哈希）。**Q: *ds_is_from_list()* 函数怎么了？**该函数已被更通用的
+			*ds_is_in_list()* 函数取代，该函数将 IP 和 PORT 作为参数来根据调度器列表进行测试。ds_is_from_list() == ds_is_in_list("$si", "$sp")
 
 
-**Q: What happened with the *ds_is_from_list()*
-			function?**
+**Q: 调度器在选择目标时如何使用权重和优先级？**目标 *weight* 目前用于哈希算法，它增加了被选中的概率（如果我们有两个权重分别为 1 和 4 的目标，则第二个目标被选中的可能性是第一个的 4 倍）。所有权重的总和不需要加起来达到特定数字。
+			权重现在用于轮询算法，一个目标在转到下一个目标之前会被连续选择次数等于其权重的次数。
+			 *priority* 字段用于对集合中的目标进行排序。它不影响目标被选中的整体概率。它反映在列出目标时，字段可以肯定地用于进一步的选择算法。
+
+**Q: *list_file* 模块参数怎么了？**文本文件支持（用于配置目标）已被删除。
+			现在仅提供数据库支持（通过数据库表进行配置）- 如果您仍然希望使用文本文件进行配置，请使用 db_text 数据库驱动程序（通过文本文件模拟的数据库）
 
 
-The function was replaced by the more generic
-			*ds_is_in_list()* function that takes as
-			parameters the IP and PORT to test against the dispatcher list.
-
-ds_is_from_list() == ds_is_in_list("$si", "$sp")
+**Q: 在哪里可以找到更多关于 OpenSIPS 的信息？**
 
 
-**Q: How is weight and priority used by the dispatcher in selecting
-			a destination?**
+请参阅 [https://opensips.org/](https://opensips.org/)。
 
 
-The *weight* of a destination is currently used in
-			the hashing algorithms and it increases the probability of it to be
-			chosen(if we have two destinations with weights 1 respectively
-			4 than the second one is 4 times more likely to be selected than the
-			other). The sum of all weights does not need to add up to a specific
-			number.
-			Weights are now used in the round-robin algorithm, a destination is
-			chosen a number of times equal to its weight consecutively before going
-			to the next destination.
-
-The  *priority* field is used at ordering the
-			destinations from a set. It does not affect the overall probability
-			of a destination to be chosen.  It is reflected when listing the
-			destination, the field can definetly be used in further selecting algorithms.
+**Q: 在哪里可以发布关于此模块的问题？**
 
 
-**Q: What happened with the *list_file*
-			module parameter ?**
+首先检查您的问题是否已在我们
+			的邮件列表中回答：
+
+关于任何稳定版本的问题应发送至
+			users@lists.opensips.org，关于开发版本或 SVN 快照的问题应发送至 devel@lists.opensips.org。
+
+如果您想保持邮件私密，请发送至 users@lists.opensips.org。
 
 
-The support for text file (for provisioning destinations) was dropped.
-			Only the DB support (provisioning via a DB table) is now available - if
-			you still want to use a text file for provisioning, use db_text DB driver
-			(DB emulated via text files)
+**Q: 如何报告错误？**
 
 
-**Q: Where can I find more about OpenSIPS?**
-
-
-Take a look at [https://opensips.org/](https://opensips.org/).
-
-
-**Q: Where can I post a question about this module?**
-
-
-First at all check if your question was already answered on one of
-			our mailing lists:
-
-E-mails regarding any stable version should be sent to
-			users@lists.opensips.org and e-mail regarding development versions or SVN
-			snapshots should be send to devel@lists.opensips.org.
-
-If you want to keep the mail private, send it to users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
-
-
-Please follow the guidelines provided at: [https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)
+请遵循以下指南：[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证授权。

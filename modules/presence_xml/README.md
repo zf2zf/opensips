@@ -1,77 +1,73 @@
 ---
-title: "Presence_XML Module"
-description: "The module does specific handling for notify-subscribe events using xml bodies. It is used with the general event handling module, presence. It constructs and adds 3 events to it: presence, presence.winfo, dialog;sla."
+title: "Presence_XML 模块"
+description: "该模块对使用 xml body 的 notify-subscribe 事件进行特定处理。它与通用事件处理模块 presence 一起使用。它向其中构造并添加 3 个事件：presence、presence.winfo、dialog;sla。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module does specific handling for notify-subscribe events using xml bodies.
-	It is used with the general event handling module, presence. It constructs and adds
-	3 events to it: presence, presence.winfo, dialog;sla.
+该模块对使用 xml body 的 notify-subscribe 事件进行特定处理。
+它与通用事件处理模块 presence 一起使用。它向其中构造并添加
+3 个事件：presence、presence.winfo、dialog;sla。
 
 
-This module takes the xcap permission rule documents from xcap_table.
+该模块从 xcap_table 中获取 xcap 权限规则文档。
 
-	The presence permission rules are interpreted according to the specifications
-	in RFC 4745 and RFC 5025.
-
-
-### Dependencies
+presence 权限规则根据 RFC 4745 和 RFC 5025 中的规范进行解释。
 
 
-#### OpenSIPS Modules
+### 依赖
 
 
-The following modules must be loaded before this module:
+#### OpenSIPS 模块
 
 
-- *a database module*.
-- *presence*.
-- *signaling*.
-- *xcap*.
-- *xcap_client*.
-Only compulsory if not using an integrated xcap server 
-			(if 'integrated_xcap_server' parameter is not set).
+以下模块必须在此模块之前加载：
 
 
-#### External Libraries or Applications
+- *数据库模块*。
+- *presence*。
+- *signaling*。
+- *xcap*。
+- *xcap_client*。
+仅在未使用集成 xcap 服务器时必需
+（如果未设置 'integrated_xcap_server' 参数）。
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+#### 外部库或应用程序
 
 
-- *libxml-dev*.
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-### Exported Parameters
+- *libxml-dev*。
+
+
+### 导出的参数
 
 
 #### force_active (int)
 
 
-This parameter is used for permissions when handling Subscribe messages.
-		If set to 1, subscription state is considered active and the presentity
-		is not queried for permissions(should be set to 1 if not using an xcap 
-		server). 
-		Otherwise,the xcap server is queried and the subscription states is
-		according to user defined permission rules. If no rules are defined for
-		a certain watcher, the subscriptions remains in pending state and the
-		Notify sent will have no body.
+此参数用于处理 Subscribe 消息时的权限。
+如果设置为 1，订阅状态被视为活跃，且不会查询
+presentity 的权限（如果不使用 xcap 服务器，应设置为 1）。
+否则，将查询 xcap 服务器，订阅状态根据
+用户定义的权限规则确定。如果为某个 watcher
+定义了规则，则订阅保持待处理状态，发送的
+Notify 将不包含 body。
 
 
-Note: When switching from one value to another, the watchers table must
-		be emptied.
+注意：在切换值时，必须清空 watchers 表。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set force_active parameter"
+```c title="设置 force_active 参数"
 ...
 modparam("presence_xml", "force_active", 1)
 ...
@@ -81,19 +77,18 @@ modparam("presence_xml", "force_active", 1)
 #### pidf_manipulation (int)
 
 
-Setting this parameter to 1 enables the features described in RFC 4827.
-		It gives the possibility to have a permanent state notified to the users
-		even in the case in which the phone is not online. The presence document
-		is taken from the xcap server and aggregated together with the other
-		presence information, if any exist, for each Notify that is sent to the
-		watchers. It is also possible to have information notified even if not 
-		issuing any Publish (useful for services such as email, SMS, MMS).
+将此参数设置为 1 可启用 RFC 4827 中描述的功能。
+它使用户可以即使在手机不在线的情况下也能获得永久状态通知。
+presence document 从 xcap 服务器获取，并与
+每次发送给 watchers 的 Notify 的其他 presence 信息（如果存在）聚合在一起。
+即使不发布任何 Publish 也可以通知信息（适用于
+电子邮件、短信、彩信等服务）。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set pidf_manipulation parameter"
+```c title="设置 pidf_manipulation 参数"
 ...
 modparam("presence_xml", "pidf_manipulation", 1)
 ...
@@ -103,13 +98,12 @@ modparam("presence_xml", "pidf_manipulation", 1)
 #### xcap_server (str)
 
 
-The address of the xcap servers used for storage.
-		This parameter is compulsory if the integrated_xcap_server parameter
-		is not set. It can be set more that once, to construct an address
-		list of trusted XCAP servers.
+用于存储的 xcap 服务器地址。
+如果未设置 integrated_xcap_server 参数，则此参数是必需的。
+可以多次设置，以构建可信 XCAP 服务器的地址列表。
 
 
-```c title="Set xcap_server parameter"
+```c title="设置 xcap_server 参数"
 ...
 modparam("presence_xml", "xcap_server", "xcap_server.example.org")
 modparam("presence_xml", "xcap_server", "xcap_server.ag.org")
@@ -120,11 +114,11 @@ modparam("presence_xml", "xcap_server", "xcap_server.ag.org")
 #### pres_rules_auid (str)
 
 
-This parameter should be configured if you are using the non integrated xcap
-		mode and you need to use another pres-rules auid than the default 'pres-rules'.
+如果使用非集成 xcap 模式且需要使用默认的 'pres-rules'
+以外的 pres-rules auid，则应配置此参数。
 
 
-```c title="Set pres_rules_auid parameter"
+```c title="设置 pres_rules_auid 参数"
 ...
 modparam("presence_xml", "pres_rules_auid", "org.openmobilealliance.pres-rules")
 ...
@@ -134,11 +128,11 @@ modparam("presence_xml", "pres_rules_auid", "org.openmobilealliance.pres-rules")
 #### pres_rules_filename (str)
 
 
-This parameter should be configured if you are using the non integrated xcap
-		mode and you need to configure another filename than the default 'index'.
+如果使用非集成 xcap 模式且需要配置默认的 'index'
+以外的文件名，则应配置此参数。
 
 
-```c title="Set pres_rules_filename parameter"
+```c title="设置 pres_rules_filename 参数"
 ...
 modparam("presence_xml", "pres_rules_filename", "pres-rules")
 ...
@@ -148,40 +142,40 @@ modparam("presence_xml", "pres_rules_filename", "pres-rules")
 #### generate_offline_body (str)
 
 
-This parameter should be set to 0 if you want to prevent OpenSIPS from automatically
-                generating a PIDF body when a publication expires or is explicitly terminated
-                (a PUBLISH request is received with Expires: 0).
+如果需要阻止 OpenSIPS 在 publication 过期或被明确终止时
+自动生成 PIDF body（收到 Expires: 0 的 PUBLISH 请求时），
+则应将此参数设置为 0。
 
 
-```c title="Set generate_offline_body parameter"
+```c title="设置 generate_offline_body 参数"
 ...
 modparam("presence_xml", "generate_offline_body", 0)
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-None to be used in configuration file.
+配置文件中无需使用的函数。
 
 
-### Installation
+### 安装
 
 
-The module requires 1 table in OpenSIPS database: xcap. The SQL 
-	syntax to create it can be found in presence-create.sql     
-	script in the database directories in the opensips/scripts folder.
-	You can also find the complete database documentation on the
-	project webpage, https://opensips.org/docs/db/db-schema-devel.html.
+该模块需要在 OpenSIPS 数据库中创建 1 个表：xcap。SQL
+语法可以在 opensips/scripts 文件夹的数据库目录中的
+presence-create.sql 脚本中找到。
+您还可以在项目网页上找到完整的数据库文档，
+https://opensips.org/docs/db/db-schema-devel.html。
 
 
-## Developer Guide
+## 开发者指南
 
 
-The module exports no function to be used in other OpenSIPS modules.
+该模块不导出供其他 OpenSIPS 模块使用的函数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可证 4.0

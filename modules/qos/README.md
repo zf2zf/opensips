@@ -1,207 +1,162 @@
 ---
-title: "QOS Module"
-description: "The qos module provides a way to keep track of per dialog SDP session(s)."
+title: "QOS 模块"
+description: "qos 模块提供了一种跟踪每个对话 SDP 会话的方法。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The qos module provides a way to keep track of
-		per dialog SDP session(s).
+qos 模块提供了一种跟踪每个对话 SDP 会话的方法。
 
 
-### How it works
+### 工作原理
 
 
-The qos module uses the dialog module to be notified of
-	any new or updated dialogs.  It will then look for and extract
-	the SDP session (if present) from SIP requests and replies and
-	keep track of it for the entire life of a dialog.
+qos 模块使用 dialog 模块来接收任何新对话或更新对话的通知。然后它会从 SIP 请求和回复中查找并提取 SDP 会话（如果存在），并在对话的整个生命周期内跟踪它。
 
 
-All of this happens with a properly configured dialog
-	and qos module and setting the dialog flag and the qos flag at
-	the time any INVITE sip message is seen.  There is no
-	config script function call required to set the SDP session
-	tracking mechanism.  See the dialog module users guide for
-	more information.
+所有这些都通过正确配置的 dialog 和 qos 模块实现，并在看到任何 INVITE SIP 消息时设置 dialog 标志和 qos 标志。设置 SDP 会话跟踪机制不需要配置脚本函数调用。有关更多信息，请参阅 dialog 模块用户指南。
 
 
-A dialog can have one or more SDP sessions active in one
-	of the following states:
+一个对话可以有一个或多个处于以下状态之一的 SDP 会话：
 
 
-- *pending* - only one end point of the
-	SDP session is known.
-- *negotiated* - both end points of the
-	SDP session are known.
+- *pending* - 仅知道 SDP 会话的一端。
+- *negotiated* - SDP 会话的两端都知道。
 
 
-An SDP session can be established in one of the following
-	scenarios:
+SDP 会话可以在以下场景之一中建立：
 
 
-- *INVITE/200ok* - typical "INVITE" and
-	"200 OK" SDP exchange.
-- *200ok/ACK* - "200 OK" and  "ACK" SDP
-	exchange (for calls starting with an empty INVITE).
-- *183/PRACK* - early media via "183
-	Session Progress" and "PRACK" (see rfc3959 for more information) -
-	not implemented yet.
+- *INVITE/200ok* - 典型的 "INVITE" 和 "200 OK" SDP 交换。
+- *200ok/ACK* - "200 OK" 和 "ACK" SDP 交换（用于以空 INVITE 开始的呼叫）。
+- *183/PRACK* - 通过 "183 Session Progress" 和 "PRACK" 的早期媒体（详见 rfc3959）——尚未实现。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded
-		before this module:
+以下模块必须在此模块之前加载：
 
 
-- *dialog* - dialog module and
-		its decencies (tm).
+- *dialog* - dialog 模块及其依赖（tm）。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-	running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### qos_flag (string)
 
 
-Keeping with OpenSIPS, the module will not do
-		anything to any message unless instructed to do so via
-		the config script. You must set the qos_flag
-		value in the setflag() call of the INVITE you want the
-		qos module to process. But before you can do that, you
-		need to tell the qos module which flag value you are
-		assigning to qos.
+与 OpenSIPS 保持一致，除非通过配置脚本指示，否则模块不会对任何消息执行任何操作。您必须在要 qos 模块处理的 INVITE 的 setflag() 调用中设置 qos_flag 值。但在此之前，您需要告诉 qos 模块您分配给 qos 的标志值是什么。
 
 
-In most cases when ever you create a new dialog
-		via create_dialog() function,you will want to set the qos flag. 
-		If create_dialog() is not called and the qos flag is set, 
-		it will not have any effect.
+在大多数情况下，当您通过 create_dialog() 函数创建新对话时，您会想要设置 qos 标志。如果未调用 create_dialog() 且设置了 qos 标志，则不会有任何效果。
 
 
-This parameter must be set of the module will
-		not load.
+必须设置此参数，否则模块不会加载。
 
 
-*Default value is "Not set!".*
+*默认值为 "未设置！"。*
 
 
-```c title="Set qos_flag parameter"
+```c title="设置 qos_flag 参数"
 ...
 modparam("qos", "qos_flag", "QOS_FLAG")
 ...
 route {
   ...
   if ($rm=="INVITE") {
-    setflag(QOS_FLAG); # Set the qos flag
-	create_dialog(); # create the dialog
+    setflag(QOS_FLAG); # 设置 qos 标志
+	create_dialog(); # 创建对话
   }
   ...
 }
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-There are no exported functions that could be used in scripts.
+没有可从脚本使用的导出函数。
 
 
-### Exported Statistics
+### 导出的统计信息
 
 
-There are no exported statistics for the qos module.
+qos 模块没有导出的统计信息。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
-There are no exported MI functions for the qos module.
-	Check the dialog MI functions for a way to inspect the internals
-	of a dialog.
+qos 模块没有导出的 MI 函数。
+	请查看 dialog MI 函数以了解检查对话内部的方法。
 
 
-### Exported Pseudo-Variables
+### 导出的伪变量
 
 
-There are no exported pseudo-variables for the qos module.
+qos 模块没有导出的伪变量。
 
 
-### Installation and Running
+### 安装和运行
 
 
-Just load the module and remember to set the flag.
+只需加载模块并记住设置标志。
 
 
-## Developer Guide
+## 开发者指南
 
 
-### Available Functions
+### 可用函数
 
 
 #### register_qoscb (qos, type, cb, param)
 
 
-Register a new callback to the qos.
+向 qos 注册新回调。
 
 
-Meaning of the parameters is as follows:
+参数的含义如下：
 
 
-- *struct qos_ctx_st* qos* - qos to 
-			register callback to. If maybe NULL only for QOSCB_CREATED callback
-			type, which is not a per qos type.
-- *int type* - types of callbacks; more
-			types may be register for the same callback function; only 
-			QOSCB_CREATED must be register alone. Possible types:
-			
-			
-				*QOSCB_CREATED* - called when a new 
-				qos context is created - it's a global type (not associated to 
-				any qos).
-			
-			
-				*QOSCB_ADD_SDP* - called when a new SDP
-				was added to the qos context - it's a per qos type.
-			
-			
-				*QOSCB_UPDATE_SDP* - called when an
-				existing SDP is updated - it's a per qos type.
-			
-			
-				*QOSCB_REMOVE_SDP* - called when an 
-				existing SDP is removed - it's a per qos type.
-			
-			
-				*QOSCB_TERMINATED* - called when the 
-				qos is terminated.
-- *qos_cb cb* - callback function to be 
-			called. Prototype is: "void (qos_cb) 
-			(struct qos_ctx_st *qos, int type, struct qos_cb_params *params);
-			"
-- *void *param* - parameter to be passed to
-			the callback function.
+- *struct qos_ctx_st* qos* - 要注册回调的 qos。对于 QOSCB_CREATED 回调类型，它可能仅为 NULL，这不是每 qos 类型。
+- *int type* - 回调类型；可以为同一回调函数注册多种类型；只有 QOSCB_CREATED 必须单独注册。可能的类型：
+	
+	
+	*QOSCB_CREATED* - 创建新 qos 上下文时调用——它是全局类型（不与任何 qos 关联）。
+	
+	
+	*QOSCB_ADD_SDP* - 向 qos 上下文添加新 SDP 时调用——它是每 qos 类型。
+	
+	
+	*QOSCB_UPDATE_SDP* - 更新现有 SDP 时调用——它是每 qos 类型。
+	
+	
+	*QOSCB_REMOVE_SDP* - 删除现有 SDP 时调用——它是每 qos 类型。
+	
+	
+	*QOSCB_TERMINATED* - qos 终止时调用。
+- *qos_cb cb* - 要调用的回调函数。原型为： "void (qos_cb) (struct qos_ctx_st *qos, int type, struct qos_cb_params *params);"
+- *void *param* - 要传递给回调函数的参数。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0（Creative Common License 4.0）授权。

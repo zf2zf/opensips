@@ -1,80 +1,74 @@
 ---
-title: "event_datagram Module"
-description: "This is a module which provides a UNIX/UDP SOCKET transport layer implementation for the Event Interface."
+title: "event_datagram 模块"
+description: "这是为 Event Interface 提供 UNIX/UDP SOCKET 传输层实现的模块。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This is a module which provides a UNIX/UDP SOCKET transport layer 
-		implementation for the Event Interface.
+这是为 Event Interface 提供 UNIX/UDP SOCKET 传输层实现的模块。
 
 
-### DATAGRAM events syntax
+### DATAGRAM 事件语法
 
 
-The event payload is formated as a JSON-RPC notification, with the event
-		name as the *method* field and the event parameters as
-		the *params* field.
+事件负载格式为 JSON-RPC 通知，事件名称作为 *method* 字段，事件参数作为 *params* 字段。
 
 
-### DATAGRAM socket syntax
+### DATAGRAM 套接字语法
 
 
-There are two types of sockets used by this module, based on the
-		sockets type. An UNIX socket should follow this syntax:
+此模块使用两种类型的套接字，基于套接字类型。UNIX 套接字应遵循此语法：
 		*['unix:'] unix_socket_path*
 
 
-An UDP socket should follow this syntax:
+UDP 套接字应遵循此语法：
 		*'udp:' address ':' port*
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before 
-		running OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-No parameter exported by this module.
+此模块不导出任何参数。
 
 
-### Exported Functions
+### 导出的函数
 
 
-No function exported to be used from configuration file.
+没有可从配置文件使用的函数。
 
 
-### Example
+### 示例
 
 
-This is an example of an event raised by the pike module
-			when it decides an ip should be blocked:
+这是 pike 模块在决定应阻止 IP 时引发的事件示例：
 
 
-```c title="E_PIKE_BLOCKED event"
+```c title="E_PIKE_BLOCKED 事件"
 {
   "jsonrpc": "2.0",
   "method": "E_PIKE_BLOCKED",
@@ -85,59 +79,57 @@ This is an example of an event raised by the pike module
 ```
 
 
-```c title="UNIX socket"
+```c title="UNIX 套接字"
 unix:/tmp/opensips_event.sock
 ```
 
 
-```c title="UDP socket"
+```c title="UDP 套接字"
 udp:127.0.0.1:8081
 ```
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Both UNIX and UDP type of socket can be
-				used to notify the events?**
+**Q: UNIX 和 UDP 类型的套接字都可以用于通知事件吗？**
 
 
-Yes, you can use the both types.
+是的，两者都可以使用。
 
 
-**Q: What is the maximum lenght of a datagram event?**
+**Q: datagram 事件的最大长度是多少？**
 
 
-The maximum length of a datagram event is 65457 bytes.
+datagram 事件的最大长度为 65457 字节。
 
 
-**Q: Where can I find more about OpenSIPS?**
+**Q: 在哪里可以找到更多关于 OpenSIPS 的信息？**
 
 
-Take a look at [https://opensips.org/](https://opensips.org/).
+请查看 [https://opensips.org/](https://opensips.org/)。
 
 
-**Q: Where can I post a question about this module?**
+**Q: 在哪里可以发布关于此模块的问题？**
 
 
-First at all check if your question was already answered on one of
-			our mailing lists:
+首先检查您的问题是否已在我们的邮件列表中得到解答：
 
-E-mails regarding any stable OpenSIPS release should be sent to 
-			users@lists.opensips.org and e-mails regarding development versions
-			should be sent to devel@lists.opensips.org.
+		关于任何稳定版 OpenSIPS 版本的电子邮件应发送至
+			users@lists.opensips.org，关于开发版本的电子邮件
+			应发送至 devel@lists.opensips.org。
 
-If you want to keep the mail private, send it to 
-			users@lists.opensips.org.
-
-
-**Q: How can I report a bug?**
+如果您希望保密邮件，请发送至
+			users@lists.opensips.org。
 
 
-Please follow the guidelines provided at:
-			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues).
+**Q: 如何报告 bug？**
+
+
+请按照以下指南操作：
+			[https://github.com/OpenSIPS/opensips/issues](https://github.com/OpenSIPS/opensips/issues)。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证

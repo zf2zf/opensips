@@ -1,56 +1,54 @@
 ---
-title: "XCAP Module"
-description: "The module contains several parameters and functions common to all modules using XCAP capabilities."
+title: "XCAP 模块"
+description: "该模块包含多个参数和函数，可供所有使用 XCAP 功能的模块共用。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The module contains several parameters and functions common to all
-        modules using XCAP capabilities.
+该模块包含多个参数和函数，可供所有使用 XCAP 功能的模块共用。
 
 
-The module is currently used by the following modules: presence_xml, rls and xcap_client.
+目前以下模块正在使用该模块：presence_xml、rls 和 xcap_client。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在加载此模块之前加载：
 
 
-- *a database module*.
+- *数据库模块*。
 
 
-### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before running
-		OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *libxml-dev*.
+- *libxml-dev*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### db_url(str)
 
 
-The database url.
+数据库 URL。
 
 
-*Default value is "mysql://opensips:opensipsrw@localhost/opensips".*
+*默认值为 "mysql://opensips:opensipsrw@localhost/opensips"。*
 
 
-```c title="Set db_url parameter"
+```c title="设置 db_url 参数"
 ...
 modparam("xcap", "db_url", "dbdriver://username:password@dbhost/dbname")
 ...
@@ -61,13 +59,13 @@ modparam("xcap", "db_url", "dbdriver://username:password@dbhost/dbname")
 #### xcap_table(str)
 
 
-The name of the db table where XCAP documents are stored.
+存储 XCAP 文档的数据库表名称。
 
 
-*Default value is "xcap".*
+*默认值为 "xcap"。*
 
 
-```c title="Set xcap_table parameter"
+```c title="设置 xcap_table 参数"
 ...
 modparam("xcap", "xcap_table", "xcap")
 ...
@@ -78,18 +76,16 @@ modparam("xcap", "xcap_table", "xcap")
 #### integrated_xcap_server (int)
 
 
-This parameter is a flag for the type of XCAP server or servers 
-		used. If integrated ones, like OpenXCAP from AG Projects, 
-		with direct access to database table, the parameter should be
-		set to a positive value. Apart from updating in xcap table,
-		the integrated server must send an MI command refershWatchers 
-		[pres_uri] [event] when a user modifies a rules document.
+此参数是所用 XCAP 服务器类型的标志。如果是集成的服务器（如 AG Projects 的 OpenXCAP），
+可以直接访问数据库表，该参数应设置为正值。除更新 xcap 表外，
+集成服务器在用户修改规则文档时必须发送 MI 命令 refreshWatchers 
+[pres_uri] [event]。
 
 
-*Default value is "0".*
+*默认值为 "0"。*
 
 
-```c title="Set integrated_xcap_server parameter"
+```c title="设置 integrated_xcap_server 参数"
 ...
 modparam("xcap", "integrated_xcap_server", 1)
 ...
@@ -97,26 +93,25 @@ modparam("xcap", "integrated_xcap_server", 1)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-None to be used in configuration file.
+配置文件中无需使用的函数。
 
 
-## Developer Guide
+## 开发者指南
 
 
-The module exports a number of parameters and functions that are used
-            in several other modules.
+该模块导出的参数和函数可供其他多个模块使用。
 
 
 ### bind_xcap_api(xcap_api_t* api)
 
 
-This function allows binding the needed functions.
+此函数用于绑定所需的函数。
 
 
-```c title="xcap_api structure"
+```c title="xcap_api 结构"
 ...
 typedef struct xcap_api {
         int integrated_server;
@@ -134,34 +129,34 @@ typedef struct xcap_api {
 ### normalize_xcap_uri
 
 
-This function normalizes a SIP URI found in a XCAP document. It un-escapes it and
-                    adds the SIP scheme in case it was missing. Returns a statically allocated string
-                    buffer containing the normalized form.
+此函数对 XCAP 文档中发现的 SIP URI 进行规范化。它会对其取消转义，
+并在缺少 SIP scheme 时添加该 scheme。返回一个静态分配的字符串
+缓冲区，其中包含规范化后的形式。
 
 
-Parameters:
+参数：
 
 
 - *uri*-
-				the URI that needs to be normalized
+				需要规范化的 URI
 
 
 ### parse_xcap_uri
 
 
-This function parses the given XCAP URI.
+此函数解析给定的 XCAP URI。
 
 
-Parameters:
+参数：
 
 
 - *uri*-
-				the URI that needs to be parsed in string format
+				需要解析的 URI（字符串格式）
 - *xcap_uri*-
-				xcap_uri_t structure that will be filled with the parsed information
+				xcap_uri_t 结构体，将用解析后的信息填充
 
   ```
-  Parameter type:
+  参数类型：
   ...
   typedef struct {
       char buf[MAX_URI_SIZE];
@@ -181,49 +176,49 @@ Parameters:
 ### get_xcap_doc
 
 
-This function queries the local DB for the required XCAP document. It will return the document and its
-                    corresponding etag.
+此函数从本地 DB 查询所需的 XCAP 文档。它将返回文档及其
+对应的 etag。
 
 
-Parameters:
+参数：
 
 
 - *user*-
-				user part od the URI of the document owner
+				文档所有者的 URI 用户部分
 - *domain*-
-				domain part od the URI of the document owner
+				文档所有者的 URI 域部分
 - *type*-
-                                type of the requested document, represents the AUID, can be one of PRES_RULES, RESOURCE_LISTS,
-                                RLS_SERVICES, PIDF_MANIPULATION, OMA_PRES_RULES
+                                请求的文档类型，代表 AUID，可以是 PRES_RULES、RESOURCE_LISTS、
+                                RLS_SERVICES、PIDF_MANIPULATION、OMA_PRES_RULES 之一
 - *filename*-
-				if specified it will be used to match the document filename, it defaults to 'index'
+				如果指定，将用于匹配文档文件名，默认为 'index'
 - *match_etag*-
-				if specified the document is only returned its etag matches this one
+				如果指定，则仅在 etag 匹配时才返回文档
 - *doc*-
-				reference to the storage for the returned document
+				返回文档的存储引用
 - *etag*-
-				reference to the storage for the returned document's etag
+				返回文档 etag 的存储引用
 
 
 ### db_url
 
 
-URL of the database to which the XCAP mdoules witll connect.
+XCAP 模块将要连接的数据库 URL。
 
 
 ### xcap_table
 
 
-Name of the table used to store XCAP documents. Defaults to 'xcap'.
+用于存储 XCAP 文档的表名。默认为 'xcap'。
 
 
 ### integrated_server
 
 
-Boolean flag indicating if the XCAP server has access to the local database or
-                xcap_client will be used to fetch documents.
+布尔标志，指示 XCAP 服务器是否可以访问本地数据库，或者
+是否使用 xcap_client 来获取文档。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享许可协议 4.0

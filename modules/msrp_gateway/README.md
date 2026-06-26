@@ -1,60 +1,59 @@
 ---
-title: "MSRP Gateway Module"
-description: "This module implements a Gateway for translating between Page Mode (SIP MESSAGE method) and Session Mode (MSRP) Instant Messaging."
+title: "MSRP Gateway 模块"
+description: "本模块实现了一个网关,用于在页面模式(SIP MESSAGE 方法)和会话模式(MSRP)即时消息之间进行转换。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements a Gateway for translating between Page Mode
-		(SIP MESSAGE method) and Session Mode (MSRP) Instant Messaging.
+本模块实现了一个网关,用于在页面模式
+(SIP MESSAGE 方法)和会话模式(MSRP)即时消息之间进行转换。
 
 
-The module makes use of the *msrp_ua* module's API for
-    	the MSRP UAC/UAS functionalities.
+该模块利用 *msrp_ua* 模块的 API 来实现
+MSRP UAC/UAS 功能。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载:
 
 
 - *tm*
 - *msrp_ua*
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed 
-			before running OpenSIPS with this module loaded:
+运行 OpenSIPS 加载此模块之前必须安装以下库或应用程序:
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### hash_size (int)
 
 
-The size of the hash table that stores the gateway session
-				information. It is the 2 logarithmic value of the real size.
+存储网关会话信息的哈希表大小。
+这是实际大小的以 2 为底的对数值。
 
 
-*Default value is "10"*
-			 (1024 records).
+*默认值为 "10"*
+(1024 条记录)。
 
 
-```c title="Set hash_size parameter"
+```c title="设置 hash_size 参数"
 ...
 modparam("msrp_gateway", "hash_size", 16)
 ...
@@ -65,14 +64,13 @@ modparam("msrp_gateway", "hash_size", 16)
 #### cleanup_interval (int)
 
 
-The interval between full iterations of the sessions table
-			in order to clean up lingering sessions.
+完整遍历会话表进行清理残留会话的间隔时间。
 
 
-*Default value is "60". (seconds)*
+*默认值为 "60"。 (秒)*
 
 
-```c title="Set cleanup_interval parameter"
+```c title="设置 cleanup_interval 参数"
 ...
 modparam("msrp_gateway", "cleanup_interval", 60)
 ...
@@ -83,14 +81,13 @@ modparam("msrp_gateway", "cleanup_interval", 60)
 #### session_timeout (int)
 
 
-Amount of time (in seconds) since last message has been received
-			from either side, after which a session should be terminated.
+从任一方上次收到消息后经过的时间(秒),超过该时间会话将被终止。
 
 
-*The default value is 12 * 3600 seconds (12 hours).*
+*默认值为 12 * 3600 秒(12 小时)。*
 
 
-```c title="Set session_timeout parameter"
+```c title="设置 session_timeout 参数"
 ...
 modparam("msrp_gateway", "session_timeout", 7200)
 ...
@@ -101,14 +98,13 @@ modparam("msrp_gateway", "session_timeout", 7200)
 #### message_timeout (int)
 
 
-Amount of time (in seconds) since last MESSAGE has been received
-			after which a session should be terminated.
+自上次收到 MESSAGE 后经过的时间(秒),超过该时间会话将被终止。
 
 
-*The default value is 2 * 3600 seconds (2 hours).*
+*默认值为 2 * 3600 秒(2 小时)。*
 
 
-```c title="Set message_timeout parameter"
+```c title="设置 message_timeout 参数"
 ...
 modparam("msrp_gateway", "message_timeout", 3600)
 ...
@@ -116,44 +112,34 @@ modparam("msrp_gateway", "message_timeout", 3600)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### msrp_gw_answer(key, content_types, from, to, ruri)
 
 
-This functions initializes a new gateway session by answering an initial
-			INVITE from the MSRP side SIP session. After running this function the
-			call will be completely handled by the MSRP UA engine and MSRP SEND
-			requests will be automatically translated to SIP MESSAGE requests.
+此函数通过应答来自 MSRP 侧 SIP 会话的初始 INVITE 来初始化一个新的网关会话。运行此函数后,
+呼叫将完全由 MSRP UA 引擎处理,MSRP SEND 请求将自动转换为 SIP MESSAGE 请求。
 
 
-The SIP From, To, and RURI coordinates for building MESSAGE requests
-			are passed as parameters to the function.
+用于构建 MESSAGE 请求的 SIP From、To 和 RURI 坐标作为参数传递给函数。
 
 
-Parameters:
+参数:
 
 
-- *key* (string) - gateway session key to be used
-				to correlate the MESSAGE requests with the MSRP side SIP session.
-				A simple example would be to build this key based on the From and To
-				URIs from both sides(from the initial MSRP leg INVITE and SIP MESSAGE
-				requests respectively).
-- *content_types* (string) - content types
-				adevertised in the SDP offer on the MSRP side SIP session.
-- *from* (string) - From URI to be used for building
-				SIP MESSAGE requests.
-- *to* (string) - To URI to be used for building
-				SIP MESSAGE requests.
-- *ruri* (string) - Request-URI to be used for building
-				SIP MESSAGE requests.
+- *key* (string) - 网关会话密钥,用于将 MESSAGE 请求与 MSRP 侧 SIP 会话关联。
+一个简单的例子是根据初始 MSRP 侧 INVITE 和 SIP MESSAGE 请求各自的 From 和 To URI 来构建此密钥。
+- *content_types* (string) - 在 MSRP 侧 SIP 会话的 SDP offer 中公布的内容类型。
+- *from* (string) - 用于构建 SIP MESSAGE 请求的 From URI。
+- *to* (string) - 用于构建 SIP MESSAGE 请求的 To URI。
+- *ruri* (string) - 用于构建 SIP MESSAGE 请求的 Request-URI。
 
 
-This function can be used only from a request route.
+此函数只能用于请求路由。
 
 
-```c title="msrp_gw_answer() usage"
+```c title="msrp_gw_answer() 用法"
 ...
 if (!has_totag() && is_method("INVITE")) {
 	msrp_gw_answer($var(corr_key), "text/plain", $fu, $tu, $ru);
@@ -166,32 +152,26 @@ if (!has_totag() && is_method("INVITE")) {
 #### msg_to_msrp(key, content_types)
 
 
-This functions translates a SIP MESSAGE request into a MSRP SEND request.
-			The function will initialize a new gateway session and establish the MSRP
-			side SIP session if it is not done so already by a previous call.
+此函数将 SIP MESSAGE 请求转换为 MSRP SEND 请求。
+如果之前的调用尚未完成,该函数将初始化一个新的网关会话并建立 MSRP 侧 SIP 会话。
 
 
-The SIP From, To, and RURI coordinates for the new MSRP side session are
-			taken from the MESSAGE request and mirrored back when translating a MSRP
-			SEND to SIP MESSAGE with *msrp_gw_answer*.
+新的 MSRP 侧会话的 SIP From、To 和 RURI 坐标取自 MESSAGE 请求,
+并在通过 *msrp_gw_answer* 将 MSRP SEND 转换回 SIP MESSAGE 时镜像回来。
 
 
-Parameters:
+参数:
 
 
-- *key* (string) - gateway session key to be used
-				to correlate the MESSAGE requests with the MSRP side SIP session.
-				A simple example would be to build this key based on the From and To
-				URIs from both sides(from the initial MSRP leg INVITE and SIP MESSAGE
-				requests respectively).
-- *content_types* (string) - content types
-				adevertised in the SDP offer on the MSRP side SIP session.
+- *key* (string) - 网关会话密钥,用于将 MESSAGE 请求与 MSRP 侧 SIP 会话关联。
+一个简单的例子是根据初始 MSRP 侧 INVITE 和 SIP MESSAGE 请求各自的 From 和 To URI 来构建此密钥。
+- *content_types* (string) - 在 MSRP 侧 SIP 会话的 SDP offer 中公布的内容类型。
 
 
-This function can be used only from a request route.
+此函数只能用于请求路由。
 
 
-```c title="msg_to_msrp() usage"
+```c title="msg_to_msrp() 用法"
 ...
 if (is_method("MESSAGE")) {
 	msg_to_msrp($var(corr_key), "text/plain");
@@ -201,28 +181,28 @@ if (is_method("MESSAGE")) {
 ```
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### msrp_gateway:list_sessions
 
 
-Replaces obsolete MI command: *msrp_gw_list_sessions*.
+替代已废弃的 MI 命令: *msrp_gw_list_sessions*。
 
 
-Lists information about ongoing sessions.
+列出正在进行的会话信息。
 
 
-Name: *msrp_gateway:list_sessions*
+名称: *msrp_gateway:list_sessions*
 
 
-Parameters
+参数
 
 
-- *None*.
+- *无*。
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式:
 
 
 ```c
@@ -234,22 +214,22 @@ opensips-cli -x mi msrp_gateway:list_sessions
 #### msrp_gateway:end_session
 
 
-Replaces obsolete MI command: *msrp_gw_end_session*.
+替代已废弃的 MI 命令: *msrp_gw_end_session*。
 
 
-Terminate an ongoing session.
+终止正在进行的会话。
 
 
-Name: *msrp_gateway:end_session*
+名称: *msrp_gateway:end_session*
 
 
-Parameters
+参数
 
 
-- *key* (string) - session key
+- *key* (string) - 会话密钥
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式:
 
 
 ```c
@@ -258,38 +238,35 @@ opensips-cli -x mi msrp_gateway:end_session alice@opensips.org-bob@opensips.org
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_MSRP_GW_SETUP_FAILED
 
 
-This event is triggered when the MSRP side SIP session fails to set up,
-			when using the *msg_to_msrp()* function.
+当使用 *msg_to_msrp()* 函数时,MSRP 侧 SIP 会话建立失败,触发此事件。
 
 
-The event can be used to generate a message with the failure description,
-			back on the MESSAGE side.
+该事件可用于生成包含失败描述的消息,
+返回到 MESSAGE 侧。
 
 
-Parameters:
+参数:
 
 
-- *key* - The session key.
-- *from_uri* - The URI in the SIP From header
-				to use on the MESSAGE side.
-- *to_uri* - The URI in the SIP To header
-				to use on the MESSAGE side.
-- *ruri* - The SIP Request URI to use on the
-				MESSAGE side.
-- *code* - The SIP error code in the negative reply
-				received on the MSRP side. Might be NULL if the MSRP UA session expired
-				before receiving a negative reply.
-- *reason* - The SIP reason string in the negative reply
-				received on the MSRP side. Might be NULL if the MSRP UA session expired
-				before receiving a negative reply.
+- *key* - 会话密钥。
+- *from_uri* - SIP From 头中的 URI,
+用于 MESSAGE 侧。
+- *to_uri* - SIP To 头中的 URI,
+用于 MESSAGE 侧。
+- *ruri* - SIP Request URI 用于
+MESSAGE 侧。
+- *code* - MSRP 侧收到的否定回复中的 SIP 错误代码。
+如果 MSRP UA 会话在收到否定回复之前过期,则可能为 NULL。
+- *reason* - MSRP 侧收到的否定回复中的 SIP 原因字符串。
+如果 MSRP UA 会话在收到否定回复之前过期,则可能为 NULL。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件(即 .md 扩展名)均采用知识共享许可证 4.0 版授权

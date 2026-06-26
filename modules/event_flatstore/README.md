@@ -1,74 +1,64 @@
 ---
-title: "event_flatstore Module"
-description: "The *event_flatstore* module provides a logging facility for different events, triggered through the OpenSIPS Event Interface, directly from the OpenSIPS script. The module logs the events along with their parameters in plain text files."
+title: "event_flatstore 模块"
+description: "*event_flatstore* 模块提供了一种日志记录功能，用于记录通过 OpenSIPS Event Interface 从 OpenSIPS 脚本触发的不同事件。该模块将事件及其参数以纯文本文件形式记录。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-The *event_flatstore*
-		module provides a logging facility for different events,
-		triggered through the OpenSIPS Event Interface, directly from the OpenSIPS
-		script. The module logs the events along with their parameters in plain
-		text files.
+*event_flatstore* 模块提供了一种日志记录功能，用于记录通过 OpenSIPS Event Interface 从 OpenSIPS 脚本触发的不同事件。该模块将事件及其参数以纯文本文件形式记录。
 
 
-### Flatstore socket syntax
+### Flatstore 套接字语法
 
 
 *flatstore:path_to_file*
 
 
-Meanings:
+含义：
 
 
-- *flatstore:* - informs the Event Interface that the
-					events sent to this subscriber should be handled by the
-					*event_flatstore* module.
-- *path_to_file* - path to the file where the logged events will be appended to. The file will be created if it does not exist. It must be a valid path and not a directory.
+- *flatstore:* - 通知 Event Interface，发送到此订阅者的事件应由 *event_flatstore* 模块处理。
+- *path_to_file* - 将记录事件追加到的文件路径。如果文件不存在，将创建该文件。它必须是有效路径，不能是目录。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *No dependencies on other OpenSIPS modules*.
+- *不依赖其他 OpenSIPS 模块*。
 
 
-### External Libraries or Applications
+### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行加载此模块的 OpenSIPS 之前，必须安装以下库或应用程序：
 
 
-- *none*
+- *无*
 
 
-### Exported Parameters
+### 导出的参数
 
 
 #### max_open_sockets (integer)
 
 
-Defines the maximum number of simultaneously opened files by the
-			module. If the maximum limit is reached, an error message will be
-			thrown, and further subscriptions will only be possible after at
-			least one of the current subscriptions will expire.
+定义模块同时打开的最大文件数。如果达到最大限制，将抛出错误消息，只有当前订阅中至少一个过期后才能进行进一步订阅。
 
 
-*Default value is "100".*
+*默认值为 "100"。*
 
 
-```c title="Set max_open_sockets parameter"
+```c title="设置 max_open_sockets 参数"
 ...
 modparam("event_flatstore", "max_open_sockets", 200)
 ...
@@ -78,13 +68,13 @@ modparam("event_flatstore", "max_open_sockets", 200)
 #### delimiter (string)
 
 
-Sets the separator between the parameters of the event in the logging file.
+设置日志文件中事件参数之间的分隔符。
 
 
-*Default value is ",".*
+*默认值为 ","。*
 
 
-```c title="Set delimiter parameter"
+```c title="设置 delimiter 参数"
 ...
 modparam("event_flatstore", "delimiter", ";")
 ...
@@ -94,22 +84,17 @@ modparam("event_flatstore", "delimiter", ";")
 #### escape_delimiter (string)
 
 
-Optional replacement sequence that will be written *instead
-			of* the [`delimiter`](#param_delimiter)
-			whenever this character (or sequence) occurs inside a string
-			parameter.
-			This allows you to keep the log file parse-friendly even when user
-			data itself may contain delimiter symbols.
+可选的替换序列，当字符串参数中包含 [`delimiter`](#param_delimiter) 字符（或序列）时，将写入*替代* [`delimiter`](#param_delimiter)。
+			这允许您在用户数据本身可能包含分隔符符号时保持日志文件可解析。
 
 
-If set, its length *must be exactly equal* to the
-			length of `delimiter`.
+如果设置，其长度*必须恰好等于* `delimiter` 的长度。
 
 
-*Default value is """" (escaping disabled).*
+*默认值为 """"（转义禁用）。*
 
 
-```c title="Enable escaping of ',' with '|'"
+```c title="启用 ',' 用 '|' 转义"
 ...
 modparam("event_flatstore", "delimiter", ",")
 modparam("event_flatstore", "escape_delimiter", "|")
@@ -121,14 +106,13 @@ modparam("event_flatstore", "escape_delimiter", "|")
 #### file_permissions (string)
 
 
-Sets the permissions for the newly created logs. It
-			expects a string representation of a octal value.
+设置新创建的日志文件的权限。它期望八进制值的字符串表示。
 
 
-*Default value is "644".*
+*默认值为 "644"。*
 
 
-```c title="Set file_permissions parameter"
+```c title="设置 file_permissions 参数"
 ...
 modparam("event_flatstore", "file_permissions", "664")
 ...
@@ -138,13 +122,13 @@ modparam("event_flatstore", "file_permissions", "664")
 #### suppress_event_name (int)
 
 
-Suppresses the name of the event in the log file.
+禁止在日志文件中显示事件名称。
 
 
-*Default value is "0/OFF" (the event's name is printed).*
+*默认值为 "0/关闭"（打印事件名称）。*
 
 
-```c title="Set suppress_event_name parameter"
+```c title="设置 suppress_event_name 参数"
 ...
 modparam("event_flatstore", "suppress_event_name", 1)
 ...
@@ -154,18 +138,16 @@ modparam("event_flatstore", "suppress_event_name", 1)
 #### rotate_period (int)
 
 
-When used, it triggers a file auto-rotate. The period is matched
-			against the absolute time of the machine, can be useful to trigger
-			auto-rotate every minute, or every hour.
+使用时，会触发文件自动轮换。该周期与机器的绝对时间匹配，可用于触发每分钟或每小时自动轮换。
 
 
-*Default value is "0/OFF" (the file is never auto-rotated)*
+*默认值为 "0/关闭"（文件从不自动轮换）*
 
 
-```c title="Set rotate_period parameter"
+```c title="设置 rotate_period 参数"
 ...
-modparam("event_flatstore", "rotate_period", 60) # rotate every minute
-modparam("event_flatstore", "rotate_period", 3660) # rotate every hour
+modparam("event_flatstore", "rotate_period", 60) # 每分钟轮换
+modparam("event_flatstore", "rotate_period", 3660) # 每小时轮换
 ...
 ```
 
@@ -173,15 +155,13 @@ modparam("event_flatstore", "rotate_period", 3660) # rotate every hour
 #### rotate_count (int|string)
 
 
-Defines after how many written lines the log file is rotated.
-			The value may exceed the 32-bit integer limit; in that case pass
-			it *as a string*, e.g. "5000000000".
+定义日志文件轮换前的写入行数。该值可能超过 32 位整数限制；如果是这种情况，请*作为字符串*传递，例如 "5000000000"。
 
 
-*Default value is "0/OFF".*
+*默认值为 "0/关闭"。*
 
 
-```c title="Rotate after five billion lines"
+```c title="五十亿行后轮换"
 ...
 modparam("event_flatstore", "rotate_count", "5000000000")
 ...
@@ -192,17 +172,14 @@ modparam("event_flatstore", "rotate_count", "5000000000")
 #### rotate_size (int|string)
 
 
-Sets the maximum size of a file before it is rotated.  A size
-		suffix of "k", "m" or "g"
-		(multiples of 1024) may be provided.
-		Very large values can be supplied as strings, e.g.
-		"8589934592" for 8 GiB.
+设置文件轮换前的最大大小。可以提供 "k"、"m" 或 "g" 的文件大小后缀（1024 的倍数）。
+		可以用字符串提供非常大的值，例如 "8589934592" 表示 8 GiB。
 
 
-*Default value is "0/OFF".*
+*默认值为 "0/关闭"。*
 
 
-```c title="Rotate at 2 GiB"
+```c title="2 GiB 时轮换"
 ...
 modparam("event_flatstore", "rotate_size", "2g")
 ...
@@ -212,91 +189,77 @@ modparam("event_flatstore", "rotate_size", "2g")
 #### suffix (string)
 
 
-Modifies the file that OpenSIPS writes events into by
-			appending a suffix to the the file specified in the flatstore
-			*socket*.
+通过在 flatstore *socket* 中指定的文件追加后缀来修改 OpenSIPS 写入事件的文件。
 
 
-The suffix can contain string formats (i.e. variables mixed with
-			strings). The path of the resulted file is evaluated when the first
-			event is raised/written in the file after a reload happend, or when
-			the *rotate_period*, if specified, triggers a rotate.
+后缀可以包含字符串格式（即与字符串混合的变量）。生成文件的路径在重新加载后第一次引发/写入文件的事件时进行评估，或者当 *rotate_period*（如果指定）触发轮换时进行评估。
 
 
-This parameter does not affect the matching of the event socket -
-			the matching will be done exclusively using the flatstore
-			*socket* registered.
+此参数不影响事件套接字的匹配——匹配将仅使用注册的 flatstore *socket* 进行。
 
 
-*Default value is """" (no suffix is added)*
+*默认值为 """"（不添加后缀）*
 
 
-```c title="Set suffix parameter"
+```c title="设置 suffix 参数"
 ...
 modparam("event_flatstore", "suffix", "$time(%Y)")
 ...
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
-No exported functions to be used in the configuration file.
+没有可从配置文件使用的导出函数。
 
 
-### Exported MI Functions
+### 导出的 MI 函数
 
 
 #### event_flatstore:rotate
 
 
-Replaces obsolete MI command: *evi_flat_rotate*.
+替换已弃用的 MI 命令：*evi_flat_rotate*。
 
 
-It makes the processes reopen the file specified as a parameter to the command in order to be compatible with a logrotate command. If the function is not called after the mv command is executed, the module will continue to write in the renamed file.
+它使进程重新打开文件作为参数指定的命令以与 logrotate 命令兼容。如果在执行 mv 命令后未调用该函数，模块将继续写入重命名的文件。
 
 
-Name: *event_flatstore:rotate*
+名称：*event_flatstore:rotate*
 
 
-Parameters: *path_to_file*
+参数：*path_to_file*
 
 
-MI FIFO Command Format:
+MI FIFO 命令格式：
 
 
 ```c
 opensips-cli -x mi event_flatstore:rotate _path_to_log_file_
-		
+	
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_FLATSTORE_ROTATION
 
 
-The event is raised every time *event_flatstore*
-		opens a new log file (manual `event_flatstore:rotate`,
-		auto-rotate by `rotate_period`, or
-		thresholds `rotate_count`/`rotate_size`).
-		External apps can subscribe to monitor log-rotation activity.
+每次 *event_flatstore* 打开新日志文件时都会引发此事件（手动 `event_flatstore:rotate`、由 `rotate_period` 自动轮换，或由 `rotate_count`/`rotate_size` 阈值触发）。
+		外部应用程序可以订阅以监控日志轮换活动。
 
 
-Parameters:
+参数：
 
 
-- *timestamp* – Unix epoch (seconds) when the
-		rotation was performed.
-- *reason* – one of the strings
-		*count*, *size*,
-		*period* or *mi*.
-- *filename* – full path of the new log file.
-- *old_filename* – full path of the previous
-		log file, or empty string if none existed.
+- *timestamp* – 执行轮换的 Unix 时间戳（秒）。
+- *reason* – 以下字符串之一：*count*、*size*、*period* 或 *mi*。
+- *filename* – 新日志文件的完整路径。
+- *old_filename* – 之前日志文件的完整路径，如果没有则为空字符串。
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）采用 Creative Common License 4.0 许可证

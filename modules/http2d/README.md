@@ -1,48 +1,46 @@
 ---
-title: "HTTP2D MODULE"
-description: "This module provides an RFC 7540/9113 HTTP/2 server implementation with \"h2\" ALPN support, based on the **nghttp2** library ([https://nghttp2.org/](https://nghttp2.org/))."
+title: "HTTP2D 模块"
+description: "此模块提供了一个基于 **nghttp2** 库 ([https://nghttp2.org/](https://nghttp2.org/)) 的 RFC 7540/9113 HTTP/2 服务器实现，支持 \"h2\" ALPN。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module provides an RFC 7540/9113 HTTP/2 server implementation with "h2" ALPN support,
-		based on the **nghttp2** library ([https://nghttp2.org/](https://nghttp2.org/)).
+此模块提供了一个基于 **nghttp2** 库 ([https://nghttp2.org/](https://nghttp2.org/)) 的 RFC 7540/9113 HTTP/2 服务器实现，支持 "h2" ALPN。
 
 
-HTTP/2, introduced in 2015, is a binary protocol with added transactional layers (SESSION, FRAME),
-		which allow identifying and managing multiple, concurrent transfers over the same TCP/TLS connection.
-		Thus, the revised protocol primarily aims to reduce resource usage for both clients and servers, by
-		reducing the amount of TCP and/or TLS handshakes performed when loading a given web page.
+HTTP/2 于 2015 年推出，是一种二进制协议，包含额外的传输层（SESSION、FRAME），
+		它允许在同一个 TCP/TLS 连接上识别和管理多个并发传输。
+		因此，修订后的协议主要旨在减少客户端和服务器的資源使用，
+		通过减少加载给定网页时执行的 TCP 和/或 TLS 握手次数。
 
 
-The OpenSIPS **http2d** server includes support for both "h2" (TLS secured)
-		and "h2c" (cleartext) HTTP/2 connections.  The requests arrive at
-		*opensips.cfg* level using the [http2 request](#event_e_http2_request) event,
-		where script writers may process the data and respond accordingly.
+OpenSIPS **http2d** 服务器同时支持 "h2"（TLS 加密）
+		和 "h2c"（明文）HTTP/2 连接。请求到达
+		*opensips.cfg* 级别时使用 [http2 请求](#event_e_http2_request) 事件，
+		脚本编写者可以在此处处理数据并做出相应响应。
 
 
-### Dependencies
+### 依赖
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-None.
+无。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The HTTP/2 server is provided by the **nghttp2** library,
-		which runs on top of the **libevent** server framework.
+HTTP/2 服务器由 **nghttp2** 库提供，
+		该库运行在 **libevent** 服务器框架之上。
 
 
-Overall, the following libraries must be installed before running
-		OpenSIPS with this module loaded:
+在运行加载此模块的 OpenSIPS 之前，必须安装以下库：
 
 
 - *libnghttp2*
@@ -50,134 +48,129 @@ Overall, the following libraries must be installed before running
 - *libssl*, *libcrypto*
 
 
-### Exported Parameters
+### 导出的参数
 
 
-#### ip (string)
+#### ip (字符串)
 
 
-The listening IPv4 address.
+监听的 IPv4 地址。
 
 
-Default value is *"127.0.0.1"*.
+默认值为 *"127.0.0.1"*。
 
 
-```c title="Setting the ip parameter"
+```c title="设置 ip 参数"
 modparam("http2d", "ip", "127.0.0.2")
 ```
 
 
-#### port (integer)
+#### port (整数)
 
 
-The listening port.
+监听端口。
 
 
-Default value is *443*.
+默认值为 *443*。
 
 
-```c title="Setting the port parameter"
+```c title="设置 port 参数"
 modparam("http2d", "port", 5000)
 ```
 
 
-#### tls_cert_path (string)
+#### tls_cert_path (字符串)
 
 
-File path to the TLS certificate, in PEM format.
+TLS 证书文件的路径，格式为 PEM。
 
 
-Default value is *NULL* (not set).
+默认值为 *NULL*（未设置）。
 
 
-```c title="Setting the tls_cert_path parameter"
+```c title="设置 tls_cert_path 参数"
 modparam("http2d", "tls_cert_path", "/etc/pki/http2/cert.pem")
 ```
 
 
-#### tls_cert_key (string)
+#### tls_cert_key (字符串)
 
 
-File path to the TLS private key, in PEM format.
+TLS 私钥文件的路径，格式为 PEM。
 
 
-Default value is *NULL* (not set).
+默认值为 *NULL*（未设置）。
 
 
-```c title="Setting the tls_cert_key parameter"
+```c title="设置 tls_cert_key 参数"
 modparam("http2d", "tls_cert_key", "/etc/pki/http2/private/key.pem")
 ```
 
 
-#### max_headers_size (integer)
+#### max_headers_size (整数)
 
 
-The maximum amount of bytes allowed for all header field names and values
-		combined in a single HTTP/2 request processed by the server.  Once this
-		threshold is reached, extra headers will no longer be provided at script
-		level and will be reported as errors instead.
+服务器处理的单个 HTTP/2 请求中所有头部字段名称和值的最大字节数。
+		一旦达到此阈值，额外头部将不再提供给脚本级别，而是报告为错误。
 
 
-Default value is *8192* bytes.
+默认值为 *8192* 字节。
 
 
-```c title="Setting the max_headers_size parameter"
+```c title="设置 max_headers_size 参数"
 modparam("http2d", "max_headers_size", 16384)
 ```
 
 
-#### response_timeout (integer)
+#### response_timeout (整数)
 
 
-The maximum amount of time, in milliseconds, that the library will
-		allow the opensips.cfg processing to take for a given HTTP/2 request.
+库允许 opensips.cfg 处理给定 HTTP/2 请求的最大时间（毫秒）。
 
 
-Once this timeout is reached, the module will auto-generate a
-		408 (request timeout) reply.
+一旦达到此超时，模块将自动生成 408（请求超时）回复。
 
 
-Default value is *2000* ms.
+默认值为 *2000* 毫秒。
 
 
-```c title="Setting the response_timeout parameter"
+```c title="设置 response_timeout 参数"
 modparam("http2d", "response_timeout", 5000)
 ```
 
 
-### Exported Functions
+### 导出的函数
 
 
 #### http2_send_response(code, [headers_json], [data])
 
 
-Sends a response for the HTTP/2 request being processed.  The *":status"*
-		header field will be automatically included by the module as 1st header, so it must not be
-		included in the *headers_json* array.
+发送正在处理的 HTTP/2 请求的响应。*":status"*
+		头部字段将由模块自动作为第一个头部包含，因此不必包含在 *headers_json* 数组中。
 
 
-*Parameters*
+*参数*
 
 
-- *code* (integer) - The HTTP/2 reply code
-- *headers_json* (string, default: *NULL*)
-				- Optional JSON Array containing {"header": "value"} elements, denoting HTTP/2
-				headers and their values to be included in the response message.
-- *data* (string, default: *NULL*)
-				- Optional DATA payload to include in the response message.
+- *code* (整数) - HTTP/2 回复码
+- *headers_json* (字符串, 默认值: *NULL*)
+				- 可选的 JSON 数组，包含 {"header": "value"} 元素，表示要包含在响应消息中的 HTTP/2
+				头部及其值。
+- *data* (字符串, 默认值: *NULL*)
+				- 要包含在响应消息中的可选 DATA 负载。
 
 
-*Return Codes*
+*返回码*
 
 
-- **1** - Success
-- **-1** - Internal Error
+- **1** - 成功
+- **-1** - 内部错误
 
 
-This function can only be used from an *EVENT_ROUTE*.
+此函数只能用于 *EVENT_ROUTE*。
 
 
-```c title="http2_send_response() usage"
+```c title="http2_send_response() 用法"
 event_route [E_HTTP2_REQUEST] {
   xlog(":: Method:  $param(method)\n");
   xlog(":: Path:    $param(path)\n");
@@ -202,35 +195,34 @@ event_route [E_HTTP2_REQUEST] {
 ```
 
 
-### Exported Events
+### 导出的事件
 
 
 #### E_HTTP2_REQUEST
 
 
-This event is raised whenever the *http2d*
-		module is loaded and OpenSIPS receives an HTTP/2 request on the configured
-		listening interface(s).
+当加载 *http2d* 模块且 OpenSIPS 在配置
+		的监听接口上收到 HTTP/2 请求时触发此事件。
 
 
-Parameters:
+参数：
 
 
-- *method (string)* - value of the ":method" HTTP/2 header
-- *path (string)* - value of the ":path" HTTP/2 header
-- *headers (string)* - JSON Array with all headers of the request,
-						including pseudo-headers
-- *data (string, default: NULL)* - If the request included a payload,
-						this parameter will hold its contents
+- *method (字符串)* - ":method" HTTP/2 头的值
+- *path (字符串)* - ":path" HTTP/2 头的值
+- *headers (字符串)* - 包含请求所有头部的 JSON 数组，
+						包括伪头部
+- *data (字符串, 默认值: NULL)* - 如果请求包含负载，
+						此参数将保存其内容
 
 
-Note that this event is currently designed to be mainly consumed by an *event_route*,
-		since that is the only way to gain access to the [http2 send response](#func_http2_send_response)
-		function in order to build custom response messages.  On the other hand,
-		if the application does not mind the answer being always a 200 with no payload,
-		this event can be successfully consumed through any other EVI-compatible delivery channel ☺️
+请注意，此事件当前设计为主要通过 *event_route* 使用，
+		因为这是访问 [http2 发送响应](#func_http2_send_response)
+		函数的唯一方式，以便构建自定义响应消息。另一方面，
+		如果应用程序不介意答案始终是 200 且没有负载，
+		则可以通过任何其他 EVI 兼容的传递通道成功使用此事件 :-)
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可协议。

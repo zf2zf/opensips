@@ -1,104 +1,107 @@
 ---
-title: "tls_wolfssl Module"
-description: "This module implements TLS operations using the [wolfSSL](https://www.wolfssl.com/) libarary. It provides the primitives required by the *tls_mgm* module in order to expose a higher-level API used by TLS-based protocol modules like *proto_tls* or *proto_wss*."
+title: "tls_wolfssl 模块"
+description: "此模块使用 [wolfSSL](https://www.wolfssl.com/) 库实现 TLS 操作。它提供 *tls_mgm* 模块所需的原语，以暴露由 *proto_tls* 或 *proto_wss* 等基于 TLS 的协议模块使用的高级 API。"
 ---
 
-## Admin Guide
+## 管理指南
 
 
-### Overview
+### 概述
 
 
-This module implements TLS operations using the
-		[wolfSSL](https://www.wolfssl.com/) libarary. It provides the primitives
-		required by the *tls_mgm* module in order to expose a
-		higher-level API used by TLS-based protocol modules like
-		*proto_tls* or *proto_wss*.
+此模块使用
+		[wolfSSL](https://www.wolfssl.com/) 库实现 TLS 操作。
+		它提供 *tls_mgm* 模块所需的原语，
+		以暴露由 *proto_tls* 或 *proto_wss* 等基于 TLS 的协议模块使用的高级 API。
 
 
-The *wolfSSL* library is statically-linked and bundled
-		with this module so no installation or external dependency is required.
+*wolfSSL* 库是静态链接的，
+		并与此模块捆绑在一起，因此无需安装或外部依赖。
 
 
-### Dependencies
+### 依赖
 
 
-#### Compilation
+#### 编译
 
 
-The following packages must be installed before compiling this module:
+编译此模块之前必须安装以下软件包：
 
 
-- *autoconf*.
-- *automake*.
-- *libtool*.
+- *autoconf*。
+- *automake*。
+- *libtool*。
 
 
-#### OpenSIPS Modules
+#### OpenSIPS 模块
 
 
-The following modules must be loaded before this module:
+以下模块必须在此模块之前加载：
 
 
-- *None*.
+- *无*。
 
 
-#### External Libraries or Applications
+#### 外部库或应用程序
 
 
-The following libraries or applications must be installed before
-		running OpenSIPS with this module loaded:
+运行加载了此模块的 OpenSIPS 之前必须安装以下库或应用程序：
 
 
-- *None*.
+- *无*。
 
 
-### Exported Parameters
+### 导出的参数
 
 
-All these parameters can be used from the opensips.cfg file,
-		to configure the behavior of OpenSIPS-TLS.
+所有这些参数都可以从 opensips.cfg 文件使用，
+		用于配置 OpenSIPS-TLS 的行为。
 
 
 #### try_use_ktls (integer)
 
 
-Try to use KTLS for RX and TX ( dependent on Kernel support and loaded modules https://docs.kernel.org/networking/tls-offload.htm )
-			If kernel support is not found, or if the cypher attempted to be used is not supported ( only AES-GCM for now ), then SSL operations will continue to be done in user-space.
-			IF NIC supports SSL offloading, that can also be enabled without any changes needed to the module https://docs.nvidia.com/doca/sdk/ktls-offloads/index.html
+尝试为 RX 和 TX 使用 KTLS（取决于内核支持和加载的模块
+			https://docs.kernel.org/networking/tls-offload.htm ）
+			如果未找到内核支持，或尝试使用的密码不支持
+			（目前仅支持 AES-GCM），则 SSL 操作将继续在用户空间进行。
+			如果 NIC 支持 SSL 卸载，也可以启用，
+			无需对模块进行任何更改
+			https://docs.nvidia.com/doca/sdk/ktls-offloads/index.html
 
 
-Default value is *0*.
+默认值为 *0*。
 
 
-```c title="Set try_use_ktls variable"
+```c title="设置 try_use_ktls 变量"
 ...
 modparam("tls_wolfssl", "try_use_ktls", 1)
 ...
-				
+
 ```
 
 
-## Frequently Asked Questions
+## 常见问题
 
 
-**Q: Why do I get the following error when compiling the module?**
+**Q：编译模块时为什么会收到以下错误？**
 
 
-If you obtained the OpenSIPS sources by cloning the repository from Github,
-		without using the *--recursive* option for the
-		*git clone* command, you did not properly fetch the
-		*wolfSSL* library code, which is included as a git submodule
-		pointing to the official *wolfSSL* repository.
+如果您通过从 Github 克隆仓库获取 OpenSIPS 源码，
+		而没有为 *git clone* 命令使用 *--recursive* 选项，
+		则您没有正确获取作为 git 子模块包含的
+		*wolfSSL* 库代码，该子模块指向官方 *wolfSSL* 仓库。
 
-In order to fetch the *wolfSSL* library code you can run:
-		
+
+要获取 *wolfSSL* 库代码，您可以运行：
+
 ```c
 
-		git submodule update --init
+	git submodule update --init
+
 ```
 <!-- CONTRIBUTORS -->
 
-### License
+### 许可证
 
-All documentation files (i.e. .md extension) are licensed under the Creative Common License 4.0
+所有文档文件（即 .md 扩展名）均采用知识共享署名 4.0 国际许可证。
