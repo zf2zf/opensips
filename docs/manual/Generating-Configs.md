@@ -1,57 +1,48 @@
 ---
-title: "Generating Config Files"
-description: "Use the OpenSIPS GNU M4 templates to create residential, trunking, and load-balancer configurations."
+title: "生成配置文件"
+description: "使用 OpenSIPS GNU M4 模板创建住宅、中继和负载均衡器配置。"
 ---
 
-OpenSIPS provides ready-to-use GNU M4 configuration templates under
-`examples/templates/`:
+OpenSIPS 在 `examples/templates/` 下提供随时可用的 GNU M4 配置模板：
 
 * `residential.m4`
 * `trunking.m4`
 * `loadbalancer.m4`
 
-They are installed as shared examples under
-`$PREFIX/share/opensips/examples/templates/`. Distribution packages typically
-use `/usr/share/opensips/examples/templates/`.
+它们作为共享示例安装在下：`$PREFIX/share/opensips/examples/templates/`。发行版包通常使用 `/usr/share/opensips/examples/templates/`。
 
-Each template starts with definitions for its listening interface, database
-URL, optional endpoints, and feature switches. Edit these definitions before
-using the template. Feature switches accept `yes` or `no`.
+每个模板以监听接口、数据库 URL、可选端点和功能开关的定义开始。使用模板前请编辑这些定义。功能开关接受 `yes` 或 `no`。
 
-## Run a template directly
+## 直接运行模板
 
-Use `-f` to select the template and `-p m4` to preprocess it before OpenSIPS
-parses it:
+使用 `-f` 选择模板，使用 `-p m4` 在 OpenSIPS 解析前对其进行预处理：
 
 ```bash
 opensips -C -f examples/templates/residential.m4 -p m4
 opensips -f examples/templates/residential.m4 -p m4
 ```
 
-The first command checks the generated configuration. The second starts
-OpenSIPS. GNU M4 must be installed and available in `PATH`.
+第一个命令检查生成的配置。第二个命令启动 OpenSIPS。GNU M4 必须安装并在 `PATH` 中可用。
 
-For an installed distribution package, use the template from the shared
-examples directory:
+对于已安装的发行版包，请从共享示例目录中使用模板：
 
 ```bash
 opensips -f /usr/share/opensips/examples/templates/residential.m4 -p m4
 ```
 
-## Create a standalone configuration
+## 创建独立配置文件
 
-You can render a template into a regular configuration file:
+您可以将模板渲染到常规配置文件：
 
 ```bash
 m4 examples/templates/residential.m4 > opensips.cfg
 ```
 
-The resulting file no longer requires preprocessing. Edit it as needed, then
-check or start it normally:
+生成的文件不再需要预处理。根据需要编辑它，然后正常检查或启动它：
 
 ```bash
 opensips -C -f opensips.cfg
 opensips -f opensips.cfg
 ```
 
-See `examples/templates/README.md` for additional examples.
+其他示例请参阅 `examples/templates/README.md`。

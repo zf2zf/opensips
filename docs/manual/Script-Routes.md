@@ -1,29 +1,29 @@
 ---
-title: "Types of routes"
-description: "Request routing block. It contains a set of actions to be taken for SIP requests."
+title: "路由类型"
+description: "请求路由块。它包含一组对 SIP 请求要采取的操作。"
 ---
 
-**OpenSIPS** routing logic uses several types of routes. Each type of route is triggered by a certain event and allows you to process a certain type of message (request or reply).
+**OpenSIPS** 路由逻辑使用多种类型的路由。每种路由类型由特定事件触发，允许您处理特定类型的消息（请求或回复）。
 
 ---
 
 ## route
 
-Request routing block. It contains a set of actions to be taken for SIP requests.
+请求路由块。它包含一组对 SIP 请求要采取的操作。
 
-**Triggered by** : receiving an external request from the network.
+**触发条件**：从网络接收外部请求。
 
-**Processing** : the triggering SIP request.
+**处理**：触发的 SIP 请求。
 
-**Type** : initially stateless, may be forced to stateful by using TM functions.
+**类型**：最初是无状态的，可能通过使用 TM 函数强制为有状态。
 
-**Default action** : if the request is not either forwarded nor replied, the route will simply discard the request at the end.
+**默认操作**：如果请求既不被转发也不被回复，路由将在结束时简单丢弃该请求。
 
-The main 'route' block identified by 'route`{...}`' or 'route[0]`{...}`' is executed for each SIP request.
+主 'route' 块由 'route`{...}`' 或 'route[0]`{...}`' 标识，为每个 SIP 请求执行。
 
-The implicit action after execution of the main route block is to drop the SIP request. To send a reply or forward the request, explicit actions must be called inside the route block.
+主路由块执行后的隐式操作是丢弃 SIP 请求。要发送回复或转发请求，必须在路由块内调用显式操作。
 
-Example of usage:
+使用示例：
 ```c
 
     route {
@@ -41,11 +41,11 @@ Example of usage:
 
 ```
 
-Note that if a 'route(X)' is called from a 'branch_route[Y]' then in 'route[X]' is just processed each separate branch instead of all branches together as occurs in main route.
+请注意，如果从 'branch_route[Y]' 调用 'route(X)'，则在 'route[X]' 中只是分别处理每个分支，而不是像在主路由中那样一起处理所有分支。
 
-A route can return a set of values, that can later be retrieved from the route's calling context using the [`$return`](https://docs.opensips.org/manual/devel/script-corevar#return) variable.
+路由可以返回一组值，这些值随后可以使用 [`$return`](https://docs.opensips.org/manual/devel/script-corevar#return) 变量从路由的调用上下文中检索。
 
-Example of passing values:
+传递值示例：
 ```c
 
     route {
@@ -58,25 +58,25 @@ Example of passing values:
     }
 
 ```
-Note that the first parameter of the return is always the return code, and cannot be retrieved using the `$return()` variable.
+请注意，return 的第一个参数始终是返回代码，不能使用 `$return()` 变量检索。
 
 ---
 
 ## branch_route
 
-Request's branch routing block. It contains a set of actions to be taken for each branch of a SIP request.
+请求分支路由块。它包含一组对 SIP 请求的每个分支要采取的操作。
 
-**Triggered by** : preparation a new branch (of a request); the branch is well formed, but not yet sent out.
+**触发条件**：准备一个新分支（请求的分支）；分支格式良好，但尚未发出。
 
-**Processing** : the SIP request (with the branch particularities, like RURI, branch flags)
+**处理**：SIP 请求（带有分支特性，如 RURI、分支标志）
 
-**Type** : stateful
+**类型**：有状态
 
-**Default action** : if the branch is not dropped (via "drop" statement), the branch will be automatically sent out.
+**默认操作**：如果分支未被丢弃（通过 "drop" 语句），分支将自动发出。
 
-It is executed only by TM module after it was armed via t_on_branch("branch_route_index").
+它仅在通过 t_on_branch("branch_route_index") 配置后由 TM 模块执行。
 
-Example of usage:
+使用示例：
 ```c
 
     route {
@@ -99,21 +99,21 @@ Example of usage:
 
 ## failure_route
 
-Failed transaction routing block. It contains a set of actions to be taken each transaction that received only negative replies (>=300) for all branches.
+失败事务路由块。它包含一组对每个仅收到负面回复（>=300）的分支事务要采取的操作。
 
-**Triggered by** : receiving or generation(internal) of a negative reply that completes the transaction (all branches are terminated with negative replies)
+**触发条件**：收到或生成（内部）完成事务的负面回复（所有分支都以负面回复终止）
 
-**Processing** : the original SIP request (that was sent out)
+**处理**：原始 SIP 请求（已发出）
 
-**Type** : stateful
+**类型**：有状态
 
-**Default action** : if no new branch is generated or no reply is forced over, by default, the winning reply will be sent back to UAC.
+**默认操作**：如果没有生成新分支或没有强制回复，默认情况下，胜出的回复将被发送回 UAC。
 
-The 'failure_route' is executed only by TM module after it was armed via t_on_failure("failure_route_index").
+'failure_route' 仅在通过 t_on_failure("failure_route_index") 配置后由 TM 模块执行。
 
-Note that inside the 'failure_route', the request that initiated the transaction is being processed, and not its reply.
+请注意，在 'failure_route' 中，处理的是发起事务的请求，而不是其回复。
 
-Example of usage:
+使用示例：
 ```c
 
     route {
@@ -136,25 +136,25 @@ Example of usage:
 
 ## onreply_route
 
-Reply routing block. It contains a set of actions to be taken for SIP replies.
+回复路由块。它包含一组对 SIP 回复要采取的操作。
 
-**Triggered by** : receiving of a reply from the network
+**触发条件**：从网络收到回复
 
-**Processing** : the received reply
+**处理**：收到的回复
 
-**Type** : stateful (if bound to a transaction) or stateless (if global reply route).
+**类型**：有状态（如果绑定到事务）或无状态（如果是全局回复路由）。
 
-**Default action** : if the reply is not dropped (only provisional replies can be), it will be injected and processed by the transaction engine.
+**默认操作**：如果回复未被丢弃（只有临时回复可以），它将被注入并由事务引擎处理。
 
-There are three types of onreply routes:
+有三种类型的 onreply 路由：
 
-* **global** - it catches all replies received by OpenSIPS and does not need any special arming (simple definition is enough) - named 'onreply_route `{...}`' or 'onreply_route[0] `{...}`'. NOTE: this route is not SIP transaction aware (the reply was not matched to the transaction), so no transactional data is available here.
+* **全局** - 它捕获 OpenSIPS 收到的所有回复，不需要任何特殊配置（简单定义即可）——命名为 'onreply_route `{...}`' 或 'onreply_route[0] `{...}`'。注意：此路由不知道 SIP 事务（回复未与事务匹配），因此此路由中不可用事务数据。
 
-* **per request/transaction** - it catches all received replies belonging to a certain transaction and need to be armed (via "t_on_reply()" ) at request time, in REQUEST ROUTE - named 'onreply_route[N] `{...}`'.
+* **per request/transaction** - 它捕获属于某个事务的所有收到的回复，需要在请求时间的 REQUEST ROUTE 中通过 "t_on_reply()" 配置（通过）——命名为 'onreply_route[N] `{...}`'。
 
-* **per branch** - it catches only the replies that belong to a certain branch from a transaction. It needs to be armed (also via "t_on_reply()" ) at request time, but in BRANCH ROUTE, when a certain outgoing branch is processed - named 'onreply_route[N] `{...}`'.
+* **per branch** - 它仅捕获属于事务中某个分支的回复。它也需要在请求时间的 BRANCH ROUTE 中（当处理某个传出分支时）通过 "t_on_reply()" 配置——命名为 'onreply_route[N] `{...}`'。
 
-Certain 'onreply_route' blocks can be executed by TM module for special replies. For this, the 'onreply_route' must be armed for the SIP requests whose replies should be processed within it, via t_on_reply("onreply_route_index").
+某些 'onreply_route' 块可以由 TM 模块为特殊回复执行。为此，必须为应在其内处理回复的 SIP 请求配置 'onreply_route'，通过 t_on_reply("onreply_route_index")。
 
 ```c
 
@@ -198,25 +198,25 @@ onreply_route[global] {
 
 ## error_route
 
-The error route is executed automatically when a parsing error occurs during SIP request processing, or when a script [assert](https://docs.opensips.org/manual/devel/script-corefunctions#assert) fails. It allows the administrator to decide what to do in such error cases.
+当 SIP 请求处理期间发生解析错误，或脚本 [assert](https://docs.opensips.org/manual/devel/script-corefunctions#assert) 失败时，会自动执行错误路由。它允许管理员决定如何处理此类错误情况。
 
 > [!IMPORTANT]
-> as this is triggered ONLY for SIP request, OpenSIPS has to be able to correctly parse the first line of the SIP message. So any syntax error in the first line will NOT trigger this route (as OpenSIPS will not be able to tell if a reply or request).
+> 由于这仅对 SIP 请求触发，OpenSIPS 必须能够正确解析 SIP 消息的第一行。因此，第一行中的任何语法错误都不会触发此路由（因为 OpenSIPS 将无法判断是回复还是请求）。
 
-**Triggered by** : parsing error in "route"
+**触发条件**："route" 中的解析错误
 
-**Processing** : failed request
+**处理**：失败的请求
 
-**Type** : stateless (recommended)
+**类型**：无状态（推荐）
 
-**Default action** : discard request.
+**默认操作**：丢弃请求。
 
-In error_route, the following pseudo-variables are available to get access to error details:
-* `$(err.class)` - the class of error (now is '1' for parsing errors)
-* `$(err.level)` - severity level for the error
-* `$(err.info)` - text describing the error
-* `$(err.rcode)` - recommended reply code
-* `$(err.rreason)` - recommended reply reason phrase
+在 error_route 中，以下伪变量可用于获取错误详情：
+* `$(err.class)` - 错误类别（现在对于解析错误为 '1'）
+* `$(err.level)` - 错误严重级别
+* `$(err.info)` - 描述错误的文本
+* `$(err.rcode)` - 建议的回复代码
+* `$(err.rreason)` - 建议的回复原因短语
 
 ```text
 
@@ -234,15 +234,15 @@ In error_route, the following pseudo-variables are available to get access to er
 
 ## local_route
 
-The local route is executed automatically when a new SIP request is generated by TM, internally (no UAC side). This is a route intended to be used for message inspection, accounting and for applying last changes on the message headers. Routing and signaling functions are not allowed. 
+当 TM 内部生成新的 SIP 请求时（无 UAC 端），会自动执行本地路由。这是一个用于消息检查、计费和应用于消息头的最后更改的路由。不允许使用路由和信令功能。
 
-**Triggered by** : TM generating a brand new request
+**触发条件**：TM 生成全新请求
 
-**Processing** : the new request
+**处理**：新请求
 
-**Type** : stateful 
+**类型**：有状态
 
-**Default action** : send the request out
+**默认操作**：发送请求
 
 ```c
 
@@ -262,11 +262,11 @@ The local route is executed automatically when a new SIP request is generated by
 
 ## startup_route
 
-The **startup_route** is executed only once when OpenSIPS is started and before the processing of SIP messages begins. This is useful if some initiation actions are needed, like loading some data in the cache, to ease up the future processing. Notice that this route, compared to the others is not triggered at the receipt of a message, so the functions that can be called here must not do processing on the message.
+**startup_route** 仅在 OpenSIPS 启动时执行一次，在 SIP 消息处理开始之前。如果需要一些初始化操作，比如在缓存中加载一些数据以简化未来的处理，这很有用。请注意，与其他路由不同，此路由不是由消息接收触发的，因此这里可以调用的函数必须不处理消息。
 
-**Triggered** : At startup, before the listener processes are started.
+**触发**：启动时，在监听器进程启动之前。
 
-**Processing** : Initializing functions.
+**处理**：初始化函数。
 
 ```c
 
@@ -281,14 +281,14 @@ The **startup_route** is executed only once when OpenSIPS is started and before 
 
 ## timer_route
 
-The **timer_route** is a route executed periodically at a configured interval of time specified next to the name (in seconds). Similar to *startup_route*, this route does not process a SIP message.  Multiple timer routes (possibly at differing running intervals) are allowed.
+**timer_route** 是一个按配置的时间间隔定期执行的路由（在名称旁边指定，以秒为单位）。与 *startup_route* 类似，此路由不处理 SIP 消息。允许有多个计时器路由（可能在不同的运行间隔）。
 
-**Triggered by** : The *timer* worker process.
+**触发条件**：*timer* 工作进程。
 
-**Processing** : Functions that do periodic, recurring processing.
+**处理**：执行周期性、重复处理的函数。
 
 > [!NOTE]
-> when OpenSIPS starts, each timer_route is **first executed after `<interval>`** seconds!
+> 当 OpenSIPS 启动时，每个 timer_route 在 `<interval>` 秒后**首次执行**！
 
 ```c
 
@@ -302,15 +302,15 @@ The **timer_route** is a route executed periodically at a configured interval of
 ---
 
 ## event_route
-The **event_route** is used by the OpenSIPS Event Interface to execute script code when an event is triggered. The name of the route is the event that has to be handled by that route. The route itself is executed asynchronously with regards to the trigger moment.
+**event_route** 由 OpenSIPS 事件接口使用，在触发事件时执行脚本代码。路由名称是必须由该路由处理的事件。路由本身相对于触发时刻异步执行。
 
-**Triggered by** : OpenSIPS core when an event with the same name is raised by the Event Interface
+**触发条件**：当事件接口引发具有相同名称的事件时，由 OpenSIPS 核心触发
 
-**Processing** : the event triggered
+**处理**：触发的事件
 
-**Type** : stateless (recommended)
+**类型**：无状态（推荐）
 
-**Default action** : no script code is executed when the event is raised.
+**默认操作**：当事件引发时不执行任何脚本代码。
 
 ```text
 

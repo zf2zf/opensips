@@ -1,128 +1,128 @@
 ---
-title: "Core Events"
-description: "Events are exported by the OpenSIPS core through the Event Interface."
+title: "核心事件"
+description: "事件通过事件接口由 OpenSIPS 核心导出。"
 ---
 
-Events are exported by the **OpenSIPS** core through the Event Interface.
+事件通过事件接口由 **OpenSIPS** 核心导出。
 
 ---
 
 ## E_CORE_THRESHOLD
 
-Threshold limit exceeded.
+超过阈值限制。
 
-This event is triggered when a particular action takes longer than a specific threshold. It can be raised when a MySQL or DNS query takes too long, or a SIP message processing goes beyond a specific limit. For more information please see [this](http://lists.opensips.org/pipermail/users/2011-February/016918.html) post.
+当某个操作花费的时间超过特定阈值时触发此事件。当 MySQL 或 DNS 查询花费时间过长，或 SIP 消息处理超过特定限制时都会触发。更多信息请参阅[此帖子](http://lists.opensips.org/pipermail/users/2011-February/016918.html)。
 
-Parameters:
-* **source**: the source of the event: mysql module, core (for DNS or message processing warnings).
-* **time**: the amount of time (in microseconds) spent by the operation
-* **extra**: extra information, depending on the source of the event
+参数:
+* **source**: 事件来源: mysql 模块，core（用于 DNS 或消息处理警告）。
+* **time**: 操作花费的时间（微秒）
+* **extra**: 额外信息，取决于事件来源
 
 ## E_CORE_PKG_THRESHOLD
 
-Private memory threshold exceeded.
+私有内存阈值超出。
 
-This event is triggered when the private memory usage goes above a threshold limit, specified by the **event_pkg_threshold** the core parameter. It warns external applications about low values of free private memory.
+当私有内存使用量超过由 **event_pkg_threshold** 核心参数指定的阈值限制时触发此事件。它警告外部应用程序可用私有内存的低值。
 
-Parameters:
-* **usage**: the percentage of private memory usage. Can have values between **event_pkg_threshold** and 100.
-* **threshold**: the **event_pkg_threshold** specified in the script.
-* **used**: the amount of private memory used.
-* **size**: the total amount of private memory.
-* **pid**: the pid of the process that raises the event.
+参数:
+* **usage**: 私有内存使用百分比。值可在 **event_pkg_threshold** 和 100 之间。
+* **threshold**: 脚本中指定的 **event_pkg_threshold**。
+* **used**: 已使用的私有内存量。
+* **size**: 私有内存总量。
+* **pid**: 触发事件的进程的 pid。
 
 > [!NOTE]
-> If the event_pkg_threshold is not specified or 0, then this event is disabled.
+> 如果未指定 event_pkg_threshold 或为 0，则此事件被禁用。
 
 ## E_CORE_SHM_THRESHOLD
 
-Shared memory threshold exceeded.
+共享内存阈值超出。
 
-This event is triggered when the shared memory usage goes above a threshold limit, specified by the **event_shm_threshold** the core parameter. It warns external applications about low values of free shared memory.
+当共享内存使用量超过由 **event_shm_threshold** 核心参数指定的阈值限制时触发此事件。它警告外部应用程序可用共享内存的低值。
 
-Parameters:
-* **usage**: the percentage of shared memory usage. Can have values between **event_shm_threshold** and 100.
-* **threshold**: the **event_shm_threshold** specified in the script.
-* **used**: the amount of shared memory used.
-* **size**: the total amount of shared memory.
+参数:
+* **usage**: 共享内存使用百分比。值可在 **event_shm_threshold** 和 100 之间。
+* **threshold**: 脚本中指定的 **event_shm_threshold**。
+* **used**: 已使用的共享内存量。
+* **size**: 共享内存总量。
 
 > [!NOTE]
-> If the event_shm_threshold is not specified or 0, then this event is disabled.
+> 如果未指定 event_shm_threshold 或为 0，则此事件被禁用。
 
 ## E_CORE_PROC_AUTO_SCALE
 
-Process Auto-Scaling (upscale and downscale).
+进程自动缩放（扩展和收缩）。
 
-This event is triggered whenever a new process is created (forked) or a process is terminated due the auto-scaling logic. In order to have this event trigger, the [auto-scaling](https://docs.opensips.org/manual/devel/script-coreparameters#auto_scaling_profile) must be enabled in your configuration.
+每当由于自动缩放逻辑创建新进程（fork）或终止进程时触发此事件。要使此事件触发，必须在配置中启用[自动缩放](https://docs.opensips.org/manual/devel/script-coreparameters#auto_scaling_profile)。
 
-Parameters:
-* **group_type**: the type/name of the scaling group (UDP/TCP/TIMER).
-* **group_filter**: the filter (usually the socket/interface for UDP) of the scaling group.
-* **group_load**: the load over the scaling group.
-* **scale**: "up" or "down"
-* **process_id**: the process ID (at OpenSIPS level) of the scaled (up or down) process.
-* **pid**: the PID (OS level) of the scaled (up or down) process.
+参数:
+* **group_type**: 缩放组的类型/名称（UDP/TCP/TIMER）。
+* **group_filter**: 缩放组的过滤器（通常为 UDP 的 socket/interface）。
+* **group_load**: 缩放组上的负载。
+* **scale**: "up" 或 "down"
+* **process_id**: 被缩放（扩展或收缩）进程的进程 ID（在 OpenSIPS 级别）。
+* **pid**: 被缩放进程的 PID（操作系统级别）。
 
 ## E_CORE_TCP_DISCONNECT
 
-TCP connection disconnected.
+TCP 连接断开。
 
-This event is triggered when a TCP connection is terminated/disconnected.
+当 TCP 连接被终止/断开时触发此事件。
 
-Parameters:
-* **src_ip**: the source IP of the TCP connection
-* **src_port**: the source PORT of the TCP connection
-* **dst_ip**: the destination IP of the TCP connection
-* **dst_port**: the destination PORT of the TCP connection
-* **proto**: the protocol of the underlying TCP connection ( ie. tcp, tls, ws, wss, etc )
+参数:
+* **src_ip**: TCP 连接的源 IP
+* **src_port**: TCP 连接的源端口
+* **dst_ip**: TCP 连接的目的 IP
+* **dst_port**: TCP 连接的目的端口
+* **proto**: 底层 TCP 连接的协议（即 tcp、tls、ws、wss 等）
 
 ## E_CORE_SR_STATUS_CHANGED
 
-Status/Report status changed.
+状态/报告状态更改。
 
-This event is triggered the status of an SR identifier changes.
+当 SR 标识符的状态发生变化时触发此事件。
 
-Parameters:
-* **group**: the name of the SR group
-* **identifier**: the name of the SR identifier
-* **status**: the new status (as numerical value) of the SR identifier
-* **details**: the details/text attached to the new status
-* **old_status**: the old status (as numerical value) of the SR identifier
+参数:
+* **group**: SR 组名称
+* **identifier**: SR 标识符名称
+* **status**: SR 标识符的新状态（数值）
+* **details**: 附加到新状态的详情/文本
+* **old_status**: SR 标识符的旧状态（数值）
 
 ## E_CORE_LOG
 
-Log message produced.
+产生的日志消息。
 
-This event is triggered whenever a log message is produced by OpenSIPS. In order to have this event trigger, the [log_event_enabled](https://docs.opensips.org/manual/3-4/script-coreparameters#log_event_enabled) must be enabled in your configuration.
+每当 OpenSIPS 产生日志消息时触发此事件。要使此事件触发，必须在配置中启用 [log_event_enabled](https://docs.opensips.org/manual/3-4/script-coreparameters#log_event_enabled)。
 
-Parameters:
-* **time**: time when the log message was produced
-* **pid**: the PID of the processes that produced this log message
-* **level**: the log level of this message ("DBG", "INFO" etc.)
-* **module**: module that produced this log message; absent for logs triggered from the script by the **xlog()** function
-* **function**: internal function that produced this log message; absent for logs triggered from the script by the **xlog()** function
-* **prefix**: logging prefix, configured via the [log_prefix](https://docs.opensips.org/manual/3-4/script-coreparameters#log_prefix) parameter. This parameter is absent if the parameter is not configured.
-* **message**: the actual log message content
+参数:
+* **time**: 产生日志消息的时间
+* **pid**: 产生此日志消息的进程的 PID
+* **level**: 此消息的日志级别（"DBG"、"INFO" 等）
+* **module**: 产生此日志消息的模块; 对于由 **xlog()** 函数从脚本触发的日志则不存在
+* **function**: 产生此日志消息的内部函数; 对于由 **xlog()** 函数从脚本触发的日志则不存在
+* **prefix**: 日志前缀，通过 [log_prefix](https://docs.opensips.org/manual/3-4/script-coreparameters#log_prefix) 参数配置。如果未配置该参数则不存在。
+* **message**: 实际日志消息内容
 
 ## E_PROFILING_PROC
 
-Process profiling event.
+进程性能分析事件。
 
-This event is generated when the process profiling is activated. It reports different actions that takes place inside the process.
+当进程性能分析被激活时生成此事件。它报告在进程内部发生的不同操作。
 
-Parameters:
-* **sec**: UNIX TIMESTAMP, seconds
-* **usec**: micro seconds within the second
-* **session**: session ID, to group all events part of a profiling session
-* **verb**: profiling action as 'start','enter','exit' and 'end'
-* **name**: description of the profiling action
-* **type**: the type of the process generating the profiling data
-* **depth**: execution depth - 'start' is level 1, each 'enter' increases, each 'exit' decreases.
-* **file**: cfg file name or C function where the profiling is done; only set for 'enter' and 'exit'
-* **line**: line in the 'file'; only set for 'enter' and 'exit'
-* **status**: only for 'exit' and 'end', the status/retcode of the 'name' action (highly depends on its nature)
+参数:
+* **sec**: UNIX 时间戳，秒
+* **usec**: 秒内微秒
+* **session**: 会话 ID，用于对属于性能分析会话的所有事件进行分组
+* **verb**: 性能分析操作，如 'start'、'enter'、'exit' 和 'end'
+* **name**: 性能分析操作的描述
+* **type**: 生成性能分析数据的进程类型
+* **depth**: 执行深度 - 'start' 为级别 1，每次 'enter' 增加，每次 'exit' 减少。
+* **file**: 进行性能分析的配置文件名或 C 函数; 仅对 'enter' 和 'exit' 设置
+* **line**: 'file' 中的行号; 仅对 'enter' 和 'exit' 设置
+* **status**: 仅对 'exit' 和 'end'，'name' 操作的状态/返回码（高度依赖于其性质）
 
-Example of usage:
+使用示例:
 ```text
 
 {'sec': 1776767469, 'usec': 200446, 'session': 3463978, 'verb': 'start', 'name': 'SIP receiver udp:127.0.0.1:5060', 'type': 1, 'depth': 0}
@@ -138,6 +138,6 @@ Example of usage:
 
 ## E_PROFILING_SCRIPT
 
-Script profiling event.
+脚本性能分析事件。
 
-Similar to E_PROFILING_PROC but related to script (routes) execution. It uses the same parameters as E_PROFILING_PROC.
+类似于 E_PROFILING_PROC，但与脚本（路由）执行相关。它使用与 E_PROFILING_PROC 相同的参数。

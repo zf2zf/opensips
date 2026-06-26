@@ -1,19 +1,19 @@
 ---
-title: "Download OpenSIPS"
-description: "OpenSIPS packages for various distributions are available for download in our repository."
+title: "下载 OpenSIPS"
+description: "OpenSIPS 的各种发行版软件包可从我们的仓库下载。"
 ---
 
-**OpenSIPS 4.1** is the future OpenSIPS Major release. Currently it can only be checked out from the master branch of the official git repository.
+**OpenSIPS 4.1** 是未来的 OpenSIPS 主要版本。目前只能从官方 Git 仓库的 master 分支检出。
 
 ---
 
-## Packages download - preferred method
+## 软件包下载 - 首选方法
 
-OpenSIPS packages for various distributions are available for download in [our repository](https://www.opensips.org/Downloads/Downloads#osipmi).
+OpenSIPS 的各种发行版软件包可从[我们的仓库](https://www.opensips.org/Downloads/Downloads#osipmi)下载。
 
-## GIT download
+## GIT 下载
 
-GitHUB hosts the main repository for OpenSIPS. In order to checkout the latest version of OpenSIPS, you can run:
+GitHub 托管着 OpenSIPS 的主仓库。要检出 OpenSIPS 的最新版本，可以运行：
 
 ```text
 git clone --recurse-submodules https://github.com/OpenSIPS/opensips.git opensips-devel

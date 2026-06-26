@@ -1,45 +1,46 @@
 ---
-title: "Statistics Interface"
-description: "The Statistics Interface is an OpenSIPS interface that provides access to various internal statistics of OpenSIPS. The statistic provide useful information a..."
+title: "统计接口"
+description: "统计接口是 OpenSIPS 提供访问各种内部统计信息的接口。统计信息提供有关 OpenSIPS 内部情况的有用信息——可被外部应用使用，用于监控目的、负载评估、与其它服务的实时集成。统计变量的值仅为数值。"
 ---
 
-The **Statistics Interface** is an OpenSIPS interface that provides access to various internal statistics of OpenSIPS. The statistic provide useful information about what is going on inside OpenSIPS - this can be used by external applications, for monitoring purposes, load evaluation, realtime integration with other services. The values of statistic variables are exclusively numerical.
-
----
-
-## Overview
-
-**OpenSIPS** typically provides two types of statistic variables:
-* counter like - variables that keep counting things that happened in OpenSIPS, like received requests, processed dialogs, failed DB queries, etc
-* computed values - variables that are calculated in realtime, like how much memory is used, the current load, active dialogs, active transactions, etc
-
-The statistic variables are not restart persistent, they all start with a 0 value (the counter like variables). The *counter like* statistics can also be reset (to 0 value) during OpenSIPS runtime.
-
-In OpenSIPS, the statistics variables are grouped in different sets, depending on their purposes or how is providing them. For example, the OpenSIPS core provides the **shmem**, **load**, **net**, etc groups, while each OpenSIPS module provides its own group (typically the group has the same name as the module).
-
-All available statistic variables are listed and documented : statistics provided [by OpenSIPS core](Interface-CoreStatistics.md) or by [OpenSIPS modules](Modules.md) (see the Statistics chapter for each module).
+**统计接口**是 OpenSIPS 提供访问各种内部统计信息的接口。统计信息提供有关 OpenSIPS 内部情况的有用信息——可被外部应用使用，用于监控目的、负载评估、与其它服务的实时集成。统计变量的值仅为数值。
 
 ---
 
-## Usage
+## 概述
 
-To get access to the statistics you have to use the [MI interface](Interface-MI.md) which provides (directly from OpenSIPS core) several MI functions for:  
+**OpenSIPS** 通常提供两种类型的统计变量:
+* 计数器类型 - 持续累计 OpenSIPS 中发生的事情的变量，如接收到的请求、处理的 dialog、失败的 DB 查询等
+* 计算值 - 实时计算的变量，如已使用内存量、当前负载、活跃 dialog、活跃事务等
+
+统计变量不是重启持久的，它们都以 0 值开始（计数器类型变量）。计数器类型统计也可以在 OpenSIPS 运行时重置（为零）。
+
+在 OpenSIPS 中，统计变量按不同集合分组，根据其用途或提供方式。例如，OpenSIPS 核心提供 **shmem**、**load**、**net** 等组，而每个 OpenSIPS 模块提供自己的组（通常组名与模块名相同）。
+
+所有可用的统计变量都有列出和文档说明: 由 [OpenSIPS 核心](Interface-CoreStatistics.md)或 [OpenSIPS 模块](Modules.md)提供的统计（请参阅每个模块的统计章节）。
+
+---
+
+## 使用
+
+要获取统计信息的访问权，您必须使用 [MI 接口](Interface-MI.md)，它提供（直接从 OpenSIPS 核心）多个 MI 函数用于:
+
 \
-**Fetching the value** of a statistic variable, of an entire group of variables or of all variables. The MI [get_statistics](Interface-CoreMI.md) command can be used here:
+**获取**统计变量、整个变量组或所有变量的值。可在此使用 MI [get_statistics](Interface-CoreMI.md) 命令:
 ```bash
 
-   # get one statistic variable, by name
+   # 获取一个统计变量，按名称
    > opensipsctl fifo get_statistics rcv_requests
    > core:rcv_requests = 3428
    > opensipsctl fifo get_statistics real_used_size 
    > shmem:real_used_size = 2951864
 
-   # get various statistic variables, by list of names
+   # 按名称列表获取多个统计变量
    > opensipsctl fifo get_statistics rcv_requests inuse_transactions
    > core:rcv_requests = 453
    > tm:inuse_transactions = 10
 
-   # get all stats from a group
+   # 从一个组获取所有统计
    > opensipsctl fifo get_statistics shmem:
    > shmem:total_size = 33554432
    > shmem:used_size = 2897024
@@ -48,23 +49,24 @@ To get access to the statistics you have to use the [MI interface](Interface-MI.
    > shmem:free_size = 30602568
    > shmem:fragments = 26
 
-   # get all stats from OpenSIPS
+   # 从 OpenSIPS 获取所有统计
    > opensipsctl fifo get_statistics all
    >...........
 
 ```
+
   
 
-**Reseting the value** of a statistic variable (to 0 value), but only if it is counter-type variable.
+**重置**统计变量的值（为零），但仅适用于计数器类型变量。
 
 > [!IMPORTANT]
-> Reseting a computed-value statistic will be ignored and have no effect.
+> 重置计算值统计将被忽略且无效。
 
- The MI [reset_statistics](Interface-CoreMI.md) command can be used here:
+ 可在此使用 MI [reset_statistics](Interface-CoreMI.md) 命令:
 
 ```bash
 
-   # reset one statistic variable, by name
+   # 重置一个统计变量，按名称
    > opensipsctl fifo reset_statistics rcv_requests
 
 ```

@@ -1,36 +1,36 @@
 ---
-title: "Status/Report Interface"
-description: "The Status/Report (or SR) is an OpenSIPS framework that allows different components of OpenSIPS (like modules, parts of the core) to publish their status (in..."
+title: "状态/报告接口"
+description: "状态/报告（SR）是 OpenSIPS 的一个框架，允许 OpenSIPS 的不同组件（如模块、核心部分）发布其状态（就绪状态）和与其活动相关的报告（日志）。"
 ---
 
-The **Status/Report** (or **SR**) is an OpenSIPS framework that allows different components of OpenSIPS (like modules, parts of the core) to publish their status (in terms of readiness) and reports (logs) relevant to their activities.   
+**状态/报告**（**SR**）是 OpenSIPS 的一个框架，允许 OpenSIPS 的不同组件（如模块、核心部分）发布其状态（就绪状态）和与其活动相关的报告（日志）。
 
-This framework is intended to be used in operational activities, to check the readiness of OpenSIPS when starting up, to monitor its status at runtime and to trace back its operations via the logs/reports.
+该框架旨在用于运维活动，在 OpenSIPS 启动时检查其就绪状态、在运行时监控其状态，以及通过日志/报告追溯其操作。
 
-## Overview
+## 概述
 
-The base element in the **Status/Report** framework is the *identifier* - an status and some reports may be attached to an identifier. All the identifiers do exist within a **Status/Report** group. So, a group is a set of identifiers - a module or a core may be such groups. For example the *drouting* module publishes the *drouting* group where each routing partition is an *identifier*.   
+**状态/报告**框架中的基本元素是*标识符*——状态和报告可以附加到标识符上。所有标识符都存在于**状态/报告**组中。因此，一个组是一组标识符——模块或核心可以是这样的组。例如，*drouting* 模块发布 *drouting* 组，其中每个路由分区是一个*标识符*。
 
-As there are cases where the group (the modules) do not need multiple identifiers, there is a default *main* identifier - such identifier may be referred only by the name of the group.
+由于某些情况下组（模块）不需要多个标识符，因此存在一个默认的*主*标识符——这样的标识符只能通过组名来引用。
 
-The information attached to an identifier is:
-* **status** as integer value, translating if the identifier is ready for operation or not; a strict negative value means not-ready, while a strict positive value means it is ready; a zero value is not accepted.
-* **status details** is a optional text to the status, providing some human friendly (or details) information in regards to the current status.
-* **reports** is a fix-size array (rather a queue discarding the oldest records) of logs produced by the identifier. Each report/log is produced with a timestamp also.
+附加到标识符的信息包括：
+* **状态**——整数值，表示标识符是否就绪可操作；严格的负值表示未就绪，严格的正值表示就绪；零值不被接受。
+* **状态详情**——状态的可选文本，提供当前状态的一些人性化（或详细）信息。
+* **报告**——固定大小的数组（更像是一个丢弃最旧记录的队列），包含标识符生成的日志。每个报告/日志都带有时间戳。
 
-I most of the cases, the status and reports of an identifier are internally produced by the OpenSIPS code - the **Status/Report** interface just gives you access to the status / report information from outside the code, for monitoring purposes.
-
----
-
-## Scripting functions
-
-The SR Interface provides a script function to check the readiness status of an identifier (or of an entire group), see the [sr_check_status( group, \[identifier\])](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) function.
+在大多数情况下，标识符的状态和报告由 OpenSIPS 代码内部生成——**状态/报告**接口只是让你从代码外部访问状态/报告信息，用于监控目的。
 
 ---
 
-## MI functions
+## 脚本函数
 
-The SR Interface provides multiple functions to check/list the status of one/multiple identifiers and to list their reports:
+SR 接口提供了一个脚本函数来检查标识符（或整个组）的就绪状态，参见 [sr_check_status( group, \[identifier\])](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) 函数。
+
+---
+
+## MI 函数
+
+SR 接口提供了多个函数来检查/列出单个或多个标识符的状态，并列出其报告：
 * [sr_get_status](https://docs.opensips.org/manual/devel/interface-coremi#sr_get_status)
 * [sr_list_status](https://docs.opensips.org/manual/devel/interface-coremi#sr_list_status)
 * [sr_list_reports](https://docs.opensips.org/manual/devel/interface-coremi#sr_list_reports)
@@ -38,30 +38,30 @@ The SR Interface provides multiple functions to check/list the status of one/mul
 
 ---
 
-## Events
+## 事件
 
-The SR framework raises an event each time the status of a Status/Report identifier changes. See the [E_CORE_SR_STATUS_CHANGED event](https://docs.opensips.org/manual/devel/interface-coreevents#E_CORE_SR_STATUS_CHANGED) for more details.
-
----
-
-## Core identifiers
-
-The OpenSIPS core provides the **core** group, with a "main" (default) identifier. The available status are:
-* STATE_NONE (-100) - OpenSIPS just started
-* STATE_TERMINATING (-2) - OpenSIPS is shutdown sequence
-* STATE_INITIALIZING (-1) - OpenSIPS in startup sequence
-* STATE_RUNNING (1) - OpenSIPS fully up and running
-
-Also the **auto-scaling** group is exposed (if auto-scaling feature enabled), where each auto-scaling group is a Status/Report identifier. Each identifier gets reports on the forking or ripping of processes in that auto-scaling group.
+每当状态/报告标识符的状态发生变化时，SR 框架会引发一个事件。参见 [E_CORE_SR_STATUS_CHANGED 事件](https://docs.opensips.org/manual/devel/interface-coreevents#E_CORE_SR_STATUS_CHANGED) 了解更多详情。
 
 ---
 
-## Modules identifiers
+## 核心标识符
 
-The OpenSIPS modules may or may not provide their own groups and identifiers. For this you need to check the module's documentation.
+OpenSIPS 核心提供 **core** 组，带有一个"主"（默认）标识符。可用的状态包括：
+* STATE_NONE (-100) - OpenSIPS 刚刚启动
+* STATE_TERMINATING (-2) - OpenSIPS 正在关闭
+* STATE_INITIALIZING (-1) - OpenSIPS 正在启动
+* STATE_RUNNING (1) - OpenSIPS 完全启动并运行
+
+此外，**auto-scaling** 组也会被暴露（如果启用了自动扩展功能），其中每个自动扩展组是一个状态/报告标识符。每个标识符都会收到该自动扩展组中进程分叉或剥离的报告。
 
 ---
 
-## Scripting identifiers
+## 模块标识符
 
-The [status_report](../../modules/status_report/README.md) allow the creation of custom SR identifiers from script level. Even more, it is possible to set the status or to publish a report from script for such custom identifiers.
+OpenSIPS 模块可能提供或不提供自己的组和标识符。为此，你需要查看模块的文档。
+
+---
+
+## 脚本标识符
+
+[status_report](../../modules/status_report/README.md) 允许在脚本层面创建自定义 SR 标识符。更进一步，还可以为这些自定义标识符设置状态或发布报告。

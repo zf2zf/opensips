@@ -1,33 +1,33 @@
 ---
-title: "Conformance Tests"
-description: "Conformance/Conformity tests are being run in order to validate OpenSIPS behavior in certain scenarios. The goal is to provide insurance that any change to O..."
+title: "一致性测试"
+description: "一致性/合规性测试用于验证 OpenSIPS 在特定场景下的行为。目标是确保对 OpenSIPS 代码的任何更改（无论是由于错误修复还是新功能）都按照预期规范运行，且没有回归。"
 ---
 
-Conformance/Conformity tests are being run in order to validate OpenSIPS behavior in certain scenarios. The goal is to provide insurance that any change to OpenSIPS' code (either due to bug fixes or new features) are running according to the desired specifications and that there are no regressions.
+一致性/合规性测试用于验证 OpenSIPS 在特定场景下的行为。目标是确保对 OpenSIPS 代码的任何更改（无论是由于错误修复还是新功能）都按照预期规范运行，且没有回归。
 
-To this end, we have developed a set of tests set that execute OpenSIPS in different scenarios with different SIP flows, and validate that all the involved components (OpenSIPS as well as databases, provisioning, SIP UAs) are inter-operating correctly and their behavior is the expected one.
+为此，我们开发了一套测试集，在不同场景下使用不同的 SIP 流程执行 OpenSIPS，并验证所有相关组件（OpenSIPS 以及数据库、配置、SIP UA）都能正确互操作，其行为符合预期。
 
 ---
 
-## Setup
+## 设置
 
-The first requirement is to install [SIPssert](https://github.com/OpenSIPS/SIPssert) - a testing framework capable of orchestrating complex conformance scenarios and verify their execution. You can follow the [install instructions](https://github.com/OpenSIPS/SIPssert#installation) on the project's page.
+第一个要求是安装 [SIPssert](https://github.com/OpenSIPS/SIPssert)——一个能够编排复杂一致性场景并验证其执行的测试框架。你可以按照项目页面上的[安装说明](https://github.com/OpenSIPS/SIPssert#installation)进行操作。
 
-Next, we need to fetch the tests available. For the initial setup, we need to clone the repository:
+接下来，我们需要获取可用的测试。对于初始设置，我们需要克隆仓库：
 ```text
 
 git clone git@github.com:OpenSIPS/sipssert-opensips-tests.git
 
 ```
 
-If you are targeting a stable release, make sure you specify the OpenSIPS branch/version you need:
+如果你要针对稳定版本，请确保指定你需要的 OpenSIPS 分支/版本：
 ```text
 
 git clone -b 4.1 git@github.com:OpenSIPS/sipssert-opensips-tests.git
 
 ```
 
-Navigate to the tests' directory. If the repository has been previously cloned, make sure you keep it up to date by running:
+导航到测试目录。如果仓库之前已克隆，请确保通过运行以下命令保持更新：
 ```text
 
 git pull --rebase
@@ -36,19 +36,19 @@ git pull --rebase
 
 ---
 
-## Testing
+## 测试
 
-Once SIPssert is in place and the tests repository is cloned, you need to navigate to the tests repository and run:
+一旦 SIPssert 就位且测试仓库已克隆，你需要导航到测试仓库并运行：
 ```text
 
 sipssert *
 
 ```
 
-This command will run all the available tests sets, with the default configuration. If you want to test only a specific tests set, or only a specific test, you may provide additional arguments to the `sipssert` tool. See [Instructions](https://github.com/OpenSIPS/SIPssert#usage) page for more information. 
+此命令将使用默认配置运行所有可用的测试集。如果你想仅测试特定的测试集或特定的测试，可以向 `sipssert` 工具提供额外的参数。更多信息请参阅[说明](https://github.com/OpenSIPS/SIPssert#usage)页面。
 
 ---
 
-## Development
+## 开发
 
-There is always place for developing new tests, either to ensure old code behaves properly, either to prove that it does not - any contribution is welcome. Therefore, if you have a new test you want to include, feel free to open a pull request on the [project's tracker](https://github.com/OpenSIPS/sipssert-opensips-tests/pulls).
+开发新测试总是有空间的，无论是确保旧代码行为正确，还是证明它不正确——任何贡献都欢迎。因此，如果你有想要包含的新测试，请随时在项目的[追踪器](https://github.com/OpenSIPS/sipssert-opensips-tests/pulls)上打开拉取请求。

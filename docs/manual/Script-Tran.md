@@ -1,11 +1,11 @@
 ---
-title: "Script Transformations"
-description: "Intuitively, a Transformation is a function that is applied to a variable(script variable, pseudo-variable, AVP, static string) to get a special value from i..."
+title: "脚本转换"
+description: "直观地讲，转换是应用于变量（脚本变量、伪变量、AVP、静态字符串）以从中获取特殊值的函数。输入值不会被更改..."
 ---
 
-Intuitively, a **Transformation** is a function that is applied to a variable(script variable, pseudo-variable, AVP, static string) to get a special value from it.  The input value is not altered.
+直观地讲，**转换**是应用于变量（脚本变量、伪变量、AVP、静态字符串）以从中获取特殊值的函数。输入值不会被更改。
 
-Examples of using different kinds of variables in **OpenSIPS script**:
+在 **OpenSIPS 脚本**中使用不同类型变量的示例：
 
 ```bash
 
@@ -40,11 +40,11 @@ $var(x) = "sip:" + $fU + "@" + $td;
 
 ```
 
-The transformations are intended to facilitate access to different attributes of variables (like strlen of value, parts of value, substrings) or complete different value of variables (encoded in hexa, md5 value, escape/unescape value for DB operations...).
+转换旨在方便访问变量的不同属性（如值的 strlen、值部分、子字符串）或完全不同的变量值（以十六进制编码、md5 值、为 DB 操作转义/反转义值...）。
 
-A transformation is represented in between `{` and `}` and follows the name of a variable. When using transformations, the variable name and transformations **must** be enclosed in between `(` and `)`.
+转换在 `}` 和变量名之间表示。当使用转换时，变量名和转换**必须**括在 `(` 和 `)` 之间。
 
-Example:
+示例：
 
 ```bash
 
@@ -54,7 +54,7 @@ $(fu{s.len})
 
 ```
 
-Multiple transformations can be applied to a variable at the same time.
+可以同时对变量应用多个转换。
 
 ```bash
 
@@ -64,21 +64,22 @@ $(hdr(Test){s.escape.common}{s.len})
 
 ```
 
-All transformations, unless otherwise specified, will return NULL in case of error or unsuccessful operation (e.g looking for an nonexistent parameter in an URI with the "`{uri.param,name}`" transformation). Also, NULL is accepted as input for transformations in order to support chaining with a previous one that would return NULL.
+除非另有说明，所有转换在错误或不成功操作时返回 NULL（例如在使用 "`{uri.param,name}`" 转换在 URI 中查找不存在的参数时）。此外，NULL 也被接受为转换的输入，以支持与前一个可能返回 NULL 的转换链接。
 
-The transformations can be used anywhere, being considered parts of script variables support -- in xlog, avpops or other modules' functions and parameters, in right side assignment expressions or in comparisons.
+转换可以在任何地方使用，被视为脚本变量支持的一部分——在 xlog、avpops 或其他模块的函数和参数中，在赋值表达式的右侧或比较中。
 
 > [!IMPORTANT]
-> To learn what variables can be used with transformations see [Scripting variables list](Script-CoreVar.md).
+> 要了解哪些变量可以与转换一起使用，请参阅[脚本变量列表](Script-CoreVar.md)。
 
-## String Transformations
-The name of these transformation starts with 's.'. They are intended to apply string operations to variables.
+## 字符串转换
 
-Available transformations in this class:
+这些转换的名称以 's.' 开头。它们旨在对变量应用字符串操作。
+
+此类中可用的转换：
 
 ### {s.len}
 
-Return strlen of variable value
+返回变量值的 strlen
 
 ```text
 
@@ -92,7 +93,7 @@ if($(var(x){s.len}) == 3)
 
 ### {s.int}
 
-Converts the initial part of the given string to an integer value. Returns 0 if there were no digits at all.
+将给定字符串的开头部分转换为整数值。如果没有数字则返回 0。
 
 ```bash
 
@@ -105,7 +106,7 @@ if ($(var(dur){s.int}) < 3600) {
 
 ### {s.md5}
 
-Returns the MD5 hash of the given input.
+返回给定输入的 MD5 哈希值。
 
 ```text
 
@@ -115,11 +116,11 @@ xlog("MD5 over From username: $(fU{s.md5})\n");
 
 ### {s.crc32}
 
-Returns the CRC-32 checksum of the value as a decimal string.
+以十进制字符串形式返回值的 CRC-32 校验和。
 
 ### {s.reverse}
 
-Returns the input string in revers order.
+以逆序返回输入字符串。
 
 ```text
 
@@ -130,9 +131,9 @@ $var(reverse) = $(var(forward){s.reverse}); //Contains "eerhtowteno";
 
 ### {s.substr,offset,length}
 
-Return the substring starting at *offset* having size of *length*. If *offset* is negative, then it is counted from the end of the value, -1 being the last char.  In case of a positive value, *0* is the first char.  If *length* is *0* or greater than the string length, the substring to the end of the input string is returned. If *length* is negative, the end of the substring is counted from the end of the value, with -1 excluding the last char. Both offset and length may be specified using variables.
+返回从 *offset* 开始、长度为 *length* 的子字符串。如果 *offset* 为负数，则从值末尾开始计数，-1 是最后一个字符。如果为正数，*0* 是第一个字符。如果 *length* 为 *0* 或大于字符串长度，则返回到输入字符串末尾的子字符串。如果 *length* 为负数，则子字符串的末尾从值末尾开始计数，-1 排除最后一个字符。offset 和 length 都可以使用变量指定。
 
-Example:
+示例：
 ```text
 
 $var(x) = "abcd";
@@ -142,9 +143,9 @@ $(var(x){s.substr,1,0}) = "bcd"
 
 ### {s.select,index,separator}
 
-Return a field from the value of a variable. The field is selected based on separator and index. The separator must be a character used to identify the fields. Index must be a integer value or a variable. If index is negative, the count of fields starts from end of value, -1 being last field. If index is positive, 0 is the first field. Note that if a field is empty, an empty string will be returned and not NULL.
+从变量值中返回一个字段。字段基于分隔符和索引选择。分隔符必须是用于识别字段的字符。索引必须是整数值或变量。如果索引为负数，则从值末尾开始计数字段，-1 是最后一个字段。如果索引为正数，0 是第一个字段。请注意，如果字段为空，将返回空字符串而不是 NULL。
 
-Example:
+示例：
 ```text
 
 $var(x) = "12,34,56";
@@ -157,48 +158,48 @@ $(var(x){s.select,-2,,}) => "34"
 
 ### {s.encode.hexa}
 
-Return encoding in hexa of variable's value
+返回变量值的十六进制编码
 
 ### {s.decode.hexa}
 
-Return decoding from hexa of variable's value
+返回变量值的十六进制解码
 
 ### {s.escape.common}
 
-Return escaped string of variable's value. Characters escaped are ', ", backslash and 0. Useful when doing DB queries (care should be taken for non Latin character set).
+返回变量值的转义字符串。转义的字符有 '、"、反斜杠和 0。在进行 DB 查询时很有用（应注意非拉丁字符集）。
 
 ### {s.unescape.common}
 
-Return unescaped string of variable's value. Reverse of above transformation.
+返回变量值的反转义字符串上述转换的反向操作。
 
 ### {s.escape.user}
 
-Return escaped string of variable's value, changing to '%hexa' the characters that are not allowed in user part of SIP URI following RFC requirements.
+返回变量值的转义字符串，将 RFC 要求中 SIP URI 用户部分不允许的字符更改为 '%hexa'。
 
 ### {s.unescape.user}
 
-Return unescaped string of variable's value, changing '%hexa' to character code. Reverse of above transformation.
+返回变量值的反转义字符串，将 '%hexa' 更改为字符代码。上述转换的反向操作。
 
 ### {s.escape.param}
 
-Return escaped string of variable's value, changing to '%hexa' the characters that are not allowed in the param part of SIP URI following RFC requirements.
+返回变量值的转义字符串，将 RFC 要求中 SIP URI 参数部分不允许的字符更改为 '%hexa'。
 
 ### {s.unescape.param}
 
-Return unescaped string of variable's value, changing '%hexa' to character code. Reverse of above transformation.
+返回变量值的反转义字符串，将 '%hexa' 更改为字符代码。上述转换的反向操作。
 
 ### {s.tolower}
 
-Return string with lower case ASCII letters.
+返回小写 ASCII 字母的字符串。
 
 ### {s.toupper}
 
-Return string with upper case ASCII letters.
+返回大写 ASCII 字母的字符串。
 
 ### {s.index}
 
-Searches for one string within another starting at the beginning of the first string. Returns starting index of the string found or NULL if not found.
-The optional index specifies the offset to begin the search at in the string. Negative offsets are supported and will wrap.
+从第一个字符串开头开始搜索另一个字符串。返回找到的字符串的起始索引，如果未找到则返回 NULL。
+可选索引指定在字符串中开始搜索的偏移量。支持负偏移量并会环绕。
 
 ```bash
 
@@ -224,8 +225,8 @@ if ($(var(strtosearch){s.index, $var(str)}) != NULL)
 
 ### {s.rindex}
 
-Searches for one string within another starting at the end of the first string. Returns starting index of the string found or NULL if not found.
-The optional index specifies an offset to start the search before, e.g the start of the found string will be before the supplied offset. Negative offsets are supported and will wrap.
+从第一个字符串末尾开始搜索另一个字符串。返回找到的字符串的起始索引，如果未找到则返回 NULL。
+可选索引指定开始搜索的偏移量，即找到的字符串开头将在提供的偏移量之前。支持负偏移量并会环绕。
 
 ```text
 
@@ -238,7 +239,7 @@ $(var(strtosearch){s.rindex, $var(str), -4}) # will return 0
 
 ### {s.fill.left, tok, len}
 
-Fills a string to the left with a char/string until the given final length is reached. The initial string is returned if its length is greater or equal to the given final length.
+用字符/字符串填充字符串左侧，直到达到给定的最终长度。如果初始字符串长度大于或等于给定的最终长度，则返回初始字符串。
 
 ```text
 
@@ -255,7 +256,7 @@ $(var(in){s.fill.left, abc, 8})  => bcabc485
 
 ### {s.fill.right, tok, len}
 
-Fills a string to the right with a char/string until the given final length is reached. The initial string is returned if its length is greater or equal to the given final length.
+用字符/字符串填充字符串右侧，直到达到给定的最终长度。如果初始字符串长度大于或等于给定的最终长度，则返回初始字符串。
 
 ```text
 
@@ -269,9 +270,9 @@ $(var(in){s.fill.right, abc, 8}) => 485abcab
 
 ### {s.width, len}
 
-Truncates or expands the input to the given *len*. Expanding is done to the right with the space character ' '. Truncating is done in a similar manner, from the right. Examples:
+将输入截断或扩展到给定的 *len*。扩展在右侧用空格字符 ' ' 进行。截断以类似方式从右侧进行。示例：
 
-Fills a string to the right with a char/string until the given final length is reached. The initial string is returned if its length is greater or equal to the given final length. If used on pseudo-variables containing integers, it will convert them to strings.
+将输入截断或扩展到给定的 *len*。扩展在右侧用空格字符 ' ' 进行。截断以类似方式从右侧进行。如果用于包含整数的伪变量，它们将被转换为字符串。
 
 ```text
 
@@ -285,7 +286,7 @@ $(var(in){s.width, 9})   => "transform"
 
 ### {s.trim}
 
-Strips any leading or trailing whitespace from the input string. Trimmed characters are " " (space), \t (tab), \n (newline) and \r (carriage return).
+从输入字符串中剥离任何前导或尾随空白。修剪的字符有 " "（空格）、\t（制表符）、\n（换行符）和 \r（回车符）。
 
 ```text
 
@@ -297,7 +298,7 @@ $(var(in){s.trim})   => "input string"
 
 ### {s.trimr}
 
-Strips any trailing whitespace from the input string. Trimmed characters are " " (space), \t (tab), \n (newline) and \r (carriage return).
+从输入字符串中剥离任何尾随空白。修剪的字符有 " "（空格）、\t（制表符）、\n（换行符）和 \r（回车符）。
 
 ```text
 
@@ -309,7 +310,7 @@ $(var(in){s.trimr})   => "\t \n input string"
 
 ### {s.triml}
 
-Strips any leading whitespace from the input string. Trimmed characters are " " (space), \t (tab), \n (newline) and \r (carriage return).
+从输入字符串中剥离任何前导空白。修剪的字符有 " "（空格）、\t（制表符）、\n（换行符）和 \r（回车符）。
 
 ```text
 
@@ -321,15 +322,15 @@ $(var(in){s.triml})   => "input string  \r  "
 
 ### {s.dec2hex}
 
-Converts a decimal(base 10) number to hexadecimal (in base 16), represented as string.
+将十进制（基数为 10）数字转换为十六进制（基数为 16），表示为字符串。
 
 ### {s.hex2dec}
 
-Converts a hexadecimal number (base 16) represented as string to decimal (base 10).
+将以字符串表示的十六进制数字（基数为 16）转换为十进制（基数为 10）。
 
 ### {s.b64encode}
 
-Represents binary input data in an ASCII string format.
+将二进制输入数据表示为 ASCII 字符串格式。
 
 ```text
 
@@ -340,7 +341,7 @@ $(var(in){s.b64encode})   => "AgMEBSFAIyVeJio="
 
 ### {s.b64decode}
 
-Assumes input is a Base64 string and decodes as many characters as possible.
+假设输入是 Base64 字符串并尽可能多地解码字符。
 
 ```text
 
@@ -351,7 +352,7 @@ $(var(in){s.b64decode})   => "\x2\x3\x4\x5!@#%^&*"
 
 ### {s.xor,secret}
 
-Performs one or more logical XOR operations with (a part of) the "secret" string parameter and the input string, depending on the lengths of the two strings.
+根据两个字符串的长度，对"secret"字符串参数和输入字符串的一部分执行一个或多个逻辑 XOR 操作。
 
 ```text
 
@@ -362,7 +363,7 @@ $(var(in){s.xor,x})   => "!/>^P!/>^P!^U2^Q!^U2^Q"
 
 ### {s.eval}
 
-Interprets the string as a variable formatted string, evaluating all the variables declared in it.
+将字符串解释为变量格式化字符串，评估其中声明的所有变量。
 
 ```text
 
@@ -374,7 +375,7 @@ $(var(format){s.eval})   => "Hello, client!"
 
 ### {s.date2unix}
 
-Assumes the input is an RFC-3261 SIP "Date" header value, parses it accordingly and returns the equivalent UNIX timestamp.
+假设输入是 RFC-3261 SIP "Date" 头值，并相应地解析它，返回等效的 UNIX 时间戳。
 
 ```text
 
@@ -385,7 +386,7 @@ $(var(date){s.date2unix})   => "1718282880";
 
 ### {s.sha1}
 
-Returns the SHA1 hash of the given input.
+返回给定输入的 SHA1 哈希值。
 ```text
 
 xlog("SHA1 over From username: $(fU{s.sha1})\n");
@@ -394,7 +395,7 @@ xlog("SHA1 over From username: $(fU{s.sha1})\n");
 
 ### {s.sha224}
 
-Returns the SHA224 hash of the given input.
+返回给定输入的 SHA224 哈希值。
 ```text
 
 xlog("SHA224 over From username: $(fU{s.sha224})\n");
@@ -403,7 +404,7 @@ xlog("SHA224 over From username: $(fU{s.sha224})\n");
 
 ### {s.sha256}
 
-Returns the SHA256 hash of the given input.
+返回给定输入的 SHA256 哈希值。
 ```text
 
 xlog("SHA256 over From username: $(fU{s.sha256})\n");
@@ -412,7 +413,7 @@ xlog("SHA256 over From username: $(fU{s.sha256})\n");
 
 ### {s.sha384}
 
-Returns the SHA384 hash of the given input.
+返回给定输入的 SHA384 哈希值。
 ```text
 
 xlog("SHA384 over From username: $(fU{s.sha384})\n");
@@ -421,7 +422,7 @@ xlog("SHA384 over From username: $(fU{s.sha384})\n");
 
 ### {s.sha512}
 
-Returns the SHA512 hash of the given input.
+返回给定输入的 SHA512 哈希值。
 ```text
 
 xlog("SHA512 over From username: $(fU{s.sha512})\n");
@@ -430,7 +431,7 @@ xlog("SHA512 over From username: $(fU{s.sha512})\n");
 
 ### {s.sha1_hmac,key}
 
-Returns the SHA1 HMAC hash of the given input using key.
+使用密钥返回给定输入的 SHA1 HMAC 哈希值。
 ```text
 
 xlog("SHA1 HMAC over From username using key 'secret': $(fU{s.sha1_hmac,secret})\n");
@@ -439,7 +440,7 @@ xlog("SHA1 HMAC over From username using key 'secret': $(fU{s.sha1_hmac,secret})
 
 ### {s.sha224_hmac,key}
 
-Returns the SHA224 HMAC hash of the given input using key.
+使用密钥返回给定输入的 SHA224 HMAC 哈希值。
 ```text
 
 xlog("SHA224 HMAC over From username using key 'secret': $(fU{s.sha224_hmac,secret})\n");
@@ -448,7 +449,7 @@ xlog("SHA224 HMAC over From username using key 'secret': $(fU{s.sha224_hmac,secr
 
 ### {s.sha256_hmac,key}
 
-Returns the SHA256 HMAC hash of the given input using key.
+使用密钥返回给定输入的 SHA256 HMAC 哈希值。
 ```text
 
 xlog("SHA256 HMAC over From username using key 'secret': $(fU{s.sha256_hmac,secret})\n");
@@ -457,7 +458,7 @@ xlog("SHA256 HMAC over From username using key 'secret': $(fU{s.sha256_hmac,secr
 
 ### {s.sha384_hmac,key}
 
-Returns the SHA384 HMAC hash of the given input using key.
+使用密钥返回给定输入的 SHA384 HMAC 哈希值。
 ```text
 
 xlog("SHA384 HMAC over From username using key 'secret': $(fU{s.sha384_hmac,secret})\n");
@@ -466,164 +467,164 @@ xlog("SHA384 HMAC over From username using key 'secret': $(fU{s.sha384_hmac,secr
 
 ### {s.sha512_hmac,key}
 
-Returns the SHA512 HMAC hash of the given input using key.
+使用密钥返回给定输入的 SHA512 HMAC 哈希值。
 ```text
 
 xlog("SHA512 HMAC over From username using key 'secret': $(fU{s.sha512_hmac,secret})\n");
 
 ```
 
-## URI Transformations
+## URI 转换
 
-The name of transformation starts with 'uri.'. The value of the variable is considered to be a SIP URI. This transformation returns parts of SIP URI (see struct sip_uri). If that part is missing, the returned value is NULL.
+转换的名称以 'uri.' 开头。变量的值被认为是 SIP URI。此转换返回 SIP URI 的部分（请参阅 struct sip_uri）。如果该部分缺失，返回值为 NULL。
 
-Available transformations in this class:
+此类中可用的转换：
 
 ### {uri.user}
 
-Returns the user part of the URI schema.
+返回 URI 模式的用户部分。
 
 ### {uri.host}
 
-(same as **`{uri.domain}`**)
+（与 **`{uri.domain}`** 相同）
 
-Returns the domain part of the URI schema.
+返回 URI 模式的域部分。
 
 ### {uri.passwd}
 
-Returns the password part of the URI schema.
+返回 URI 模式的密码部分。
 
 ### {uri.port}
 
-Returns the port of the URI schema.
+返回 URI 模式的端口。
 
 ### {uri.params}
 
-Returns all the URI parameters into a single string.
+将所有 URI 参数返回为单个字符串。
 
 ### {uri.param,name}
 
-Returns the value of URI parameter with name "name"
+返回具有名称 "name" 的 URI 参数的值
 
 ### {uri.headers}
 
-Returns URI headers.
+返回 URI 头。
 
 ### {uri.transport}
 
-Returns the value of transport URI parameter.
+返回 transport URI 参数的值。
 
 ### {uri.ttl}
 
-Returns the value of ttl URI parameter.
+返回 ttl URI 参数的值。
 
 ### {uri.uparam}
 
-Returns the value of user URI parameter
+返回 user URI 参数的值
 
 ### {uri.maddr}
 
-Returns the value of maddr URI parameter.
+返回 maddr URI 参数的值。
 
 ### {uri.method}
 
-Returns the value of method URI parameter.
+返回 method URI 参数的值。
 
 ### {uri.lr}
 
-Returns the value of lr URI parameter.
+返回 lr URI 参数的值。
 
 ### {uri.r2}
 
-Returns the value of r2 URI parameter.
+返回 r2 URI 参数的值。
 
 ### {uri.schema}
 
-Returns the schema part of the given URI.
+返回给定 URI 的模式部分。
 
-## VIA Transformations
+## VIA 转换
 
-These transformations parse Via headers and all starts with `via.`. The value of the variable is considered to be a SIP Via header. This transformation returns parts of the via header (see struct via_body). If the requested part is missing, the returned value is NULL. Transformation will fail (with script error) if variable holding the Via header is empty. Unless otherwise specified in descriptions below, the result of transform is a string (not an integer).
+这些转换解析 Via 头，都以 `via.` 开头。变量的值被认为是 SIP Via 头。此转换返回 via 头的部分（请参阅 struct via_body）。如果请求的部分缺失，返回值为 NULL。如果持有 Via 头的变量为空，转换将失败（带脚本错误）。除非下面描述中另有说明，否则转换结果是字符串（不是整数）。
 
-Examples:
+示例：
 ```text
 $var(upstreamtransport) = $(hdr(Via)[1]{via.transport}{s.tolower});
 $var(upstreamip) = $(hdr(Via)[1]{via.param,received});
 $var(clientport) = $(hdr(Via)[-1]{via.param,rport});
 ```
 
-Available transformations in this class:
+此类中可用的转换：
 
 ### {via.name}
 
-Returns the `protocol-name` (of RFC3261 BNF), generally `SIP`.
+返回 `protocol-name`（RFC3261 BNF），通常是 `SIP`。
 
 ### {via.version}
 
-Returns the `protocol-version` (of RFC3261 BNF), generally `2.0`.
+返回 `protocol-version`（RFC3261 BNF），通常是 `2.0`。
 
 ### {via.transport}
 
-Returns the `transport` (of RFC3261 BNF), e.g., `UDP`, `TCP`, `TLS`. This is the transport protocol used to send the request message.
+返回 `transport`（RFC3261 BNF），例如 `UDP`、`TCP`、`TLS`。这是用于发送请求消息的传输协议。
 
 ### {via.host}
 
-(same as `{via.domain}`)
+（与 `{via.domain}` 相同）
 
-Returns the `host` portion of the `sent-by` (of RFC3261 BNF). Typically this is the IP address of the sender of the request message, and is the address to which the response will be sent.
+返回 `sent-by` 的 `host` 部分（RFC3261 BNF）。通常这是请求消息发送者的 IP 地址，也是响应将被发送到的地址。
 
 ### {via.port}
 
-Returns the `port` portion of the `sent-by` (of RFC3261 BNF). Typically this is the IP port of the sender of the request message, and is the address to which the response will be sent. Result of transform is valid as both integer and string.
+返回 `sent-by` 的 `port` 部分（RFC3261 BNF）。通常这是请求消息发送者的 IP 端口，也是响应将被发送到的地址。转换结果对整数和字符串都有效。
 
 ### {via.comment}
 
-The comment associated with the via header. The `struct via_body` contains this field, but it isn't clear that RFC3261 allows Via headers to have comments (see text at top of page 221, and the BNF doesn't explicit allow comment within Via). The comment is the text enclosed within parens.
+与 via 头关联的注释。`struct via_body` 包含此字段，但 RFC3261 是否允许 Via 头中有注释尚不清楚（请参阅第 221 页顶部文本，BNF 没有明确允许 Via 中有注释）。注释是括在括号内的文本。
 
 ### {via.params}
 
-Returns all the Via headers parameters (`via-param` of RFC3261 BNF) as single string. Result can be processed using the `{param.*}` transforms. This is essentially everything after the host and port.
+以单个字符串返回所有 Via 头参数（RFC3261 BNF 的 `via-param`）。结果可以使用 `{param.*}` 转换处理。这实质上是主机和端口之后的所有内容。
 
 ### {via.param,name}
 
-Returns the value of Via header parameter with name `name`. Typical parameters include `branch`, `rport` and `received`.
+返回具有名称 `name` 的 Via 头参数的值。典型参数包括 `branch`、`rport` 和 `received`。
 
 ### {via.branch}
 
-Returns the value of the branch parameter in the VIA header.
+返回 VIA 头中 branch 参数的值。
 
 ### {via.received}
 
-Returns the value of the received parameter in the VIA header, if any.
+返回 VIA 头中 received 参数的值（如果有）。
 
 ### {via.rport}
 
-Returns the value of the rport parameter in the VIA header, if any.
+返回 VIA 头中 rport 参数的值（如果有）。
 
-## Parameters List Transformations
+## 参数列表转换
 
-The name of the transformation starts with "param.". The value of the variable is considered to be a string like name1=value1;name2=value2;...". The transformations returns the value for a specific parameter, or the name of a parameter at a specific index.
+转换的名称以 "param." 开头。变量的值被认为是类似 name1=value1;name2=value2;..." 的字符串。转换返回特定参数的值，或特定索引处参数的名称。
 
-Available transformations in this class:
+此类中可用的转换：
 
 ### {param.value,name}
 
-Returns the value of parameter 'name'
+返回参数 'name' 的值
 
-Example:
+示例：
 ```text
 
 "a=1;b=2;c=3"{param.value,c} = "3"
 
 ```
 
-'name' can be a variable
+'name' 可以是一个变量
 
 ### {param.exist,name}
 
-Returns 1 if the parameter `name` exists (with or without value), else 0. Returned value is both string and integer. `name` can be variable. This can be used to test existence of parameters that do not have values.
+如果参数 `name` 存在（无论是否有值）返回 1，否则返回 0。返回值同时是字符串和整数。`name` 可以是变量。这可用于测试不存在值的参数的存在性。
 
-Example:
+示例：
 ```text
 
 "a=0;b=2;ob;c=3"{param.exist,ob};         # returns 1
@@ -634,22 +635,22 @@ Example:
 
 ### {param.valueat,index}
 
-Returns the value of parameter at position give by 'index' (0-based index). Negative indexes are accepted, with -1 being the last parameter.
+返回 'index' 位置参数的值（0-based 索引）。接受负索引，-1 是最后一个参数。
 
-Example:
+示例：
 ```text
 
 "a=1;b=2;c=3"{param.valueat,1} = "2"
 
 ```
 
-'index' can be a variable
+'index' 可以是一个变量
 
 ### {param.name,index}
 
-Returns the name of parameter at position 'index'. Negative indexes are accepted, with -1 being the last parameter. 'index' can be a variable.
+返回 'index' 位置参数的名称。接受负索引，-1 是最后一个参数。'index' 可以是一个变量。
 
-Example:
+示例：
 ```text
 
 "a=1;b=2;c=3"{param.name,1} = "b"
@@ -658,22 +659,22 @@ Example:
 
 ### {param.count}
 
-Returns the number of parameters in the list.
+返回列表中参数的数量。
 
-Example:
+示例：
 ```text
 
 "a=1;b=2;c=3"{param.count} = 3
 
 ```
 
-## Name-address Transformations
+## 名称地址转换
 
-The name of the transformation starts with 'nameaddr.'. The value of the variable is considered to be a string like '[display_name] uri'. The transformations returns the value for a specific field.
+转换的名称以 'nameaddr.' 开头。变量的值被认为是类似 '[display_name] uri' 的字符串。转换返回特定字段的值。
 
-Each transformation supports an optional 'index'. This can be used when passing a list of nameaddr specs, and represents the spec index that should be considered when extracting the value. Indexes start with 0 (the default value when missing), and can accept negative values (-1 represents the last nameaddr spec).
+每个转换支持可选的 'index'。这在传递 nameaddr specs 列表时使用，表示在提取值时应考虑的 spec 索引。索引从 0 开始（缺失时的默认值），并且可以接受负值（-1 表示最后一个 nameaddr spec）。
 
-Example:
+示例：
 ```text
 
 '"first" <first@opensips.org>, "second" <second@opensips.org>' {nameaddr.0.name} = "first"
@@ -682,13 +683,13 @@ Example:
 
 ```
 
-Available transformations in this class:
+此类中可用的转换：
 
 ### {nameaddr.name}
 
-Returns the value of display name
+返回显示名称的值
 
-Example:
+示例：
 ```text
 
 '"test" <sip:test@opensips.org>' {nameaddr.name} = "test"
@@ -697,9 +698,9 @@ Example:
 
 ### {nameaddr.uri}
 
-Returns the value of URI
+返回 URI 的值
 
-Example:
+示例：
 ```text
 
 '"test" <sip:test@opensips.org>' {nameaddr.uri} = sip:test@opensips.org
@@ -708,12 +709,12 @@ Example:
 
 ### {nameaddr.len}
 
-Returns the length of the entire name-addr part from the value.
+返回值中整个 name-addr 部分的长度。
 
 ### {nameaddr.param,param_name}
 
-Returns the value of the parameter with name param_name.
-Example:
+返回名称为 param_name 的参数的值。
+示例：
 ```text
 
 '"test" <sip:test@opensips.org>;tag=dat43h' {nameaddr.param,tag} = dat43h
@@ -722,22 +723,22 @@ Example:
 
 ### {nameaddr.params}
 
-Returns all the parameters and their corresponding values.
-Example:
+返回所有参数及其对应值。
+示例：
 ```text
 
 '"test" <sip:test@opensips.org>;tag=dat43h;private=yes' {nameaddr.params} = "tag=dat43h;private=yes"
 
 ```
 
-## IP Transformations
+## IP 转换
 
-The name of the transformation starts with 'ip.'. Available transformations in this class:
+转换的名称以 'ip.' 开头。此类中可用的转换：
 
 ### {ip.pton}
 
-Returns a binary representation of a string represented IP.
-Example:
+返回字符串表示 IP 的二进制表示形式。
+示例：
 ```text
 
 "194.168.4.134" {ip.pton} returns a 4 byte binary representation of the IP provided
@@ -746,8 +747,8 @@ Example:
 
 ### {ip.ntop}
 
-Returns a string representation of the binary IP provided
-Example:
+返回所提供二进制 IP 的字符串表示形式
+示例：
 ```text
 
 "194.168.4.134"{ip.pton}{ip.ntop} = "194.168.4.134"
@@ -756,8 +757,8 @@ Example:
 
 ### {ip.isip}
 
-Returns `1` if the string provided is a valid IPv4 or IPv6 address, otherwise `0`.
-Example:
+如果提供的字符串是有效的 IPv4 或 IPv6 地址，则返回 `1`，否则返回 `0`。
+示例：
 ```text
 
 "194.168.4.134" {ip.isip} = 1
@@ -767,8 +768,8 @@ Example:
 
 ### {ip.isip4}
 
-Returns `1` if the string provided is a valid IPv4, otherwise `0`.
-Example:
+如果提供的字符串是有效的 IPv4，则返回 `1`，否则返回 `0`。
+示例：
 ```text
 
 "194.168.4.134" {ip.isip4} = 1
@@ -777,8 +778,8 @@ Example:
 
 ### {ip.isip6}
 
-Returns `1` if the string provided is a valid IPv6, otherwise `0`.
-Example:
+如果提供的字符串是有效的 IPv6，则返回 `1`，否则返回 `0`。
+示例：
 ```text
 
 "194.168.4.134" {ip.isip6} = 0
@@ -787,8 +788,8 @@ Example:
 ```
 
 ### {ip.family}
-Returns INET or INET6 if the binary IP representation provided is IPv4 or IPv6.
-Example:
+如果提供的二进制 IP 表示形式是 IPv4 或 IPv6，则分别返回 INET 或 INET6。
+示例：
 ```text
 
 "194.168.4.134" {ip.pton}{ip.family} = "INET"
@@ -796,8 +797,8 @@ Example:
 ```
 
 ### {ip.resolve}
-Returns the resolved IP address corresponding to the string domain provided. Transformation has no effect if a string IP is provided.
-Example:
+返回与提供的字符串域对应的解析 IP 地址。如果提供字符串 IP，转换无效。
+示例：
 ```text
 
 "opensips.org" {ip.resolve} = "78.46.64.50"
@@ -805,8 +806,8 @@ Example:
 ```
 
 ### {ip.matches}
-Checks if the input IP address matches a net mask given as IP/masklen (short format). It returns 1 if matches, 0 if not. NULL is returned on error (invalid input, invalid parameter, AF mismatch). Variables are supported for the parameter.
-Example:
+检查输入 IP 地址是否匹配以 IP/masklen（短格式）给出的网络掩码。如果匹配返回 1，否则返回 0。错误时返回 NULL（无效输入、无效参数、AF 不匹配）。参数支持变量。
+示例：
 ```bash
 
 if ( $(si{ip.matches,10.10.0.1/24})==1 )
@@ -817,8 +818,8 @@ else
 ```
 
 ### {ip.isprivate}
-Checks if the input IP address is an IPv4 private IP, according to RFC 1918 and RFC 6598, or a loopback IP (127.0.0.0/8). It returns 1 if the IP is private, 0 if not.
-Example:
+检查输入 IP 地址是否是 RFC 1918 和 RFC 6598 定义的 IPv4 私有 IP，或者是回环 IP (127.0.0.0/8)。如果是私有 IP 返回 1，否则返回 0。
+示例：
 ```bash
 
 if ( $(si{ip.isprivate})==1 )
@@ -828,15 +829,15 @@ else
 
 ```
 
-## CSV Transformations
+## CSV 转换
 
-The name of the transformation starts with "csv.". The value of the variable is considered to be a string like "field1,field2,...". The transformations return the number of entries in the provided CSV, or the field at a specified position in the CSV.
+转换的名称以 "csv." 开头。变量的值被认为是类似 "field1,field2,..." 的字符串。转换返回所提供 CSV 中的条目数，或 CSV 中指定位置的字段。
 
-Available transformations in this class:
+此类中可用的转换：
 
 ### {csv.count}
-Returns the number of entries in the provided CSV.
-Example:
+返回所提供 CSV 中的条目数。
+示例：
 ```text
 
 "a,b,c" {csv.count} = 3
@@ -844,23 +845,23 @@ Example:
 ```
 
 ### {csv.value,index}
-Returns the entry at the specified position. Indexing starts from 0. Negative indexes are accepted, with -1 being the last entry. 'index' can be a variable.
-Example:
+返回指定位置的条目。索引从 0 开始。接受负索引，-1 是最后一个条目。'index' 可以是一个变量。
+示例：
 ```text
 
 "a,b,c" {csv.value,2} = c
 
 ```
 
-## SDP Transformations
+## SDP 转换
 
-The name of the transformation starts with "sdp.". The value of the variable is considered to be a valid SDP body. The transformation returns a specific line in the SDP body.
+转换的名称以 "sdp." 开头。变量的值被认为是有效的 SDP 正文。转换返回 SDP 正文中的特定行。
 
-Available transformations in this class:
+此类中可用的转换：
 
 ### {sdp.line}
-Returns the specified line in the SDP body. The transformations also accepts a second parameter, that specifies the line number of the first parameter's type to get from the SDP body. Indexing starts from 0. If the second parameter is missing, it is assumed to be 0. 
-Example:
+返回 SDP 正文中的指定行。转换也接受第二个参数，指定从 SDP 正文获取的第一个参数类型的行号。索引从 0 开始。如果第二个参数缺失，假定为 0。
+示例：
 ```bash
 
 if (is_method("INVITE"))
@@ -878,9 +879,9 @@ if (is_method("INVITE"))
 ```
 
 ### {sdp.stream}
-Returns a specific stream (starting with the m= line) from an SDP body. The stream to be returned can be specified using its index within the body, or using on its media type. If specified as index, it starts at `0`, but it can also be negative, with `-1` being the last stream. If specified as media type, **only the first** stream of its type will be returned. If the media type or index does not exist, NULL is returned.
+从 SDP 正文中返回特定流（从 m= 行开始）。要返回的流可以使用其在正文中的索引指定，或者使用其媒体类型。如果指定为索引，从 `0` 开始，但也可以是负数，`-1` 是最后一个流。如果指定为媒体类型，**仅**返回其类型的第一个流。如果媒体类型或索引不存在，返回 NULL。
 
-Example:
+示例：
 ```bash
 
 if (is_method("INVITE"))
@@ -898,9 +899,9 @@ if (is_method("INVITE"))
 ```
 
 ### {sdp.stream-delete}
-Returns the specified SDP body with some of its streams deleted. The stream to be deleted can be specified using its index, or using on its media type. If specified as index, it starts at `0`, but it can also be negative, with `-1` being the last stream. If specified as media type, all streams matching will be deleted! If the media type or index does not exist, NULL is returned.
+返回删除了某些流的指定 SDP 正文。要删除的流可以使用其索引指定，或者使用其媒体类型。如果指定为索引，从 `0` 开始，但也可以是负数，`-1` 是最后一个流。如果指定为媒体类型，**所有**匹配的流都将被删除！如果媒体类型或索引不存在，返回 NULL。
 
-Example:
+示例：
 ```bash
 
 if (is_method("INVITE"))
@@ -917,26 +918,26 @@ if (is_method("INVITE"))
 
 ```
 
-## Regular Expression Transformations
+## 正则表达式转换
 
-The name of the transformation starts with "re.". The input can be any string.
+转换的名称以 "re." 开头。输入可以是任何字符串。
 
 ### {re.subst,reg_exp}
 
-The reg_exp parameter can either be a plain string or a variable.
-The format of the reg_exp is :
+reg_exp 参数可以是纯字符串或变量。
+reg_exp 格式为：
 ```text
 /posix_match_expression/replacement_expression/flags
 ```
 
-The flags can be
+标志可以是：
 ```text
-i - match ignore case
-s - match within multi-lines strings
-g - replace all matches
+i - 忽略大小写匹配
+s - 在多行字符串中匹配
+g - 替换所有匹配
 ```
 
-Example:
+示例：
 ```text
 
 $var(reg_input)="abc";
@@ -949,11 +950,11 @@ xlog("Applying reg /b/B/g to $var(reg_input) : $(var(reg_input){re.subst,/b/B/g}
 
 ```
 
-## Examples
+## 示例
 
-Within a variable, many transformation can be applied, being executed from left to right.
+在变量内可以应用许多转换，从左到右执行。
 
-* The length of the value of parameter at position 1 (remember 0 is first position, 1 is second position)
+* 位置 1 处参数值的长度（记住 0 是第一位置，1 是第二位置）
 
 ```text
 
@@ -962,7 +963,7 @@ $(var(x){param.value,$(var(x){param.name,1})}{s.len}) = 2
 
 ```
 
-* Test if whether is un-registration or not
+* 测试是否为注销
 
 ```text
 

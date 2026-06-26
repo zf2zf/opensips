@@ -1,13 +1,13 @@
 ---
-title: "Script Operators"
-description: "Assignments, string and arithmetic operations can be done directly in the configuration file."
+title: "脚本运算符"
+description: "赋值、字符串和算术运算可以直接在配置文件中完成。"
 ---
 
-Assignments, string and arithmetic operations can be done directly in the configuration file.
+赋值、字符串和算术运算可以直接在配置文件中完成。
 
-## Assignment
+## 赋值
 
-Assignments can be done like in C, via '=' (equal) operator. Not that not all variables (from script) can be written, some are read-only. Check with [listing of variables](Script-CoreVar.md) to see which ones can be written too.
+赋值可以像 C 语言一样通过 '='（等于）运算符完成。请注意，并非所有（脚本中的）变量都可以写入，有些是只读的。请查看[变量列表](Script-CoreVar.md)以了解哪些变量也是可写的。
 
 ```text
 
@@ -16,7 +16,7 @@ $ru = "sip:user@domain";
 
 ```
 
-There is a special assign operator ':=' (colon equal) that can be used with AVPs. If the right value is **null**, all AVPs with that name are deleted. If different, the new value will overwrite any existing values for the AVPs with than name (on other words, delete existing AVPs with same name, add a new one with the right side value).
+有一个特殊的赋值运算符 ':='（冒号等于），可用于 AVP。如果右侧值为 **null**，则删除具有该名称的所有 AVP。如果不同，则新值将覆盖具有该名称的任何现有值（换言之，删除具有相同名称的现有 AVP，使用右侧值添加一个新的）。
 
 ```text
 
@@ -24,9 +24,9 @@ $avp(val) := 123;
 
 ```
 
-## String operations
+## 字符串运算
 
-For strings, '+' is available to concatenate.
+对于字符串，'+' 可用于连接。
 
 ```text
 
@@ -35,23 +35,23 @@ $var(b) = "sip:" + $var(a) + "@" + $fd;
 
 ```
 
-## Arithmetic and bitwise operations
+## 算术和位运算
 
-For numbers, one can use:
+对于数字，可以使用:
 
-* + : plus
-* - : minus
-* / : divide
-* * : multiply
-* % : modulo
-* | : bitwise OR
-* & : bitwise AND
-* ^ : bitwise XOR
-* ~ : bitwise NOT
-* \<< : bitwise left shift
-* \>> : bitwise right shift
+* + : 加
+* - : 减
+* / : 除
+* * : 乘
+* % : 取模
+* | : 按位 OR
+* & : 按位 AND
+* ^ : 按位 XOR
+* ~ : 按位 NOT
+* \<< : 按位左移
+* \>> : 按位右移
 
-Example:
+示例:
 
 ```text
 
@@ -60,9 +60,9 @@ $var(a) = 4 + ( 7 & ( ~2 ) );
 ```
 
 > [!NOTE]
-> to ensure the priority of operands in expression evaluations do use __parenthesis__.
+> 为确保表达式求值中操作数的优先级，请使用 __括号__。
 
-Arithmetic expressions can be used in condition expressions via test operator ' [ ... ] '.
+算术表达式可通过测试运算符 ' [ ... ] ' 用于条件表达式。
 
 ```text
 

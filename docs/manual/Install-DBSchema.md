@@ -1,6 +1,5 @@
 ---
-title: "DB schema"
+title: "数据库模式"
 description: ""
 ---
-
 

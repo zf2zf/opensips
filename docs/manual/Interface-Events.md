@@ -1,58 +1,58 @@
 ---
-title: "Events Interface"
-description: "The Events Interface is an OpenSIPS interface that provides different ways to notify external applications about certain events triggered inside OpenSIPS."
+title: "事件接口"
+description: "事件接口是 OpenSIPS 提供的一种接口，用于通知外部应用程序关于在 OpenSIPS 内部触发的某些事件。"
 ---
 
-The **Events Interface** is an OpenSIPS interface that provides different ways to notify external applications about certain events triggered inside OpenSIPS.
+**事件接口**是 OpenSIPS 提供的一种接口，用于通知外部应用程序关于在 OpenSIPS 内部触发的某些事件。
 
-## Overview
+## 概述
 
-In order to notify an external application about OpenSIPS internal events, the **Event Interface** provides the following functions:
-* manages exported events
-* manages subscriptions from different applications
-* exports generic functions to raise an event (regardless the transport protocol used)
-* communicates with different transport protocols to send the events
+为了将 OpenSIPS 内部事件通知给外部应用程序，**事件接口**提供以下功能：
+* 管理导出的事件
+* 管理来自不同应用程序的订阅
+* 导出通用函数以触发事件（无论使用何种传输协议）
+* 与不同传输协议通信以发送事件
 
-More detailed information about **OpenSIPS Event Interface** can be found in the [Event Interface Tutorial](https://docs.opensips.org/tutorials-eventinterface).
-
----
-
-## Events
-
-There are several types of events that can be exported by OpenSIPS:
-* **Core events** - internal events that trigger changes of OpenSIPS core/global behavior. A full list of exported core events can be found [here](Interface-CoreEvents.md).
-* **Modules events** - events triggered by each module, when loaded. Each module can export zero, one or more events. Details can be found in the [documentation page](Modules.md) of each module.
-* **Custom events** - triggered from script using the [raise_event()](Script-CoreFunctions.md#raise_event) command.
+有关 **OpenSIPS 事件接口**的更多详细信息，请参阅[事件接口教程](https://docs.opensips.org/tutorials-eventinterface)。
 
 ---
 
-## Transport Protocols
+## 事件
 
-External applications can be notified about the events triggered using various transport protocols. While the interface itself is provided by OpenSIPS core, each transport protocol below is implemented by a separate OpenSIPS module. Multiple transport modules can be loaded simultaneously in order to provide different ways of notifications.
-
-Available transport protocols are :
-
-* [event_datagram](../../modules/event_datagram/README.md) - sends Datagrams over UDP or UNIX sockets
-* [event_flastore](../../modules/event_flatstore/README.md) - writes to plain text files
-* [event_kafka](../../modules/event_kafka/README.md) - sends events via Apache Kafka broker
-* [event_rabbitmq](../../modules/event_rabbitmq/README.md) - sends an AMQP message to a RabbitMQ server
-* [event_stream](../../modules/event_stream/README.md) - sends a JSON-RPC command/notification over TCP
-* [event_virtual](../../modules/event_virtual/README.md) - aggregates event backends for failover and balancing
-* [event_xmlrpc](../../modules/event_xmlrpc/README.md) - sends a XML-RPC command over TCP
-
-An external application can subscribe to any exported event and can be notified using any loaded transport module/protocol. Separately, the core Event Interface can run an `event_route` with the same name as the raised event, such as `event_route[E_PIKE_BLOCKED]`, without loading a dedicated transport module.
+OpenSIPS 可以导出多种类型的事件：
+* **核心事件** - 触发 OpenSIPS 核心/全局行为变化的内部事件。导出的核心事件完整列表可在此处找到[here](Interface-CoreEvents.md)。
+* **模块事件** - 每个模块在加载时触发的事件。每个模块可以导出零个、一个或多个事件。详细信息可在每个模块的[文档页面](Modules.md)中找到。
+* **自定义事件** - 使用脚本中的 [raise_event()](Script-CoreFunctions.md#raise_event) 命令触发。
 
 ---
 
-## Events Subscription
+## 传输协议
 
-You can subscribe for an event either at startup (using the [subscribe_event()](Script-CoreFunctions.md#subscribe_event) command in the script) or during runtime, using the [evi:subscribe](Interface-CoreMI.md#evi_subscribe) MI command.
+外部应用程序可以通过各种传输协议接收关于触发事件的通知。虽然接口本身由 OpenSIPS 核心提供，但以下每种传输协议都由一个单独的 OpenSIPS 模块实现。可以同时加载多个传输模块，以提供不同的通知方式。
+
+可用的传输协议有：
+
+* [event_datagram](../../modules/event_datagram/README.md) - 通过 UDP 或 UNIX 套接字发送数据报
+* [event_flatstore](../../modules/event_flatstore/README.md) - 写入纯文本文件
+* [event_kafka](../../modules/event_kafka/README.md) - 通过 Apache Kafka broker 发送事件
+* [event_rabbitmq](../../modules/event_rabbitmq/README.md) - 向 RabbitMQ 服务器发送 AMQP 消息
+* [event_stream](../../modules/event_stream/README.md) - 通过 TCP 发送 JSON-RPC 命令/通知
+* [event_virtual](../../modules/event_virtual/README.md) - 聚合事件后端以实现故障转移和负载均衡
+* [event_xmlrpc](../../modules/event_xmlrpc/README.md) - 通过 TCP 发送 XML-RPC 命令
+
+外部应用程序可以订阅任何导出的事件，并可以使用任何已加载的传输模块/协议接收通知。此外，核心事件接口可以运行与触发事件同名的 `event_route`，例如 `event_route[E_PIKE_BLOCKED]`，而无需加载专用传输模块。
 
 ---
 
-## Examples
+## 事件订阅
 
-In order to configure a RabbbitMQ server to be notified when a custom event is triggered, first you have to subscribe it to the event, using the [subscribe_event()](Script-CoreFunctions.md#subscribe_event) command:
+您可以在启动时订阅事件（使用脚本中的 [subscribe_event()](Script-CoreFunctions.md#subscribe_event) 命令），也可以在运行时使用 [evi:subscribe](Interface-CoreMI.md#evi_subscribe) MI 命令进行订阅。
+
+---
+
+## 示例
+
+为了配置 RabbitMQ 服务器在触发自定义事件时收到通知，首先您必须使用 [subscribe_event()](Script-CoreFunctions.md#subscribe_event) 命令将其订阅到事件：
 
 ```c
 
@@ -62,7 +62,7 @@ In order to configure a RabbbitMQ server to be notified when a custom event is t
 
 ```
 
-Then, in order to trigger the event from the script, call the [raise_event()](Script-CoreFunctions.md#raise_event) command when needed:
+然后，为了从脚本触发事件，在需要时调用 [raise_event()](Script-CoreFunctions.md#raise_event) 命令：
 
 ```text
 

@@ -1,54 +1,54 @@
 ---
-title: "Management Interface"
-description: "The Management Interface (or MI) is an OpenSIPS interface that allows external applications to trigger predefined commands inside OpenSIPS."
+title: "管理接口"
+description: "管理接口（或 MI）是 OpenSIPS 提供的一种接口，允许外部应用程序在 OpenSIPS 内部触发预定义的命令。"
 ---
 
-The **Management Interface** (or **MI**) is an OpenSIPS interface that allows external applications to trigger predefined commands inside OpenSIPS. 
+**管理接口**（或 **MI**）是 OpenSIPS 提供的一种接口，允许外部应用程序在 OpenSIPS 内部触发预定义的命令。
 
-## Overview
+## 概述
 
-Such commands typically allows an external app to :
-* push data into OpenSIPS (like setting debug level, registering a contact, etc)
-* fetch data from OpenSIPS (see registered users, see ongoing calls, get statistics, etc)
-* trigger an internal action in OpenSIPS (reloading data, sending a message, etc)
+此类命令通常允许外部应用程序：
+* 将数据推入 OpenSIPS（如设置调试级别、注册联系人等）
+* 从 OpenSIPS 获取数据（查看注册用户、查看正在进行的通话、获取统计信息等）
+* 在 OpenSIPS 中触发内部操作（重新加载数据、发送消息等）
 
-The **MI** commands are provided by the OpenSIPS core (see [full list](Interface-CoreMI.md)) and also by modules (check the commands provided by [each module](Modules.md)).
+**MI** 命令由 OpenSIPS 核心提供（请参阅[完整列表](Interface-CoreMI.md)），也由模块提供（请查看[每个模块](Modules.md)提供的命令）。
 
 ---
 
-## Protocols
+## 协议
 
-The protocols available in order to connect (from external apps) to the OpenSIPS **MI** are JSON-RPC over several transports and XML-RPC. While the interface itself (tailored around the JSON format) is provided by the OpenSIPS core, each actual transport protocol is provided by a separate OpenSIPS module. You can load multiple MI modules in order to use multiple MI transport protocols at the same time.
+可用于连接（从外部应用程序）到 OpenSIPS **MI** 的协议有：JSON-RPC（通过多种传输方式）和 XML-RPC。虽然接口本身（围绕 JSON 格式定制）由 OpenSIPS 核心提供，但每种实际传输协议由单独的 OpenSIPS 模块提供。您可以同时加载多个 MI 模块，以使用多种 MI 传输协议。
 
-The majority of the MI backend modules only provide the transport, while the command parsing and response formatting (as **JSON-RPC**) is done by the OpenSIPS core. The only exceptions are the *mi_html* and *mi_xmlrpc* modules, which use a different format.
+大多数 MI 后端模块只提供传输，而命令解析和响应格式（作为 **JSON-RPC**）由 OpenSIPS 核心完成。唯一的例外是 *mi_html* 和 *mi_xmlrpc* 模块，它们使用不同的格式。
 
-The available MI modules are:
+可用的 MI 模块有：
 
 ### [mi_fifo](../../modules/mi_fifo/README.md)
-Provides JSON-RPC transport via a FIFO file; OpenSIPS reads from a predefined FIFO file, where the external apps are writing down the MI commands. As the file is actually as stream of data, there is no restrictions here on the amount of data OpenSIPS may return (when fetching data from OpenSIPS).
+通过 FIFO 文件提供 JSON-RPC 传输；OpenSIPS 从预定义的 FIFO 文件读取，外部应用程序在该文件中写入 MI 命令。由于文件实际上是数据流，因此对于 OpenSIPS 可能返回的数据量没有限制（当从 OpenSIPS 获取数据时）。
 
 ### [mi_datagram](../../modules/mi_datagram/README.md)
-Provides JSON-RPC transport either via UNIX SOCKETS, or via UDP packets; OpenSIPS listens for MI commands on UDP port(s) or unisock files; The transported data is limited to the size of a Datagram (65K).
+通过 UNIX 套接字或 UDP 数据包提供 JSON-RPC 传输；OpenSIPS 在 UDP 端口或 unisock 文件上监听 MI 命令。传输的数据受数据报大小限制（65K）。
 
 ### [mi_http](../../modules/mi_http/README.md)
-Provides JSON-RPC transport over HTTP. As TCP is used, there is no limit in regards to the amount of transfered data.
+通过 HTTP 提供 JSON-RPC 传输。由于使用 TCP，因此传输数据量没有限制。
 
 ### [mi_html](../../modules/mi_html/README.md)
-Provides a way of issuing MI commands directly from a web browser via an HTML page. The command's parameters are passed in the URL's query string. Although not conforming to JSON-RPC, the MI responses are still delivered in JSON format within the page.
+提供直接从 Web 浏览器通过 HTML 页面发出 MI 命令的方式。命令的参数在 URL 的查询字符串中传递。虽然不符合 JSON-RPC，但 MI 响应仍以 JSON 格式在页面中传递。
 
 ### [mi_xmlrpc](../../modules/mi_xmlrpc/README.md)
-Implements XML-RPC by not only providing an HTTP transport but also by translating between the MI's internal JSON format and XML.
+通过不仅提供 HTTP 传输，还通过在 MI 的内部 JSON 格式和 XML 之间进行转换来实现 XML-RPC。
 
 ### [mi_script](../../modules/mi_script/README.md)
-Provides the ability to run MI commands directly from OpenSIPS' script, returning the result as a JSON string.
+提供直接从 OpenSIPS 脚本运行 MI 命令的能力，将结果作为 JSON 字符串返回。
 
-All protocols do allow multiple applications (clients) to connect at the same time to the MI interface.
+所有协议都允许多个应用程序（客户端）同时连接到 MI 接口。
 
 ---
 
-## Examples
+## 示例
 
-A few examples of JSON-RPC calls for OpenSIPS:
+一些用于 OpenSIPS 的 JSON-RPC 调用示例：
 
 ```bash
 
@@ -123,7 +123,7 @@ A few examples of JSON-RPC calls for OpenSIPS:
 
 ```
 
-A simple example of interacting with OpenSIPS via MI interfaces is the **opensips-cli** utility - it uses FIFO to push MI commands into OpenSIPS:
+通过 MI 接口与 OpenSIPS 交互的一个简单示例是 **opensips-cli** 工具——它使用 FIFO 将 MI 命令推入 OpenSIPS：
 
 ```bash
 
@@ -132,7 +132,7 @@ A simple example of interacting with OpenSIPS via MI interfaces is the **opensip
 
 ```
 
-Example of sending a JSON-RPC OpenSIPS MI command from the command-line, using *curl*:
+使用 *curl* 从命令行发送 JSON-RPC OpenSIPS MI 命令的示例：
 ```bash
 
 $ curl -X POST localhost:8888/mi -H 'Content-Type: application/json' -d '{"jsonrpc": "2.0", "id": "1", "method": "ps"}'

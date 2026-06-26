@@ -1,25 +1,25 @@
 ---
-title: "Core Statistics"
-description: "The OpenSIPS core exports several statistics, which are grouped into classes. To view all statistics which correspond to a class, fetch the \"class:\" statisti..."
+title: "核心统计"
+description: "OpenSIPS 核心导出多个统计信息，这些统计被分组到各个类别中。要查看某个类别的所有统计信息，请获取 \"class:\" 统计（例如: opensips-cli -x mi get_statistics load: core: shmem:）"
 ---
 
-The **OpenSIPS** core exports several statistics, which are grouped into **classes**. To view all statistics which correspond to a class, fetch the "class:" statistic (e.g. **opensips-cli -x mi get_statistics load: core: shmem:**)
+**OpenSIPS** 核心导出多个统计信息，这些统计被分组到各个**类别**中。要查看某个类别的所有统计信息，请获取 "class:" 统计（例如: **opensips-cli -x mi get_statistics load: core: shmem:**）
 
 ---
 
-## "CORE" class
+## "CORE" 类别
 
 ### rcv_requests
-Returns the total number of received requests by OpenSIPS.
+返回 OpenSIPS 接收的请求总数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics rcv_requests
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of received requests = $stat(rcv_requests) \n");
@@ -27,16 +27,16 @@ xlog("Total number of received requests = $stat(rcv_requests) \n");
 ```
 
 ### rcv_replies
-Returns the total number of received replies by OpenSIPS.
+返回 OpenSIPS 接收的回复总数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics rcv_replies
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of received replies = $stat(rcv_replies) \n");
@@ -44,16 +44,16 @@ xlog("Total number of received replies = $stat(rcv_replies) \n");
 ```
 
 ### fwd_requests
-Returns the number of stateless forwarded requests by OpenSIPS.
+返回 OpenSIPS 无状态转发的请求数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics fwd_requests
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of forwarded requests = $stat(fwd_requests) \n");
@@ -61,16 +61,16 @@ xlog("Total number of forwarded requests = $stat(fwd_requests) \n");
 ```
 
 ### fwd_replies
-Returns the number of stateless forwarded replies by OpenSIPS.
+返回 OpenSIPS 无状态转发的回复数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics fwd_replies
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of forwarded replies = $stat(fwd_replies) \n");
@@ -78,16 +78,16 @@ xlog("Total number of forwarded replies = $stat(fwd_replies) \n");
 ```
 
 ### drop_requests
-Returns the number of requests dropped even before entering the script routing logic.
+返回在进入脚本路由逻辑之前就被丢弃的请求数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics drop_requests
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of dropped requests = $stat(drop_requests) \n");
@@ -95,17 +95,16 @@ xlog("Total number of dropped requests = $stat(drop_requests) \n");
 ```
 
 ### drop_replies
-Returns the number of replies dropped even before entering the script routing logic, or explicitly dropped in the
-onreply_route.
+返回在进入脚本路由逻辑之前就被丢弃的回复数量，或在 onreply_route 中明确丢弃的回复数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics drop_replies
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of dropped replies = $stat(drop_replies) \n");
@@ -113,16 +112,16 @@ xlog("Total number of dropped replies = $stat(drop_replies) \n");
 ```
 
 ### err_requests
-Returns the number of bogus requests from SIP point of view ( eg. : No VIA header found )
+返回从 SIP 角度来看的伪造请求数量（例如: 未找到 VIA header）
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics err_requests
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of error requests = $stat(err_requests) \n");
@@ -130,16 +129,16 @@ xlog("Total number of error requests = $stat(err_requests) \n");
 ```
 
 ### err_replies
-Returns the number of bogus replies from SIP point of view ( eg. : No VIA header found )
+返回从 SIP 角度来看的伪造回复数量（例如: 未找到 VIA header）
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics err_replies
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of error replies = $stat(err_replies) \n");
@@ -147,23 +146,23 @@ xlog("Total number of error replies = $stat(err_replies) \n");
 ```
 
 ### bad_URIs_rcvd
-Returns the number of URIs that OpenSIPS failed to parse.
+返回 OpenSIPS 解析失败的 URI 数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics bad_URIs_rcvd
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of bad URIs detected = $stat(bad_URIs_rcvd) \n");
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of unsupported methods detected = $stat(unsupported_methods) \n");
@@ -171,16 +170,16 @@ xlog("Total number of unsupported methods detected = $stat(unsupported_methods) 
 ```
 
 ### bad_msg_hdr
-Returns the number of SIP headers that OpenSIPS failed to parse.
+返回 OpenSIPS 解析失败的 SIP header 数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics bad_msg_hdr
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total number of headers that failed to parse = $stat(bad_msg_hdr) \n");
@@ -188,16 +187,16 @@ xlog("Total number of headers that failed to parse = $stat(bad_msg_hdr) \n");
 ```
 
 ### timestamp
-Returns the number of seconds elapsed from OpenSIPS starting.
+返回从 OpenSIPS 启动以来经过的秒数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics timestamp
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("OpenSIPS has been alive for $stat(timestamp) seconds \n");
@@ -206,20 +205,20 @@ xlog("OpenSIPS has been alive for $stat(timestamp) seconds \n");
 
 ---
 
-## "LOAD" class
+## "LOAD" 类别
 
-Statistics giving information about the OpenSIPS internal load. The load is defined as percentage of time spent in doing processing versus total time. Following the model of "top", there are three load values, calculated over different periods of time:
-* realtime load - calculated over the last 1 second
-* last minute load - calculated over the last 1 minute
-* last 10 minutes load - calculated over the last 10 minutes
+提供有关 OpenSIPS 内部负载的信息。负载定义为处理所花费时间与总时间的百分比。遵循 "top" 的模型，有三个负载值，在不同时间段计算:
+* 实时负载 - 最近 1 秒计算
+* 上分钟负载 - 最近 1 分钟计算
+* 上 10 分钟负载 - 最近 10 分钟计算
 
-All three load values are provided by OpenSIPS in a per-process manner (the load of each process) and globally (covering all processes).
+所有三个负载值都以每进程方式（每个进程的负载）和全局方式（覆盖所有进程）由 OpenSIPS 提供。
 
 ### load
-The realtime load of entire OpenSIPS - this counts all the core processes of OpenSIPS; the additional processes requested by modules are not counted in this load. Also note that some core processes are not counted as they do not generate any kind of load; such processes are the attendant, the time keeper and the timer trigger.
-This statistic is actually reflecting the load generated by processing the SIP traffic (as only the core active processes are counted).
+整个 OpenSIPS 的实时负载 - 这统计了 OpenSIPS 的所有核心进程; 模块请求的额外进程不计入此负载。另请注意，某些核心进程不计入，因为它们不产生任何负载; 这样的进程有 attendant、time keeper 和 timer trigger。
+此统计实际上反映的是处理 SIP 流量产生的负载（因为只统计了核心活跃进程）。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics load
@@ -227,7 +226,7 @@ load:load:: 24
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The OpenSIPS processing load is $stat(load) \n");
@@ -235,15 +234,15 @@ xlog("The OpenSIPS processing load is $stat(load) \n");
 ```
 
 ### load1m
-The last minute average load of core OpenSIPS (covering only core/SIP processes). For more, see [load](#load).
+核心 OpenSIPS（仅覆盖核心/SIP 进程）的上分钟平均负载。更多信息请参见 [load](#load)。
 
 ### load10m
-The last 10 minutes average load of core OpenSIPS (covering only core/SIP processes). For more, see [load](#load).
+核心 OpenSIPS（仅覆盖核心/SIP 进程）的上 10 分钟平均负载。更多信息请参见 [load](#load)。
 
 ### load-all
-The realtime load of entire OpenSIPS, counting both core and module processes. Similar to [[#load|load], the processes not generating load at all are not counted. 
+整个 OpenSIPS 的实时负载，同时统计核心和模块进程。与 [[#load|load] 类似，不产生任何负载的进程不被统计。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics load-all
@@ -251,7 +250,7 @@ load:load-all:: 24
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The overall OpenSIPS load is $stat(load-all) \n");
@@ -259,15 +258,15 @@ xlog("The overall OpenSIPS load is $stat(load-all) \n");
 ```
 
 ### load1m-all
-The last minute average load of entire OpenSIPS (covering all processes). For more, see [load-all](#load-all).
+整个 OpenSIPS（覆盖所有进程）的上分钟平均负载。更多信息请参见 [load-all](#load-all)。
 
 ### load10m-all
-The last 10 minutes average load of entire OpenSIPS (covering all processes). For more, see [load-all](#load-all).
+整个 OpenSIPS（覆盖所有进程）的上 10 分钟平均负载。更多信息请参见 [load-all](#load-all)。
 
 ### load-proc-id
-The realtime load of the process **ID**. To learn the IDs of the OpenSIPS processes (and their types), use the **ps** MI command.
+进程 **ID** 的实时负载。要了解 OpenSIPS 进程的 ID（及其类型），请使用 **ps** MI 命令。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics load-proc-5
@@ -275,7 +274,7 @@ load:load-proc-5:: 79
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The load of processes 5 is $stat(load-proc-5) \n");
@@ -283,28 +282,28 @@ xlog("The load of processes 5 is $stat(load-proc-5) \n");
 ```
 
 ### load1m-proc-id
-The last minute average load of the process **ID**. For more, see [load-proc-id](#load-proc-id).
+进程 **ID** 的上分钟平均负载。更多信息请参见 [load-proc-id](#load-proc-id)。
 
 ### load10m-proc-id
-The last 10 minutes average load of the process **ID**. For more, see [load-proc-id](#load-proc-id).
+进程 **ID** 的上 10 分钟平均负载。更多信息请参见 [load-proc-id](#load-proc-id)。
 
 ---
 
-## "NET" class
+## "NET" 类别
 
-Statistics giving information about UDP, TCP and TLS buffers on interfaces that OpenSIPS is listening on.
+提供有关 OpenSIPS 监听接口上的 UDP、TCP 和 TLS 缓冲区的信息。
 
 ### waiting_udp
-Returns the number of bytes waiting to be consumed on UDP interfaces that OpenSIPS is listening on.
+返回 OpenSIPS 监听接口上等待消费的字节数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics waiting_udp
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The UDP waiting buffer size is $stat(waiting_udp) \n");
@@ -312,16 +311,16 @@ xlog("The UDP waiting buffer size is $stat(waiting_udp) \n");
 ```
 
 ### waiting_tcp
-Returns the number of bytes waiting to be consumed on TCP interfaces that OpenSIPS is listening on.
+返回 OpenSIPS 监听接口上等待消费的字节数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics waiting_tcp
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The TCP waiting buffer size is $stat(waiting_tcp) \n");
@@ -329,16 +328,16 @@ xlog("The TCP waiting buffer size is $stat(waiting_tcp) \n");
 ```
 
 ### waiting_tls
-Returns the number of bytes waiting to be consumed on TLS interfaces that OpenSIPS is listening on.
+返回 OpenSIPS 监听接口上等待消费的字节数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics waiting_tls
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The TLS waiting buffer size is $stat(waiting_tls) \n");
@@ -347,21 +346,21 @@ xlog("The TLS waiting buffer size is $stat(waiting_tls) \n");
 
 ---
 
-## "SHMEM" class
+## "SHMEM" 类别
 
-Statistics giving information on the shared memory that OpenSIPS is using.
+提供有关 OpenSIPS 使用的共享内存的信息。
 
 ### total_size
-Returns the total size of shared memory available to OpenSIPS processes.
+返回可供 OpenSIPS 进程使用的共享内存总量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics total_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total size of SHMEM available is $stat(total_size) \n");
@@ -369,16 +368,16 @@ xlog("Total size of SHMEM available is $stat(total_size) \n");
 ```
 
 ### used_size
-Returns the amount of shared memory requested and used by OpenSIPS processes.
+返回 OpenSIPS 进程请求和使用的共享内存量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics used_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("SHMEM in use = $stat(used_size) \n");
@@ -386,16 +385,16 @@ xlog("SHMEM in use = $stat(used_size) \n");
 ```
 
 ### real_used_size
-Returns the amount of shared memory requested by OpenSIPS processes + malloc overhead
+返回 OpenSIPS 进程请求的共享内存量 + malloc 开销
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics real_used_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Real SHMEM used size is $stat(real_used_size) \n");
@@ -403,16 +402,16 @@ xlog("Real SHMEM used size is $stat(real_used_size) \n");
 ```
 
 ### max_used_size
-Returns the maximum amount of shared memory ever used by OpenSIPS processes.
+返回 OpenSIPS 进程曾经使用的最大共享内存量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics max_used_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The max SHMEM ever used is $stat(max_used_size) \n");
@@ -420,16 +419,16 @@ xlog("The max SHMEM ever used is $stat(max_used_size) \n");
 ```
 
 ### free_size
-Returns the free memory available. Computed as total_size - real_used_size
+返回可用空闲内存。计算公式为 total_size - real_used_size
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics free_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Free SHMEM available is $stat(free_size) \n");
@@ -437,16 +436,16 @@ xlog("Free SHMEM available is $stat(free_size) \n");
 ```
 
 ### fragments
-Returns the total number of fragments in the shared memory.
+返回共享内存中的碎片总数。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics fragments
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The total number of SHMEM fragments is $stat(fragments) \n");
@@ -455,21 +454,21 @@ xlog("The total number of SHMEM fragments is $stat(fragments) \n");
 
 ---
 
-## "PKMEM" class
+## "PKMEM" 类别
 
-Various private memory related statistics for each OpenSIPS process. Each "PKMEM" statistic is prefixed by a number, representing the index of an OpenSIPS process (0, 1, ...).
+每个 OpenSIPS 进程的各种私有内存相关统计。每个 "PKMEM" 统计以数字为前缀，代表 OpenSIPS 进程的索引（0, 1, ...）。
 
 ### N-total_size
-Returns the total size of private memory available to OpenSIPS process #N.
+返回可供 OpenSIPS 进程 #N 使用的私有内存总量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics 0-total_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Total size of PKG memory available for process #0 is $stat(0-total_size) \n");
@@ -477,16 +476,16 @@ xlog("Total size of PKG memory available for process #0 is $stat(0-total_size) \
 ```
 
 ### N-used_size
-Returns the amount of private memory requested and used by OpenSIPS process #N.
+返回 OpenSIPS 进程 #N 请求和使用的私有内存量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics 0-used_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("PKG mem in use for process #1 = $stat(1-used_size) \n");
@@ -494,16 +493,16 @@ xlog("PKG mem in use for process #1 = $stat(1-used_size) \n");
 ```
 
 ### N-real_used_size
-Returns the amount of private memory requested by OpenSIPS process #N, including allocator-specific metadata
+返回 OpenSIPS 进程 #N 请求的私有内存量，包括分配器特定元数据
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics 0-real_used_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Process #0 actually uses $stat(0-real_used_size) bytes of private memory\n");
@@ -511,16 +510,16 @@ xlog("Process #0 actually uses $stat(0-real_used_size) bytes of private memory\n
 ```
 
 ### N-max_used_size
-Returns the maximum amount of private memory ever used by OpenSIPS process #N.
+返回 OpenSIPS 进程 #N 曾经使用的最大私有内存量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics 0-max_used_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The max PKG memory ever used for process #0 is $stat(0-max_used_size) \n");
@@ -528,16 +527,16 @@ xlog("The max PKG memory ever used for process #0 is $stat(0-max_used_size) \n")
 ```
 
 ### N-free_size
-Returns the free private memory available for OpenSIPS process #N. Computed as total_size - real_used_size
+返回 OpenSIPS 进程 #N 可用的空闲私有内存。计算公式为 total_size - real_used_size
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics 0-free_size
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("Free PKG memory available for process #0 is $stat(0-free_size) \n");
@@ -545,16 +544,16 @@ xlog("Free PKG memory available for process #0 is $stat(0-free_size) \n");
 ```
 
 ### N-fragments
-Returns the currently available number of free fragments in the private memory for OpenSIPS process #N.
+返回 OpenSIPS 进程 #N 私有内存中当前可用的空闲碎片数量。
 
-Example of usage through MI FIFO
+通过 MI FIFO 使用的示例
 ```bash
 
 opensips-cli -x mi get_statistics 0-fragments
 
 ```
 
-Example of usage from script
+从脚本使用的示例
 ```text
 
 xlog("The total number of PKG fragments is $stat(0-fragments) \n");

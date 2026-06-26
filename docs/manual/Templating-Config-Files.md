@@ -1,11 +1,11 @@
 ---
-title: "Templating opensips.cfg Files"
-description: "OpenSIPS 3.0+ releases offer script writers full support for piping the opensips.cfg file (including any other files imported by it) to a generic preprocessi..."
+title: "opensips.cfg 文件模板化"
+description: "OpenSIPS 3.0+ 版本为脚本编写者提供了通过通用预处理器传递 opensips.cfg 文件（包括它导入的任何其他文件）的完整支持。"
 ---
 
-## Generic Preprocessing Support
+## 通用预处理支持
 
-OpenSIPS 3.0+ releases offer script writers full support for piping the *opensips.cfg* file (including any other files imported by it) to a generic preprocessing command.  This may be useful in scenarios where *opensips.cfg* must be parameterized (e.g. listening interfaces, ports, DB connectors, etc.) and deployed to multiple servers, in an automated fashion.  The system administrator may achieve this using the "-p `<cmdline>`" (preprocessor) option.  For example:
+OpenSIPS 3.0+ 版本为脚本编写者提供了通过通用预处理器传递 *opensips.cfg* 文件（包括它导入的任何其他文件）的完整支持。这在 *opensips.cfg* 必须参数化（例如监听接口、端口、DB 连接器等）并以自动化方式部署到多个服务器的场景中非常有用。系统管理员可以使用 "-p `<cmdline>`"（预处理器）选项来实现这一点。例如：
 
 ```text
 
@@ -13,7 +13,7 @@ opensips -f opensips.cfg -p /bin/cat
 
 ```
 
-... is a basic use of the "-p" option, by supplying it with an "echo" preprocessor that receives input via **standard input** and mirrors it to **standard output**.  From here, it's just a matter of choosing a templating language which fits the deployment requirements.  Some basic substitutions can be done using, for example, *sed*:
+... 这是 "-p" 选项的基本用法，通过向 "echo" 预处理器提供输入，该预处理器通过**标准输入**接收输入并通过**标准输出**镜像输出。从这里开始，选择适合部署需求的模板语言就足够了。一些基本的替换可以使用 *sed* 来完成：
 
 ```bash
 
@@ -21,13 +21,13 @@ opensips -f opensips.cfg -p "/bin/sed s/PRIVATE_IP/10.0.0.10/g"
 
 ```
 
-## Common Templating Languages + Examples
+## 常用模板语言及示例
 
-Below are some examples of using more advanced templating languages on top of opensips.cfg, for cases where the target environment requires complex decision-making (if statements which enable/disable features, for loops over multiple listening interfaces, etc.).
+以下是使用更高级模板语言处理 opensips.cfg 的示例，适用于目标环境需要复杂决策（启用/禁用功能的 if 语句、多个监听接口的 for 循环等）的场景。
 
 ### GNU m4
 
-[GNU m4](https://www.gnu.org/software/m4/) is a simplistic preprocessor with a mild learning curve, equipped with textual substitution, if statements and file includes among the most notable features.  Here is an example integration with *opensips.cfg*:
+[GNU m4](https://www.gnu.org/software/m4/) 是一个简单的预处理器，学习曲线平缓，具有文本替换、if 语句和文件包含等最显著的功能。下面是一个与 *opensips.cfg* 集成的示例：
 
 ```c
 
@@ -50,7 +50,7 @@ divert(0)dnl
 
   
 
-... and we start OpenSIPS using the below command, which will pipe *opensips.cfg.m4* to ''m4**s standard input, and then read the resulting file from its standard output:**
+... 我们使用以下命令启动 OpenSIPS，它会将 *opensips.cfg.m4* 管道传输到 **m4** 的标准输入，然后从其标准输出读取生成的文件：**
 
 ```text
 
@@ -60,11 +60,11 @@ opensips -f opensips.cfg.m4 -p "m4 env.m4 -"
 
 ### Jinja2
 
-[Jinja2](http://jinja.pocoo.org/docs/2.10) is a modern templating language with a rich feature set, including textual replacement, if statements, for loops, a plethora of filters, file includes, and the list goes on!  Unlike *m4*, Jinja2 does not currently have a standalone binary, rather it is provided via a Python package.  Here is a way of integrating it with *opensips.cfg*:
+[Jinja2](http://jinja.pocoo.org/docs/2.10) 是一种现代模板语言，具有丰富的功能集，包括文本替换、if 语句、for 循环、大量过滤器、文件包含等。与 *m4* 不同，Jinja2 目前没有独立的二进制文件，而是通过 Python 包提供。下面是一种将其与 *opensips.cfg* 集成的方法：
 
   
 
-First, install the **jinja2** Python module with: **"pip install jinja2"**.  Next, prepare the files:
+首先，安装 **jinja2** Python 模块：**"pip install jinja2"**。接下来，准备文件：
 
   
 
@@ -105,7 +105,7 @@ with open('env.json') as f:
 
   
 
-... and we start OpenSIPS using:
+... 我们使用以下命令启动 OpenSIPS：
 
 ```text
 
@@ -115,11 +115,11 @@ opensips -f opensips.cfg.j2 -p "python opensips-preproc.py"
 
 ### Embedded Ruby
 
-[Embedded Ruby (ERB)](https://ruby-doc.org/stdlib-2.6.1/libdoc/erb/rdoc/ERB.html) provides an easy to use, powerful templating system for Ruby. Using ERB, actual Ruby code can be added to any plain text document for the purposes of generating document information details and/or flow control.  Let's see how it integrates with *opensips.cfg*!
+[Embedded Ruby (ERB)](https://ruby-doc.org/stdlib-2.6.1/libdoc/erb/rdoc/ERB.html) 为 Ruby 提供了一个易于使用、功能强大的模板系统。使用 ERB，可以将实际 Ruby 代码添加到任何纯文本文档中，以生成文档信息详情和/或流程控制。让我们看看它如何与 *opensips.cfg* 集成！
 
   
 
-First, install the ERB package (for Debian/Ubuntu: **"apt install ruby-ejs"**).  Next, prepare the files:
+首先，安装 ERB 包（对于 Debian/Ubuntu：**"apt install ruby-ejs"**）。接下来，准备文件：
 
   
 
@@ -157,7 +157,7 @@ private_ip   = '127.0.0.1'
 
   
 
-... and OpenSIPS is now started using:
+... 现在使用以下命令启动 OpenSIPS：
 
 ```text
 
@@ -165,9 +165,9 @@ opensips -f opensips.cfg.erb -p "ruby opensips-preproc.rb"
 
 ```
 
-## Debugging Preprocessor Output
+## 调试预处理器输出
 
-Since the output of the preprocessor is never written to any file and is just consumed by OpenSIPS on each run, script developers may still visualize and debug the generated file during development by using a wrapper script over the preprocessing command such as the following:
+由于预处理的输出从不写入任何文件，而只是在每次运行时被 OpenSIPS 消费，脚本开发人员仍然可以通过使用预处理命令的包装脚本来可视化和调试生成的文件，如下所示：
 
 ```bash
 
@@ -180,7 +180,7 @@ m4 env.m4 - | tee >(grep -v __OSSPP_ >/tmp/opensips.cfg)
 
   
 
-... and now we start OpenSIPS using:
+... 现在我们使用以下命令启动 OpenSIPS：
 
 ```text
 
@@ -190,4 +190,4 @@ opensips -f opensips.cfg.m4 -p ~/src/preprocessor.sh
 
   
 
-The same technique can be used for any other preprocessor.
+相同的技巧可用于任何其他预处理器。

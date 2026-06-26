@@ -1,44 +1,44 @@
 ---
-title: "Database Deployment"
-description: "After installing your OpenSIPS, most likely you will need to also deploy a database that you could use for various reasons ( DB user authentication, persiste..."
+title: "数据库部署"
+description: "安装 OpenSIPS 后，你很可能还需要部署一个数据库，用于各种用途（DB 用户认证、持久化注册、对话等）。"
 ---
 
-After installing your OpenSIPS, most likely you will need to also deploy a database that you could use for various reasons ( DB user authentication, persistent registrations, dialogs, etc ).
+安装 OpenSIPS 后，你很可能还需要部署一个数据库，用于各种用途（DB 用户认证、持久化注册、对话等）。
 
 ---
 
-You can deploy the opensips database using the [opensips-cli](https://github.com/OpenSIPS/opensips-cli) tool. Before you do that, you should [install it](https://github.com/OpenSIPS/opensips-cli#install).
+你可以使用 [opensips-cli](https://github.com/OpenSIPS/opensips-cli) 工具部署 opensips 数据库。在此之前，你应该先[安装它](https://github.com/OpenSIPS/opensips-cli#install)。
 
-## Configuring OpenSIPS CLI
+## 配置 OpenSIPS CLI
 
-Open your OpenSIPS CLI configuration file and specify the following parameters:
-* `database_schema_path` - (defaults to `/usr/share/opensips/`) set it to `[Install_Path]/share/opensips/`
-* `database_url` - the URL to connect to your database (if not specified, you will be prompted for it during deploy)
-* `database_name` - (defaults to `opensips`) the database to use
-* `database_modules` - (defaults to standard modules) the modules you want to deploy.
+打开你的 OpenSIPS CLI 配置文件并指定以下参数：
+* `database_schema_path` -（默认为 `/usr/share/opensips/`）设置为 `[Install_Path]/share/opensips/`
+* `database_url` - 连接数据库的 URL（如果未指定，部署期间会提示你输入）
+* `database_name` -（默认为 `opensips`）要使用的数据库
+* `database_modules` -（默认为标准模块）你要部署的模块。
 
-You can find more information about the OpenSIPS CLI tool configuration [here](https://github.com/OpenSIPS/opensips-cli/blob/master/docs/modules/database.md#configuration).
+你可以在此处找到更多关于 OpenSIPS CLI 工具配置的信息[here](https://github.com/OpenSIPS/opensips-cli/blob/master/docs/modules/database.md#configuration)。
 
 > [!NOTE]
-> OpenSIPS CLI searches for its configuration files in `~/.opensips-cli.cfg`, `/etc/opensips-cli.cfg`, `/etc/opensips/opensips-cli.cfg`, but you can also specify your own configuration file using the `-f` parameter.
+> OpenSIPS CLI 在 `~/.opensips-cli.cfg`、`/etc/opensips-cli.cfg`、`/etc/opensips/opensips-cli.cfg` 中搜索配置文件，但你也可以使用 `-f` 参数指定自己的配置文件。
 
-## Creating the Database
+## 创建数据库
 
-In order to create the `database_name` database that you have provisioned above, run
+要创建你上面配置的 `database_name` 数据库，请运行
 ```bash
 
 opensips-cli -x database create
 
 ```
 
-Later, if you decide to add a new module, for example presence, simply call:
+之后，如果你决定添加新模块，例如 presence，只需调用：
 ```bash
 
 opensips-cli -x database add presence
 
 ```
 
-You can also specify a different name for the database, for example `opensips_test`, using:
+你也可以指定不同的数据库名称，例如 `opensips_test`，使用：
 ```bash
 
 opensips-cli -x database create opensips_test

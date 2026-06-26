@@ -1,11 +1,11 @@
 ---
-title: "Function Index"
+title: "函数索引"
 description: ""
 ---
 
-*Note: Core functions are not included. You can find them [here](Script-CoreFunctions.md).*
+*注意: 核心函数不包括在内。您可以在[此处](Script-CoreFunctions.md)找到它们。*
 
-| **Function** | **Module** |
+| **函数** | **模块** |
 | --- | --- |
 | [aaa_does_uri_exist](../../modules/auth_aaa/README.md#func_aaa_does_uri_exist) | [auth_aaa](../../modules/auth_aaa/README.md) |
 | [aaa_does_uri_user_exist](../../modules/auth_aaa/README.md#func_aaa_does_uri_user_exist) | [auth_aaa](../../modules/auth_aaa/README.md) |

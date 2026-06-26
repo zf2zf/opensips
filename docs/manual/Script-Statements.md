@@ -1,15 +1,15 @@
 ---
-title: "Script Statements"
-description: "Statements you can use in the OpenSIPS config file while building the routing logic."
+title: "脚本语句"
+description: "在构建路由逻辑时可以在 OpenSIPS 配置文件中使用的语句。"
 ---
 
-Statements you can use in the **OpenSIPS** config file while building the routing logic.
+在构建路由逻辑时可以在 **OpenSIPS** 配置文件中使用的语句。
 
 ## if
 
-IF-ELSE statement
+IF-ELSE 语句
 
-Prototype:
+原型：
 
 ```text
 
@@ -21,24 +21,24 @@ Prototype:
 
 ```
 
-The 'expr' should be a valid logical expression.
+'expr' 应该是有效的逻辑表达式。
 
-The logical operators that can be used in the logical expressions:
+逻辑表达式中可使用的逻辑运算符：
 
-* == - equal
-* != - not equal
-* =~ - regular expression matching  (e.g. `$rU` =~ '^1800*' is "`$rU` begins with 1800" )
-* !~ - regular expression not-matching
-* \> - greater
-* \>= - greater or equal
-* \< - less
-* \<= - less or equal
-* && - logical AND
-* || - logical OR
-* ! - logical NOT
-* [ ... ] - test operator - inside can be any arithmetic expression
+* == - 等于
+* != - 不等于
+* =~ - 正则表达式匹配（例如 `$rU` =~ '^1800*' 是 "`$rU` 以 1800 开头"）
+* !~ - 正则表达式不匹配
+* \> - 大于
+* \>= - 大于或等于
+* \< - 小于
+* \<= - 小于或等于
+* && - 逻辑 AND
+* || - 逻辑 OR
+* ! - 逻辑 NOT
+* [ ... ] - 测试运算符 - 内部可以是任何算术表达式
 
-Example of usage:
+使用示例：
 
 ```text
 
@@ -53,11 +53,11 @@ Example of usage:
 
 ## switch
 
-SWITCH statement - it can be used to test the value of a pseudo-variable. 
+SWITCH 语句 - 可用于测试伪变量的值。
 
-IMPORTANT NOTE: 'break' can be used only to mark the end of a 'case' branch (as it is in shell scripts). If you are trying to use 'break' outside a 'case' block the script will return error -- you must use 'return' there.
+重要提示：'break' 只能用于标记 'case' 分支的结束（如 shell 脚本中一样）。如果您尝试在 'case' 块外部使用 'break'，脚本将返回错误——在那里您必须使用 'return'。
 
-Example of usage:
+使用示例：
 ```c
 
     route {
@@ -112,13 +112,13 @@ Example of usage:
 ```
 
 > [!WARNING]
-> Take care while using 'return' - 'return(0)' stops the execution of the script.
+> 使用 'return' 时要小心——'return(0)' 停止脚本的执行。
 
 ## while
 
-while statement
+while 语句
 
-Example of usage:
+使用示例：
 ```text
 
     $var(i) = 0;
@@ -136,9 +136,9 @@ Example of usage:
 
 ## for each
 
-for each statement - easy iteration over indexed variables or pseudo-variables
+for each 语句 - 轻松迭代索引变量或伪变量
 
-Example of usage:
+使用示例：
 ```text
 
     $avp(arr) = 0;

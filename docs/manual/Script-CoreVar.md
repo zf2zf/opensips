@@ -1,65 +1,64 @@
 ---
-title: "Core Variables"
-description: "The OpenSIPS variables can be easily identified in the script as all their names (or notations) start with the $ sign."
+title: "核心变量"
+description: "OpenSIPS 变量可以很容易地在脚本中识别，因为它们的所有名称（或表示法）都以 $ 符号开头。"
 ---
 
-**OpenSIPS** provides multiple types of variables to be used in the routing script. The difference between the types of variables comes from:
-* *its context* - a variable is attached to a context, like the context of a SIP message, of a SIP transaction or dialog. The variable will be visible all the time within that context (across all the script routes where the context is present)
-* *read-write status* - some types of variables are read-only
-* *number of values* - some variables may keep multiple values at the same time
+**OpenSIPS** 提供了多种类型的变量用于路由脚本。变量类型之间的区别来自于：
+* *其上下文* - 变量附加到某个上下文，例如 SIP 消息上下文、SIP 事务上下文或对话上下文。变量在该上下文存在的整个时间内都是可见的（在所有存在该上下文的脚本路由中）
+* *读写状态* - 有些变量是只读的
+* *值的数量* - 有些变量可以同时保持多个值
 
-The **OpenSIPS** variables can be easily identified in the script as all their names (or notations) start with the **$** sign.
+**OpenSIPS** 变量可以很容易地在脚本中识别，因为它们的所有名称（或表示法）都以 **$** 符号开头。
 
-Syntax:  
+语法：
 
-The complete syntax for a pseudo variable is: 
+伪变量的完整语法是：
 `$(`*`<context>`*`name`*`(subname)[index]{transformation}`*`)`
 
-The fields written in italics are optional.
-The fields meaning is:
-* **name**(mandatory) - the pseudo-variable name(type).  
-Ex: var, avp, ru, DLG_status, etc.
-* **subname** - the identifier of a certain pv of a given type.  
-Ex: hdr(From), avp(name).
-* **index** - a pv can store more than one value - it can refer to a list of values. You can access a certain value from the list if you specify its index. You can also specify indexes with negative values, -1 means the last inserted, -2 the value before the previous inserted one.
-* **transformation** - a series of processing actions can be applied on pseudo-variable. You can find the whole list of possible transformations [here](Script-Tran.md). The transformations can be cascaded, using the output of one transformation as the input of another.     
-* **context** - the context in which the pseudo0variable will be evaluated. Now there are 2 pv contexts: reply and request. The reply context can be used in the failure route to request for the pseudo-variable to be evaluated in the context of the reply message. The request context can be used if in a reply route is desired for the pv to be evaluated in the context of the corresponding request.
+斜体写的字段是可选的。
+字段含义如下：
+* **name**（必需）- 伪变量名称（类型）。  
+例如：var、avp、ru、DLG_status 等。
+* **subname** - 给定类型的某个 pv 的标识符。  
+例如：hdr(From)、avp(name)。
+* **index** - 一个 pv 可以存储多个值——它可以引用值列表。如果您指定索引，则可以访问列表中的某个值。您也可以使用负值指定索引，-1 表示最后插入的，-2 表示前一个插入的。
+* **transformation** - 可以对伪变量应用一系列处理操作。您可以在[此处](Script-Tran.md)找到可能的转换完整列表。转换可以级联，使用一个转换的输出作为另一个转换的输入。     
+* **context** - 伪变量将在其中被求值的上下文。现在有 2 个 pv 上下文：reply 和 request。reply 上下文可以在 failure route 中使用，用于请求伪变量在回复消息的上下文中求值。如果在 reply route 中希望 pv 在相应请求的上下文中求值，则可以使用 request 上下文。
 
-Usage examples:
-* Only **name**: `$ru`
-* **Name** and *'subname*: `$hdr(Contact)`
-* **Name** and **index**: `$(ct[0])`
-* **Name**, **subname** and **index**: `$(avp(caller_dids)[2])`
+使用示例：
+* 仅 **name**：`$ru`
+* **Name** 和 *'subname**：`$hdr(Contact)`
+* **Name** 和 **index**：`$(ct[0])`
+* **Name**、**subname** 和 **index**：`$(avp(caller_dids)[2])`
 * **Context** 
-  * `$(<request>ru)` from a reply route will get the Request-URI from the request
-  * `$(<reply>hdr(Contact))` context can be used from failure route to access information from the reply 
+  * `$(<request>ru)` 从 reply route 将获取请求的 Request-URI
+  * `$(<reply>hdr(Contact))` 上下文可以在 failure route 中用于访问回复中的信息
 
-Types of variables:
+变量类型：
 
-* [**script variables**](#script_variables) - as the name says, these variables are strictly bound to the script routes.
+* [**脚本变量**](#script_variables) - 顾名思义，这些变量严格绑定到脚本路由。
 
-* [**AVP - Attribute Value Pair**](#avp_variables) - the AVPs are dynamic variables (as name) that can be created and attached to a SIP message or transaction (if stateful processing is used). So, you may see them as transaction level variables.
+* [**AVP - 属性值对**](#avp_variables) - AVP 是动态变量（作为名称），可以创建并附加到 SIP 消息或事务（如果使用有状态处理）。因此，您可以将它们视为事务级变量。
 
-* [**reference variables**](#reference_variables) - variables to provide access to information from the current context - the current SIP message, transaction, dialog, or from the current process (non SIP information).
+* [**引用变量**](#reference_variables) - 提供从当前上下文访问信息的变量——当前 SIP 消息、事务、对话，或从当前进程（非 SIP 信息）。
 
-* [**escape sequences**](#escape_sequences) - escape sequences used to format the strings; they are actually not variables, but rather formatters.
-
-
-
-## Script variables
-
-**Naming**: `$var(name)`
-
-These variables are attached to the script, being persistent to the whole execution of a top route (including all its sub-routes). Once the execution of the top route ended, the script variables are lost, not to be used again. Also, be careful and initialize them when used for the first time (in a top route) as you may inherite garbage.
-Script variables are read write and they can have integer or string values.
-A script variable can only hold a single value. A new assignment (or write operation) will overwrite the existing value.
+* [**转义序列**](#escape_sequences) - 用于格式化字符串的转义序列；它们实际上不是变量，而是格式化器。
 
 
-**Hints**:
-* if you want to start using a script variable in a route, better initialize it with same value (or reset it), otherwise you may inherit a value from a previous route that was executed by the same process.
-* a script variable can only hold one value.
+## 脚本变量
 
-Example of usage:
+**命名**：`$var(name)`
+
+这些变量附加到脚本，在整个顶级路由执行期间（包括所有子路由）持久化。一旦顶级路由执行结束，脚本变量就会丢失，不会再被使用。另外，在首次使用时要小心初始化它们（在一个顶级路由中），因为您可能继承了垃圾数据。
+脚本变量可读写，它们可以有整数值或字符串值。
+脚本变量只能保存单个值。新赋值（或写操作）将覆盖现有值。
+
+
+**提示**：
+* 如果您想在路由中开始使用脚本变量，最好初始化为相同的值（或重置它），否则您可能会从前一个由同一进程执行的路由继承一个值。
+* 脚本变量只能保存一个值。
+
+使用示例：
 
 ```bash
 
@@ -76,26 +75,26 @@ if( [ $var(a) & 4 ] ) {
 ```
 
 
-## AVP variables
+## AVP 变量
 
-**Naming**: `$avp(name)` or `$(avp(name)[N])`
+**命名**：`$avp(name)` 或 `$(avp(name)[N])`
 
-A message or a transaction will initially (when received or created) have an empty list of AVPS attached to it. During the routing script, the script directly or functions called from script may create new AVPS that will automatically attached to the message/transaction. The AVPS will be visible in all routes where any message (reply or request) of the transaction will be processed - `branch_route` , `failure_route`, `onreply_route` (for this last route you need to enable the TM parameter *onreply_avp_mode*).
-AVPs are read write and an existing AVP can be even deleted (removed).
-An AVP may contain multiple values - a new assignment (or write operation) will add a new value to the AVP; the values are kept in "last added first to be used" order (stack).
+消息或事务最初（接收或创建时）会附加一个空的 AVP 列表。在路由脚本期间，脚本可以直接创建新的 AVP，或从脚本调用的函数可以创建新的 AVP，它们将自动附加到消息/事务。AVP 在处理事务的任何消息（回复或请求）的所有路由中都是可见的——`branch_route`、`failure_route`、`onreply_route`（对于最后一个路由，您需要启用 TM 参数 *onreply_avp_mode*）。
+AVP 可读写，现有的 AVP 甚至可以被删除（移除）。
+AVP 可能包含多个值——新赋值（或写操作）将向 AVP 添加一个新值；值按"最后添加先使用"的顺序保存（堆栈）。
 
-When using the index "N" you can force the AVP to return a certain value (the N-th value). If no index is given, the first value will be returned.
-A special index **append** is defined to allow you to add a new value at the end of the list (at the bottom of the stack) - `$(avp(name)[append])` = "last value";
+当使用索引 "N" 时，您可以强制 AVP 返回特定值（第 N 个值）。如果未给定索引，则返回第一个值。
+定义了一个特殊的索引 **append**，允许您在列表末尾添加新值（在堆栈底部）——`$(avp(name)[append])` = "last value";
 
 
-**Hints**:
-* to enable AVPs in onreply_route, use "modparam("tm", "onreply_avp_mode", 1)"
-* if multiple values are used for a single AVP, the values are index in revert order than added
-* AVPs are part of the transaction context, so they will be visible everywhere where the transaction is present.
-* the value of an AVP can be deleted
+**提示**：
+* 要在 onreply_route 中启用 AVP，请使用 "modparam("tm", "onreply_avp_mode", 1)"
+* 如果单个 AVP 使用多个值，则值的索引顺序与添加顺序相反
+* AVP 是事务上下文的一部分，因此它们在事务存在的任何地方都可见。
+* AVP 的值可以被删除
 
-Example of usage:
-* Transaction persistence example
+使用示例：
+* 事务持久化示例
 ```c
 
 # enable avps in onreply route
@@ -119,7 +118,7 @@ onreply_route[handle_reply] {
 
 ```
 
-* Multiple values example
+* 多值示例
 ```bash
 
 $avp(demo) = "one";
@@ -153,85 +152,84 @@ $(avp(demo)[0]) = "zero";
 
 
 
-## Reference Variables
+## 引用变量
 
-**Naming**: `$name`
+**命名**：`$name`
 
-They provide access to information from the SIP message/transaction/dialog or OpenSIPS internals.
-For example, a reference variable may allow access to the processed SIP message (headers, RURI, transport level info, and so on) or from **OpenSIPS** internals (time values, process PID, return code of a function). Depending of what info they provide, the PVs are either bound to the message, either to nothing  (global).
-Most of the reference variables are read-only and only several allow write operations. The reference variables may return several values or only one, depending of the referred info (if can have multiple values or not).  
-Standard reference variables are read-only and return a single value (if not otherwise documented).
+它们提供从 SIP 消息/事务/对话框或 OpenSIPS 内部信息访问。例如，引用变量可以允许访问处理的 SIP 消息（头、RURI、传输级信息等）或 **OpenSIPS** 内部信息（时间值、进程 PID、函数的返回代码）。根据它们提供的信息，PV 要么绑定到消息，要么什么也不绑定（全局）。
+大多数引用变量是只读的，只有少数允许写操作。引用变量可能返回多个值或只有一个值，这取决于所引用信息的性质（如果可以有多个值或不能）。  
+标准引用变量是只读的，返回单个值（除非文档另有说明）。
 
-**Hints**:
-* most of reference variables are made available by **OpenSIPS** core, but there are also module exporting such variables (to make available info specific to that module) - check the modules documentation.
-* the reference variables are also known as *pseudo-variables* or *PV*. This is an old terminology.
+**提示**：
+* 大多数引用变量由 **OpenSIPS** 核心提供，但也有模块导出此类变量（以提供特定于该模块的信息）——请查看模块文档。
+* 引用变量也被称为 *伪变量* 或 *PV*。这是一个旧术语。
 
-Predefined (provided by core) PVs are listed in alphabetical order:
+核心预定义的 PV 按字母顺序列出：
 
-### URI in SIP Request's P-Asserted-Identity header - $ai
+### SIP 请求 P-Asserted-Identity 头中的 URI - $ai
 
-`$ai` - reference to URI in request's P-Asserted-Identity header (see RFC 3325)
+`$ai` - 请求的 P-Asserted-Identity 头中的 URI 引用（请参阅 RFC 3325）
 
-### Authentication Digest URI - $adu
+### 认证 Digest URI - $adu
 
-`$adu` - URI from Authorization or Proxy-Authorization header. This URI is used when calculating the HTTP Digest Response.
+`$adu` - Authorization 或 Proxy-Authorization 头中的 URI。此 URI 用于计算 HTTP Digest Response。
 
-### Authentication realm - $ar
+### 认证领域 - $ar
 
-`$ar` - realm from Authorization or Proxy-Authorization header
+`$ar` - Authorization 或 Proxy-Authorization 头中的领域
 
-### Auth username user - $au
+### 认证用户名用户 - $au
 
-`$au` - user part of username from Authorization or Proxy-Authorization header
+`$au` - Authorization 或 Proxy-Authorization 头中用户名的用户部分
 
-### Auth username domain - $ad
+### 认证用户名域 - $ad
 
-`$ad` - domain part of username from Authorization or Proxy-Authorization header
+`$ad` - Authorization 或 Proxy-Authorization 头中用户名的域部分
 
-### Auth nonce - $an
+### 认证随机数 - $an
 
-`$an` - the nonce from Authorization or Proxy-Authorization header
+`$an` - Authorization 或 Proxy-Authorization 头中的随机数
 
-### Auth response  - $auth.resp
+### 认证响应 - $auth.resp
 
-`$auth.resp` - the authentication response from Authorization or Proxy-Authorization header
+`$auth.resp` - Authorization 或 Proxy-Authorization 头中的认证响应
 
-### Auth nonce  - $auth.nonce
+### 认证随机数 - $auth.nonce
 
-`$auth.nonce` - the nonce string from Authorization or Proxy-Authorization header
+`$auth.nonce` - Authorization 或 Proxy-Authorization 头中的随机数字符串
 
-### Auth cnonce - $auth.cnonce
+### 认证 cnonce - $auth.cnonce
 
-`$auth.cnonce` - the client nonce string from Authorization or Proxy-Authorization header
+`$auth.cnonce` - Authorization 或 Proxy-Authorization 头中的客户端随机数字符串
 
-### Auth opaque - $auth.opaque
+### 认证 opaque - $auth.opaque
 
-`$auth.opaque` - the opaque string from Authorization or Proxy-Authorization header
+`$auth.opaque` - Authorization 或 Proxy-Authorization 头中的 opaque 字符串
 
-### Auth algorithm - $auth.alg
+### 认证算法 - $auth.alg
 
-`$auth.alg` - the algorithm string from Authorization or Proxy-Authorization header
+`$auth.alg` - Authorization 或 Proxy-Authorization 头中的算法字符串
 
-### Auth QOP - $auth.qop
+### 认证 QOP - $auth.qop
 
-`$auth.qop` - the value of qop parameter from Authorization or Proxy-Authorization header
+`$auth.qop` - Authorization 或 Proxy-Authorization 头中 qop 参数的值
 
-### Auth nonce count (nc) - $auth.nc
+### 认证随机数计数 (nc) - $auth.nc
 
-`$auth.nc` - the value of nonce count parameter from Authorization or Proxy-Authorization header
+`$auth.nc` - Authorization 或 Proxy-Authorization 头中随机数计数参数的值
 
-### Auth whole username - $aU
+### 认证完整用户名 - $aU
 
-`$aU` - whole username from Authorization or Proxy-Authorization header
+`$aU` - Authorization 或 Proxy-Authorization 头中的完整用户名
 
-### Acc username - $Au
+### 计费用户名 - $Au
 
-`$Au` - username for accounting purposes. It's a selective pseudo variable (inherited from acc module). It returns `$au` if it exists or From username otherwise.
+`$Au` - 用于计费的用户名。它是一个选择性伪变量（从 acc 模块继承）。如果存在则返回 `$au`，否则返回 From 用户名。
 
-### Argument options - $argv
+### 参数选项 - $argv
 
-`$argv` - provides access to command line arguments specified with '-o' option.
-Examples:
+`$argv` - 提供对使用 '-o' 选项指定的命令行参数的访问。
+示例：
 ```text
 
    # for option '-o foo=0'
@@ -239,175 +237,175 @@ Examples:
 
 ```
 
-### Authorize Challenge Algorithm - $challenge.algorithm
+### 认证挑战算法 - $challenge.algorithm
 
-`$challenge.algorithm` - the algorithm value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.algorithm` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的算法值。
 
-### Authorize Challenge Realm - $challenge.realm
+### 认证挑战领域 - $challenge.realm
 
-`$challenge.realm` - the realm value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.realm` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的领域值。
 
-### Authorize Challenge Nonce - $challenge.nonce
+### 认证挑战随机数 - $challenge.nonce
 
-`$challenge.nonce` - the nonce value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.nonce` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的随机数值。
 
-### Authorize Challenge Opaque - $challenge.opaque
+### 认证挑战 Opaque - $challenge.opaque
 
-`$challenge.opaque` - the opaque value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.opaque` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的 opaque 值。
 
-### Authorize Challenge QOP - $challenge.qop
+### 认证挑战 QOP - $challenge.qop
 
-`$challenge.qop` - the qop value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.qop` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的 qop 值。
 
-### Authorize Challenge IK - $challenge.ik
+### 认证挑战 IK - $challenge.ik
 
-`$challenge.ik` - the ik value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.ik` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的 ik 值。
 
-### Authorize Challenge CK - $challenge.ck
+### 认证挑战 CK - $challenge.ck
 
-`$challenge.ck` - the ck value taken from the WWW-Authorize or Proxy-Authorize header.
+`$challenge.ck` - 从 WWW-Authorize 或 Proxy-Authorize 头获取的 ck 值。
 
 ### Call-Id - $ci
 
-`$ci` - reference to body of call-id header
+`$ci` - call-id 头正文的引用
 
 ### Content-Length - $cl
 
-`$cl` - reference to body of content-length header
+`$cl` - content-length 头正文的引用
 
-### CSeq number - $cs
+### CSeq 号码 - $cs
 
-`$cs` - reference to cseq number from cseq header
+`$cs` - cseq 头中 cseq 号码的引用
 
-### Contact instance - $ct
+### Contact 实例 - $ct
 
-`$ct` - reference to contact instance/body from the contact header. A contact instance is  display_name + URI + contact_params. As a Contact header may contain multiple Contact instances and a message may contain multiple Contact headers, an index was added to the `$ct` variable:
-* `$ct` -first contact instance from message
-* `$(ct[n])` - the n-th contact instance form the beginning of message, starting with index 0
-* `$(ct[-n])` - the n-th contact instance form the end of the message, starting with index -1 (the last contact instance)
+`$ct` - contact 头中 contact 实例/正文的引用。contact 实例是 display_name + URI + contact_params。由于 contact 头可能包含多个 Contact 实例，并且一条消息可能包含多个 Contact 头，因此为 `$ct` 变量添加了索引：
+* `$ct` - 消息中的第一个 contact 实例
+* `$(ct[n])` - 从消息开头的第 n 个 contact 实例，从索引 0 开始
+* `$(ct[-n])` - 从消息末尾的第 n 个 contact 实例，从索引 -1 开始（最后一个 contact 实例）
 
-### Fields of a contact instance - $ct.fields(field)
+### Contact 实例的字段 - $ct.fields(field)
 
-`$ct.fields()` - reference to the fields of a contact instance/body (see above). Supported fields are:
-* name - display name
-* uri - contact uri
-* q  - q param (value only)
-* expires - expires param (value only) 
-* methods - methods param (value only)
-* received - received param (value only)
-* params - all params (including names)
+`$ct.fields()` - 引用 contact 实例/正文的字段（见上文）。支持的字段有：
+* name - 显示名称
+* uri - contact URI
+* q - q 参数（仅值）
+* expires - expires 参数（仅值）
+* methods - methods 参数（仅值）
+* received - received 参数（仅值）
+* params - 所有参数（包括名称）
 
-Examples:
-* `$ct.fields(uri)` - the URI of the first contact instance
-* `$(ct.fields(name)[1])` - the display name of the second contact instance
+示例：
+* `$ct.fields(uri)` - 第一个 contact 实例的 URI
+* `$(ct.fields(name)[1])` - 第二个 contact 实例的显示名称
 
 ### Content-Type - $cT
 
-`$cT` - reference to body of Content-Type header and also the content-type headers inside a multi-part body
-* `$cT` - the main Content-Type of the message; the one inside the headers
-* `$(cT[n])` - the **n**-th Content-Type inside a multi-part body from the beginning of message, starting with index 0
-* `$(cT[-n])` - the **n**-th Content-Type inside a multi-part body from the end of the message, starting with index -1 (the last contact instance)
-* `$(cT[*])` - all the Content-Type headers including the main one and the ones from the multi-part body
+`$cT` - 引用 Content-Type 头正文以及多部分正文内的 content-type 头
+* `$cT` - 消息的主要 Content-Type；在头中的那个
+* `$(cT[n])` - 从消息开头的多部分正文中的第 **n** 个 Content-Type，从索引 0 开始
+* `$(cT[-n])` - 从消息末尾的多部分正文中的第 **n** 个 Content-Type，从索引 -1 开始（最后一个 contact 实例）
+* `$(cT[*])` - 包括主要的和来自多部分正文的所有 Content-Type 头
 
-### Domain of destination URI - $dd
+### 目标 URI 的域 - $dd
 
-`$dd` - reference to domain of destination uri
-
-> [!IMPORTANT]
-> It is R/W variable (you can assign values to it from routing logic)
-
-
-### Diversion header URI - $di
-
-`$di` - reference to Diversion header URI
-
-### Diversion "privacy" parameter - $dip
-
-`$dip` - reference to Diversion header "privacy" parameter value
-
-### Diversion "reason" parameter - $dir
-
-`$dir` - reference to Diversion header "reason" parameter value
-
-### Port of destination URI - $dp
-
-`$dp` - reference to port of destination uri
+`$dd` - 目标 uri 域的引用
 
 > [!IMPORTANT]
-> It is R/W variable (you can assign values to it from routing logic)
+> 它是 R/W 变量（您可以从路由逻辑为其赋值）
 
 
-### Transport protocol of destination URI - $dP
+### Diversion 头 URI - $di
 
-`$dP` - reference to transport protocol of destination uri
+`$di` - Diversion 头 URI 的引用
 
-### Destination set - $ds
+### Diversion "privacy" 参数 - $dip
 
-`$ds` - reference to destination set
+`$dip` - Diversion 头 "privacy" 参数值的引用
 
-### Destination URI - $du
+### Diversion "reason" 参数 - $dir
 
-`$du` - reference to destination uri (outbound proxy to be used for sending the request)
-If loose_route() returns TRUE a destination uri is set according to the first Route header.
+`$dir` - Diversion 头 "reason" 参数值的引用
 
-Alias: `$duri`
+### 目标 URI 的端口 - $dp
+
+`$dp` - 目标 uri 端口的引用
 
 > [!IMPORTANT]
-> It is R/W variable (you can assign values to it from routing logic)
+> 它是 R/W 变量（您可以从路由逻辑为其赋值）
 
 
-### Error class - $err.class
+### 目标 URI 的传输协议 - $dP
 
-`$err.class` - the class of error (now is '1' for parsing errors)
+`$dP` - 目标 uri 传输协议的引用
 
-### Error level - $err.level
+### 目标集 - $ds
 
-`$err.level` - severity level for the error
+`$ds` - 目标集的引用
 
-### Error info - $err.info
+### 目标 URI - $du
 
-`$err.info` - text describing the error
+`$du` - 目标 uri 的引用（用于发送请求的出站代理）
+如果 loose_route() 返回 TRUE，则根据第一个 Route 头设置目标 uri。
 
-### Error reply code - $err.rcode
+别名：`$duri`
 
-`$err.rcode` - recommended reply code
+> [!IMPORTANT]
+> 它是 R/W 变量（您可以从路由逻辑为其赋值）
 
-### Error reply reason - $err.rreason
 
-`$err.rreason` - recommended reply reason phrase
+### 错误类别 - $err.class
 
-### From URI domain - $fd
+`$err.class` - 错误类别（现在对于解析错误为 '1'）
 
-`$fd` - reference to domain in URI of 'From' header
+### 错误级别 - $err.level
 
-Alias: `$from.domain`
+`$err.level` - 错误的严重级别
 
-### From display name - $fn
+### 错误信息 - $err.info
 
-`$fn` - reference to display name of 'From' header
+`$err.info` - 描述错误的文本
 
-### From tag - $ft
+### 错误回复代码 - $err.rcode
 
-`$ft` - reference to tag parameter of 'From' header
+`$err.rcode` - 建议的回复代码
+
+### 错误回复原因 - $err.rreason
+
+`$err.rreason` - 建议的回复原因短语
+
+### From URI 域 - $fd
+
+`$fd` - 'From' 头 URI 中域的引用
+
+别名：`$from.domain`
+
+### From 显示名称 - $fn
+
+`$fn` - 'From' 头显示名称的引用
+
+### From 标签 - $ft
+
+`$ft` - 'From' 头标签参数的引用
 
 ### From URI - $fu
 
-`$fu` - reference to URI of 'From' header
+`$fu` - 'From' 头 URI 的引用
 
-Alias: `$from`
+别名：`$from`
 
-### From URI username - $fU
+### From URI 用户名 - $fU
 
-`$fU` - reference to username in URI of 'From' header
+`$fU` - 'From' 头 URI 中用户名的引用
 
-Alias: `$from.user`
+别名：`$from.user`
 
-### OpenSIPS Log level - $log_level
+### OpenSIPS 日志级别 - $log_level
 
-`$log_level` - changes the log level for the current process ; the log level can be set to a new value (see [possible values](Script-CoreParameters.md#log_level) or it can be reset back to the global log level.
-This function is very helpful if you are tracing and debugging only a specific piece of code. 
+`$log_level` - 更改当前进程的日志级别；日志级别可以设置为新值（请参阅[可能的值](Script-CoreParameters.md#log_level)），或者可以重置回全局日志级别。
+如果您仅跟踪和调试特定代码段，此函数非常有用。
 
-Example of usage:
+使用示例：
 
 ```text
 log_level= -1 # errors only
@@ -421,25 +419,25 @@ $log_level = NULL; # reset the log level of the current process to its default l
 }
 ```
 
-### SIP message buffer - $mb
+### SIP 消息缓冲区 - $mb
 
-`$mb` - reference to SIP message buffer
+`$mb` - SIP 消息缓冲区的引用
 
-### Message Flags - $mf
+### 消息标志 - $mf
 
-`$mf` - displays a list with the message/transaction flags set for the current SIP request
+`$mf` - 显示为当前 SIP 请求设置的消息/事务标志列表
 
-### SIP message ID - $mi
+### SIP 消息 ID - $mi
 
-`$mi` - reference to SIP message id
+`$mi` - SIP 消息 id 的引用
 
-### SIP message length - $ml
+### SIP 消息长度 - $ml
 
-`$ml` - reference to SIP message length
+`$ml` - SIP 消息长度的引用
 
-### Message branch - $msg.branch
+### 消息分支 - $msg.branch
 
-`$msg.branch` - similar to [`$branch`](#branch), this variable is used for creating new message branches by writing into it the value of a SIP URI. By reading this variable, you get the SIP URI of the current/last added branch (or of the RURI branch if no additional branch was added so far).
+`$msg.branch` - 类似于 [`$branch`](#branch)，此变量用于通过写入 SIP URI 值来创建新的消息分支。通过读取此变量，您可以获取当前/最后添加的分支的 SIP URI（如果没有添加额外分支，则是 RURI 分支）。
 ```text
 
    # creates a new branch
@@ -449,14 +447,13 @@ $log_level = NULL; # reset the log level of the current process to its default l
 
 ```
 
-### SIP URI of a message branch - $msg.branch.uri
+### 消息分支的 SIP URI - $msg.branch.uri
 
-`$msg.branch.uri` -  gives read / write access over the SIP URI (as string) of an existing message branch. The message branches are created via [append_msg_branch()](Script-CoreFunctions.md#append_branch) core function or by various modules (like "registrar" module). The message branches are consumed by the TM "t_relay()" function (they are converted to TM branches).  
+`$msg.branch.uri` -  提供对现有消息分支的 SIP URI（作为字符串）的读/写访问。消息分支通过 [append_msg_branch()](Script-CoreFunctions.md#append_branch) 核心函数或各种模块（如 "registrar" 模块）创建。消息分支由 TM "t_relay()" 函数消耗（它们被转换为 TM 分支）。
 
-The variable supports indexing - it starts from 0, meaning the RURI (or message) branch. The newly added branches will start from 1. So the branch 0 exists all
-the time, there is no need to create it. If no index is specified, the current/last added branch (or of the RURI branch if no additional branch was added so far) will be considered. Negative values are also accepted, meaning indexing from the last branch ( -1 is the latest/higher branch) to the RURI branch. An ***** / ALL index will return the comma separated list with the values from all branches.  
+该变量支持索引——它从 0 开始，表示 RURI（或消息）分支。新添加的分支将从 1 开始。因此，分支 0 始终存在，无需创建它。如果未指定索引，则考虑当前/最后添加的分支（如果没有添加额外分支，则是 RURI 分支）。也接受负值，表示从最后一个分支（-1 是最新/最高的分支）到 RURI 分支的索引。****/ALL 索引将返回所有分支的逗号分隔值列表。
 
-The variable can be used in REQUEST and FAILURE routes.
+该变量可以在 REQUEST 和 FAILURE 路由中使用。
 ```text
 
    # creates a new branch
@@ -468,34 +465,34 @@ The variable can be used in REQUEST and FAILURE routes.
 
 ```
 
-### Destination URI of a message branch - $msg.branch.duri
+### 消息分支的目标 URI - $msg.branch.duri
 
-`$msg.branch.duri` -  100% similar to [`$msg.branch.uri`](#msg.branch.uri), but operating with the Destination-URI value of the message branch.
+`$msg.branch.duri` -  100% 类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作消息分支的 Destination-URI 值。
 
-### PATH of a message branch - $msg.branch.path
+### 消息分支的 PATH - $msg.branch.path
 
-`$msg.branch.path` -  100% similar to [`$msg.branch.uri`](#msg.branch.uri), but operating with the PATH value of the message branch.
+`$msg.branch.path` -  100% 类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作消息分支的 PATH 值。
 
-### Q of a message branch - $msg.branch.q
+### 消息分支的 Q - $msg.branch.q
 
-`$msg.branch.q` -  100% similar to [`$msg.branch.uri`](#msg.branch.uri), but operating with the Q value of the message branch.
+`$msg.branch.q` -  100% 类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作消息分支的 Q 值。
 
-### Flags of a message branch - $msg.branch.flags
+### 消息分支的标志 - $msg.branch.flags
 
-`$msg.branch.flags` -  100% similar to [`$msg.branch.uri`](#msg.branch.uri), but operating with list (comma separated) of per-branch flags (which are set for the branch).
+`$msg.branch.flags` -  100% 类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作分支标志列表（逗号分隔）（为分支设置的）。
 
-### SIP socket of a message branch - $msg.branch.socket
+### 消息分支的 SIP 套接字 - $msg.branch.socket
 
-`$msg.branch.socket` -  100% similar to [`$msg.branch.uri`](#msg.branch.uri), but operating with the (forced) socket value of the message branch.
+`$msg.branch.socket` -  100% 类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作消息分支的（强制）套接字值。
 
-### A flag of a message branch - $msg.branch.flag()
+### 消息分支的标志 - $msg.branch.flag()
 
-`$msg.branch.flag()` -  similar to [`$msg.branch.uri`](#msg.branch.uri), but operating over a single branch flag (for the current branch).  
+`$msg.branch.flag()` -  类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作单个分支标志（对于当前分支）。
 
-The accepted values are 0 for FALSE, positive non-zero for TRUE. The returned values are 0 for FALSE and 1 for TRUE.  
+接受的值为 0 表示 FALSE，正非零表示 TRUE。返回值 0 表示 FALSE，1 表示 TRUE。
 
 > [!NOTE]
-> the */ALL index cannot be used here.
+> 此处不能使用 */ALL 索引。
 
 ```text
 
@@ -509,14 +506,14 @@ The accepted values are 0 for FALSE, positive non-zero for TRUE. The returned va
 
 ```
 
-### An attribute of a message branch - $msg.branch.attr()
+### 消息分支的属性 - $msg.branch.attr()
 
-`$msg.branch.attr()` -  similar to [`$msg.branch.uri`](#msg.branch.uri), but operating over a single branch attribute (attached to the current branch).  
+`$msg.branch.attr()` -  类似于 [`$msg.branch.uri`](#msg.branch.uri)，但操作单个分支属性（附加到当前分支）。
 
-An attribute can have whatever name (no need to be pre-defined) and it can have a single value (at a time), string or integer.  
+属性可以有任何名称（无需预定义），并且可以具有单个值（字符串或整数）。
 
 > [!NOTE]
-> the */ALL index cannot be used here.
+> 此处不能使用 */ALL 索引。
 
 ```text
 
@@ -528,13 +525,13 @@ An attribute can have whatever name (no need to be pre-defined) and it can have 
 
 ```
 
-### Index of the last message branch - $msg.branch.last_idx
+### 最后消息分支的索引 - $msg.branch.last_idx
 
-`$msg.branch.last_idx` -  returns the index of the last message branch. IF no additional branches were added, it will return 0, the index of the RURI branch. Then the returned value will get incremented with each append_msg_branch().  
+`$msg.branch.last_idx` -  返回最后消息分支的索引。如果没有添加额外分支，它将返回 0，即 RURI 分支的索引。然后返回的值将随每次 append_msg_branch() 递增。
 
-### Message flag - $msg.flag
+### 消息标志 - $msg.flag
 
-`$msg.flag(flag_name)` - this variable provides read/write access to the value of a single certain message flag (identified by name). The values accepted for writing are 1 (set) and 0 (unset). The returned values are 1/"true" (set) and 0/"false" (unset).
+`$msg.flag(flag_name)` - 此变量提供对单个特定消息标志（按名称标识）值的读/写访问。写入接受的值是 1（设置）和 0（取消设置）。返回值是 1/"true"（设置）和 0/"false"（取消设置）。
 ```text
 
   setflag("X");
@@ -544,9 +541,9 @@ An attribute can have whatever name (no need to be pre-defined) and it can have 
 
 ```
 
-### Message is request  - $msg.is_request
+### 消息是请求 - $msg.is_request
 
-`$msg.is_request` - this variable tells if the current SIP message is a request or not. The returned values are 1/"true" (request) and 0/"false" (reply).
+`$msg.is_request` - 此变量指示当前 SIP 消息是否是请求。返回值是 1/"true"（请求）和 0/"false"（回复）。
 ```text
 
   xlog("---- this message is a request:  $msg.is_request \n");
@@ -555,45 +552,45 @@ An attribute can have whatever name (no need to be pre-defined) and it can have 
 
 ```
 
-### Message type - $msg.type
+### 消息类型 - $msg.type
 
-`$msg.type` - this variable returns the type of the current  message. The returned values are "request" (request) or "reply" (reply).
+`$msg.type` - 此变量返回当前消息的类型。返回值是 "request"（请求）或 "reply"（回复）。
 ```text
 
   xlog("---- this message is a SIP $msg.type \n");
 
 ```
 
-### Domain in SIP Request's original URI - $od
+### SIP 请求原始 URI 中的域 - $od
 
-`$od` - reference to domain in request's original R-URI
+`$od` - 请求原始 R-URI 中域的引用
 
-### Port of SIP request's original URI - $op
+### SIP 请求原始 URI 的端口 - $op
 
-`$op` - reference to port of original R-URI
+`$op` - 原始 R-URI 端口的引用
 
-### Transport protocol of SIP request original URI - $oP
+### SIP 请求原始 URI 的传输协议 - $oP
 
-`$oP` - reference to transport protocol of original R-URI
+`$oP` - 原始 R-URI 传输协议的引用
 
-### SIP Request's original URI - $ou
+### SIP 请求的原始 URI - $ou
 
-`$ou` - reference to request's original URI
+`$ou` - 请求原始 URI 的引用
 
-Alias: `$ouri`
+别名：`$ouri`
 
-### Username in SIP Request's original URI - $oU
+### SIP 请求原始 URI 中的用户名 - $oU
 
-`$oU` - reference to username in request's original URI
+`$oU` - 请求原始 URI 中用户名的引用
 
-### Path header - $path
+### Path 头 - $path
 
-`$path` - reference to the Path header body.
+`$path` - Path 头正文的引用。
 
-### Route parameter - $param
-`$param(idx)` - retrieves the parameters of the route. The index can be an integer, or a pseudo-variable (index starts at 1).  
+### 路由参数 - $param
+`$param(idx)` - 检索路由的参数。索引可以是整数或伪变量（索引从 1 开始）。
 
-Example:
+示例：
 ```c
 
    route {
@@ -610,14 +607,14 @@ Example:
 
 ```
 
-### Domain in SIP Request's P-Preferred-Identity header URI - $pd
+### SIP 请求 P-Preferred-Identity 头 URI 中的域 - $pd
 
-`$pd` - reference to domain in request's P-Preferred-Identity header URI (see RFC 3325)
+`$pd` - 请求的 P-Preferred-Identity 头 URI 中的域引用（请参阅 RFC 3325）
 
-### Proxy Protocol from transport layer - $proxy_protocol
-`$proxy_protocol(field)` - retrieves Proxy Protocol information from the transport layer. Supported fields are: **src_ip**, **src_port**, **dst_ip**, **dst_port**, **af**  
+### 传输层的代理协议 - $proxy_protocol
+`$proxy_protocol(field)` - 从传输层检索代理协议信息。支持的字段有：**src_ip**、**src_port**、**dst_ip**、**dst_port**、**af**
 
-Example:
+示例：
 ```text
 
    route {
@@ -629,117 +626,117 @@ Example:
 
 ```
 
-### Display Name in SIP Request's P-Preferred-Identity header - $pn
+### SIP 请求 P-Preferred-Identity 头中的显示名称 - $pn
 
-`$pn` - reference to Display Name in request's P-Preferred-Identity header (see RFC 3325)
+`$pn` - 请求的 P-Preferred-Identity 头中的显示名称引用（请参阅 RFC 3325）
 
-### Process id - $pp
+### 进程 ID - $pp
 
-`$pp` - reference to process id (pid)
+`$pp` - 进程 id (pid) 的引用
 
-### User in SIP Request's P-Preferred-Identity header URI - $pU
+### SIP 请求 P-Preferred-Identity 头 URI 中的用户 - $pU
 
-`$pU` - reference to user in request's P-Preferred-Identity header URI (see RFC 3325)
+`$pU` - 请求的 P-Preferred-Identity 头 URI 中的用户引用（请参阅 RFC 3325）
 
-### URI in SIP Request's P-Preferred-Identity header - $pu
+### SIP 请求 P-Preferred-Identity 头中的 URI - $pu
 
-`$pu` - reference to URI in request's P-Preferred-Identity header (see RFC 3325)
+`$pu` - 请求的 P-Preferred-Identity 头中的 URI 引用（请参阅 RFC 3325）
 
-### Domain in SIP Request's URI - $rd
+### SIP 请求 URI 中的域 - $rd
 
-`$rd` - reference to domain in request's URI
+`$rd` - 请求 URI 中域的引用
 
-Alias: `$ruri.domain`
-
-> [!IMPORTANT]
-> It is R/W variable (you can assign values to it routing script)
-
-
-### Body of request/reply - $rb
-
-`$rb` - reference to the body or a body part of the SIP message
-* `$rb` - the whole body of the message (with all the parts)
-* `$(rb[*])` - same as `$rb`
-* `$(rb[n])` - the n-th body belonging to a multi-part body from the beginning of message, starting with index 0
-* `$(rb[-n])` - the n-th body belonging to a multi-part body from the end of the message, starting with index -1 (the last contact instance)
-* `$rb(application/sdp)`   - get the first SDP body part
-* `$(rb(application/isup)[-1])`  - get the last ISUP body part
-
-### Returned code - $rc
-
-`$rc` - reference to returned code by last invoked function
-
-`$retcode` - same as `$rc`
-
-### Remote-Party-ID header URI - $re
-
-`$re` - reference to Remote-Party-ID header URI
-
-### Return value - $return
-
-`$return` - Returns the value of the previously executed route.
-
-The variable receives an index, starting with 0, indicating the return value that needs to be read.
-
-### SIP request's method - $rm
-
-`$rm` - reference to request's method
-
-### SIP request's port - $rp
-
-`$rp` - reference to port of R-URI
+别名：`$ruri.domain`
 
 > [!IMPORTANT]
-> It is R/W variable (you can assign values to it routing script)
+> 它是 R/W 变量（您可以从路由脚本为其赋值）
 
 
-### Transport protocol of SIP request URI - $rP
+### 请求/回复正文 - $rb
 
-`$rP` - reference to transport protocol of R-URI
+`$rb` - SIP 消息正文或正文部分的引用
+* `$rb` - 消息的整个正文（带所有部分）
+* `$(rb[*])` - 与 `$rb` 相同
+* `$(rb[n])` - 从消息开头的多部分正文中第 n 个正文，从索引 0 开始
+* `$(rb[-n])` - 从消息末尾的多部分正文中第 n 个正文，从索引 -1 开始（最后一个 contact 实例）
+* `$rb(application/sdp)` - 获取第一个 SDP 正文部分
+* `$(rb(application/isup)[-1])` - 获取最后一个 ISUP 正文部分
 
-### SIP reply's reason - $rr
+### 返回代码 - $rc
 
-`$rr` - reference to reply's reason
+`$rc` - 最后调用函数的返回代码引用
 
-### SIP reply's status - $rs
+`$retcode` - 与 `$rc` 相同
 
-`$rs` - reference to reply's status
+### Remote-Party-ID 头 URI - $re
+
+`$re` - Remote-Party-ID 头 URI 的引用
+
+### 返回值 - $return
+
+`$return` - 返回先前执行的路由的值。
+
+该变量接受一个索引，从 0 开始，指示需要读取的返回值。
+
+### SIP 请求的方法 - $rm
+
+`$rm` - 请求方法的引用
+
+### SIP 请求的端口 - $rp
+
+`$rp` - R-URI 端口的引用
+
+> [!IMPORTANT]
+> 它是 R/W 变量（您可以从路由脚本为其赋值）
+
+
+### SIP 请求 URI 的传输协议 - $rP
+
+`$rP` - R-URI 传输协议的引用
+
+### SIP 回复的原因 - $rr
+
+`$rr` - 回复原因的引用
+
+### SIP 回复的状态 - $rs
+
+`$rs` - 回复状态的引用
 
 ### Refer-to URI - $rt
 
-`$rt` - reference to URI of refer-to header
+`$rt` - refer-to 头 URI 的引用
 
-### SIP Request's URI - $ru
+### SIP 请求的 URI - $ru
 
-`$ru` - reference to request's URI
+`$ru` - 请求 URI 的引用
 
-Alias: `$ruri`
-
-> [!IMPORTANT]
-> It is R/W variable (you can assign values to it routing script)
-
-
-### Username in SIP Request's URI - $rU
-
-`$rU` - reference to username in request's URI
-
-Alias: `$ruri.user`
+别名：`$ruri`
 
 > [!IMPORTANT]
-> It is R/W variable (you can assign values to it routing script)
+> 它是 R/W 变量（您可以从路由脚本为其赋值）
 
 
-### Q value of the SIP Request's URI - $ru_q
+### SIP 请求 URI 中的用户名 - $rU
 
-`$ru_q` - reference to q value of the R-URI
+`$rU` - 请求 URI 中用户名的引用
+
+别名：`$ruri.user`
 
 > [!IMPORTANT]
-> It is R/W variable (you can assign values to it routing script)
+> 它是 R/W 变量（您可以从路由脚本为其赋值）
 
 
-### SDP body - $sdp
+### SIP 请求 URI 的 Q 值 - $ru_q
 
-`$sdp` - Read/Write reference to the SDP body of the current SIP message
+`$ru_q` - R-URI 的 q 值引用
+
+> [!IMPORTANT]
+> 它是 R/W 变量（您可以从路由脚本为其赋值）
+
+
+### SDP 正文 - $sdp
+
+`$sdp` - 当前 SIP 消息的 SDP 正文的读/写引用
 
 ```bash
 
@@ -757,9 +754,9 @@ $(<reply>sdp) = $var(rtpengine_sdp);
 
 ```
 
-### SDP body line - $sdp.line
+### SDP 正文行 - $sdp.line
 
-`$sdp.line` - Read/Write reference to SDP body lines, with filtering support
+`$sdp.line` - SDP 正文行的读/写引用，支持过滤
 
 ```bash
 
@@ -784,17 +781,17 @@ $sdp.line(m=audio[1]/RTQ)         # NULL
 
 ```
 
-### SDP body line - $sdp.stream
+### SDP 正文流 - $sdp.stream
 
-`$sdp.stream` - Read/Write reference to SDP body streams, with filtering support
+`$sdp.stream` - SDP 正文流的读/写引用，支持过滤
 
 ```bash
 
 # Within a desired stream, you can first filter by line...
-$sdp.stream(/a=ptime);         # first “a=ptime” line from Stream #0 ("m=", matching any stream type)
-$sdp.stream([1]/a=ptime);      # first “a=ptime” line from Stream #1 ("m=", matching any stream type))
-$sdp.stream(audio[1]/a=ptime); # first “a=ptime” line from Audio Stream #1 ("m=audio...")
-$sdp.stream(a[1]/a=ptime);     # first “a=ptime” line from Audio Stream #1 ("m=a...")
+$sdp.stream(/a=ptime);         # first "a=ptime" line from Stream #0 ("m=", matching any stream type)
+$sdp.stream([1]/a=ptime);      # first "a=ptime" line from Stream #1 ("m=", matching any stream type))
+$sdp.stream(audio[1]/a=ptime); # first "a=ptime" line from Audio Stream #1 ("m=audio...")
+$sdp.stream(a[1]/a=ptime);     # first "a=ptime" line from Audio Stream #1 ("m=a...")
 $sdp.stream(video[1]/a=nortpproxy) = NULL;  # delete entire line starting with "a=nortpproxy" from Video Stream #1
 $sdp.stream(v[1]/a=nortpproxy:/[0]) = "yes";   # set first "a=nortpproxy" line "yes" value, in Video Stream #1
 
@@ -805,28 +802,28 @@ $sdp.stream(video[1]/a=fmtp:115/bitrate=) = 48000; # set "bitrate=" to 48000, un
 
 ```
 
-### SDP body session - $sdp.session
+### SDP 正文会话 - $sdp.session
 
-`$sdp.session` - Read/Write reference to the SDP body session, with filtering support
+`$sdp.session` - SDP 正文会话的读/写引用，支持过滤
 
 ```bash
 
 # Within the SDP session (i.e. until the 1st "m=" line), you can first filter by line...
-$sdp.session(a=ptime);            # 1st “a=ptime” line at Session level
+$sdp.session(a=ptime);            # 1st "a=ptime" line at Session level
 $sdp.session(a=ptime[0]);         # same as above
-$sdp.session(a=ptime[1]);         # 2nd “a=ptime” line at Session level
-$sdp.session(a=ptime[0]) = NULL;  # delete 1st “a=ptime” line at Session level
+$sdp.session(a=ptime[1]);         # 2nd "a=ptime" line at Session level
+$sdp.session(a=ptime[0]) = NULL;  # delete 1st "a=ptime" line at Session level
 
 # ... but also filter and edit by token:
 $sdp.session(a=rtpmap/telephone-event\/) = "8000";  # Match 1st "a=rtpmap" line which describes telephone-event at Session level, and force bitrate to 8000
 
 ```
 
-### SDP stream index - $sdp.stream.idx
+### SDP 流索引 - $sdp.stream.idx
 
-`$sdp.stream.idx` - Read-Only reference to the index of the matched SDP stream.  Yields NULL on no-match.
+`$sdp.stream.idx` - 匹配 SDP 流的索引的只读引用。匹配失败时返回 NULL。
 
-This variable is especially useful in order to match a line having one specific attribute (e.g. "the rtpmap= line for PCMU codec"), then changing a different attribute within the same stream.  Example:
+此变量特别有用，用于匹配具有特定属性的行（例如"PCMU codec 的 rtpmap= 行"），然后更改同一流中的不同属性。示例：
 
 ```text
 
@@ -837,35 +834,34 @@ $sdp.line([$var(line_idx)]) = $var(data); # re-write the line
 
 ```
 
-### IP source address - $si
+### IP 源地址 - $si
 
-`$si` - reference to IP source address of the message
+`$si` - 消息 IP 源地址的引用
 
-Alias: `$src_ip`
+别名：`$src_ip`
 
-### Socket inbound - $socket_in / $socket_in(field)
+### 入站套接字 - $socket_in / $socket_in(field)
 
-`$socket_in` - read-only variable to get the description (proto:ip:port format) of the inbound socket (used for receiving the message).
-  
+`$socket_in` - 获取入站套接字（用于接收消息）的描述（proto:ip:port 格式）的只读变量。
 
-The variable also offers detailed read-only access to various attributes/sub-fields of the socket, as  `$socket_in()`. The sub-fields of the socket are:
-* ip - the IP part of the socket
-* port - the port part of the socket
-* proto - the name of the protocol of the socket (as "UDP", "TCP", etc)
-* advertised_ip - the advertised IP part of the socket (it may be NULL if no advertising is done on this particular socket)
-* advertised_port - the advertised port part of the socket (it may be NULL if no advertising is done on this particular socket)
-* tag - the socket internal tag/alias 
-* anycast - if the socket uses an anycast IP or not (returns 0 if not, 1 if yes)
-* af - the address family of the socket's IP. It's value is "INET" if IPv4 or "INET6" if IPv6.
-For more details on the meaning of these sub-fields, please also read about the [socket definition](Script-CoreParameters.md#shm_memlog_size).
 
-### Socket outbound - $socket_out / $socket_out(field)
+该变量还提供对套接字各种属性/子字段的详细只读访问，如 `$socket_in()`。套接字的子字段有：
+* ip - 套接字的 IP 部分
+* port - 套接字的端口部分
+* proto - 套接字协议名称（如 "UDP"、"TCP" 等）
+* advertised_ip - 套接字的 advertised IP 部分（如果在特定套接字上没有进行广告，则可能为 NULL）
+* advertised_port - 套接字的 advertised 端口部分（如果在特定套接字上没有进行广告，则可能为 NULL）
+* tag - 套接字内部 tag/别名
+* anycast - 套接字是否使用 anycast IP（如果不是返回 0，如果是返回 1）
+* af - 套接字 IP 的地址家族。其值为 "INET"（如果是 IPv4）或 "INET6"（如果是 IPv6）。
+有关这些子字段含义的更多详细信息，请还阅读[套接字定义](Script-CoreParameters.md#shm_memlog_size)。
 
-`$socket_out` - read-write variable for reading or changing the outbound socket of the message. Originally (before being written/changed) it will return the same socket description as [`$socket_in`](#socket_in) (the inbound socket will be used as outbound socket also). In addition, it also supports the `forced` sub-field, which returns a socket description only if a socket had been explicitly forced; thus, as opposed to the regular [`$socket_out`](#socket_out), if no socket had explicitly been forced, the variable returns NULL.
+### 出站套接字 - $socket_out / $socket_out(field)
 
-  
+`$socket_out` - 用于读取或更改消息出站套接字的读写变量。最初（写入/更改之前），它将返回与 [`$socket_in`](#socket_in) 相同的套接字描述（入站套接字也将用作出站套接字）。此外，它还支持 `forced` 子字段，仅在明确强制套接字时返回套接字描述；因此，与常规 [`$socket_out`](#socket_out) 相比，如果没有明确强制套接字，变量返回 NULL。
 
-The variable also offers detailed read-only access to various attributes/sub-fields of the socket, as  `$socket_out()`. **It provides the same sub-fields as the [`$socket_in`](#socket_in) variable.**
+
+该变量还提供对套接字各种属性/子字段的详细只读访问，如 `$socket_out()`。**它提供与 [`$socket_in`](#socket_in) 变量相同的子字段。**
 
 ```text
 
@@ -874,77 +870,77 @@ The variable also offers detailed read-only access to various attributes/sub-fie
 
 ```
 
-### Source port - $sp
+### 源端口 - $sp
 
-`$sp` - reference to the source port of the message
+`$sp` - 消息源端口的引用
 
-### To URI Domain - $td
+### To URI 域 - $td
 
-`$td` - reference to domain in URI of 'To' header
+`$td` - 'To' 头 URI 中域的引用
 
-Alias: `$to.domain`
+别名：`$to.domain`
 
-### To display name - $tn
+### To 显示名称 - $tn
 
-`$tn` - reference to display name of 'To' header
+`$tn` - 'To' 头显示名称的引用
 
-### To tag - $tt
+### To 标签 - $tt
 
-`$tt` - reference to tag parameter of 'To' header
+`$tt` - 'To' 头标签参数的引用
 
 ### To URI - $tu
 
-`$tu` - reference to URI of 'To' header
+`$tu` - 'To' 头 URI 的引用
 
-Alias: `$to`
+别名：`$to`
 
-### To URI Username - $tU
+### To URI 用户名 - $tU
 
-`$tU` - reference to username in URI of 'To' header
+`$tU` - 'To' 头 URI 中用户名的引用
 
-Alias: `$to.user`
+别名：`$to.user`
 
-### Formatted date and time - $time
+### 格式化日期和时间 - $time
 
-`$time(format)` - returns the string formatted time according to UNIX date (see: **man date**).
+`$time(format)` - 根据 UNIX 日期返回格式化时间字符串（请参阅：**man date**）。
 
-### Branch index - $T_branch_idx
+### 分支索引 - $T_branch_idx
 
-`$T_branch_idx` - the index (starting with 1 for the first branch) of the branch for which is executed the branch_route[]. If used outside of branch_route[] block, the value is '0'. This is exported by TM module.
+`$T_branch_idx` - 执行 branch_route[] 的分支的索引（第一个分支从 1 开始）。如果在 branch_route[] 块外部使用，值为 '0'。这是由 TM 模块导出的。
 
-### String formatted time - $Tf
+### 字符串格式化时间 - $Tf
 
-`$Tf` - reference string formatted time
+`$Tf` - 字符串格式化时间的引用
 
-### Current unix time stamp in seconds - $Ts
+### 当前 unix 时间戳（秒）- $Ts
 
-`$Ts` - reference to current unix time stamp in seconds
+`$Ts` - 当前 unix 时间戳（秒）的引用
 
-### Current microseconds of the current second - $Tsm
+### 当前秒的微秒 - $Tsm
 
-`$Tsm` - reference to current microseconds of the current second
+`$Tsm` - 当前秒的微秒引用
 
-### Startup unix time stamp - $TS
+### 启动 unix 时间戳 - $TS
 
-`$TS` - reference to startup unix time stamp
+`$TS` - 启动 unix 时间戳的引用
 
-### User agent header - $ua
+### 用户代理头 - $ua
 
-`$ua` - reference to user agent header field
+`$ua` - 用户代理头字段的引用
 
-### SIP Headers - $hdr
+### SIP 头 - $hdr
 
-`$(hdr(name)[N])` - represents the body of the N-th header identified by 'name'. If [N] is omitted then the body of the first header is printed. The first header is retrieved when N=0, for the second N=1, and so on. To print the last header of that type, use -1, no other negative values are supported now. No white spaces are allowed inside the specifier (before `}`, before or after `{`, [, ] symbols). When N='*', all headers of that type are printed.
+`$(hdr(name)[N])` - 表示由 'name' 标识的第 N 个头的正文。如果省略 [N]，则打印第一个头的正文。第一个头在 N=0 时检索，第二个在 N=1 时检索，依此类推。要打印该类型的最后一个头，请使用 -1，目前不支持其他负值。在规范符内部不允许有空格（在 `}` 之前，在 `{` 之前或之后，在 [、] 符号之前或之后）。当 N='*' 时，打印该类型的所有头。
 
-The module should identify most of compact header names (the ones recognized by **OpenSIPS** which should be all at this moment), if not, the compact form has to be specified explicitly. It is recommended to use dedicated specifiers for headers (e.g., %ua for user agent header), if they are available -- they are faster.
+该模块应该识别大多数压缩头名称（OpenSIPS 识别的名称，此时应该全部识别），如果不识别，必须明确指定压缩形式。建议使用专用规范符来获取头（如可用，例如 %ua 用于用户代理头）——它们更快。
 
-`$(hdr_name[N])` - returns the name of the N-th header. The first header name is obtained for N=0, the second for N=1, and so on. To print the last header name use -1, the second-to-last -2 and so on. No white spaces are allowed inside the specifier (before `}`, before or after `{`, [, ] symbols). When N='*', all header names are printed.
+`$(hdr_name[N])` - 返回第 N 个头的名称。第一个头名称在 N=0 时获取，第二个在 N=1 时获取，依此类推。要打印最后一个头名称请使用 -1，倒数第二个使用 -2，依此类推。在规范符内部不允许有空格（在 `}` 之前，在 `{` 之前或之后，在 [、] 符号之前或之后）。当 N='*' 时，打印所有头名称。
 
-`$(hdrcnt(name))` -- returns number of headers of type given by 'name'. Uses same rules for specifying header names as `$hdr(name)` above. Many headers (e.g., Via, Path, Record-Route) may appear more than once in the message. This variable returns the number of headers of a given type. 
+`$(hdrcnt(name))` -- 返回给定 'name' 类型头的数量。使用与上述 `$hdr(name)` 相同的规则指定头名称。许多头（例如 Via、Path、Record-Route）可能在消息中出现多次。此变量返回给定类型头的数量。
 
-Note that some headers (e.g., Path) may be joined together with commas and appear as a single header line. This variable counts the number of header lines, not header values. 
+请注意，某些头（例如 Path）可能用逗号连接在一起并显示为单个头行。此变量计算头行的数量，而不是头值的数量。
 
-For message fragment below, `$hdrcnt(Path)` will have value 2 and `$(hdr(Path)[0])` will have value **`<a.com>`**:
+对于下面的消息片段，`$hdrcnt(Path)` 将有值 2，`$(hdr(Path)[0])` 将有值 **`<a.com>`**：
 ```text
 
     Path: <a.com>
@@ -952,53 +948,53 @@ For message fragment below, `$hdrcnt(Path)` will have value 2 and `$(hdr(Path)[0
 
 ```
 
-For message fragment below, `$hdrcnt(Path)` will have value 1 and `$(hdr(Path)[0])` will have value **`<a.com>`,`<b.com>`**:
+对于下面的消息片段，`$hdrcnt(Path)` 将有值 1，`$(hdr(Path)[0])` 将有值 **`<a.com>`,`<b.com>`**：
 ```text
 
     Path: <a.com>,<b.com>
 
 ```
 
-Note that both examples above are semantically equivalent but the variables take on different values.
+请注意，上面两个示例在语义上是等效的，但变量呈现不同的值。
 
-### Route Name (Full) - $route
-`$route` - Access route names of the current route call stack.  Usage examples (assuming a route call stack of "route > route[A] > route[B]"):
+### 路由名称（完整）- $route
+`$route` - 访问当前路由调用堆栈的路由名称。使用示例（假设路由调用堆栈为 "route > route[A] > route[B]"）：
 
-* `$route` and `$(route[0])` both return **"route[B]"** (current route)
-* `$(route[1])` returns **"route[A]"** (parent route)
-* `$(route[2])` returns **"route"** (previous-parent route)
-* `$(route[-1])` returns **"route"** (topmost route)
-* `$(route[-2])` returns **"route[A]"** (next-topmost route)
-* `$(route[-3])` returns **"route[B]"** (next-next-topmost route)
-* `$(route[3])` and `$(route[-4])` both return **NULL** (index out of bounds)
-* `$(route[*])` returns **"route > route[A] > route[B]"** (entire call stack)
+* `$route` 和 `$(route[0])` 都返回 **"route[B]"**（当前路由）
+* `$(route[1])` 返回 **"route[A]"**（父路由）
+* `$(route[2])` 返回 **"route"**（前父路由）
+* `$(route[-1])` 返回 **"route"**（最顶层路由）
+* `$(route[-2])` 返回 **"route[A]"**（下一个顶层路由）
+* `$(route[-3])` 返回 **"route[B]"**（下下一个顶层路由）
+* `$(route[3])` 和 `$(route[-4])` 都返回 **NULL**（索引超出范围）
+* `$(route[*])` 返回 **"route > route[A] > route[B]"**（整个调用堆栈）
 
-### Route Type - $route.type
-`$route.type` - Access the type of the current route.  May be indexed, using positive or negative indexes.
+### 路由类型 - $route.type
+`$route.type` - 访问当前路由的类型。可以使用正索引或负索引进行索引。
 
-* `$route.type` and `$(route.type[0])` both return current route type
-* `$(route.type[1])` returns parent route type
-* `$(route.type[-1])` returns topmost route type
-* `$(route.type[-2])` returns next-topmost route type
+* `$route.type` 和 `$(route.type[0])` 都返回当前路由类型
+* `$(route.type[1])` 返回父路由类型
+* `$(route.type[-1])` 返回最顶层路由类型
+* `$(route.type[-2])` 返回下一个顶层路由类型
 
-### Route Name - $route.name
-`$route.name` - Access the name of the current route.  May be indexed, using positive or negative indexes.
+### 路由名称 - $route.name
+`$route.name` - 访问当前路由的名称。可以使用正索引或负索引进行索引。
 
-* `$route.name` and `$(route.name[0])` both return current route name
-* `$(route.name[1])` returns parent route name
-* `$(route.name[-1])` returns topmost route name
-* `$(route.name[-2])` returns next-topmost route name
+* `$route.name` 和 `$(route.name[0])` 都返回当前路由名称
+* `$(route.name[1])` 返回父路由名称
+* `$(route.name[-1])` 返回最顶层路由名称
+* `$(route.name[-2])` 返回下一个顶层路由名称
 
-### Current script line and file  - $cfg_line
-`$cfg_line` - Holds the current line from the script of the action being executed, useful for logging purposes   
+### 当前脚本行和文件 - $cfg_line
+`$cfg_line` - 保存正在执行的操作的脚本当前行，可用于日志记录目的
 
-`$cfg_file` - Holds the current name of the cfg file being executed, useful when using multiple scripts via the include statement
+`$cfg_file` - 保存正在执行的 cfg 文件的当前名称，当使用 include 语句使用多个脚本时很有用
 
-### Log level for xlog() - $xlog_level
+### xlog() 的日志级别 - $xlog_level
 
-`$xlog_level` - allows to set /reset the xlog() logging level on per-process bases. Shortly said, you can read the verbosity level for the xlog() calls or you can temporary change the level per process bases.
+`$xlog_level` - 允许设置/重置每个进程的 xlog() 日志级别。简而言之，您可以读取 xlog() 调用的详细程度级别，或者临时更改每个进程的级别。
 
-Example:
+示例：
 ```text
 
 xlog("current verbosity is $xlog_level \n");
@@ -1010,29 +1006,29 @@ $xlog_level = NULL;  # reset to initial value
 
 ```
 
-## Escape Sequences
+## 转义序列
 
-These sequences are exported, and mainly used, by xlog module to print messages in many colors (foreground and background) using escape sequences. 
+这些序列由 xlog 模块导出和使用，主要用于使用转义序列以多种颜色（前景和背景）打印消息。
 
-### Foreground and background colors
+### 前景色和背景色
 
-`$C(xy)` - reference to an escape sequence. ¿x¿ represents the foreground color and ¿y¿ represents the background color.
+`$C(xy)` - 转义序列的引用。¿x¿ 表示前景色，¿y¿ 表示背景色。
 
-Colors could be:
+颜色可以是：
 
-* x : default color of the terminal
-* s : Black
-* r : Red
-* g : Green
-* y : Yellow
-* b : Blue
-* p : Purple
-* c : Cyan
-* w : White 
+* x : 终端的默认颜色
+* s : 黑色
+* r : 红色
+* g : 绿色
+* y : 黄色
+* b : 蓝色
+* p : 紫色
+* c : 青色
+* w : 白色
 
-### Examples
+### 示例
 
-A few examples of usage.
+一些使用示例。
 
 ```text
 

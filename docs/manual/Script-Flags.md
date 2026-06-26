@@ -1,32 +1,32 @@
 ---
-title: "Script Flags"
+title: "脚本标志"
 ---
 
-## What are the flags?
+## 什么是标志？
 
-A flag is a TRUE or FALSE entity. The flags are 32 in number, for each type (see below). A flag is identified by its name - again, you cannot have more than 32 different names/flags. You do not have to declare or define the names of the flags, just use them.
-The flags may be used for whatever purpose, there is nothing pre-defined.
+标志是一个 TRUE 或 FALSE 的实体。每种类型有 32 个标志（见下文）。标志通过其名称标识 - 同样，您不能拥有超过 32 个不同的名称/标志。您无需声明或定义标志的名称，直接使用即可。
+标志可用于任何目的，没有任何预定义的内容。
 
-## Types of flags
+## 标志的类型
 
-* **message flags** (or transaction flags) these flags are attached to the current SIP message or to the current transaction (if a transaction exists). So these flags are transaction persistent. They are visible in all routes and cases where the transaction or SIP message context is visible.
-* **branch flags**  these flags are also at transaction level, but per SIP branch - yeah SIP branch has its own set of flags. Each time in the context of a specific SIP branch (like in `branch_route` or `reply_route`), you will see the matching branch flags. These flags may be operated from script level or by various module functions (like usrloc saving the branch flags for each registered contact).
+* **消息标志**（或事务标志）这些标志附加到当前 SIP 消息或当前事务（如果存在事务）。因此这些标志是事务持久的。它们在所有事务或 SIP 消息上下文可见的路由和情况下都可见。
+* **分支标志** 这些标志也在事务级别，但每个 SIP 分支都有自己的标志集 - 每个时间在特定 SIP 分支的上下文中（如在 `branch_route` 或 `reply_route` 中），您将看到匹配的分支标志。这些标志可以从脚本级别或各种模块函数操作（如 usrloc 为每个注册的 contact 保存分支标志）。
 
 ---
 
-## Script Flag Functions
+## 脚本标志函数
 
-There are a bunch a functions that helps into working with the flags from script level - to set, reset and check.
+有一系列函数帮助从脚本级别处理标志 - 设置、重置和检查。
 
-### Message/transaction flags
+### 消息/事务标志
 
 * [`setflag`](Script-CoreFunctions.md#setflag)`(FLAG)`
 * [`resetflag`](Script-CoreFunctions.md#resetflag)`(FLAG)`
 * [`isflagset`](Script-CoreFunctions.md#isflagset)`(FLAG)`
 
-*Examples: setflag(accounting), resetflag(DO_NAT) or setflag(1942)*
+*示例: setflag(accounting), resetflag(DO_NAT) 或 setflag(1942)*
 
-### Branch flags
+### 分支标志
 
 * [`setbflag`](Script-CoreFunctions.md#setbflag)`(FLAG, branch_idx)`
 * [`resetbflag`](Script-CoreFunctions.md#resetbflag)`(FLAG, branch_idx)`
@@ -34,7 +34,7 @@ There are a bunch a functions that helps into working with the flags from script
 
   
 
-or, the shorter format, working on the default (branch 0) flags:
+或更短的格式，适用于默认（分支 0）标志:
 
 * [`setbflag`](Script-CoreFunctions.md#setbflag)`(FLAG)`
 * [`resetbflag`](Script-CoreFunctions.md#resetbflag)`(FLAG)`
@@ -42,39 +42,39 @@ or, the shorter format, working on the default (branch 0) flags:
 
 ---
 
-## Flags related Variables
+## 标志相关变量
 
-### Message/transaction flags
+### 消息/事务标志
 
-* [`$msg.flag(name)`](Script-CoreVar.md#msg.flag) - reads/writes a certain message flag
+* [`$msg.flag(name)`](Script-CoreVar.md#msg.flag) - 读取/写入特定消息标志
 
-* [`$mf`](Script-CoreVar.md#mf) - ReadOnly; outputs a list of all set flags
+* [`$mf`](Script-CoreVar.md#mf) - 只读; 输出所有已设置标志的列表
 
 
-### Branch flags
+### 分支标志
 
-* [`$msg.branch.flag(name)`](Script-CoreVar.md#msg.branch.flag) - reads/writes a certain branch flag
+* [`$msg.branch.flag(name)`](Script-CoreVar.md#msg.branch.flag) - 读取/写入特定分支标志
 
-* [`$msg.branch.flags`](Script-CoreVar.md#msg.branch.flags) - ReadOnly; returns a list of all set branch flags
-
----
-
-## Flags and routes
-
-### Message/transaction flags
-
-These flags will show up in all routes where messages related to the initial request are processed. So, they will be visible and changeable in `onbranch`, `failure` and `onreply` routes; the flags will be visible in all `branch` routes; if you change a flag in a `branch` route, the next `branch` routes will inherit the change.
-
-### Branch flags
-
-These flags will show up in all routes where messages related to initial branch request are processed. So, in `branch` route you will see different sets of flags (as they are different branches); in `onreply` route you will see the branch flags corresponding to the branch the reply belongs to; in `failure` route, the branch flags corresponding to the branch the winning reply belongs to will be visible.
-In `request` route, you may have multiple branches (as a result of a `lookup()` for example), but at least one. All the time there is the default branch, index 0, corresponding to the RURI. Any additional branches will get indexes from 1 and above.
+* [`$msg.branch.flags`](Script-CoreVar.md#msg.branch.flags) - 只读; 返回所有已设置分支标志的列表
 
 ---
 
-## Example
+## 标志和路由
 
-### NAT flag handling
+### 消息/事务标志
+
+这些标志将显示在处理与初始请求相关的消息的所有路由中。因此，它们在 `onbranch`、`failure` 和 `onreply` 路由中可见并可更改; 标志在所有 `branch` 路由中可见; 如果您在 `branch` 路由中更改标志，后续 `branch` 路由将继承该更改。
+
+### 分支标志
+
+这些标志将显示在处理与初始分支请求相关的消息的所有路由中。因此，在 `branch` 路由中您将看到不同的标志集（因为它们是不同的分支）; 在 `onreply` 路由中，您将看到该回复所属分支的分支标志; 在 `failure` 路由中，将显示与获胜回复所属分支对应的分支标志。
+在 `request` 路由中，您可能有多个分支（作为 `lookup()` 的结果等），但至少有一个。始终存在默认分支，索引 0，对应 RURI。任何其他分支将从 1 开始分配索引。
+
+---
+
+## 示例
+
+### NAT 标志处理
 
 ```c
 
@@ -85,15 +85,15 @@ In `request` route, you may have multiple branches (as a result of a `lookup()` 
  route {
    ..........
    if (nat detected)
-      setbflag(NAT_BFLAG); # set branch flag "NAT_BFLAG" for the branch 0
+      setbflag(NAT_BFLAG); # 为分支 0 设置分支标志 "NAT_BFLAG"
 
    ..........
    if (is_method("REGISTER")) {
-      # the branch flags (including "NAT_BFLAG") will be saved into location
+      # 分支标志（包括 "NAT_BFLAG"）将被保存到位置
       save("location");
       exit;
    } else {
-      # lookup will load the branch flag from location
+      # lookup 将从位置加载分支标志
       if (!lookup("location")) {
          sl_send_reply(404,"Not Found");
          exit;
@@ -106,21 +106,21 @@ In `request` route, you may have multiple branches (as a result of a `lookup()` 
  branch_route[handle_branch] {
    xlog("-------branch=$T_branch_idx, branch flags=$bf\n");
    if (isbflagset(NAT_BFLAG)) {
-      #current branch is marked as natted
+      #当前分支被标记为 NATed
       .........
    }
  }
 
 ```
 
-if no parallel forking is done, you can get rid of the branch route and add instead of t_on_branch():
+如果没有执行并行分叉，您可以放弃分支路由，而将 t_on_branch() 替换为:
 ```text
 
    ........
    if (isbflagset(NAT_BFLAG)) {
-      #current branch is marked as natted
+      #当前分支被标记为 NATed
       .........
    }
-   ......... 
+   .........
 
 ```

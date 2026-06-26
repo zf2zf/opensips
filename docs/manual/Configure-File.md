@@ -1,13 +1,13 @@
 ---
-title: "Configuration File"
-description: "The OpenSIPS configuration file contains all the parameters that control the OpenSIPS core and modules, along with the actual routing logic that OpenSIPS wil..."
+title: "配置文件"
+description: "OpenSIPS 配置文件包含控制 OpenSIPS 核心和模块的所有参数，以及 OpenSIPS 用于路由 SIP 流量的实际路由逻辑。"
 ---
 
-The OpenSIPS configuration file contains all the parameters that control the OpenSIPS core and modules, along with the actual routing logic that OpenSIPS will use to route the SIP traffic.
+OpenSIPS 配置文件包含控制 OpenSIPS 核心和模块的所有参数，以及 OpenSIPS 用于路由 SIP 流量的实际路由逻辑。
 
   
 
-Upon installation, the default configuration file path is :
+安装后，默认配置文件路径为：
 
 ```text
 
@@ -17,18 +17,18 @@ Upon installation, the default configuration file path is :
 
   
 
-The configuration file is text-based, written in an OpenSIPS custom language, very similar to the C language. You will find different variables ( each with different scopes - explained further down the manual ), you can do the classical constructs like if / while / switch, etc, and you can also call sub-routines with parameters, so the script should be fairly easily read-able by somebody with some SIP & programming skills.
+配置文件是基于文本的，使用 OpenSIPS 自定义语言编写，与 C 语言非常相似。您会发现不同的变量（每个变量有不同的作用域——在手册下文中有详细解释），您可以使用经典的构造如 if / while / switch 等，您还可以调用带参数的子程序，因此对于具备一些 SIP 和编程技能的人来说，阅读脚本应该相当容易。
 
   
 
 > [!IMPORTANT]
-> If you do any change to the configuration file, in order for them to take effect, you MUST restart OpenSIPS
+> 如果您对配置文件进行了任何更改，为了使更改生效，您必须重启 OpenSIPS
 
   
 
-Due to the fact that you must restart OpenSIPS every time you make a change to the configuration file, it is of vital importance to ensure that all the changes you have made are correct according to the OpenSIPS language syntax.
+由于每次对配置文件进行更改时都必须重启 OpenSIPS，因此确保您所做的所有更改符合 OpenSIPS 语言语法至关重要。
 
-You can check the OpenSIPS configuration file validity by running
+您可以通过运行以下命令来检查 OpenSIPS 配置文件的有效性：
 
   
 
@@ -40,8 +40,8 @@ You can check the OpenSIPS configuration file validity by running
 
   
 
-When checking the configuration file for validity, If the cfg is OK, OpenSIPS will return 0.
+检查配置文件有效性时，如果 cfg 正常，OpenSIPS 将返回 0。
 
   
 
-If the config file contains any errors, they will be displayed in the console and OpenSIPS will return -1
+如果配置文件包含任何错误，它们将显示在控制台上，OpenSIPS 将返回 -1

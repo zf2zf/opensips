@@ -1,20 +1,20 @@
 ---
-title: "Core MI Functions"
-description: "MI (management interface) functions which are exported by OpenSIPS core."
+title: "Core MI 函数"
+description: "MI（管理接口）函数，由 OpenSIPS 核心导出。"
 ---
 
-MI (management interface) functions which are exported by **OpenSIPS** core.
+**OpenSIPS** 核心导出的 MI（管理接口）函数。
 
-## Core
+## 核心
 
 ### arg
-Returns the full list of arguments used when **OpenSIPS** was started. As in UNIX, the first argument is the name of executable binary.  
+返回 **OpenSIPS** 启动时使用的完整参数列表。与 UNIX 一样，第一个参数是可执行文件的名称。
 
-**Arguments**: none  
+**参数**: 无
 
-**Output**: an array with multiple strings representing the arguments.
+**输出**: 一个包含多个字符串的数组，表示这些参数。
 
-Example of usage:
+使用示例:
 ```text
 
     # opensips-mi arg
@@ -27,12 +27,12 @@ Example of usage:
 ```
 
 ### help
-Prints MI command usage information. When *mi_cmd* is provided, the response includes the command description and the module which exports it.
+打印 MI 命令的使用信息。当提供 *mi_cmd* 时，响应包含命令描述和导出它的模块。
 
-**Arguments**:
-* *mi_cmd* (optional) - MI command name
+**参数**:
+* *mi_cmd* (可选) - MI 命令名称
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi help
@@ -41,13 +41,13 @@ Examples of usage:
 ```
 
 ### kill
-The command will terminate **OpenSIPS** (and internal shutdown).  
+该命令将终止 **OpenSIPS**（并执行内部关闭）。
 
-**Arguments**: none  
+**参数**: 无
 
-**Output**: none
+**输出**: 无
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi kill
@@ -55,13 +55,13 @@ Examples of usage:
 ```
 
 ### log_level
-Get or set the logging level of one or all OpenSIPS processes. If no argument is passed to the **log_level** command, it will print a table with the current logging levels of all processes. If a logging **level** is given, it will be set for each process. If **pid** is also given, the logging level will change only for that process.  
+获取或设置一个或所有 OpenSIPS 进程的日志级别。如果不向 **log_level** 命令传递参数，它将打印所有进程当前日志级别的表格。如果给定日志 **level**，它将被设置到每个进程。如果还给出了 **pid**，则日志级别将仅更改该进程。
 
-**Arguments**:
-* *level* (optional) - logging level (-3...4) (see [meaning of the values](Script-CoreParameters.md#log_level))
-* *pid* (optional) - Unix pid (validated by OpenSIPS)
+**参数**:
+* *level* (可选) - 日志级别 (-3...4)（参见[值的含义](Script-CoreParameters.md#log_level)）
+* *pid* (可选) - Unix pid（由 OpenSIPS 验证）
 
-Examples of usage:
+使用示例:
 ```bash
 
     # opensips-mi log_level
@@ -96,13 +96,13 @@ Examples of usage:
 ```
 
 ### log_level_filter
-Get or set the level of the extra filtering applied to log messages for a specific logging "consumer"(*stderror*, *syslog* or *event*). If **log_level_filter** is not given, the command will print the current level filter for the specified consumer.
+获取或设置应用于特定日志"消费者"(*stderror*、*syslog* 或 *event*)的日志消息的额外过滤级别。如果未给出 **log_level_filter**，该命令将打印指定消费者的当前级别过滤器。
 
-**Arguments**:
-* *consumer* (optional) - logging consumer: *stderror*, *syslog* or *event*;
-* *log_level_filter* (optional) - the log level filter.
+**参数**:
+* *consumer* (可选) - 日志消费者: *stderror*、*syslog* 或 *event*;
+* *log_level_filter* (可选) - 日志级别过滤器。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi log_level_filter stderror
@@ -115,13 +115,13 @@ Examples of usage:
 ```
 
 ### log_mute_state
-Get or set the mute state (printing enabled/disabled) of a specific logging "consumer"(*stderror*, *syslog* or *event*). If **mute_state** is not given, the command will print the current mute state for the specified consumer.
+获取或设置特定日志"消费者"(*stderror*、*syslog* 或 *event*)的静音状态（打印启用/禁用）。如果未给出 **mute_state**，该命令将打印指定消费者的当前静音状态。
 
-**Arguments**:
-* *consumer* (optional) - logging consumer: *stderror*, *syslog* or *event*;
-* *mute_state* (optional) - the new mute state: *1* - muted or *0* - unmuted (enabled)
+**参数**:
+* *consumer* (可选) - 日志消费者: *stderror*、*syslog* 或 *event*;
+* *mute_state* (可选) - 新的静音状态: *1* - 静音或 *0* - 取消静音（启用）
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi log_mute_state syslog
@@ -134,14 +134,14 @@ Examples of usage:
 ```
 
 ### profiling_proc
-Get or set the profiling level globally or per process. If no **level** is given, the function will list the current profiling level of the specified processes. If **level** is given, it gives the incremental verbosity level - from the lowest to higher level, we have: **0** OFF, **1** SIP level (I/O reactor, SIP stack -TM, dialog, b2b-, scripting), **2** Extra Processes too (like MI, RTPproxy, HTTPD) and **3** TIMER/FULL (timer job execution).
-What are the impacted processes may be controlled via the **ID** (internal ID) or **PID** ids. If none given, all processes will be impacted by the set/get operation.
-Also see the [E_PROFILING_PROC event](Interface-CoreEvents.md#E_PROFILING_PROC) used for reporting the profiling data.
+全局或按进程获取或设置性能分析级别。如果未给出 **level**，该函数将列出指定进程的当前性能分析级别。如果给出了 **level**，则提供递增的详细级别 - 从最低到最高级别依次为: **0** 关闭，**1** SIP 级别（I/O  reactor、SIP stack -TM、dialog、b2b-、scripting），**2** 额外进程（MI、RTPproxy、HTTPD 等）和 **3** TIMER/FULL（定时器作业执行）。
+受影响的进程可通过 **ID**（内部 ID）或 **PID** 控制。如果未给出任何一项，所有进程都将受到 set/get 操作的影响。
+另请参阅用于报告性能分析数据的 [E_PROFILING_PROC 事件](Interface-CoreEvents.md#E_PROFILING_PROC)。
 
-**Arguments**:
-* *ID* or *PID* (optional) - processes to work with;
-* *level* (optional) - the new verbosity level (if to be set)
-Examples of usage:
+**参数**:
+* *ID* 或 *PID* (可选) - 要处理的进程;
+* *level* (可选) - 新的详细级别（如果要设置）
+使用示例:
 ```text
 
     # opensips-mi mi core:profiling_proc id=8
@@ -161,13 +161,13 @@ Examples of usage:
 ```
 
 ### ps
-The command will list all all **OpenSIPS** processes, along with type and description.  
+该命令将列出所有 **OpenSIPS** 进程及其类型和描述。
 
-**Arguments**: none  
+**参数**: 无
 
-**Output**: multiple objects, each one containing a process ID (internal), PID (OS) and Type. 
+**输出**: 多个对象，每个对象包含进程 ID（内部）、PID（操作系统）和类型。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi ps
@@ -209,13 +209,13 @@ Examples of usage:
 ```
 
 ### pwd
-Prints the working directory of **OpenSIPS** instance.  
+打印 **OpenSIPS** 实例的工作目录。
 
-**Arguments**: none  
+**参数**: 无
 
-**Output**: a single item containing the working directory full path.
+**输出**: 一个包含工作目录完整路径的单个项目。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi pwd
@@ -226,23 +226,23 @@ Examples of usage:
 ```
 
 ### reload_routes
-Triggers the reload of the routing block (the routes) from the script during the runtime.
-**Arguments**: none  
+在运行时触发从脚本重新加载路由块（路由）。
+**参数**: 无
 
-**Output**: none
+**输出**: 无
 
-Please note that there are some limitations of when a reload is possible or not. Depending on the initial configuration of your modules, the reload may be rejected as the usage of the functions in the new script is not compatible with the original module setting and initialization.  
+请注意， reload 是否可能存在一些限制。根据模块的初始配置，reload 可能会被拒绝，因为新脚本中函数的使用与原始模块设置和初始化不兼容。
 
-If the reload fails, take a look at the logs to understand why - it may have been a syntax error or maybe a module related constraint. Anyhow, if the reload fails, there is no impact on your running OpenSIPS.
+如果 reload 失败，请查看日志以了解原因 - 可能是语法错误或模块相关的约束。无论如何，如果 reload 失败，不会影响正在运行的 OpenSIPS。
 
 ### uptime
-Prints various time information about **OpenSIPS** - when it started to run, for how long it runs.
+打印 **OpenSIPS** 的各种时间信息 - 何时开始运行、运行了多长时间。
 
-**Arguments**: none
+**参数**: 无
 
-**Output**: three items: "Now" - current time; "Up since" - start time ; "Up time" - number of seconds since started.
+**输出**: 三个项目: "Now" - 当前时间; "Up since" - 启动时间; "Up time" - 自启动以来的秒数。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi uptime
@@ -255,13 +255,13 @@ Examples of usage:
 ```
 
 ### version
-Prints the version string of a running**OpenSIPS**.
+打印正在运行的 **OpenSIPS** 的版本字符串。
 
-**Arguments**: none
+**参数**: 无
 
-**Output**: one item (named "Server") containing the version string.
+**输出**: 一个名为 "Server" 的项目，包含版本字符串。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi version
@@ -272,13 +272,13 @@ Examples of usage:
 ```
 
 ### which
-Prints all available MI commands from the queried **OpenSIPS**instance.
+打印来自查询的 **OpenSIPS** 实例的所有可用 MI 命令。
 
-**Arguments**: none
+**参数**: 无
 
-**Output**: an array of the names of available MI commands. NOTE that the list of available MI commands may differ depending of what modules your **OpenSIPS** is using.
+**输出**: 可用 MI 命令名称的数组。请注意，可用 MI 命令列表可能因 **OpenSIPS** 使用的模块不同而有所差异。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi which
@@ -306,28 +306,28 @@ Examples of usage:
 ```
 
 ### xlog_level [level]
-Get or set the global xlogging level in OpenSIPS processes. If no argument is passed to the **xlog_level** command, it will print the current **xlog_level**. If a logging **level** is given, it will be globally set for all OpenSIPS processes.
+获取或设置 OpenSIPS 进程中的全局 xlog 级别。如果不向 **xlog_level** 命令传递参数，它将打印当前的 **xlog_level**。如果给定了日志 **level**，它将被全局设置到所有 OpenSIPS 进程。
 
-**Arguments**:
-* *level* (optional)
+**参数**:
+* *level* (可选)
 
-Example of usage:
+使用示例:
 ```text
 
     # opensips-mi xlog_level -2
 
 ```
 
-## Blacklists
+## 黑名单
 
 ### blacklists:list
-The command lists all the defined (static or learned) blacklists from **OpenSIPS**.
+该命令列出 **OpenSIPS** 中所有已定义（静态或学习的）的黑名单。
 
-**Arguments**:
-* *name* (optional) - filter and print only rules in a specific blacklist
-**Output**: an array with each object describing the list (name, owner, flags); the "Rules" item is an array with each object member describing the rules (blacklists) for each list (IP/mask, protocol, port, matching regexp, flags).
+**参数**:
+* *name* (可选) - 仅过滤并打印特定黑名单中的规则
+**输出**: 一个数组，每个对象描述一个列表（名称、所有者、标志）; "Rules" 项目是一个数组，每个对象成员描述每个列表的规则（IP/mask、protocol、port、matching regexp、flags）。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi blacklists:list
@@ -335,16 +335,16 @@ Examples of usage:
 ```
 
 ### blacklists:check_all
-The command returns all the blacklists that match an proto:IP:port+pattern.
+该命令返回与 proto:IP:port+pattern 匹配的所有黑名单。
 
-**Arguments**:
-* *proto* (optional) - protocol of the check rule - if missing, "any" protocol is used. Note that an "any" protocol check can only match an "any" protocol rule.
-* *ip* - the mandatory IP that is used to match the rules
-* *port* (optional) - the port of the check rule - if missing, 0/any port is used. Note that a 0 port will only match a 0 port rule.
-* *pattern* (optional) - optional pattern to check against the rules
-**Output**: an array with the names of each blacklist that matched.
+**参数**:
+* *proto* (可选) - 检查规则的协议 - 如果缺失，使用"any"协议。注意，"any"协议检查只能匹配"any"协议规则。
+* *ip* - 用于匹配规则的必需 IP
+* *port* (可选) - 检查规则的端口 - 如果缺失，使用 0/any 端口。注意，0 端口只能匹配 0 端口规则。
+* *pattern* (可选) - 要检查规则的可选模式
+**输出**: 每个匹配的黑名单名称数组。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi blacklists:check_all 127.0.0.1
@@ -353,17 +353,17 @@ Examples of usage:
 ```
 
 ### blacklists:check
-The command check whether a proto:IP:port+pattern matches any rule of a blacklist.
+该命令检查 proto:IP:port+pattern 是否匹配黑名单的任何规则。
 
-**Arguments**:
-* *name* = the name of the blacklist to check against
-* *proto* (optional) - protocol of the check rule - if missing, "any" protocol is used. Note that an "any" protocol check can only match an "any" protocol rule.
-* *ip* - the mandatory IP that is used to match the rules
-* *port* (optional) - the port of the check rule - if missing, 0/any port is used. Note that a 0 port will only match a 0 port rule.
-* *pattern* (optional) - optional pattern to check against the rules
-**Output**: an object containing the first rule that matched, or an error if nothing matched.
+**参数**:
+* *name* = 要检查的黑名单名称
+* *proto* (可选) - 检查规则的协议 - 如果缺失，使用"any"协议。注意，"any"协议检查只能匹配"any"协议规则。
+* *ip* - 用于匹配规则的必需 IP
+* *port* (可选) - 检查规则的端口 - 如果缺失，使用 0/any 端口。注意，0 端口只能匹配 0 端口规则。
+* *pattern* (可选) - 要检查规则的可选模式
+**输出**: 包含第一个匹配规则的对象，如果没有匹配则返回错误。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi blacklists:check net_dynamic 127.0.0.1
@@ -372,15 +372,15 @@ Examples of usage:
 ```
 
 ### blacklists:add_rule
-Adds a rule to a non-readonly blacklist.
+向非只读黑名单添加规则。
 
-**Arguments**:
-* *name*- the name of the blacklist to add to
-* *rule* - a string containing a blacklist rule, according to [**dst_blacklist**](https://docs.opensips.org/manual/devel/script-coreparameters#dst_blacklist) parameter
-* *expire* (optional) - indicates the number of seconds the rule should expire
-**Output**: success or failed object.
+**参数**:
+* *name* - 要添加到的黑名单名称
+* *rule* - 包含黑名单规则的字符串，根据 [**dst_blacklist**](https://docs.opensips.org/manual/devel/script-coreparameters#dst_blacklist) 参数
+* *expire* (可选) - 规则过期的时间（秒）
+**输出**: 成功或失败对象。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi blacklists:add_rule net_dynamic '!tcp,127.0.0.1,5060'
@@ -389,31 +389,31 @@ Examples of usage:
 ```
 
 ### blacklists:del_rule
-Removes a rule from a non-readonly blacklist.
+从非只读黑名单中删除规则。
 
-**Arguments**:
-* *name* - the name of the blacklist to remove from
-* *rule* - a string containing a blacklist rule, according to [**dst_blacklist**](https://docs.opensips.org/manual/devel/script-coreparameters#dst_blacklist) parameter
-**Output**: success or failed object.
+**参数**:
+* *name* - 要删除的黑名单名称
+* *rule* - 包含黑名单规则的字符串，根据 [**dst_blacklist**](https://docs.opensips.org/manual/devel/script-coreparameters#dst_blacklist) 参数
+**输出**: 成功或失败对象。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi blacklists:del_rule net_dynamic '!tcp,127.0.0.1,5060'
 
 ```
 
-## TCP connections
+## TCP 连接
 
 ### tcp:list
-The command lists all ongoing TCP/TLS connection from **OpenSIPS**.
+该命令列出 **OpenSIPS** 中所有正在进行的 TCP/TLS 连接。
 
-**Arguments**:
+**参数**:
 
-* *proto* (optional) - list TCP connections for that specific protocol
-**Output**: an array with one object per connection with the following attributes : ID, type, state, source, destination, lifetime, alias port. For TLS connections, cipher information is also dumped.
+* *proto* (可选) - 列出该特定协议的 TCP 连接
+**输出**: 一个数组，每个连接有一个对象，包含以下属性: ID、type、state、source、destination、lifetime、alias port。对于 TLS 连接，还会转储密码信息。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi tcp:list
@@ -421,33 +421,33 @@ Examples of usage:
 ```
 
 ### tcp:close
-Command that terminates an ongoing TCP/TLS connection from **OpenSIPS**.
+终止 **OpenSIPS** 中正在进行的 TCP/TLS 连接的命令。
 
-**Arguments**:
+**参数**:
 
-* *ipport* - **ip:port** coordinates of the connection
+* *ipport* - 连接的 **ip:port** 坐标
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi tcp:close 127.0.0.1:9
 
 ```
-you can also terminate by id:
+您也可以通过 id 终止:
 ```text
 
     # opensips-mi tcp:close 31646848
 
 ```
-## Status Report
+## 状态报告
 
 ### status_report:get
-The MI equivalent of the [sr_check_status() script function](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) - to get the status of an 'status/report' identifier/group.
+[ sr_check_status() 脚本函数](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) 的 MI 等效命令 - 获取'status/report' 标识符/组的状态。
 
-**Arguments**: a mandatory *group* and optional *identifier*, see the parameters of the [sr_check_status() script function](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status).
-**Output**: the readiness, the status and details of the identifier/group (see the aggregation note for the return code of the [sr_check_status() script function](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status)
+**参数**: 必需的 *group* 和可选的 *identifier*，请参阅 [sr_check_status() 脚本函数](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) 的参数。
+**输出**: 标识符/组的就绪状态、状态和详细信息（请参阅 [sr_check_status() 脚本函数](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) 返回码的聚合说明）。
 
-Examples of usage:
+使用示例:
 ```bash
 
 # opensips-mi status_report:get core
@@ -467,12 +467,12 @@ Examples of usage:
 ```
 
 ### status_report:status
-Command to list the status of the identifiers within one or all 'status/report' groups.
+列出单个或所有'status/report' 组内标识符状态的命令。
 
-**Arguments**: an optional 'status/report'  *group*, see the [sr_check_status() script function](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) for more details.
-**Output**: the readiness, the status and details for all the identifiers within the requested group, or within all defined/registered groups.
+**参数**: 可选的'status/report' *group*，请参阅 [sr_check_status() 脚本函数](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) 了解更多详情。
+**输出**: 请求组内或所有已定义/注册组内所有标识符的就绪状态、状态和详细信息。
 
-Examples of usage:
+使用示例:
 ```text
 
 #opensips-mi status_report:status 
@@ -514,14 +514,14 @@ Examples of usage:
 ```
 
 ### status_report:reports
-Command to list the full set of reports (logs) collected by 'status/report' identifiers.
+列出由'status/report' 标识符收集的完整报告（日志）集的命令。
 
-**Arguments**:
-* an optional 'status/report'  *group*, see the [sr_check_status() script function](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) for more details. If missing, all the groups will be listed.
-* an optional 'identifier'. If missing, all the identifiers within the group will be listed.
-**Output**: the reports/logs for the requested identifiers, or for all identifiers within the groups.
+**参数**:
+* 可选的'status/report' *group*，请参阅 [sr_check_status() 脚本函数](https://docs.opensips.org/manual/devel/script-corefunctions#sr_check_status) 了解更多详情。如果缺失，将列出所有组。
+* 可选的'identifier'。如果缺失，将列出组内的所有标识符。
+**输出**: 请求标识符的报告/日志，或组内所有标识符的报告/日志。
 
-Examples of usage:
+使用示例:
 ```text
 
 #opensips-mi status_report:reports 
@@ -585,13 +585,13 @@ Examples of usage:
 ```
 
 ### status_report:identifiers
-Command to list all the existing identifiers in OpenSIPS or only from a certain group.
+列出 OpenSIPS 中所有现有标识符或仅来自特定组的标识符的命令。
 
-**Arguments**:
-* an optional 'status/report'  *group*, see the [sr_check_status() script function](https://docs.opensips.org/manual/3-3/script-corefunctions#sr_check_status) for more details. If missing, the identifiers from all the groups will be listed.
-**Output**: an array of groups, each group being an array of identifiers .
+**参数**:
+* 可选的'status/report' *group*，请参阅 [sr_check_status() 脚本函数](https://docs.opensips.org/manual/3-3/script-corefunctions#sr_check_status) 了解更多详情。如果缺失，将列出所有组的标识符。
+**输出**: 组数组，每个组是标识符数组。
 
-Examples of usage:
+使用示例:
 ```text
 
 #opensips-mi status_report:identifiers
@@ -640,19 +640,19 @@ Examples of usage:
 
 ```
 
-## Statistics
+## 统计
 
 ### statistics:get
-Prints the statistics (all, group or one) realtime values.  
+打印统计（全部、组或单个）的实时值。
 
-**Arguments**:
-* *statistics* - an array of the following possible values:
-  * "all" - print all available statistics;
-  * "group_name:" - print only statistics from a certain group named "group_name"; the **OpenSIPS** core defines the following groups: *core*, *shmem*; Modules export groups typically named like the module itself.
-  * "name" - print only the statistic named "name".
-**Output**: an object containing the names and values of statistic variables.
+**参数**:
+* *statistics* - 包含以下可能值的数组:
+  * "all" - 打印所有可用统计;
+  * "group_name:" - 仅打印名为 "group_name" 的组的统计; **OpenSIPS** 核心定义以下组: *core*、*shmem*; 模块导出的组通常以模块本身命名。
+  * "name" - 仅打印名为 "name" 的统计。
+**输出**: 包含统计变量名称和值的对象。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi statistics:get rcv_requests
@@ -674,11 +674,11 @@ Examples of usage:
 ```
 
 ### statistics:list
-Prints a list of available statistics in the current configuration of OpenSIPS.
-**Arguments**:
-* *statistics* (optional) - an array of the same possible values as for **statistics:get** MI command, with the exception of "all". Omitting the parameter will list all available statistics.
+打印当前 OpenSIPS 配置中可用统计的列表。
+**参数**:
+* *statistics* (可选) - 与 **statistics:get** MI 命令相同的可能值数组，但 "all" 除外。省略该参数将列出所有可用统计。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi statistics:list
@@ -696,13 +696,13 @@ Examples of usage:
 ```
 
 ### statistics:reset
-Reset (to zero) the value of a statistic variable. Note that not all variables allow reset (depending of the nature of the information they carry - example "shmem:used_size").  
+将统计变量的值重置（为零）。请注意，并非所有变量都允许重置（取决于它们携带的信息性质 - 例如 "shmem:used_size"）。
 
-**Arguments**: 
-* *statistics* - an array of the names of the variables to be reset. 
-**Output**: none.
+**参数**: 
+* *statistics* - 要重置的变量名称数组。
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi statistics:get received_replies
@@ -718,30 +718,30 @@ Examples of usage:
 ```
 
 ### statistics:reset_all
-Reset (to zero) the value of all statistic variables that can be reset. Note that not all variables allow reset (depending of the nature of the information they carry - example "shmem:used_size").  
+将所有可重置的统计变量的值重置（为零）。请注意，并非所有变量都允许重置（取决于它们携带的信息性质 - 例如 "shmem:used_size"）。
 
-**Output**: none.
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi statistics:reset_all
 
 ```
 
-## CacheDB interface
+## CacheDB 接口
 
 ### cache:store
-This command stores in a cache system a string value.  
+该命令在缓存系统中存储字符串值。
 
-**Arguments**:
-* *system* - cache system to use - for the cache system implemented by **OpenSIPS** module 'localcache' the value of this parameter should be 'local';
-* *attr* - the label to be associated with this value;
-* *value* - the string to be stored;
-* *expire* (optional) - expire time for the stored value;
-**Output**: none.   
+**参数**:
+* *system* - 要使用的缓存系统 - 对于 **OpenSIPS** 模块 'localcache' 实现的缓存系统，此参数的值应为 'local';
+* *attr* - 要与此值关联的标签;
+* *value* - 要存储的字符串;
+* *expire* (可选) - 存储值的过期时间;
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi cache:store local password_user1 password
@@ -749,14 +749,14 @@ Examples of usage:
 ```
 
 ### cache:fetch
-This command queries for a stored value.  
+该命令查询存储的值。
 
-**Arguments**:
-* *system* - cache system to use - for the cache system implemented by **OpenSIPS** module 'localcache' the value of this parameter should be 'local'
-* *attr* - the label associated with the value
-**Output**: object containing the value if a record is found or 'Value not found' string otherwise.  
+**参数**:
+* *system* - 要使用的缓存系统 - 对于 **OpenSIPS** 模块 'localcache' 实现的缓存系统，此参数的值应为 'local'
+* *attr* - 与值关联的标签
+**输出**: 如果找到记录则包含值的对象，否则为 'Value not found' 字符串。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi cache:fetch local password_user1
@@ -764,32 +764,32 @@ Examples of usage:
 ```
 
 ### cache:remove
-This command removes a record from the cache system.  
+该命令从缓存系统中删除记录。
 
-**Arguments**:
-* *system* - cache system to use;
-* *attr* - the label associated with the stored value;
-**Output**: None.  
+**参数**:
+* *system* - 要使用的缓存系统;
+* *attr* - 与存储值关联的标签;
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi cache:remove local password_user1
 
 ```
 
-## Event Interface
+## 事件接口
 
 ### evi:subscribe
-Subscribes an external application to a certain event.  
+将外部应用程序订阅到某个事件。
 
-**Arguments**:
-* *event* - event name
-* *socket* - external application socket
-* *expire* (optional) - expire time, in seconds - if absent, the subscription is valid only one hour (3600 s)
-**Output**: None.  
+**参数**:
+* *event* - 事件名称
+* *socket* - 外部应用程序 socket
+* *expire* (可选) - 过期时间，以秒为单位 - 如果不存在，订阅仅在一小时内有效（3600 秒）
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi evi:subscribe E_PIKE_BLOCKED udp:127.0.0.1:8888 1200
@@ -797,13 +797,13 @@ Examples of usage:
 ```
 
 ### evi:list
-Lists all the events published through the Event Interface.  
+列出通过事件接口发布的所有事件。
 
-**Arguments**: None.   
+**参数**: 无。
 
-**Output**: None.  
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi evi:list
@@ -826,31 +826,31 @@ Examples of usage:
 ```
 
 ### evi:raise
-Raises an event through the Event Interface using an MI command.  
+使用 MI 命令通过事件接口引发事件。
 
-**Arguments**:
-* *event* - event name
-* *params* (optional) - array of elements, or a string consisting of a JSON object containing key-value pairs
-**Output**: None.  
+**参数**:
+* *event* - 事件名称
+* *params* (可选) - 元素数组，或包含键值对的 JSON 对象字符串
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```bash
 
-    # opensips-mi evi:raise E_PIKE_BLOCKED 127.0.0.1 # array mode
-    # opensips-mi evi:raise -j '{"event":"E_PIKE_BLOCKED", "params": {"ip":"127.0.0.1"}}' # json Mode
-    # opensips-cli -x mi -j evi:raise event=E_PIKE_BLOCKED params='{"ip":"127.0.0.1"}' # cli json mode
+    # opensips-mi evi:raise E_PIKE_BLOCKED 127.0.0.1 # 数组模式
+    # opensips-mi evi:raise -j '{"event":"E_PIKE_BLOCKED", "params": {"ip":"127.0.0.1"}}' # json 模式
+    # opensips-cli -x mi -j evi:raise event=E_PIKE_BLOCKED params='{"ip":"127.0.0.1"}' # cli json 模式
 
 ```
 
 ### evi:subscribers
-Lists information about the subscribers  
+列出有关订阅者的信息。
 
-**Arguments**:
-* *event* - event name
-* *socket* (optional) - external application socket
-**Output**: If no parameter is specified, then the command returns information about all events and their subscribers. If the event is specified, only the external applications subscribed for that event are returned. If the socket is also specified, only one subscriber information is returned.  
+**参数**:
+* *event* - 事件名称
+* *socket* (可选) - 外部应用程序 socket
+**输出**: 如果未指定参数，则返回所有事件及其订阅者的信息。如果指定了事件，则仅返回订阅该事件的外部应用程序。如果还指定了 socket，则仅返回一个订阅者信息。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi evi:subscribers
@@ -904,17 +904,17 @@ Examples of usage:
 
 ```
 
-## Memory
+## 内存
 
 ### mem:pkg_dump
-Triggers a pkg memory dump for a given process. The memory dump will written to OpenSIPS's log (syslog or stderr) using the 'memdump' logging level. The global 'memdump' log level may be overwritten by a custom value provided as argument to this command.  
+为给定进程触发 pkg 内存转储。内存转储将使用 'memdump' 日志级别写入 OpenSIPS 的日志（syslog 或 stderr）。全局 'memdump' 日志级别可以被覆盖为作为此命令参数提供的自定义值。
 
-**Arguments**:
-* *pid* - the PID of the process to perform the pkg dump
-* *log_level* (optional) - a log level to be used for this dump
-**Output**: None.  
+**参数**:
+* *pid* - 要执行 pkg 转储的进程的 PID
+* *log_level* (可选) - 用于此转储的日志级别
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi mem:pkg_dump 11854 -1
@@ -922,15 +922,15 @@ Examples of usage:
 ```
 
 > [!IMPORTANT]
-> The processes without IPC support (like timer and per-module processes) will not be able to generate a memory dump.
+> 不支持 IPC 的进程（如 timer 和 per-module 进程）将无法生成内存转储。
 
 ### mem:rpm_dump
-Triggers a restart-persistent memory dump. The memory dump is written to OpenSIPS's log (syslog or stderr) using the `memdump` logging level. The global `memdump` level may be overridden by the optional argument.
+触发重启持久内存转储。内存转储使用 `memdump` 日志级别写入 OpenSIPS 的日志（syslog 或 stderr）。可选参数可以覆盖全局 `memdump` 级别。
 
-**Arguments**:
-* *log_level* (optional) - logging level used for this dump
+**参数**:
+* *log_level* (可选) - 用于此转储的日志级别
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi mem:rpm_dump
@@ -939,13 +939,13 @@ Examples of usage:
 ```
 
 ### mem:shm_dump
-Triggers a shm memory dump. The memory dump will written to OpenSIPS's log (syslog or stderr) using the 'memdump' logging level. The global 'memdump' log level may be overwritten by a custom value provided as argument to this command.  
+触发 shm 内存转储。内存转储将使用 'memdump' 日志级别写入 OpenSIPS 的日志（syslog 或 stderr）。全局 'memdump' 日志级别可以被覆盖为作为此命令参数提供的自定义值。
 
-**Arguments**:
-* *log_level* (optional) - a log level to be used for this dump
-**Output**: None.  
+**参数**:
+* *log_level* (可选) - 用于此转储的日志级别
+**输出**: 无。
 
-Examples of usage:
+使用示例:
 ```text
 
     # opensips-mi mem:shm_dump -1
@@ -953,13 +953,13 @@ Examples of usage:
 ```
 
 ### mem:shm_check
-Only available with *QM_MALLOC* + *DBG_MALLOC*.  Fully scans the shared memory pool in order to locate any inconsistencies.  If any sign of memory corruption is detected, OpenSIPS will immediately abort.   
+仅在 *QM_MALLOC* + *DBG_MALLOC* 下可用。为了定位任何不一致性，完全扫描共享内存池。如果检测到任何内存损坏迹象，OpenSIPS 将立即中止。
 
-**Arguments**: None  
+**参数**: 无
 
-**Output**: current number of fragments.  
+**输出**: 当前碎片数量。
 
-Example of usage:
+使用示例:
 ```text
 
     # opensips-mi mem:shm_check
