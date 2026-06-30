@@ -1,0 +1,2 @@
+id(int,auto) setid(int) destination(str) socket(str,null) state(int) probe_mode(int) weight(str) priority(int) attrs(str,null) description(str,null)
+1:1:sip\:127.0.0.1\:15060::0:0:1:0:::
