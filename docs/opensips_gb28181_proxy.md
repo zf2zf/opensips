@@ -23,36 +23,51 @@ GB28181 协议定义了视频监控系统中**前端设备（摄像头/NVR）**�
 ### 2.1 整体架构
 
 ```mermaid
-flowchart LR
-    subgraph Devices["前端设备 (摄像头/NVR)"]
-        IPC["IPCamera / NVR"]
+flowchart TB
+    subgraph dev["前端设备"]
+        IPC["摄像头/NVR"]
     end
 
-    subgraph OpenSIPS["OpenSIPS 代理集群"]
-        direction TB
-        REGISTER["① REGISTER 处理"]
-        MESSAGE["② MESSAGE 处理"]
-        INVITE["③ INVITE 处理"]
-        KEEPALIVE["Keepalive 检测"]
-        DATABASE[("SQLite<br/>location 表")]
-        
-        REGISTER --> DATABASE
-        MESSAGE --> KEEPALIVE
-        KEEPALIVE --> DATABASE
+    subgraph vipLayer["虚拟IP层"]
+        VADDR["VIP: 20.20.136.100:5060"]
     end
 
-    subgraph Platform["监控平台"]
-        EasyGBS["EasyGBS / ISUP"]
+    subgraph srvA["服务器A (MASTER)"]
+        KPA["Keepalived-A"]
+        OPA["OpenSIPS-A"]
+        DBA["SQLite-A"]
     end
 
-    IPC <-->|"SIP<br/>REGISTER"| REGISTER
-    IPC <-->|"SIP<br/>MESSAGE"| MESSAGE
-    IPC <-->|"SIP<br/>INVITE"| INVITE
+    subgraph srvB["服务器B (BACKUP)"]
+        KPB["Keepalived-B"]
+        OPB["OpenSIPS-B"]
+        DBB["SQLite-B"]
+        IPT["iptables"]
+    end
 
-    REGISTER <-->|"④ ds_select_dst<br/>转发"| EasyGBS
-    MESSAGE <-->|"转发"| EasyGBS
-    INVITE <-->|"转发"| EasyGBS
+    subgraph platform["监控平台"]
+        GB["EasyGBS"]
+    end
+
+    IPC -->|"连接"| VADDR
+    VADDR -->|"转发"| OPA
+    KPA <-.->|"VRRP心跳"| KPB
+    KPB -.->|"notify"| IPT
+    IPT -.->|"DNAT"| OPB
+    OPA --> DBA
+    OPB --> DBB
+    OPA -->|"ds_select_dst"| GB
+    OPB -->|"ds_select_dst"| GB
 ```
+
+**架构说明**：
+
+| 组件 | 说明 |
+|------|------|
+| **VIP** | 虚拟 IP，设备连接此地址，Keepalived 实现漂移 |
+| **服务器 A/B** | 各运行 OpenSIPS + Keepalived + SQLite |
+| **iptables** | 备服务器通过 DNAT 规则接管 VIP 流量 |
+| **dispatcher** | OpenSIPS 通过 dispatcher 表向上游平台转发请求 |
 
 ### 2.2 核心组件
 
@@ -358,26 +373,17 @@ flowchart LR
 
 ```bash
 # /etc/keepalived/keepalived.conf (主代理)
-global_defs {
-    router_id opensips_master
-}
+global_defs { router_id opensips_master }
 
 vrrp_instance VI_1 {
     state MASTER
     interface eth0
     virtual_router_id 51
-    priority 100        # 主代理优先级高
+    priority 100
     advert_int 1
-    authentication {
-        auth_type PASS
-        auth_pass 1234
-    }
-    virtual_ipaddress {
-        20.20.136.100 dev eth0  # VIP 地址
-    }
-    track_script {
-        chk_opensips
-    }
+    authentication { auth_type PASS; auth_pass 1234; }
+    virtual_ipaddress { 20.20.136.100 dev eth0; }
+    track_script { chk_opensips; }
 }
 
 vrrp_script chk_opensips {
@@ -386,6 +392,26 @@ vrrp_script chk_opensips {
     weight -20
 }
 ```
+
+**OpenSIPS 进程检测脚本**：
+
+```bash
+#!/bin/bash
+# /etc/keepalived/chk_opensips.sh
+# Keepalived 调用此脚本检测 OpenSIPS 进程是否存活
+
+# 检查 OpenSIPS 进程是否存在
+if pgrep -x opensips > /dev/null 2>&1; then
+    exit 0  # 进程存在，返回成功
+else
+    exit 1  # 进程不存在，返回失败，触发 VIP 漂移
+fi
+```
+
+**说明**：
+- Keepalived 每 2 秒执行一次检测脚本
+- 脚本检测到 OpenSIPS 进程不存在时返回失败
+- 失败累计达到阈值（默认 3 次）后，Keepalived 自动触发 VIP 漂移
 
 ##### 3.3.4.2 socket 配置与 AS 语法
 
@@ -597,47 +623,43 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    subgraph Device["设备层"]
-        D["摄像头/NVR<br/>连接 VIP: 20.20.136.100"]
+    subgraph dev["设备层"]
+        D["摄像头/NVR"]
     end
 
-    subgraph ServerA["服务器 A (MASTER)"]
-        KA["Keepalived-A<br/>priority=100"]
-        OA["OpenSIPS-A<br/>socket=20.20.136.66"]
+    subgraph vip["VIP层"]
+        VADDR["VIP: 20.20.136.100:5060"]
+    end
+
+    subgraph srvA["服务器A"]
+        KPA["Keepalived-A"]
+        OPA["OpenSIPS-A"]
         DBA["SQLite-A"]
     end
 
-    subgraph ServerB["服务器 B (BACKUP)"]
-        KB["Keepalived-B<br/>priority=90"]
-        OB["OpenSIPS-B<br/>socket=20.20.136.67"]
+    subgraph srvB["服务器B"]
+        KPB["Keepalived-B"]
+        OPB["OpenSIPS-B"]
         DBB["SQLite-B"]
-        IPT["iptables<br/>DNAT 规则"]
+        IPT["iptables"]
     end
 
-    subgraph VIP["网络层"]
-        VIP["VIP: 20.20.136.100"]
-    end
-
-    D -->|"SIP 请求"| VIP
-
-    KA <-.->|"VRRP 心跳"| KB
-
-    KA -.->|"VIP 绑定"| VIP
-    KB -.->|"VIP 漂移"| VIP
-
-    KB -.->|"notify_master"| IPT
-    IPT -.->|"DNAT 转发"| OB
-
-    OA --> DBA
-    OB --> DBB
+    D -->|"SIP请求"| VADDR
+    VADDR -->|"转发"| OPA
+    KPA <-.->|"VRRP心跳"| KPB
+    KPB -.->|"notify"| IPT
+    IPT -.->|"DNAT"| OPB
+    OPA --> DBA
+    OPB --> DBB
 ```
 
-#### 3.3.5 数据库配置
+#### 3.3.5 备服务器 iptables 说明
+
 - 主服务器不需要 iptables DNAT 规则，因为 VIP 直接绑定在该服务器上
 - 备服务器通过 Keepalived 的 `notify_master/notify_backup` 动态添加/删除 DNAT 规则
 - DNAT 规则只匹配目的地址为 VIP 的流量，不会影响发往本机 IP 的流量
 
-#### 3.3.5 数据库配置
+### 3.3.6 数据库配置
 
 两台服务器各自维护独立的 SQLite 数据库，用于存储设备注册信息。
 
@@ -959,34 +981,45 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant D as 设备
+    participant VIP as VIP<br/>20.20.136.100
     participant MA as OpenSIPS-A<br/>(主)
     participant MB as OpenSIPS-B<br/>(备)
 
-    Note over D,MB: 【阶段一】正常状态 - 设备连接主代理
-    D->>MA: ① MESSAGE (Keepalive)
-    MA->>MA: ② lookup(location)
-    Note over MA: ③ 找到设备
-    MA-->>D: ④ 200 OK
+    Note over VIP,MB: 【阶段一】正常状态 - 设备连接 VIP，请求路由到主代理
+    D->>VIP: MESSAGE (Keepalive)
+    VIP->>MA: 转发
+    MA->>MA: lookup(location)
+    Note over MA: 找到设备
+    MA-->>D: 200 OK
 
-    Note over D,MB: 【阶段二】主代理故障 - 设备尝试主代理
-    D->>MA: ⑤ MESSAGE (Keepalive)
-    Note over MA: ⑥ X 无响应 (超时)
+    Note over VIP,MB: 【阶段二】主代理故障 - VIP 漂移到备代理
+    MA --x MA: OpenSIPS 故障
+    MB ->> MA: VRRP 心跳无响应
+    VIP ->> MB: VIP 漂移
 
-    Note over D,MB: 【阶段三】设备尝试主代理失败
-    D->>MB: ⑦ MESSAGE (Keepalive)
-    MB->>MB: ⑧ lookup(location)
-    Note over MB: ⑨ 找不到设备 (未注册)
-    MB-->>D: ⑩ 401 Not Registered
+    Note over VIP,MB: 【阶段三】设备自动重连 VIP
+    D->>VIP: MESSAGE (Keepalive)
+    VIP->>MB: 转发
+    MB->>MB: lookup(location)
+    Note over MB: 找不到设备 (备代理未注册过该设备)
+    MB-->>D: 401 Not Registered
 
-    Note over D,MB: 【阶段四】设备重新注册到备代理
-    D->>MB: ⑪ REGISTER (备代理)
-    MB->>MB: ⑫ save(location)
-    MB-->>D: ⑬ 200 OK
+    Note over VIP,MB: 【阶段四】设备重新注册
+    D->>VIP: REGISTER
+    VIP->>MB: 转发
+    MB->>MB: save(location)
+    MB-->>D: 200 OK
 
-    Note over D,MB: 【阶段五】设备已切换到备代理
-    D->>MB: ⑭ MESSAGE (Keepalive)
-    MB-->>D: ⑮ 200 OK
+    Note over VIP,MB: 【阶段五】设备正常保活
+    D->>VIP: MESSAGE (Keepalive)
+    VIP->>MB: 转发
+    MB-->>D: 200 OK
 ```
+
+**关键说明**：
+- 设备始终连接 VIP，不需要知道主备服务器地址
+- VIP 漂移对设备透明，设备只需自动重连即可
+- 备代理 lookup 找不到设备是因为备代理的 SQLite 中没有该设备注册记录
 
 ---
 
@@ -1120,9 +1153,10 @@ cat /etc/opensips/dbtext/dispatcher/dispatcher
 
 | 问题 | 可能原因 | 解决方案 |
 |------|----------|----------|
-| 设备返回 401 | 设备未注册到本代理 | 检查设备配置的目标服务器地址 |
+| 设备返回 401 | 设备未注册到本代理 | 检查设备配置的 SIP 服务器地址是否为 VIP |
 | Catalog 解析失败 | XML 格式不标准 | 检查 `$rb` 内容 |
-| 设备不切换到备代理 | 设备未配置备用服务器 | 在设备侧配置备用 SIP 服务器 |
+| 设备不切换到备代理 | Keepalived 未正常工作 | 检查 Keepalived 状态和 VRRP 心跳 |
+| VIP 漂移失败 | iptables 规则或 local.cfg 问题 | 检查备服务器的 notify.sh 是否正确执行 |
 | 上游平台转发失败 | dispatcher 表配置错误 | 检查 dispatcher 表和目标地址 |
 | Dispatcher 无法选择目标 | 所有节点 state!=0 | 检查 dispatcher 表 state 字段 |
 
