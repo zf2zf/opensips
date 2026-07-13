@@ -350,7 +350,11 @@ flowchart LR
     style ERR fill:#FFB6C1
 ```
 
-#### 3.3.4 Keepalived 配置示例
+#### 3.3.4 Keepalived + iptables 主备配置
+
+由于安全策略要求不绑定所有接口，采用 **Keepalived + iptables DNAT** 方案。
+
+##### 3.3.4.1 主服务器配置
 
 ```bash
 # /etc/keepalived/keepalived.conf (主代理)
@@ -383,14 +387,255 @@ vrrp_script chk_opensips {
 }
 ```
 
-**关键配置说明**:
+##### 3.3.4.2 socket 配置与 AS 语法
 
-| 配置项 | 说明 |
-|--------|------|
-| `virtual_ipaddress` | VIP 地址，设备连接此地址 |
-| `priority` | 主代理 100，备代理 90 |
-| `track_script` | 检测 OpenSIPS 进程状态 |
-| `weight -20` | 检测失败时自动降低优先级触发切换 |
+**socket 配置语法**（来自 OpenSIPS 官方文档）：
+
+```bash
+socket = [protocol:][address][:port][ AS advertised_address[:port]]
+```
+
+**参数说明**：
+
+| 参数 | 说明 |
+|------|------|
+| `protocol` | 传输协议（如 udp、tcp、tls） |
+| `address` | 实际绑定地址（用于 bind() 系统调用） |
+| `port` | 监听端口 |
+| `AS advertised_address` | 对外通告地址（SIP 消息的 Contact、Via 等字段使用此地址） |
+
+**AS 语法示例**：
+
+```bash
+socket=udp:20.20.136.66:5060 AS 20.20.136.100:5060
+```
+
+| 部分 | 作用 |
+|------|------|
+| `udp:20.20.136.66:5060` | 实际绑定地址（bind 系统调用） |
+| `AS 20.20.136.100:5060` | 对外通告地址（SIP 消息中使用） |
+
+**为什么主备切换必须使用 AS？**
+
+1. **设备注册到 VIP**：设备配置的 SIP 服务器地址是 VIP (20.20.136.100)
+2. **OpenSIPS 响应需要包含 VIP**：设备收到的 200 OK 响应中，Contact 头必须包含 VIP 地址
+3. **后续请求路由到 VIP**：设备根据 Contact 中的地址发送后续请求
+
+如果没有 AS，OpenSIPS 会在 Contact 中通告本机 IP (20.20.136.66)，设备会直接向本机 IP 发送后续请求，而不是 VIP，导致：
+- 流量绕开 VIP，Keepalived 无法感知
+- 主备切换后，设备请求发送到原主服务器（新主服务器收不到）
+
+```bash
+# /etc/opensips/local.cfg (主服务器)
+socket=udp:20.20.136.66:5060 AS 20.20.136.100:5060
+```
+
+**主服务器 local.cfg 说明**：主服务器的 local.cfg 是静态配置，启动后不需要动态修改。
+
+##### 3.3.4.3 备服务器配置
+
+```bash
+# /etc/keepalived/keepalived.conf (备代理)
+global_defs {
+    router_id opensips_backup
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 51
+    priority 90         # 备代理优先级低
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+    virtual_ipaddress {
+        20.20.136.100 dev eth0  # VIP 地址
+    }
+    track_script {
+        chk_opensips
+    }
+    # VIP 状态变更时执行脚本，动态管理 iptables DNAT 规则
+    notify_master "/etc/keepalived/notify.sh master"
+    notify_backup "/etc/keepalived/notify.sh backup"
+    notify_fault "/etc/keepalived/notify.sh fault"
+}
+
+vrrp_script chk_opensips {
+    script "/etc/keepalived/chk_opensips.sh"
+    interval 2
+    weight -20
+}
+```
+
+```bash
+# /etc/opensips/local.cfg (备服务器初始配置，不包含 AS)
+socket=udp:20.20.136.67:5060
+```
+
+##### 3.3.4.4 备服务器 iptables + local.cfg 动态脚本
+
+备服务器需要同时管理 iptables 规则和 local.cfg，以便 OpenSIPS 重启时使用正确的配置。
+
+```bash
+#!/bin/bash
+# /etc/keepalived/notify.sh
+
+VIP="20.20.136.100"
+LOCAL_IP="20.20.136.67"
+LOCAL_CFG="/etc/opensips/local.cfg"
+
+case "$1" in
+    master)
+        # 成为 MASTER 时：
+        # 1. 添加 DNAT 规则，接收 VIP 流量
+        iptables -t nat -A PREROUTING -d $VIP -p udp --dport 5060 -j DNAT --to-destination $LOCAL_IP:5060 2>/dev/null
+
+        # 2. 更新 local.cfg，使用本机 IP + VIP advertised
+        cat > $LOCAL_CFG <<EOF
+# 本地配置 - 根据实际环境修改
+socket=udp:$LOCAL_IP:5060 AS $VIP:5060
+EOF
+
+        # 3. 重启 OpenSIPS 使配置生效（如需要）
+        systemctl reload opensips
+
+        echo "$(date): Became MASTER, added DNAT rule, updated local.cfg" >> /var/log/keepalived.log
+        ;;
+    backup)
+        # 成为 BACKUP 时：
+        # 1. 删除 DNAT 规则
+        iptables -t nat -D PREROUTING -d $VIP -p udp --dport 5060 -j DNAT --to-destination $LOCAL_IP:5060 2>/dev/null
+
+        # 2. 更新 local.cfg，移除 advertised VIP（可选）
+        cat > $LOCAL_CFG <<EOF
+# 本地配置 - 根据实际环境修改
+socket=udp:$LOCAL_IP:5060
+EOF
+
+        # 3. 重启 OpenSIPS 使配置生效（如需要）
+        systemctl reload opensips
+
+        echo "$(date): Became BACKUP, removed DNAT rule, updated local.cfg" >> /var/log/keepalived.log
+        ;;
+    fault)
+        # 故障时删除 DNAT 规则
+        iptables -t nat -D PREROUTING -d $VIP -p udp --dport 5060 -j DNAT --to-destination $LOCAL_IP:5060 2>/dev/null
+        echo "$(date): Fault state, removed DNAT rule" >> /var/log/keepalived.log
+        ;;
+esac
+```
+
+**动态配置说明**：
+
+| 状态 | local.cfg | iptables DNAT | 说明 |
+|------|-----------|---------------|------|
+| BACKUP | `socket=udp:20.20.136.67:5060` | 无 | 不使用 VIP advertised |
+| MASTER | `socket=udp:20.20.136.67:5060 AS 20.20.136.100:5060` | 有 | 使用 VIP advertised |
+
+**备服务器上的 local.cfg 默认配置**：
+
+```bash
+# /etc/opensips/local.cfg (备服务器初始配置)
+socket=udp:20.20.136.67:5060
+```
+
+##### 3.3.4.5 工作原理
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant D as 设备
+    participant VIP as VIP<br/>20.20.136.100
+    participant MA as 主服务器<br/>20.20.136.66
+    participant KMA as Keepalived-A
+    participant MB as 备服务器<br/>20.20.136.67
+    participant KMB as Keepalived-B
+    participant IPT as iptables
+
+    Note over VIP,KMB: 【正常状态：VIP 在主服务器】
+    KMA ->> KMB: VRRP 心跳
+    Note over KMA: priority=100
+    Note over KMB: priority=90
+    VIP --> MA: VIP 绑定
+    MA ->> MA: OpenSIPS 接收流量
+    MB ->> IPT: DNAT 规则不存在
+
+    Note over VIP,KMB: 【主服务器故障】
+    KMA --x KMA: OpenSIPS 故障
+    KMB ->> KMA: VRRP 心跳无响应
+    Note over KMB: 连续 3 次无响应
+    KMB ->> KMB: 抢主成功
+    VIP --> MB: VIP 漂移到备服务器
+
+    Note over VIP,KMB: 【备服务器接管】
+    KMB ->> IPT: 添加 DNAT 规则
+    IPT ->> IPT: iptables -A PREROUTING
+    D->>VIP: SIP 请求
+    VIP->>MB: 路由到备服务器
+    IPT->>MB: DNAT 转发到本机
+    MB ->> MB: OpenSIPS 接收并处理
+
+    Note over VIP,KMB: 【恢复：VIP 漂移回主服务器】
+    VIP --> MA: VIP 重新绑定到主服务器
+    KMA ->> KMB: 重新发送 VRRP 心跳
+    KMA ->> IPT: 删除 DNAT 规则
+    IPT ->> IPT: iptables -D PREROUTING
+    D->>VIP: SIP 请求
+    VIP->>MA: 直接路由到主服务器
+```
+
+**关键说明**：
+- 两台服务器都运行 Keepalived，通过 VRRP 协议互相检测心跳
+- 主服务器 Keepalived 优先级 100，备服务器优先级 90
+- 主服务器故障时，备服务器 Keepalived 自动抢主、添加 DNAT 规则、更新 local.cfg、重启 OpenSIPS
+- 主服务器恢复后，备服务器删除 DNAT 规则、更新 local.cfg，VIP 漂移回主服务器
+- DNAT 规则只匹配目的地址为 VIP 的流量，不会影响发往本机 IP 的流量
+
+##### 3.3.4.6 完整部署架构图
+
+```mermaid
+flowchart TB
+    subgraph Device["设备层"]
+        D["摄像头/NVR<br/>连接 VIP: 20.20.136.100"]
+    end
+
+    subgraph ServerA["服务器 A (MASTER)"]
+        KA["Keepalived-A<br/>priority=100"]
+        OA["OpenSIPS-A<br/>socket=20.20.136.66"]
+        DBA["SQLite-A"]
+    end
+
+    subgraph ServerB["服务器 B (BACKUP)"]
+        KB["Keepalived-B<br/>priority=90"]
+        OB["OpenSIPS-B<br/>socket=20.20.136.67"]
+        DBB["SQLite-B"]
+        IPT["iptables<br/>DNAT 规则"]
+    end
+
+    subgraph VIP["网络层"]
+        VIP["VIP: 20.20.136.100"]
+    end
+
+    D -->|"SIP 请求"| VIP
+
+    KA <-.->|"VRRP 心跳"| KB
+
+    KA -.->|"VIP 绑定"| VIP
+    KB -.->|"VIP 漂移"| VIP
+
+    KB -.->|"notify_master"| IPT
+    IPT -.->|"DNAT 转发"| OB
+
+    OA --> DBA
+    OB --> DBB
+```
+
+#### 3.3.5 数据库配置
+- 主服务器不需要 iptables DNAT 规则，因为 VIP 直接绑定在该服务器上
+- 备服务器通过 Keepalived 的 `notify_master/notify_backup` 动态添加/删除 DNAT 规则
+- DNAT 规则只匹配目的地址为 VIP 的流量，不会影响发往本机 IP 的流量
 
 #### 3.3.5 数据库配置
 
