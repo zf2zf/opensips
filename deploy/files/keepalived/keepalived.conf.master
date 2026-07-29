@@ -1,0 +1,42 @@
+# /etc/keepalived/keepalived.conf - 节点 1 (active / MASTER)
+
+global_defs {
+    router_id opensips_master
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_opensips {
+    script "/etc/keepalived/chk_opensips.sh"
+    interval 2
+    weight -20
+    fall 3
+    rise 2
+    timeout 5
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+
+    virtual_ipaddress {
+        20.20.136.100/24 dev eth0
+    }
+
+    track_script {
+        chk_opensips
+    }
+
+    # 节点 1 是默认 MASTER，不需要 notify_master 脚本
+    # 但保留 notify_backup / notify_fault 防御性
+    notify_backup "/etc/keepalived/notify.sh backup"
+    notify_fault "/etc/keepalived/notify.sh fault"
+}

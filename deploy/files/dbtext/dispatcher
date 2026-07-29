@@ -1,0 +1,4 @@
+id | setid | destination              | socket | state | probe_mode | weight | priority | attrs
+---|-------|--------------------------|--------|-------|------------|--------|----------|------
+1  | 1     | sip:10.0.0.10:5060       | NULL   | 0     | 0          | 1      | 10       | primary
+2  | 1     | sip:10.0.0.11:5060       | NULL   | 0     | 0          | 1      | 5        | backup

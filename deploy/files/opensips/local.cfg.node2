@@ -1,0 +1,14 @@
+# 节点 2 私有配置 - standby / backup
+# 平时不监听 SIP 5060（注释保留；notify_master 时由 notify.sh 去掉 # + restart opensips）
+
+# listen=udp:20.20.136.67:5060 AS 20.20.136.100:5060
+
+# clusterer BIN 协议监听（节点间同步）
+listen=bin:20.20.136.67:5566
+
+# clusterer 节点身份
+modparam("clusterer", "my_node_id", 2)
+modparam("clusterer", "neighbor_node_info", "id=1; url=bin:20.20.136.66:5566")
+
+# httpd 监听本机 IP
+modparam("httpd", "ip", "20.20.136.67")
