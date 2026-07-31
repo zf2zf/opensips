@@ -269,35 +269,17 @@ route[process_catalog] {
 
         # 跳过录像机自身（通道ID == 父ID）
         if ($avp(chan_id) != $avp(parent_id)) {
-            $avp(chan_name) = $xml(cat/Response/DeviceList/Item[$var(i)]/Name.val);
-            $avp(chan_manufacturer) = $xml(cat/Response/DeviceList/Item[$var(i)]/Manufacturer.val);
-            $avp(chan_model) = $xml(cat/Response/DeviceList/Item[$var(i)]/Model.val);
+            $var(sip_socket) = "udp:" + $si + ":" + $sp;
             $avp(recorder_contact) = "sip:" + $avp(chan_id) + "@" + $si + ":" + $sp;
-            $avp(channel_ua) = $avp(chan_manufacturer) + " " + $avp(chan_model) + " (" + $avp(chan_name) + ")";
             $avp(channel_attr) = "parent=" + $fu;
-            # 使用 mi("add") 写入 usrloc，触发集群同步
-            $avp(params) = "table_name";
-            $avp(vals) = "location";
-            $avp(params) = "aor";
-            $avp(vals) = $avp(chan_id);
-            $avp(params) = "contact";
-            $avp(vals) = $avp(recorder_contact);
-            $avp(params) = "expires";
-            $avp(vals) = "1790000000";
-            $avp(params) = "q";
-            $avp(vals) = "-1.0";
-            $avp(params) = "flags";
-            $avp(vals) = "0";
-            $avp(params) = "cflags";
-            $avp(vals) = "0";
-            $avp(params) = "methods";
-            $avp(vals) = "0";
-            mi("add", $var(ret), $avp(params), $avp(vals));
+            # 直接用 sql_query INSERT（sql-only 模式下 bypass mi）
+            sql_query("INSERT INTO location (username, contact, expires, q, callid, cseq, flags, cflags, methods, user_agent, socket, attr)
+                VALUES ('$avp(chan_id)', '$avp(recorder_contact)', 1790000000, -1.0, 'Catalog-$var(i)', 1, 0, 0, 0, '$fu', '$var(sip_socket)', '$avp(channel_attr)')");
 
-            if ($var(ret) == null) {
-                xlog("L_INFO", "CATALOG: mi add channel $avp(chan_id) failed\n");
+            if ($var(ret) < 0) {
+                xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) failed\n");
             } else {
-                xlog("L_INFO", "CATALOG: mi add channel $avp(chan_id) ok\n");
+                xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) ok\n");
             }
             $var(cnt) = $var(cnt) + 1;
         }
