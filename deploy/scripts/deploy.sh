@@ -53,7 +53,7 @@ deploy() {
     chown -R opensips:opensips "$INSTALL_PREFIX/log/opensips" 2>/dev/null || true
 
     # 验证配置
-    "$INSTALL_PREFIX/sbin/opensips" -c "$DEPLOY_DIR/opensips_proxy.cfg"
+    "$INSTALL_PREFIX/sbin/opensips" -f "$DEPLOY_DIR/opensips_proxy.cfg"
 
     echo "=== Deployed ($MODE mode) to $INSTALL_PREFIX ==="
 }

@@ -17,8 +17,9 @@ cd /root/work/zf2zf/opensips/opensips
 
 ### 3. 部署配置
 
-**单机模式：**
+**单机模式（指定本机 IP）：**
 ```bash
+./deploy/scripts/gen-cfg.sh single 192.168.1.100
 /opt/zfnproxy/opensips/sbin/opensips -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
 ```
 

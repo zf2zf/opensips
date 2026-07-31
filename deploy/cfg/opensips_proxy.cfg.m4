@@ -13,9 +13,9 @@ ifdef(`SOCKET_PORT',,`define(`SOCKET_PORT', `5060')')dnl
 ifdef(`BIN_PORT',,`define(`BIN_PORT', `5070')')dnl
 ifdef(`NODE_ID',,`define(`NODE_ID', `1')')dnl
 ifdef(`MODE',,`define(`MODE', `single')')dnl
-ifdef(`MPATH',,`define(`MPATH', `/usr/local/lib64/opensips/modules/')')dnl
-ifdef(`DB_PATH',,`define(`DB_PATH', `/var/lib/opensips/opensips.db')')dnl
-ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/etc/opensips/dbtext')')dnl
+ifdef(`MPATH',,`define(`MPATH', `/opt/zfnproxy/opensips/lib64/opensips/modules/')')dnl
+ifdef(`DB_PATH',,`define(`DB_PATH', `/opt/zfnproxy/opensips/data/opensips/opensips.db')')dnl
+ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/opt/zfnproxy/opensips/etc/opensips/dbtext')')dnl
 
 ########### 全局参数 ##########
 
@@ -59,6 +59,8 @@ loadmodule "dispatcher.so"
 loadmodule "uac.so"
 loadmodule "nathelper.so"
 loadmodule "xml.so"
+loadmodule "mi_script.so"
+modparam("mi_script", "pretty_printing", 1)
 
 # usrloc 配置：sql-only 模式，直接操作 SQLite
 # use_domain=false 让 lookup/save 基于 username 匹配，支持跨域查询
@@ -73,7 +75,6 @@ ifelse(MODE, `cluster', `
 loadmodule "proto_bin.so"
 loadmodule "proto_bins.so"
 loadmodule "clusterer.so"
-loadmodule "mi_script.so"
 
 # ---- clusterer 参数 ----
 modparam("clusterer", "db_mode", 0)
@@ -84,9 +85,6 @@ modparam("clusterer", "seed_fallback_interval", 10)
 
 # ---- proto_bin 监听 ----
 listen = bin:LOCAL_IP:BIN_PORT
-
-# ---- mi_script 参数 ----
-modparam("mi_script", "pretty_printing", 1)
 
 # ---- usrloc 集群模式 ----
 modparam("usrloc", "working_mode_preset", "full-sharing-cluster")
@@ -104,7 +102,7 @@ xlog("L_INFO", "CLUSTER: starting in cluster mode, node_id=NODE_ID\n");
 
 
 # dispatcher 配置：使用 db_text 文件（自动创建表）
-modparam("dispatcher", "db_url", "text://DTEXT_PATH/dispatcher")
+modparam("dispatcher", "db_url", "sqlite:///DB_PATH")
 
 # nathelper 配置
 modparam("nathelper", "nortpproxy_str", "")
@@ -114,29 +112,7 @@ modparam("db_text", "db_mode", 1)
 
 # 数据库初始化（启动时执行一次）
 startup_route {
-    # location 表在 startup_route 中创建
-    sql_query("CREATE TABLE IF NOT EXISTS location (
-        contact_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        username CHAR(64) DEFAULT '' NOT NULL,
-        domain CHAR(64) DEFAULT NULL,
-        contact TEXT NOT NULL,
-        received CHAR(255) DEFAULT NULL,
-        path CHAR(255) DEFAULT NULL,
-        expires INTEGER NOT NULL,
-        q FLOAT(10,2) DEFAULT 1.0 NOT NULL,
-        callid CHAR(255) DEFAULT 'Default-Call-ID' NOT NULL,
-        cseq INTEGER DEFAULT 13 NOT NULL,
-        last_modified DATETIME DEFAULT '1900-01-01 00:00:01' NOT NULL,
-        flags INTEGER DEFAULT 0 NOT NULL,
-        cflags CHAR(255) DEFAULT NULL,
-        user_agent CHAR(255) DEFAULT '' NOT NULL,
-        socket CHAR(64) DEFAULT NULL,
-        methods INTEGER DEFAULT NULL,
-        sip_instance CHAR(255) DEFAULT NULL,
-        kv_store TEXT(512) DEFAULT NULL,
-        attr CHAR(255) DEFAULT NULL
-    )");
-    xlog("L_INFO", "DB: tables ready\n");
+    xlog("L_INFO", "DB: ready\n");
 }
 
 ########### 工具路由 ##########
@@ -172,7 +148,7 @@ route[register] {
     if ($avp(expires_hdr) == "0") {
         # 查找该设备的所有子通道并通过 mi 删除（触发集群同步）
         # 注意：sql_query 返回多行时，结果存储在 $sql(avp(...)) 中
-        sql_query("SELECT username FROM location WHERE attr LIKE '%' || '$tu' || '%'", "ra");
+        sql_query("SELECT username FROM location WHERE attr LIKE '%' || '$tu' || '%'", "$avp(ra)");
         $var(i) = 0;
         while ($var(i) < 1000) {
             $avp(del_chan_id) = $(avp(ra)[$var(i)]);
