@@ -291,7 +291,9 @@ route[process_catalog] {
             $avp(v_list) = "0";
             $avp(p_list) = "methods";
             $avp(v_list) = "0";
-            mi("ul_add", $var(ret), $avp(p_list), $avp(v_list));
+            $var(cmd) = "ul_add table_name=location aor=" + $avp(chan_id) + " contact=" + $avp(recorder_contact) + " expires=1790000000 q=-1.0 flags=0 cflags=0 methods=0";
+            mi($var(cmd), $var(ret));
+            xlog("L_INFO", "CATALOG: mi ret=|$var(ret)|\n");
 
             if ($var(ret) == NULL) {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) failed\n");
