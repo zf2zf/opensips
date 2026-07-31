@@ -14,8 +14,8 @@ ifdef(`BIN_PORT',,`define(`BIN_PORT', `5070')')dnl
 ifdef(`NODE_ID',,`define(`NODE_ID', `1')')dnl
 ifdef(`MODE',,`define(`MODE', `single')')dnl
 ifdef(`MPATH',,`define(`MPATH', `/opt/zfnproxy/opensips/lib64/opensips/modules/')')dnl
-ifdef(`DB_PATH',,`define(`DB_PATH', `/opt/zfnproxy/opensips/data/opensips/opensips.db')')dnl
-ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/opt/zfnproxy/opensips/etc/opensips/dbtext')')dnl
+ifdef(`DB_PATH',,`define(`DB_PATH', `/opt/zfnproxy/opensips/data/opensips.db')')dnl
+ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/opt/zfnproxy/opensips/etc/dbtext')')dnl
 
 ########### 全局参数 ##########
 

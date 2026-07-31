@@ -1,44 +1,71 @@
 #!/bin/bash
-# deploy/scripts/gen-cfg.sh - 使用 m4 预处理器生成 OpenSIPS 配置
-# 用法: ./gen-cfg.sh [single|node_a|node_b] [LOCAL_IP] [PEER_IP] [VIP] [SOCKET_PORT] [BIN_PORT]
+# gen-cfg.sh - Generate OpenSIPS config via m4
 
 set -e
 
 INSTALL_PREFIX="/opt/zfnproxy/opensips"
-DB_PATH="$INSTALL_PREFIX/data/opensips/opensips.db"
-MODE="${1:-single}"
-LOCAL_IP="${2:-127.0.0.1}"
-PEER_IP="${3:-127.0.0.1}"
-VIP="${4:-}"  # 空时默认等于 LOCAL_IP
-SOCKET_PORT="${5:-5060}"
-BIN_PORT="${6:-5566}"
+DB_PATH="$INSTALL_PREFIX/data/opensips.db"
 
-# VIP 默认为 LOCAL_IP
-if [ -z "$VIP" ]; then
-    VIP="$LOCAL_IP"
-fi
+MODE="single"
+LOCAL_IP="127.0.0.1"
+PEER_IP="127.0.0.1"
+VIP=""
+SOCKET_PORT="5060"
+BIN_PORT="5566"
+UPSTREAM=
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEPLOY_DIR="$INSTALL_PREFIX/etc/opensips"
+DEPLOY_DIR="$INSTALL_PREFIX/etc"
 TEMPLATE_DIR="$SCRIPT_DIR/../cfg"
 
-# 确定节点 ID
+usage() {
+    echo "Usage: $0 [single|node_a|node_b] [OPTIONS...]"
+    echo "  -l, --local-ip      Local IP"
+    echo "  -p, --peer-ip       Peer IP (cluster mode)"
+    echo "  -v, --vip           Virtual IP (default: local-ip)"
+    echo "  -s, --socket-port   SIP port (default: 5060)"
+    echo "  -b, --bin-port      BIN port (default: 5566)"
+    echo "  -u, --upstream      Upstream address IP:PORT (default: peer-ip:socket-port)"
+    exit 1
+}
+
+# First positional arg is MODE
+if [[ "${1:-}" =~ ^(single|node_a|node_b)$ ]]; then
+    MODE="$1"
+    shift
+fi
+
+while getopts ":m:l:p:v:s:b:u:h" opt; do
+    case $opt in
+        m) MODE="$OPTARG" ;;
+        l) LOCAL_IP="$OPTARG" ;;
+        p) PEER_IP="$OPTARG" ;;
+        v) VIP="$OPTARG" ;;
+        s) SOCKET_PORT="$OPTARG" ;;
+        b) BIN_PORT="$OPTARG" ;;
+        u) UPSTREAM="$OPTARG" ;;
+        h) usage ;;
+        *) usage ;;
+    esac
+done
+
+VIP="${VIP:-$LOCAL_IP}"
+[ -n "$UPSTREAM" ] || { echo "Error: -u/--upstream is required"; usage; }
+
 case "$MODE" in
     node_a) NODE_ID=1 ;;
     node_b) NODE_ID=2 ;;
     *) NODE_ID=1 ;;
 esac
 
-echo "Generating config: mode=$MODE, node_id=$NODE_ID, local_ip=$LOCAL_IP, prefix=$INSTALL_PREFIX"
+echo "Generating: mode=$MODE local_ip=$LOCAL_IP upstream=$UPSTREAM"
 
-# 构建 m4 -D 参数列表（直接用 Shell 变量展开的值，无须 env.m4）
-M4_DEFS="-DMODE=$MODE -DNODE_ID=$NODE_ID -DLOCAL_IP=$LOCAL_IP -DPEER_IP=$PEER_IP -DVIP=$VIP -DSOCKET_PORT=$SOCKET_PORT -DBIN_PORT=$BIN_PORT -DMPATH=$INSTALL_PREFIX/lib64/opensips/modules/ -DDB_PATH=$DB_PATH"
+M4_DEFS="-DMODE=$MODE -DNODE_ID=$NODE_ID -DLOCAL_IP=$LOCAL_IP -DPEER_IP=$PEER_IP -DVip=$VIP -DSOCKET_PORT=$SOCKET_PORT -DBIN_PORT=$BIN_PORT -DMPATH=$INSTALL_PREFIX/lib64/opensips/modules/ -DDB_PATH=$DB_PATH"
 
-# 创建目标目录
 mkdir -p "$DEPLOY_DIR/cluster"
-
-# 预创建 SQLite 数据库（模块在 init 阶段就查 version 表）
 mkdir -p "$(dirname "$DB_PATH")"
+
+# Pre-create SQLite DB (dispatcher checks version table at module init time)
 sqlite3 "$DB_PATH" "
 CREATE TABLE IF NOT EXISTS version (
     table_name CHAR(64) PRIMARY KEY NOT NULL,
@@ -78,17 +105,15 @@ CREATE TABLE IF NOT EXISTS location (
     attr CHAR(255) DEFAULT NULL
 );
 INSERT OR IGNORE INTO version VALUES ('dispatcher', 9);
-INSERT OR IGNORE INTO dispatcher (setid, destination, state, probe_mode, weight, priority)
-VALUES (0, 'sip:$PEER_IP:$SOCKET_PORT', 0, 0, 1, 1);
+DELETE FROM dispatcher;
+INSERT INTO dispatcher (setid, destination, state, probe_mode, weight, priority)
+VALUES (1, 'sip:$UPSTREAM', 0, 0, 1, 1);
 "
 
-# 生成配置（m4 预处理，直接传入变量定义）
 m4 $M4_DEFS "$TEMPLATE_DIR/opensips_proxy.cfg.m4" > "$DEPLOY_DIR/opensips_proxy.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/local.cfg.m4" > "$DEPLOY_DIR/local.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/ha.cfg.m4" > "$DEPLOY_DIR/ha.cfg"
-
-# 生成集群配置
 m4 $M4_DEFS "$TEMPLATE_DIR/cluster/node_a.cfg.m4" > "$DEPLOY_DIR/cluster/node_a.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/cluster/node_b.cfg.m4" > "$DEPLOY_DIR/cluster/node_b.cfg"
 
-echo "Generated config in $DEPLOY_DIR/"
+echo "Generated in $DEPLOY_DIR/"
