@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenSIPS GB28181 SIP Proxy
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/opt/zfnproxy/opensips/sbin/opensips -D -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
+PIDFile=/var/run/opensips.pid
+Restart=on-failure
+RestartSec=5
+User=opensips
+Group=opensips
+
+[Install]
+WantedBy=multi-user.target
