@@ -4,9 +4,16 @@
 
 **Goal:** 将 OpenSIPS GB28181 代理从单机部署改造为支持单机/集群双模式部署，实现两节点 usrloc 数据集群同步。
 
-**Architecture:** 同一套程序 + 统一编译。使用 m4 预处理器处理条件配置，部署时生成最终配置文件到 `/etc/opensips/`。
+**Architecture:** 同一套程序 + 统一编译。使用 m4 预处理器处理条件配置，部署时生成最终配置文件到 `/opt/zfnproxy/opensips/etc/opensips/`。
 
 **Tech Stack:** OpenSIPS 4.0, SQLite, clusterer, proto_bin, mi_script, GNU m4 预处理器
+
+**安装目录:** 所有 OpenSIPS 相关内容安装到 `/opt/zfnproxy/opensips/`
+- 主程序：`/opt/zfnproxy/opensips/sbin/`
+- 模块：`/opt/zfnproxy/opensips/lib64/opensips/modules/`
+- 配置：`/opt/zfnproxy/opensips/etc/opensips/`
+- 日志：`/opt/zfnproxy/opensips/log/`
+- 数据：`/opt/zfnproxy/opensips/data/opensips/`
 
 ---
 
@@ -57,6 +64,22 @@ deploy/                              # 部署配置目录（独立开发）
     ├── keepalived.conf.node_a
     ├── keepalived.conf.node_b
     └── notify.sh
+```
+
+**安装后目录结构**（`--prefix=/opt/zfnproxy/opensips`）：
+```
+/opt/zfnproxy/opensips/
+├── bin/                           # opensips 可执行文件
+├── sbin/                          # root 执行文件（opensipsctl 等）
+├── lib64/opensips/modules/         # 动态加载模块
+├── etc/opensips/                   # 配置文件
+│   ├── opensips_proxy.cfg
+│   ├── local.cfg
+│   ├── ha.cfg
+│   └── cluster/
+├── data/opensips/                 # SQLite 数据库
+│   └── opensips.db
+└── log/opensips/                  # 日志文件
 ```
 
 **m4 模板占位符格式**：` `VARIABLE`` `（m4 宏定义形式）
@@ -271,7 +294,8 @@ SOCKET_PORT="${5:-5060}"
 BIN_PORT="${6:-5566}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEPLOY_DIR="/etc/opensips"
+INSTALL_PREFIX="/opt/zfnproxy/opensips"
+DEPLOY_DIR="$INSTALL_PREFIX/etc/opensips"
 TEMPLATE_DIR="$SCRIPT_DIR/../cfg"
 
 # 确定节点 ID
@@ -281,18 +305,18 @@ case "$MODE" in
     *) NODE_ID=1 ;;
 esac
 
-echo "Generating config: mode=$MODE, node_id=$NODE_ID, local_ip=$LOCAL_IP"
+echo "Generating config: mode=$MODE, node_id=$NODE_ID, local_ip=$LOCAL_IP, prefix=$INSTALL_PREFIX"
 
 # 创建 env.m4 文件
-cat > "$TEMPLATE_DIR/env.m4" << EOF
-define(\`MODE', \`$MODE')
-define(\`NODE_ID', \`$NODE_ID')
-define(\`LOCAL_IP', \`$LOCAL_IP')
-define(\`PEER_IP', \`$PEER_IP')
-define(\`VIP', \`$VIP')
-define(\`SOCKET_PORT', \`$SOCKET_PORT')
-define(\`BIN_PORT', \`$BIN_PORT')
-EOF
+cat > "$TEMPLATE_DIR/env.m4" << 'ENVEOF'
+define(`MODE', `$MODE')
+define(`NODE_ID', `$NODE_ID')
+define(`LOCAL_IP', `$LOCAL_IP')
+define(`PEER_IP', `$PEER_IP')
+define(`VIP', `$VIP')
+define(`SOCKET_PORT', `$SOCKET_PORT')
+define(`BIN_PORT', `$BIN_PORT')
+ENVEOF
 
 # 创建目标目录
 mkdir -p "$DEPLOY_DIR/cluster"
@@ -391,10 +415,16 @@ build() {
 }
 
 install_opensips() {
-    echo "=== Installing OpenSIPS ==="
+    echo "=== Installing OpenSIPS to /opt/zfnproxy/opensips ==="
     cd "$OPENSIPS_DIR"
-    make install
+    make install PREFIX=/opt/zfnproxy/opensips
     echo "=== Install Complete ==="
+    echo "Installed to: /opt/zfnproxy/opensips"
+    echo "  - bin/: /opt/zfnproxy/opensips/bin/"
+    echo "  - sbin/: /opt/zfnproxy/opensips/sbin/"
+    echo "  - lib/: /opt/zfnproxy/opensips/lib64/opensips/modules/"
+    echo "  - etc/: /opt/zfnproxy/opensips/etc/opensips/"
+    echo "  - data/: /opt/zfnproxy/opensips/data/opensips/"
 }
 
 case "${1:-}" in
@@ -433,8 +463,9 @@ git commit -m "feat: 添加编译配置和构建脚本"
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEPLOY_DIR="/etc/opensips"
-BACKUP_DIR="/etc/opensips.bak.$(date +%Y%m%d_%H%M%S)"
+INSTALL_PREFIX="/opt/zfnproxy/opensips"
+DEPLOY_DIR="$INSTALL_PREFIX/etc/opensips"
+BACKUP_DIR="$INSTALL_PREFIX/etc/opensips.bak.$(date +%Y%m%d_%H%M%S)"
 
 usage() {
     echo "Usage: $0 [single|node_a|node_b] [LOCAL_IP] [PEER_IP] [VIP] [SOCKET_PORT] [BIN_PORT]"
@@ -464,6 +495,7 @@ deploy() {
     echo "=== Deploying OpenSIPS GB28181 Proxy ==="
     echo "  mode: $MODE"
     echo "  local_ip: $LOCAL_IP"
+    echo "  install_prefix: $INSTALL_PREFIX"
 
     backup_config
 
@@ -471,17 +503,18 @@ deploy() {
     "$SCRIPT_DIR/gen-cfg.sh" "$MODE" "$LOCAL_IP" "$PEER_IP" "$VIP" "$SOCKET_PORT" "$BIN_PORT"
 
     # 创建必要目录
-    mkdir -p /var/lib/opensips /var/log/opensips
+    mkdir -p "$INSTALL_PREFIX/data/opensips"
+    mkdir -p "$INSTALL_PREFIX/log/opensips"
 
     # 设置权限
     chown -R opensips:opensips "$DEPLOY_DIR" 2>/dev/null || true
-    chown -R opensips:opensips /var/lib/opensips 2>/dev/null || true
-    chown -R opensips:opensips /var/log/opensips 2>/dev/null || true
+    chown -R opensips:opensips "$INSTALL_PREFIX/data/opensips" 2>/dev/null || true
+    chown -R opensips:opensips "$INSTALL_PREFIX/log/opensips" 2>/dev/null || true
 
     # 验证配置
-    opensips -c "$DEPLOY_DIR/opensips_proxy.cfg"
+    "$INSTALL_PREFIX/sbin/opensips" -c "$DEPLOY_DIR/opensips_proxy.cfg"
 
-    echo "=== Deployed ($MODE mode) ==="
+    echo "=== Deployed ($MODE mode) to $INSTALL_PREFIX ==="
 }
 
 case "${1:-}" in
@@ -498,7 +531,8 @@ esac
 
 set -e
 
-LOCAL_CFG="/etc/opensips/local.cfg"
+INSTALL_PREFIX="/opt/zfnproxy/opensips"
+LOCAL_CFG="$INSTALL_PREFIX/etc/opensips/local.cfg"
 
 if [ ! -f "$LOCAL_CFG" ]; then
     echo "Error: $LOCAL_CFG not found"
@@ -511,11 +545,11 @@ RSYNC_OPTS="-az --delete -e ssh"
 
 echo "=== Syncing config to peer ($peer_ip) ==="
 rsync $RSYNC_OPTS \
-    /etc/opensips/local.cfg \
-    /etc/opensips/ha.cfg \
-    /etc/opensips/cluster/ \
-    /etc/opensips/opensips_proxy.cfg \
-    "root@$peer_ip:/etc/opensips/"
+    "$INSTALL_PREFIX/etc/opensips/local.cfg" \
+    "$INSTALL_PREFIX/etc/opensips/ha.cfg" \
+    "$INSTALL_PREFIX/etc/opensips/cluster/" \
+    "$INSTALL_PREFIX/etc/opensips/opensips_proxy.cfg" \
+    "root@$peer_ip:$INSTALL_PREFIX/etc/opensips/"
 
 echo "=== Sync Complete ==="
 ```
@@ -548,7 +582,7 @@ After=network.target
 
 [Service]
 Type=forking
-ExecStart=/usr/local/sbin/opensips -D -f /etc/opensips/opensips_proxy.cfg
+ExecStart=/opt/zfnproxy/opensips/sbin/opensips -D -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
 PIDFile=/var/run/opensips.pid
 Restart=on-failure
 RestartSec=5
@@ -586,7 +620,7 @@ vrrp_instance VI_1 {
 }
 
 vrrp_script chk_opensips {
-    script "/etc/keepalived/chk_opensips.sh"
+    script "/opt/zfnproxy/opensips/etc/keepalived/chk_opensips.sh"
     interval 2
     weight -20
 }
@@ -616,47 +650,61 @@ vrrp_instance VI_1 {
     track_script {
         chk_opensips
     }
-    notify_master "/etc/keepalived/notify.sh master"
-    notify_backup "/etc/keepalived/notify.sh backup"
-    notify_fault "/etc/keepalived/notify.sh fault"
+    notify_master "/opt/zfnproxy/opensips/etc/keepalived/notify.sh master"
+    notify_backup "/opt/zfnproxy/opensips/etc/keepalived/notify.sh backup"
+    notify_fault "/opt/zfnproxy/opensips/etc/keepalived/notify.sh fault"
 }
 
 vrrp_script chk_opensips {
-    script "/etc/keepalived/chk_opensips.sh"
+    script "/opt/zfnproxy/opensips/etc/keepalived/chk_opensips.sh"
     interval 2
     weight -20
 }
 ```
 
-- [ ] **Step 4: 创建 notify.sh**
+- [ ] **Step 4: 创建 notify.sh 和 chk_opensips.sh**
 
 ```bash
 #!/bin/bash
 # deploy/keepalived/notify.sh
 # VIP 状态变更时执行，动态管理 iptables 和 OpenSIPS 配置
 
-VIP="VIP"
-LOCAL_IP="LOCAL_IP"
-LOCAL_CFG="/etc/opensips/local.cfg"
+INSTALL_PREFIX="/opt/zfnproxy/opensips"
+LOCAL_CFG="$INSTALL_PREFIX/etc/opensips/local.cfg"
+
+# 从 local.cfg 读取 VIP 和本机 IP
+source "$LOCAL_CFG"
 
 case "$1" in
     master)
-        iptables -t nat -A PREROUTING -d $VIP -p udp --dport 5060 -j DNAT --to-destination $LOCAL_IP:5060 2>/dev/null
-        sed -i "s|^socket=.*|socket=udp:$LOCAL_IP:5060 AS $VIP:5060|" "$LOCAL_CFG"
+        iptables -t nat -A PREROUTING -d $vip -p udp --dport 5060 -j DNAT --to-destination $local_ip:5060 2>/dev/null
+        sed -i "s|^socket=.*|socket=udp:$local_ip:5060 AS $vip:5060|" "$LOCAL_CFG"
         systemctl reload opensips
         ;;
     backup)
-        iptables -t nat -D PREROUTING -d $VIP -p udp --dport 5060 -j DNAT --to-destination $LOCAL_IP:5060 2>/dev/null
-        sed -i "s| AS $VIP:5060||" "$LOCAL_CFG"
+        iptables -t nat -D PREROUTING -d $vip -p udp --dport 5060 -j DNAT --to-destination $local_ip:5060 2>/dev/null
+        sed -i "s| AS $vip:5060||" "$LOCAL_CFG"
         systemctl reload opensips
         ;;
     fault)
-        iptables -t nat -D PREROUTING -d $VIP -p udp --dport 5060 -j DNAT --to-destination $LOCAL_IP:5060 2>/dev/null
+        iptables -t nat -D PREROUTING -d $vip -p udp --dport 5060 -j DNAT --to-destination $local_ip:5060 2>/dev/null
         ;;
 esac
 ```
 
-**注意**：部署时需要将 `VIP` 和 `LOCAL_IP` 替换为实际值。
+```bash
+#!/bin/bash
+# deploy/keepalived/chk_opensips.sh
+# Keepalived 检测脚本
+
+if pgrep -x opensips > /dev/null 2>&1; then
+    exit 0
+else
+    exit 1
+fi
+```
+
+**注意**：Keepalived 配置使用 VIP 作为占位符，部署时由 gen-cfg.sh 替换为实际值。
 
 - [ ] **Step 5: 提交**
 
