@@ -1251,3 +1251,36 @@ flowchart LR
 4. **代理到平台解耦**: Dispatcher 实现代理与平台的主备切换
 5. **子通道自动管理**: Catalog 解析实现子通道自动注册
 6. **架构清晰**: 两级主备切换职责分明，易于维护和排障
+
+---
+
+## 10. 集群部署
+
+详细集群部署步骤请参考 [集群部署指南](cluster-deployment-guide.md)，内容包括：
+
+- 单机模式与集群模式部署步骤
+- Keepalived + VIP 高可用配置
+- systemd 服务配置
+- m4 模板参数说明
+- 故障排查与维护操作
+
+### 10.1 快速部署
+
+```bash
+# 节点 A（MASTER）
+./deploy/scripts/deploy.sh node_a 20.20.136.66 20.20.136.67 20.20.136.100 5060 5566
+
+# 节点 B（BACKUP）
+./deploy/scripts/deploy.sh node_b 20.20.136.67 20.20.136.66 20.20.136.100 5060 5566
+
+# 同步配置到对端
+./deploy/scripts/sync-to-peer.sh 20.20.136.67
+```
+
+### 10.2 编译
+
+```bash
+make -f deploy/Makefile.conf config
+make -f deploy/Makefile.conf
+make -f deploy/Makefile.conf install
+```
