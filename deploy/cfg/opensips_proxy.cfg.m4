@@ -272,16 +272,34 @@ route[process_catalog] {
             $var(sip_socket) = "udp:" + $si + ":" + $sp;
             $avp(recorder_contact) = "sip:" + $avp(chan_id) + "@" + $si + ":" + $sp;
             $avp(channel_attr) = "parent=" + $fu;
-            # 直接用 sql_query INSERT（sql-only 模式下 bypass mi）
-            sql_query("INSERT INTO location (username, contact, expires, q, callid, cseq, flags, cflags, methods, user_agent, socket, attr)
-                VALUES ('$avp(chan_id)', '$avp(recorder_contact)', 1790000000, -1.0, 'Catalog-$var(i)', 1, 0, 0, 0, '$fu', '$var(sip_socket)', '$avp(channel_attr)')");
+            # 每次清空并重建 params/vals AVP 集合（ul_add 支持8个命名参数）
+            $avp(p_list) = NULL;
+            $avp(v_list) = NULL;
+            $avp(p_list) = "table_name";
+            $avp(v_list) = "location";
+            $avp(p_list) = "aor";
+            $avp(v_list) = $avp(chan_id);
+            $avp(p_list) = "contact";
+            $avp(v_list) = $avp(recorder_contact);
+            $avp(p_list) = "expires";
+            $avp(v_list) = "1790000000";
+            $avp(p_list) = "q";
+            $avp(v_list) = "-1.0";
+            $avp(p_list) = "flags";
+            $avp(v_list) = "0";
+            $avp(p_list) = "cflags";
+            $avp(v_list) = "0";
+            $avp(p_list) = "methods";
+            $avp(v_list) = "0";
+            mi("ul_add", $var(ret), $avp(p_list), $avp(v_list));
 
-            if ($var(ret) < 0) {
+            if ($var(ret) == NULL) {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) failed\n");
             } else {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) ok\n");
             }
             $var(cnt) = $var(cnt) + 1;
+
         }
         $var(i) = $var(i) + 1;
     }
