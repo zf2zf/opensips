@@ -169,8 +169,25 @@ route[register] {
 
     # 设备注销时：级联删除该设备的所有子通道
     if ($avp(expires_hdr) == "0") {
-        sql_query("DELETE FROM location WHERE attr LIKE '%' || '$tu' || '%'");
-        xlog("L_INFO", "REGISTER: child channels cleaned for $tu\n");
+        # 查找该设备的所有子通道并通过 mi 删除（触发集群同步）
+        # 注意：sql_query 返回多行时，结果存储在 $sql(avp(...)) 中
+        sql_query("SELECT username FROM location WHERE attr LIKE '%' || '$tu' || '%'", "ra");
+        $var(i) = 0;
+        while ($var(i) < 1000) {
+            $avp(del_chan_id) = $(avp(ra)[$var(i)]);
+            if ($avp(del_chan_id) == NULL)
+                break;
+
+            $avp(params) = "table_name";
+            $avp(vals) = "location";
+            $avp(params) = "aor";
+            $avp(vals) = $avp(del_chan_id);
+            $avp(params) = "contact";
+            $avp(vals) = "";
+            mi("rm_contact", $var(ret), $avp(params), $avp(vals));
+            xlog("L_INFO", "REGISTER: child channel $avp(del_chan_id) cleaned\n");
+            $var(i) = $var(i) + 1;
+        }
     }
 
     t_on_reply("handle_nat");
@@ -281,10 +298,30 @@ route[process_catalog] {
             $avp(recorder_contact) = "sip:" + $avp(chan_id) + "@" + $si + ":" + $sp;
             $avp(channel_ua) = $avp(chan_manufacturer) + " " + $avp(chan_model) + " (" + $avp(chan_name) + ")";
             $avp(channel_attr) = "parent=" + $fu;
-            # 使用 DELETE + INSERT 实现去重（同一 deviceId 只保留一条）
-            sql_query("DELETE FROM location WHERE username='$avp(chan_id)'");
-            sql_query("INSERT INTO location (username, domain, contact, expires, q, callid, cseq, last_modified, flags, user_agent, socket, attr)
-                VALUES ('$avp(chan_id)', '$fd', '$avp(recorder_contact)', 1790000000, -1.0, '$ci', 9999, datetime('now', 'localtime'), 0, '$avp(channel_ua)', 'udp:$socket_in(ip):$socket_in(port)', '$avp(channel_attr)')");
+            # 使用 mi("add") 写入 usrloc，触发集群同步
+            $avp(params) = "table_name";
+            $avp(vals) = "location";
+            $avp(params) = "aor";
+            $avp(vals) = $avp(chan_id);
+            $avp(params) = "contact";
+            $avp(vals) = $avp(recorder_contact);
+            $avp(params) = "expires";
+            $avp(vals) = "1790000000";
+            $avp(params) = "q";
+            $avp(vals) = "-1.0";
+            $avp(params) = "flags";
+            $avp(vals) = "0";
+            $avp(params) = "cflags";
+            $avp(vals) = "0";
+            $avp(params) = "methods";
+            $avp(vals) = "0";
+            mi("add", $var(ret), $avp(params), $avp(vals));
+
+            if ($var(ret) == null) {
+                xlog("L_INFO", "CATALOG: mi add channel $avp(chan_id) failed\n");
+            } else {
+                xlog("L_INFO", "CATALOG: mi add channel $avp(chan_id) ok\n");
+            }
             $var(cnt) = $var(cnt) + 1;
         }
         $var(i) = $var(i) + 1;
