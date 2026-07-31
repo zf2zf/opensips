@@ -6,15 +6,16 @@
 #
 
 ########### m4 宏定义 ##########
-define(`LOCAL_IP', `10.0.0.11')dnl
-define(`VIP', `10.0.0.10')dnl
-define(`SOCKET_PORT', `5060')dnl
-define(`BIN_PORT', `5070')dnl
-define(`NODE_ID', `1')dnl
-define(`MODE', `single')dnl
-define(`MPATH', `/usr/local/lib64/opensips/modules/')dnl
-define(`DB_PATH', `/var/lib/opensips/opensips.db')dnl
-define(`DTEXT_PATH', `/etc/opensips/dbtext')dnl
+# 使用 ifdef guard: 只有当宏未定义时才设置默认值，允许通过 -D 或 env.m4 覆盖
+ifdef(`LOCAL_IP',,`define(`LOCAL_IP', `10.0.0.11')')dnl
+ifdef(`VIP',,`define(`VIP', `10.0.0.10')')dnl
+ifdef(`SOCKET_PORT',,`define(`SOCKET_PORT', `5060')')dnl
+ifdef(`BIN_PORT',,`define(`BIN_PORT', `5070')')dnl
+ifdef(`NODE_ID',,`define(`NODE_ID', `1')')dnl
+ifdef(`MODE',,`define(`MODE', `single')')dnl
+ifdef(`MPATH',,`define(`MPATH', `/usr/local/lib64/opensips/modules/')')dnl
+ifdef(`DB_PATH',,`define(`DB_PATH', `/var/lib/opensips/opensips.db')')dnl
+ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/etc/opensips/dbtext')')dnl
 
 ########### 全局参数 ##########
 
