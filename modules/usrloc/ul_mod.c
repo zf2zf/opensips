@@ -63,6 +63,14 @@
 #include "ul_callback.h"
 #include "usrloc.h"
 #include "kv_store.h"
+#include "utime.h"           /* act_time */
+
+/* Forward declaration */
+int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
+		str* contact, int expires, str* q, int flags, int cflags,
+		int methods);
+int w_usrloc_rm_contact(struct sip_msg* _m, void* _d, str* aor, str* contact);
+int w_usrloc_rm_user(struct sip_msg* _m, void* _d, str* aor);
 
 #define CONTACTID_COL  "contact_id"
 #define USER_COL       "username"
@@ -210,6 +218,28 @@ static const cmd_export_t cmds[] = {
        {"ul_del_key", (cmd_function)w_delete_key, {
                 {CMD_PARAM_STR|CMD_PARAM_STATIC, domain_fixup, 0},
                 {CMD_PARAM_STR, 0, 0},
+                {CMD_PARAM_STR, 0, 0},
+                {0,0,0}},
+                ALL_ROUTES},
+	{"usrloc_add_contact", (cmd_function)w_usrloc_add_contact, {
+                {CMD_PARAM_STR|CMD_PARAM_STATIC, domain_fixup, 0},
+                {CMD_PARAM_STR, 0, 0},
+                {CMD_PARAM_STR, 0, 0},
+                {CMD_PARAM_INT, 0, 0},
+                {CMD_PARAM_STR, 0, 0},
+                {CMD_PARAM_INT, 0, 0},
+                {CMD_PARAM_INT, 0, 0},
+                {CMD_PARAM_INT, 0, 0},
+                {0,0,0}},
+                ALL_ROUTES},
+	{"usrloc_rm_contact", (cmd_function)w_usrloc_rm_contact, {
+                {CMD_PARAM_STR|CMD_PARAM_STATIC, domain_fixup, 0},
+                {CMD_PARAM_STR, 0, 0},
+                {CMD_PARAM_STR, 0, 0},
+                {0,0,0}},
+                ALL_ROUTES},
+	{"usrloc_rm_user", (cmd_function)w_usrloc_rm_user, {
+                {CMD_PARAM_STR|CMD_PARAM_STATIC, domain_fixup, 0},
                 {CMD_PARAM_STR, 0, 0},
                 {0,0,0}},
                 ALL_ROUTES},
@@ -939,4 +969,235 @@ static int domain_fixup(void** param)
 
         *param = (void*)d;
         return 0;
+}
+
+/*!
+ * \brief Script function to add a contact directly (bypassing MI)
+ * \param _m - SIP message
+ * \param _d - domain pointer (pre-resolved via domain_fixup)
+ * \param aor - Address of Record (username)
+ * \param contact - Contact URI
+ * \param expires - Expires time (relative or absolute)
+ * \param q - Q value as string (e.g., "0.5")
+ * \param flags - Contact flags
+ * \param cflags - Contact-specific flags
+ * \param methods - Supported methods
+ * \return 1 on success, -1 on failure
+ */
+int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
+		str* contact, int expires, str* q, int flags, int cflags,
+		int methods)
+{
+	struct ct_match cmatch = {CT_MATCH_CONTACT_CALLID, NULL};
+	ucontact_info_t ci;
+	urecord_t* r = NULL;
+	ucontact_t* c = NULL;
+	udomain_t *dom = (udomain_t*)_d;
+	str aor_fixed;
+	int ret = -1;
+
+	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d\n",
+		aor->len, aor->s, contact->len, contact->s, expires);
+
+	/* fix aor - remove domain part if use_domain is false */
+	aor_fixed = *aor;
+	if (mi_fix_aor(&aor_fixed) != 0) {
+		LM_ERR("Invalid AOR\n");
+		return -1;
+	}
+
+	LM_INFO("usrloc_add_contact: domain fixed aor=%.*s\n", aor_fixed.len, aor_fixed.s);
+
+	memset(&ci, 0, sizeof(ucontact_info_t));
+
+	/* parse q value */
+	if (q && q->len > 0) {
+		if (str2q(&ci.q, q->s, q->len) < 0) {
+			LM_ERR("Invalid q value\n");
+			return -1;
+		}
+		LM_INFO("usrloc_add_contact: q parsed q=%d\n", ci.q);
+	} else {
+		ci.q = Q_UNSPECIFIED;
+	}
+
+	ci.expires = expires;
+	ci.flags = (unsigned int)flags;
+	ci.cflags = (unsigned int)cflags;
+	ci.methods = (unsigned int)methods;
+	ci.user_agent = &mi_ul_ua;
+
+	LM_INFO("usrloc_add_contact: locking domain\n");
+	lock_udomain(dom, &aor_fixed);
+
+	LM_INFO("usrloc_add_contact: getting urecord\n");
+	if (get_urecord(dom, &aor_fixed, &r) == 1) {
+		LM_INFO("usrloc_add_contact: inserting new urecord\n");
+		if (insert_urecord(dom, &aor_fixed, &r, 0, NULL, NULL) < 0) {
+			LM_ERR("Failed to insert urecord\n");
+			goto end;
+		}
+		c = NULL;
+	} else {
+		LM_INFO("usrloc_add_contact: urecord exists, checking contact\n");
+		if (get_simple_ucontact(r, contact, &c) < 0) {
+			LM_ERR("Failed to get simple ucontact\n");
+			goto end;
+		}
+	}
+
+	get_act_time();
+	/* 0 expires means permanent contact */
+	if (ci.expires != 0)
+		ci.expires += act_time;
+
+	LM_INFO("usrloc_add_contact: expires=%ld act_time=%ld\n", (long)ci.expires, (long)act_time);
+
+	if (c) {
+		/* update existing contact */
+		LM_INFO("usrloc_add_contact: updating existing contact\n");
+		ci.callid = &mi_ul_cid;
+		ci.cseq = c->cseq;
+		if (update_ucontact(r, c, &ci, &cmatch, 0) < 0) {
+			LM_ERR("Failed to update ucontact\n");
+			goto end;
+		}
+	} else {
+		/* insert new contact */
+		LM_INFO("usrloc_add_contact: inserting new contact\n");
+		ci.callid = &mi_ul_cid;
+		ci.cseq = MI_UL_CSEQ;
+		if (insert_ucontact(r, contact, &ci, &cmatch, 0, &c) < 0) {
+			LM_ERR("Failed to insert ucontact\n");
+			goto end;
+		}
+		/* DB write handled by release_urecord -> db_only_timer -> wb_timer */
+	}
+
+	ret = 1;
+	LM_INFO("usrloc_add_contact: SUCCESS for aor=%.*s\n", aor_fixed.len, aor_fixed.s);
+
+end:
+	if (r)
+		release_urecord(r, 0);
+	unlock_udomain(dom, &aor_fixed);
+	LM_INFO("usrloc_add_contact: returning %d\n", ret);
+	return ret;
+}
+
+/*!
+ * \brief Script function to delete a contact directly (bypassing MI)
+ * \param _m - SIP message
+ * \param _d - domain pointer (pre-resolved via domain_fixup)
+ * \param aor - Address of Record (username)
+ * \param contact - Contact URI to delete
+ * \return 1 on success (deleted), 0 if not found, -1 on error
+ */
+int w_usrloc_rm_contact(struct sip_msg* _m, void* _d, str* aor, str* contact)
+{
+	udomain_t *dom = (udomain_t*)_d;
+	urecord_t *rec = NULL;
+	ucontact_t *con = NULL;
+	str aor_fixed;
+	int ret = -1;
+
+	/* fix aor - remove domain part if use_domain is false */
+	aor_fixed = *aor;
+	if (mi_fix_aor(&aor_fixed) != 0) {
+		LM_ERR("Invalid AOR\n");
+		return -1;
+	}
+
+	lock_udomain(dom, &aor_fixed);
+
+	if (get_urecord(dom, &aor_fixed, &rec) == 1) {
+		/* AOR not found */
+		ret = 0;
+		goto end;
+	}
+
+	if (get_simple_ucontact(rec, contact, &con) < 0) {
+		LM_ERR("Failed to get simple ucontact\n");
+		ret = -1;
+		goto end;
+	}
+
+	if (con == NULL) {
+		/* Contact not found */
+		ret = 0;
+		goto end;
+	}
+
+	if (delete_ucontact(rec, con, NULL, 0) < 0) {
+		LM_ERR("Failed to delete ucontact\n");
+		ret = -1;
+		goto end;
+	}
+
+	release_urecord(rec, 0);
+	ret = 1;
+
+end:
+	unlock_udomain(dom, &aor_fixed);
+	return ret;
+}
+
+/*!
+ * \brief Script function to delete all contacts for a user (bypassing MI)
+ * \param _m - SIP message
+ * \param _d - domain pointer (pre-resolved via domain_fixup)
+ * \param aor - Address of Record (username)
+ * \return 1 on success, 0 if user not found, -1 on error
+ */
+int w_usrloc_rm_user(struct sip_msg* _m, void* _d, str* aor)
+{
+	udomain_t *dom = (udomain_t*)_d;
+	urecord_t *rec = NULL;
+	str aor_fixed;
+	int ret = -1;
+	int n;
+
+	LM_INFO("usrloc_rm_user: aor=%.*s\n", aor->len, aor->s);
+
+	/* fix aor - remove domain part if use_domain is false */
+	aor_fixed = *aor;
+	if (mi_fix_aor(&aor_fixed) != 0) {
+		LM_ERR("Invalid AOR\n");
+		return -1;
+	}
+
+	LM_INFO("usrloc_rm_user: domain fixed aor=%.*s\n", aor_fixed.len, aor_fixed.s);
+
+	lock_udomain(dom, &aor_fixed);
+	LM_INFO("usrloc_rm_user: domain locked\n");
+
+	n = get_urecord(dom, &aor_fixed, &rec);
+	LM_INFO("usrloc_rm_user: get_urecord ret=%d rec=%p\n", n, rec);
+	if (n == 1) {
+		/* User not found */
+		LM_INFO("usrloc_rm_user: aor not found\n");
+		ret = 0;
+		goto end;
+	}
+
+	if (rec->contacts) {
+		LM_INFO("usrloc_rm_user: found %d contacts\n", /*TODO: count*/0);
+	} else {
+		LM_INFO("usrloc_rm_user: urecord exists but no contacts\n");
+	}
+
+	LM_INFO("usrloc_rm_user: calling delete_urecord\n");
+	if (delete_urecord(dom, &aor_fixed, rec, 0) < 0) {
+		LM_ERR("Failed to delete urecord\n");
+		ret = -1;
+		goto end;
+	}
+
+	LM_INFO("usrloc_rm_user: SUCCESS\n");
+	ret = 1;
+
+end:
+	unlock_udomain(dom, &aor_fixed);
+	LM_INFO("usrloc_rm_user: returning %d\n", ret);
+	return ret;
 }

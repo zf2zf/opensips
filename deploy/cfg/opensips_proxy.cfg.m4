@@ -67,6 +67,7 @@ modparam("mi_script", "pretty_printing", 1)
 modparam("usrloc", "db_url", "sqlite:///DB_PATH")
 modparam("usrloc", "working_mode_preset", "sql-only")
 modparam("usrloc", "use_domain", false)
+modparam("usrloc", "sql_write_mode", "write-through")
 modparam("usrloc", "nat_bflag", "NAT")
 
 # === 集群模式条件配置 ===
@@ -155,13 +156,8 @@ route[register] {
             if ($avp(del_chan_id) == NULL)
                 break;
 
-            $avp(params) = "table_name";
-            $avp(vals) = "location";
-            $avp(params) = "aor";
-            $avp(vals) = $avp(del_chan_id);
-            $avp(params) = "contact";
-            $avp(vals) = "";
-            mi("rm_contact", $var(ret), $avp(params), $avp(vals));
+            # 使用导出的 usrloc_rm_user 删除子通道用户的所有联系人
+            usrloc_rm_user("location", $avp(del_chan_id));
             xlog("L_INFO", "REGISTER: child channel $avp(del_chan_id) cleaned\n");
             $var(i) = $var(i) + 1;
         }
@@ -272,36 +268,13 @@ route[process_catalog] {
             $var(sip_socket) = "udp:" + $si + ":" + $sp;
             $avp(recorder_contact) = "sip:" + $avp(chan_id) + "@" + $si + ":" + $sp;
             $avp(channel_attr) = "parent=" + $fu;
-            # 每次清空并重建 params/vals AVP 集合（ul_add 支持8个命名参数）
-            $avp(p_list) = NULL;
-            $avp(v_list) = NULL;
-            $avp(p_list) = "table_name";
-            $avp(v_list) = "location";
-            $avp(p_list) = "aor";
-            $avp(v_list) = $avp(chan_id);
-            $avp(p_list) = "contact";
-            $avp(v_list) = $avp(recorder_contact);
-            $avp(p_list) = "expires";
-            $avp(v_list) = "1790000000";
-            $avp(p_list) = "q";
-            $avp(v_list) = "-1.0";
-            $avp(p_list) = "flags";
-            $avp(v_list) = "0";
-            $avp(p_list) = "cflags";
-            $avp(v_list) = "0";
-            $avp(p_list) = "methods";
-            $avp(v_list) = "0";
-            $var(cmd) = "ul_add table_name=location aor=" + $avp(chan_id) + " contact=" + $avp(recorder_contact) + " expires=1790000000 q=-1.0 flags=0 cflags=0 methods=0";
-            mi($var(cmd), $var(ret));
-            xlog("L_INFO", "CATALOG: mi ret=|$var(ret)|\n");
-
-            if ($var(ret) == NULL) {
-                xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) failed\n");
-            } else {
+            # 使用导出的 usrloc_add_contact 函数直接添加联系人
+            if (usrloc_add_contact("location", $avp(chan_id), $avp(recorder_contact), 7200, "0.0", 0, 0, 0)) {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) ok\n");
+            } else {
+                xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) failed\n");
             }
             $var(cnt) = $var(cnt) + 1;
-
         }
         $var(i) = $var(i) + 1;
     }

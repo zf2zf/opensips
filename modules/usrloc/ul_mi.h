@@ -43,6 +43,11 @@
 
 extern rw_lock_t *sync_lock;
 
+#define MI_UL_CSEQ 1
+extern str mi_ul_cid;
+extern str mi_ul_ua;
+int mi_fix_aor(str *aor);
+
 mi_response_t *mi_usrloc_rm_aor(const mi_params_t *params,
 								struct mi_handler *async_hdl);
 

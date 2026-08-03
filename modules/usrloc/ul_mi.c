@@ -50,8 +50,8 @@
 
 
 #define MI_UL_CSEQ 1
-static str mi_ul_cid = str_init("dfjrewr12386fd6-343@opensips.mi");
-static str mi_ul_ua  = str_init("OpenSIPS MI Server");
+str mi_ul_cid = str_init("dfjrewr12386fd6-343@opensips.mi");
+str mi_ul_ua  = str_init("OpenSIPS MI Server");
 rw_lock_t *sync_lock = 0;
 
 extern int mi_dump_kv_store;
@@ -70,7 +70,7 @@ static inline udomain_t* mi_find_domain(str* table)
 	return 0;
 }
 
-static inline int mi_fix_aor(str *aor)
+int mi_fix_aor(str *aor)
 {
 	char *p;
 
