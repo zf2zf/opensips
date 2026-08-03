@@ -142,25 +142,29 @@ route[register] {
     $avp(expires_hdr) = $hdr(Expires);
     fix_nated_contact();
 
+    xlog("L_INFO", "REGISTER: $fu expires=$avp(expires_hdr)\n");
+
     if (!save("location", "no-reply"))
         xlog("L_ERR", "REGISTER: failed for $tu\n");
 
     # 设备注销时：级联删除该设备的所有子通道
     if ($avp(expires_hdr) == "0") {
-        # 查找该设备的所有子通道并通过 mi 删除（触发集群同步）
-        # 注意：sql_query 返回多行时，结果存储在 $sql(avp(...)) 中
+        xlog("L_INFO", "REGISTER: unregister, finding child channels\n");
+        # 查找该设备的所有子通道
         sql_query("SELECT username FROM location WHERE attr LIKE '%' || '$tu' || '%'", "$avp(ra)");
         $var(i) = 0;
         while ($var(i) < 1000) {
             $avp(del_chan_id) = $(avp(ra)[$var(i)]);
-            if ($avp(del_chan_id) == NULL)
+            if ($avp(del_chan_id) == NULL) {
+                xlog("L_INFO", "REGISTER: found $var(i) child channels\n");
                 break;
-
-            # 使用导出的 usrloc_rm_user 删除子通道用户的所有联系人
+            }
+            xlog("L_INFO", "REGISTER: deleting child $avp(del_chan_id)\n");
             usrloc_rm_user("location", $avp(del_chan_id));
-            xlog("L_INFO", "REGISTER: child channel $avp(del_chan_id) cleaned\n");
             $var(i) = $var(i) + 1;
         }
+    } else {
+        xlog("L_INFO", "REGISTER: not unregister (expires=$avp(expires_hdr))\n");
     }
 
     t_on_reply("handle_nat");
@@ -268,6 +272,7 @@ route[process_catalog] {
             $var(sip_socket) = "udp:" + $si + ":" + $sp;
             $avp(recorder_contact) = "sip:" + $avp(chan_id) + "@" + $si + ":" + $sp;
             $avp(channel_attr) = "parent=" + $fu;
+            xlog("L_INFO", "CATALOG: calling usrloc_add_contact table=location aor=$avp(chan_id) contact=$avp(recorder_contact) expires=7200 q=0.0 flags=0 cflags=0 methods=0\n");
             # 使用导出的 usrloc_add_contact 函数直接添加联系人
             if (usrloc_add_contact("location", $avp(chan_id), $avp(recorder_contact), 7200, "0.0", 0, 0, 0)) {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) ok\n");

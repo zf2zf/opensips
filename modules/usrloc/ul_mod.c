@@ -67,8 +67,8 @@
 
 /* Forward declaration */
 int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
-		str* contact, int expires, str* q, int flags, int cflags,
-		int methods);
+		str* contact, int* expires, str* q, int* flags, int* cflags,
+		int* methods);
 int w_usrloc_rm_contact(struct sip_msg* _m, void* _d, str* aor, str* contact);
 int w_usrloc_rm_user(struct sip_msg* _m, void* _d, str* aor);
 
@@ -977,16 +977,16 @@ static int domain_fixup(void** param)
  * \param _d - domain pointer (pre-resolved via domain_fixup)
  * \param aor - Address of Record (username)
  * \param contact - Contact URI
- * \param expires - Expires time (relative or absolute)
- * \param q - Q value as string (e.g., "0.5")
+ * \param expires - Expires time (seconds)
+ * \param q - Q value string (e.g., "0.5")
  * \param flags - Contact flags
  * \param cflags - Contact-specific flags
  * \param methods - Supported methods
  * \return 1 on success, -1 on failure
  */
 int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
-		str* contact, int expires, str* q, int flags, int cflags,
-		int methods)
+		str* contact, int* expires, str* q, int* flags, int* cflags,
+		int* methods)
 {
 	struct ct_match cmatch = {CT_MATCH_CONTACT_CALLID, NULL};
 	ucontact_info_t ci;
@@ -996,8 +996,10 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 	str aor_fixed;
 	int ret = -1;
 
-	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d\n",
-		aor->len, aor->s, contact->len, contact->s, expires);
+	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d q=%.*s flags=%d cflags=%d methods=%d\n",
+		aor->len, aor->s, contact->len, contact->s,
+		expires ? *expires : 0, q ? q->len : 0, q ? q->s : "null",
+		flags ? *flags : 0, cflags ? *cflags : 0, methods ? *methods : 0);
 
 	/* fix aor - remove domain part if use_domain is false */
 	aor_fixed = *aor;
@@ -1021,10 +1023,10 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 		ci.q = Q_UNSPECIFIED;
 	}
 
-	ci.expires = expires;
-	ci.flags = (unsigned int)flags;
-	ci.cflags = (unsigned int)cflags;
-	ci.methods = (unsigned int)methods;
+	ci.expires = expires ? *expires : 0;
+	ci.flags = flags ? *flags : 0;
+	ci.cflags = cflags ? *cflags : 0;
+	ci.methods = methods ? *methods : 0;
 	ci.user_agent = &mi_ul_ua;
 
 	LM_INFO("usrloc_add_contact: locking domain\n");
