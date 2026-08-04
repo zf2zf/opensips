@@ -69,6 +69,7 @@ deploy/
 
 ```bash
 cd /root/work/zf2zf/opensips/opensips
+./deploy/scripts/build.sh clean
 ./deploy/scripts/build.sh build
 ./deploy/scripts/build.sh install
 ```

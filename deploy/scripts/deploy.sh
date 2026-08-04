@@ -6,7 +6,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_PREFIX="/opt/zfnproxy/opensips"
 DEPLOY_DIR="$INSTALL_PREFIX/etc"
-BACKUP_DIR="$INSTALL_PREFIX/etc.bak.$(date +%Y%m%d_%H%M%S)"
 
 usage() {
     echo "Usage: $0 [single|node_a|node_b] [OPTIONS...]"
@@ -20,15 +19,6 @@ usage() {
     echo "  $0 single -l 20.20.136.66 -u 1.2.3.4:5060"
     echo "  $0 node_a -l 20.20.136.66 -p 20.20.136.67 -v 20.20.136.100 -u 1.2.3.4:5060"
     exit 1
-}
-
-backup_config() {
-    echo "=== Backing up existing config ==="
-    if [ -d "$DEPLOY_DIR" ]; then
-        mkdir -p "$(dirname "$BACKUP_DIR")"
-        cp -r "$DEPLOY_DIR" "$BACKUP_DIR"
-        echo "Backup: $BACKUP_DIR"
-    fi
 }
 
 deploy() {
@@ -52,8 +42,6 @@ deploy() {
     echo "  local_ip: $LOCAL_IP"
     echo "  upstream: $UPSTREAM"
     echo "  install_prefix: $INSTALL_PREFIX"
-
-    backup_config
 
     # 生成配置
     # 只传递有值的参数（数组避免 colon 被 IFS 分割）

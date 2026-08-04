@@ -4,7 +4,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-OPENSIPS_DIR="/root/work/zf2zf/opensips/opensips"
+OPENSIPS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 usage() {
     echo "Usage: $0 [build|clean|install]"
