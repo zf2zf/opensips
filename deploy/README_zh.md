@@ -1,7 +1,5 @@
 # OpenSIPS GB28181 代理集群部署
 
-> **中文文档**: [README_zh.md](README_zh.md)
-
 ## 快速开始
 
 ### 1. 编译
@@ -200,93 +198,56 @@ cp deploy/keepalived/keepalived.conf.node_b /etc/keepalived/keepalived.conf
 
 ## 配置验证
 
-生成配置后，使用 `-c` 检查语法：
+### 语法检查
 
 ```bash
-/opt/zfnproxy/opensips/sbin/opensips -c /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
+/opt/zfnproxy/opensips/sbin/opensips -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg -c
 ```
 
-期望输出：`config file ok, exiting...`
-
----
-
-## 节点间同步
-
-将本地配置同步到对等节点：
+### 启动服务
 
 ```bash
-./deploy/scripts/sync-to-peer.sh
+/opt/zfnproxy/opensips/sbin/opensips -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
 ```
 
-前提：对端节点已部署且可通过 SSH 访问。
-
----
-
-## 故障排查
-
-### 配置语法错误
+### 查看日志
 
 ```bash
-# 查看详细错误
-/opt/zfnproxy/opensips/sbin/opensips -c /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg -l 6
-```
-
-### 服务启动失败
-
-```bash
-# 检查日志
-journalctl -u opensips-gb28181 -n 50
-
-# 手动前台运行查看输出
-/opt/zfnproxy/opensips/sbin/opensips -D -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
-```
-
-### Keepalived VIP 未生效
-
-```bash
-# 检查 VRRP 状态
-ip addr show | grep VIP
-systemctl status keepalived
-
-# 查看日志
-journalctl -u keepalived -n 50
-```
-
-### 集群同步异常
-
-```bash
-# 检查 BIN 端口监听
-ss -ulnp | grep 5566
-
-# 检查 clusterer 状态（MI 命令）
-/opt/zfnproxy/opensips/sbin/opensipsctl fifo cluster_list
+tail -f /var/log/syslog | grep opensips
 ```
 
 ---
 
-## 维护操作
+## 常见问题
 
-### 滚动重启
+### 编译失败
 
-1. 节点 B 执行 reload
-2. 确认同步正常后，节点 A 执行 reload
-
+确保已安装依赖：
 ```bash
-systemctl reload opensips-gb28181
+apt install gcc make libssl-dev libsqlite3-dev flex bison
 ```
 
-### 配置更新
+### 端口占用
 
-1. 在管理节点修改模板或运行 `gen-cfg.sh`
-2. 同步到对端：`./sync-to-peer.sh`
-3. Reload 服务：`systemctl reload opensips-gb28181`
-
-### 数据备份
-
+检查 5060、5566 端口是否被占用：
 ```bash
-# SQLite 数据
-cp /opt/zfnproxy/opensips/data/opensips/opensips.db /opt/zfnproxy/opensips/data/opensips/opensips.db.bak.$(date +%Y%m%d)
-
-# 配置文件
-tar czf /opt/zfnproxy/opensips/etc/opensips.bak.$(date +%Y%m%d).tgz /opt/zfnproxy/opensips/etc/opensips/
+netstat -ulnp | grep -E '5060|5566'
 ```
+
+### 集群节点无法通信
+
+确认防火墙开放了 UDP 端口 5566：
+```bash
+ufw allow 5566/udp
+```
+
+---
+
+## 架构说明
+
+本项目基于 OpenSIPS 实现 GB28181 视频平台的 SIP 信令代理：
+
+- **单机模式**：单节点部署，适合小规模设备接入
+- **集群模式**：双节点热备，通过 Keepalived 实现 VIP 漂移，保证高可用
+- **数据存储**：使用 SQLite 存储设备注册信息和位置数据
+- **信令处理**：支持设备注册、心跳保活、目录查询（Catalog）、设备信息查询等 GB28181 规定流程
