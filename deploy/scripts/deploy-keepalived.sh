@@ -26,10 +26,11 @@ deploy_keepalived() {
         cp "$CONF_SRC" /etc/keepalived/keepalived.conf
         # 替换 VIP 和网卡
         sed -i "s/VIP/$VIP/g; s/eth0/$NET_IFACE/g" /etc/keepalived/keepalived.conf
-        # 复制脚本
+        # 复制脚本并设置权限
         cp "$SCRIPT_DIR/../keepalived/notify.sh" "$KEEPALIVED_DIR/"
         cp "$SCRIPT_DIR/../keepalived/chk_opensips.sh" "$KEEPALIVED_DIR/"
-        chmod +x "$KEEPALIVED_DIR"/*.sh
+        chown root:root "$KEEPALIVED_DIR"/*.sh
+        chmod 755 "$KEEPALIVED_DIR"/*.sh
         echo "  keepalived: configured with VIP $VIP"
     fi
 }

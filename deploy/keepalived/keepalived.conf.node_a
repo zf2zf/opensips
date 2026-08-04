@@ -2,6 +2,12 @@ global_defs {
     router_id opensips_master
 }
 
+vrrp_script chk_opensips {
+    script "/opt/zfnproxy/opensips/etc/keepalived/chk_opensips.sh"
+    interval 2
+    weight -20
+}
+
 vrrp_instance VI_1 {
     state MASTER
     interface eth0
@@ -18,10 +24,4 @@ vrrp_instance VI_1 {
     track_script {
         chk_opensips
     }
-}
-
-vrrp_script chk_opensips {
-    script "/opt/zfnproxy/opensips/etc/keepalived/chk_opensips.sh"
-    interval 2
-    weight -20
 }

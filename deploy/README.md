@@ -17,22 +17,19 @@ cd /root/work/zf2zf/opensips/opensips
 
 ### 3. 部署配置
 
-**单机模式（指定本机 IP）：**
+**单机模式：**
 ```bash
-./deploy/scripts/gen-cfg.sh single 192.168.1.100
-/opt/zfnproxy/opensips/sbin/opensips -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
+./deploy/scripts/deploy.sh single -l 192.168.1.100 -u 192.168.1.200:15060
 ```
 
 **集群模式 - 节点 A：**
 ```bash
-./deploy/scripts/gen-cfg.sh node_a 20.20.136.66 20.20.136.67 20.20.136.100 5060 5566
-/opt/zfnproxy/opensips/sbin/opensips -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
+./deploy/scripts/deploy.sh node_a -l 20.20.136.66 -p 20.20.136.123 -v 20.20.136.100 -u 20.20.136.66:15060
 ```
 
-**集群模式 - 节点 B：**
+**集群模式 - 节点 B（在另一台机器执行）：**
 ```bash
-./deploy/scripts/gen-cfg.sh node_b 20.20.136.67 20.20.136.66 20.20.136.100 5060 5566
-/opt/zfnproxy/opensips/sbin/opensips -f /opt/zfnproxy/opensips/etc/opensips/opensips_proxy.cfg
+./deploy/scripts/deploy.sh node_b -l 20.20.136.123 -p 20.20.136.66 -v 20.20.136.100 -u 20.20.136.66:15060
 ```
 
 ---
@@ -41,27 +38,21 @@ cd /root/work/zf2zf/opensips/opensips
 
 ```
 deploy/
-├── Makefile.conf           # 编译模块配置（复制到源码根目录）
-├── env.m4                 # m4 环境变量（gen-cfg.sh 自动生成）
 ├── cfg/
 │   ├── opensips_proxy.cfg.m4   # 主配置模板
-│   ├── local.cfg.m4            # 本机配置模板
-│   ├── ha.cfg.m4               # HA 模式模板
 │   └── cluster/
 │       ├── node_a.cfg.m4       # 节点 A 拓扑
 │       └── node_b.cfg.m4       # 节点 B 拓扑
 ├── scripts/
-│   ├── build.sh          # 编译脚本
-│   ├── gen-cfg.sh        # 配置生成脚本（m4 预处理）
-│   ├── deploy.sh         # 一键部署脚本
-│   └── sync-to-peer.sh   # 节点间配置同步
-├── systemd/
-│   └── opensips-gb28181.service  # systemd 服务单元
+│   ├── build.sh               # 编译脚本
+│   ├── gen-cfg.sh             # 配置生成脚本（m4 预处理）
+│   ├── deploy.sh               # 一键部署脚本
+│   └── deploy-keepalived.sh    # keepalived 配置模块
 └── keepalived/
-    ├── keepalived.conf.node_a   # 节点 A Keepalived 配置
-    ├── keepalived.conf.node_b   # 节点 B Keepalived 配置
-    ├── notify.sh                # VIP 状态变更通知脚本
-    └── chk_opensips.sh          # 健康检查脚本
+    ├── keepalived.conf.node_a  # 节点 A Keepalived 配置
+    ├── keepalived.conf.node_b  # 节点 B Keepalived 配置
+    ├── notify.sh               # VIP 状态变更通知脚本
+    └── chk_opensips.sh        # 健康检查脚本
 ```
 
 ---
@@ -82,40 +73,13 @@ cd /root/work/zf2zf/opensips/opensips
 
 ## 配置生成
 
-`gen-cfg.sh` 使用 m4 预处理器生成最终配置。
-
-### 用法
-
-```bash
-./deploy/scripts/gen-cfg.sh <模式> [LOCAL_IP] [PEER_IP] [VIP] [SOCKET_PORT] [BIN_PORT]
-```
-
-| 模式 | 说明 | 节点 ID |
-|------|------|---------|
-| `single` | 单机部署 | 1 |
-| `node_a` | 集群节点 A | 1 |
-| `node_b` | 集群节点 B | 2 |
-
-### 示例
-
-```bash
-# 单机模式
-./deploy/scripts/gen-cfg.sh single
-
-# 集群节点 A（20.20.136.66，对端 20.20.136.67，VIP 20.20.136.100）
-./deploy/scripts/gen-cfg.sh node_a 20.20.136.66 20.20.136.67 20.20.136.100 5060 5566
-
-# 集群节点 B（20.20.136.67，对端 20.20.136.66，VIP 20.20.136.100）
-./deploy/scripts/gen-cfg.sh node_b 20.20.136.67 20.20.136.66 20.20.136.100 5060 5566
-```
+使用 `deploy.sh` 一键部署，自动完成配置生成和 keepalived 配置。
 
 ### 生成的文件
 
 ```
 /opt/zfnproxy/opensips/etc/opensips/
 ├── opensips_proxy.cfg   # 主配置
-├── local.cfg            # 本机配置
-├── ha.cfg               # HA 配置
 └── cluster/
     ├── node_a.cfg       # 节点 A 拓扑（仅 node_a 模式）
     └── node_b.cfg       # 节点 B 拓扑（仅 node_b 模式）
@@ -185,31 +149,6 @@ systemctl reload opensips-gb28181
 
 ---
 
-## Keepalived HA
-
-### 节点 A（MASTER）
-
-```bash
-cp deploy/keepalived/keepalived.conf.node_a /etc/keepalived/keepalived.conf
-cp deploy/keepalived/notify.sh /opt/zfnproxy/opensips/etc/keepalived/
-cp deploy/keepalived/chk_opensips.sh /opt/zfnproxy/opensips/etc/keepalived/
-chmod +x /opt/zfnproxy/opensips/etc/keepalived/*.sh
-
-systemctl enable keepalived
-systemctl start keepalived
-```
-
-### 节点 B（BACKUP）
-
-```bash
-cp deploy/keepalived/keepalived.conf.node_b /etc/keepalived/keepalived.conf
-# notify.sh 和 chk_opensips.sh 同节点 A
-```
-
-> 注意：`keepalived.conf.node_*` 中的 `VIP` 占位符需替换为实际虚拟 IP 地址后再部署。
-
----
-
 ## 配置验证
 
 生成配置后，使用 `-c` 检查语法：
@@ -220,19 +159,6 @@ cp deploy/keepalived/keepalived.conf.node_b /etc/keepalived/keepalived.conf
 
 期望输出：`config file ok, exiting...`
 
----
-
-## 节点间同步
-
-将本地配置同步到对等节点：
-
-```bash
-./deploy/scripts/sync-to-peer.sh
-```
-
-前提：对端节点已部署且可通过 SSH 访问。
-
----
 
 ## 故障排查
 
@@ -257,7 +183,7 @@ journalctl -u opensips-gb28181 -n 50
 
 ```bash
 # 检查 VRRP 状态
-ip addr show | grep VIP
+ip addr show | grep 20.20.136.100
 systemctl status keepalived
 
 # 查看日志
@@ -289,9 +215,8 @@ systemctl reload opensips-gb28181
 
 ### 配置更新
 
-1. 在管理节点修改模板或运行 `gen-cfg.sh`
-2. 同步到对端：`./sync-to-peer.sh`
-3. Reload 服务：`systemctl reload opensips-gb28181`
+1. 重新运行 `deploy.sh` 生成配置
+2. Reload 服务：`systemctl reload opensips-gb28181`
 
 ### 数据备份
 
