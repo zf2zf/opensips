@@ -35,3 +35,4 @@ log
 *.html
 logs/
 deploy/cfg/env.m4
+dist/
