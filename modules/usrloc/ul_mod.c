@@ -67,7 +67,7 @@
 
 /* Forward declaration */
 int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
-		str* contact, int* expires, str* q, int* flags, str* attr);
+		str* contact, int* expires, str* uid, str* user_agent, str* attr);
 int w_usrloc_rm_contact(struct sip_msg* _m, void* _d, str* aor, str* contact);
 int w_usrloc_rm_user(struct sip_msg* _m, void* _d, str* aor);
 
@@ -226,7 +226,7 @@ static const cmd_export_t cmds[] = {
                 {CMD_PARAM_STR, 0, 0},
                 {CMD_PARAM_INT, 0, 0},
                 {CMD_PARAM_STR, 0, 0},
-                {CMD_PARAM_INT, 0, 0},
+                {CMD_PARAM_STR, 0, 0},
                 {CMD_PARAM_STR, 0, 0},
                 {0,0,0}},
                 ALL_ROUTES},
@@ -982,7 +982,7 @@ static int domain_fixup(void** param)
  * \return 1 on success, -1 on failure
  */
 int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
-		str* contact, int* expires, str* q, int* flags, str* attr)
+		str* contact, int* expires, str* uid, str* user_agent, str* attr)
 {
 	struct ct_match cmatch = {CT_MATCH_CONTACT_CALLID, NULL};
 	ucontact_info_t ci;
@@ -992,9 +992,11 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 	str aor_fixed;
 	int ret = -1;
 
-	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d attr=%.*s\n",
+	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d uid=%.*s ua=%.*s attr=%.*s\n",
 		aor->len, aor->s, contact->len, contact->s,
 		expires ? *expires : 0,
+		uid ? uid->len : 0, uid ? uid->s : "null",
+		user_agent ? user_agent->len : 0, user_agent ? user_agent->s : "null",
 		attr ? attr->len : 0, attr ? attr->s : "null");
 
 	/* fix aor - remove domain part if use_domain is false */
@@ -1008,22 +1010,13 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 
 	memset(&ci, 0, sizeof(ucontact_info_t));
 
-	/* parse q value */
-	if (q && q->len > 0) {
-		if (str2q(&ci.q, q->s, q->len) < 0) {
-			LM_ERR("Invalid q value\n");
-			return -1;
-		}
-		LM_INFO("usrloc_add_contact: q parsed q=%d\n", ci.q);
-	} else {
-		ci.q = Q_UNSPECIFIED;
-	}
-
-	ci.expires = expires ? *expires : 0;
-	ci.flags = flags ? *flags : 0;
+	ci.callid = uid ? uid : NULL;
 	ci.cflags = 0;
 	ci.methods = 0;
-	ci.user_agent = &mi_ul_ua;
+	ci.q = Q_UNSPECIFIED;
+	ci.flags = 0;
+	ci.user_agent = user_agent ? user_agent : &mi_ul_ua;
+	ci.expires = expires ? *expires : 0;
 	ci.attr = attr ? attr : NULL;
 
 	LM_INFO("usrloc_add_contact: locking domain\n");
@@ -1046,16 +1039,17 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 	}
 
 	get_act_time();
+	ci.last_modified = act_time;
 	/* 0 expires means permanent contact */
 	if (ci.expires != 0)
 		ci.expires += act_time;
 
-	LM_INFO("usrloc_add_contact: expires=%ld act_time=%ld\n", (long)ci.expires, (long)act_time);
+	LM_INFO("usrloc_add_contact: last_modified=%ld expires=%ld act_time=%ld\n",
+		(long)ci.last_modified, (long)ci.expires, (long)act_time);
 
 	if (c) {
 		/* update existing contact */
 		LM_INFO("usrloc_add_contact: updating existing contact\n");
-		ci.callid = &mi_ul_cid;
 		ci.cseq = c->cseq;
 		if (update_ucontact(r, c, &ci, &cmatch, 0) < 0) {
 			LM_ERR("Failed to update ucontact\n");
@@ -1064,7 +1058,6 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 	} else {
 		/* insert new contact */
 		LM_INFO("usrloc_add_contact: inserting new contact\n");
-		ci.callid = &mi_ul_cid;
 		ci.cseq = MI_UL_CSEQ;
 		if (insert_ucontact(r, contact, &ci, &cmatch, 0, &c) < 0) {
 			LM_ERR("Failed to insert ucontact\n");
