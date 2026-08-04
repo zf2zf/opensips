@@ -143,11 +143,25 @@ cd /root/work/zf2zf/opensips/opensips
 
 ```bash
 # 单机模式
-./deploy/scripts/deploy.sh single
+./deploy/scripts/deploy.sh single -l 192.168.1.100 -u 192.168.1.200:15060
 
 # 集群节点 A
-./deploy/scripts/deploy.sh node_a 20.20.136.66 20.20.136.67 20.20.136.100 5060 5566
+./deploy/scripts/deploy.sh node_a -l 20.20.136.66 -p 20.20.136.123 -v 20.20.136.100 -s 5060 -b 5566 -u 20.20.136.66:15060
+
+# 集群节点 B
+./deploy/scripts/deploy.sh node_b -l 20.20.136.123 -p 20.20.136.66 -v 20.20.136.100 -s 5060 -b 5566 -u 20.20.136.66:15060
 ```
+
+### 参数说明
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `-l, --local-ip` | 本机 IP | 必须指定 |
+| `-p, --peer-ip` | 集群对端 IP | 单机模式不需要 |
+| `-v, --vip` | 虚拟 IP（Keepalived） | 默认等于 local-ip |
+| `-s, --socket-port` | SIP 监听端口 | `5060` |
+| `-b, --bin-port` | 集群通信端口 | `5566` |
+| `-u, --upstream` | 上游地址，格式 `IP:PORT` | 默认等于 peer-ip:socket-port |
 
 ---
 

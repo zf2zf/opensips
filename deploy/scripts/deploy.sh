@@ -7,6 +7,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_PREFIX="/opt/zfnproxy/opensips"
 DEPLOY_DIR="$INSTALL_PREFIX/etc"
 
+# 加载 keepalived 配置模块
+source "$SCRIPT_DIR/deploy-keepalived.sh"
+
 usage() {
     echo "Usage: $0 [single|node_a|node_b] [OPTIONS...]"
     echo "  -l, --local-ip      本机 IP"
@@ -62,6 +65,11 @@ deploy() {
     chown -R opensips:opensips "$DEPLOY_DIR" 2>/dev/null || true
     chown -R opensips:opensips "$INSTALL_PREFIX/data" 2>/dev/null || true
     chown -R opensips:opensips "$INSTALL_PREFIX/log" 2>/dev/null || true
+
+    # 集群模式配置 keepalived
+    if [[ "$MODE" == "node_a" || "$MODE" == "node_b" ]] && [[ -n "$VIP" ]]; then
+        deploy_keepalived "$MODE" "$VIP"
+    fi
 
     # 验证配置
     "$INSTALL_PREFIX/sbin/opensips" -f "$DEPLOY_DIR/opensips_proxy.cfg"

@@ -27,7 +27,10 @@ syslog_facility=LOG_LOCAL0
 udp_workers=4
 
 # SIP 监听地址（m4 宏）
-socket = udp:LOCAL_IP:SOCKET_PORT as VIP:SOCKET_PORT
+# 监听本地 IP
+socket = udp:LOCAL_IP:SOCKET_PORT
+# 监听 VIP（对外提供服务的地址）
+socket = udp:VIP:SOCKET_PORT
 
 ########### 模块加载 ##########
 
