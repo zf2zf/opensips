@@ -1,7 +1,5 @@
 # OpenSIPS GB28181 代理集群部署
 
-> **中文文档**: [README_zh.md](README_zh.md)
-
 ## 快速开始
 
 ### 1. 编译
