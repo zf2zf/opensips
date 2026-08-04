@@ -272,9 +272,9 @@ route[process_catalog] {
             $var(sip_socket) = "udp:" + $si + ":" + $sp;
             $avp(recorder_contact) = "sip:" + $avp(chan_id) + "@" + $si + ":" + $sp;
             $avp(channel_attr) = "parent=" + $fu;
-            xlog("L_INFO", "CATALOG: calling usrloc_add_contact table=location aor=$avp(chan_id) contact=$avp(recorder_contact) expires=7200 q=0.0 flags=0 cflags=0 methods=0\n");
+            xlog("L_INFO", "CATALOG: calling usrloc_add_contact table=location aor=$avp(chan_id) contact=$avp(recorder_contact) expires=7200 attr=$avp(channel_attr)\n");
             # 使用导出的 usrloc_add_contact 函数直接添加联系人
-            if (usrloc_add_contact("location", $avp(chan_id), $avp(recorder_contact), 7200, "0.0", 0, 0, 0)) {
+            if (usrloc_add_contact("location", $avp(chan_id), $avp(recorder_contact), 7200, "0.0", 0, $avp(channel_attr))) {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) ok\n");
             } else {
                 xlog("L_INFO", "CATALOG: insert channel $avp(chan_id) failed\n");

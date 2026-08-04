@@ -67,8 +67,7 @@
 
 /* Forward declaration */
 int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
-		str* contact, int* expires, str* q, int* flags, int* cflags,
-		int* methods);
+		str* contact, int* expires, str* q, int* flags, str* attr);
 int w_usrloc_rm_contact(struct sip_msg* _m, void* _d, str* aor, str* contact);
 int w_usrloc_rm_user(struct sip_msg* _m, void* _d, str* aor);
 
@@ -228,8 +227,7 @@ static const cmd_export_t cmds[] = {
                 {CMD_PARAM_INT, 0, 0},
                 {CMD_PARAM_STR, 0, 0},
                 {CMD_PARAM_INT, 0, 0},
-                {CMD_PARAM_INT, 0, 0},
-                {CMD_PARAM_INT, 0, 0},
+                {CMD_PARAM_STR, 0, 0},
                 {0,0,0}},
                 ALL_ROUTES},
 	{"usrloc_rm_contact", (cmd_function)w_usrloc_rm_contact, {
@@ -979,14 +977,12 @@ static int domain_fixup(void** param)
  * \param contact - Contact URI
  * \param expires - Expires time (seconds)
  * \param q - Q value string (e.g., "0.5")
- * \param flags - Contact flags
- * \param cflags - Contact-specific flags
- * \param methods - Supported methods
+ * \param flags - Contact flags (cflags/methods hardcoded to 0)
+ * \param attr - Custom attribute string
  * \return 1 on success, -1 on failure
  */
 int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
-		str* contact, int* expires, str* q, int* flags, int* cflags,
-		int* methods)
+		str* contact, int* expires, str* q, int* flags, str* attr)
 {
 	struct ct_match cmatch = {CT_MATCH_CONTACT_CALLID, NULL};
 	ucontact_info_t ci;
@@ -996,10 +992,10 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 	str aor_fixed;
 	int ret = -1;
 
-	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d q=%.*s flags=%d cflags=%d methods=%d\n",
+	LM_INFO("usrloc_add_contact: aor=%.*s contact=%.*s expires=%d attr=%.*s\n",
 		aor->len, aor->s, contact->len, contact->s,
-		expires ? *expires : 0, q ? q->len : 0, q ? q->s : "null",
-		flags ? *flags : 0, cflags ? *cflags : 0, methods ? *methods : 0);
+		expires ? *expires : 0,
+		attr ? attr->len : 0, attr ? attr->s : "null");
 
 	/* fix aor - remove domain part if use_domain is false */
 	aor_fixed = *aor;
@@ -1025,9 +1021,10 @@ int w_usrloc_add_contact(struct sip_msg* _m, void* _d, str* aor,
 
 	ci.expires = expires ? *expires : 0;
 	ci.flags = flags ? *flags : 0;
-	ci.cflags = cflags ? *cflags : 0;
-	ci.methods = methods ? *methods : 0;
+	ci.cflags = 0;
+	ci.methods = 0;
 	ci.user_agent = &mi_ul_ua;
+	ci.attr = attr ? attr : NULL;
 
 	LM_INFO("usrloc_add_contact: locking domain\n");
 	lock_udomain(dom, &aor_fixed);
