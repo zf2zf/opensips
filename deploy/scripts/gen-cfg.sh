@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS location (
     attr CHAR(255) DEFAULT NULL
 );
 INSERT OR IGNORE INTO version VALUES ('dispatcher', 9);
+INSERT OR REPLACE INTO version VALUES ('location', 1013);
 DELETE FROM dispatcher;
 INSERT INTO dispatcher (setid, destination, state, probe_mode, weight, priority)
 VALUES (1, 'sip:$UPSTREAM', 0, 0, 1, 1);

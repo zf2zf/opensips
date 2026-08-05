@@ -94,7 +94,7 @@ socket = bin:LOCAL_IP:BIN_PORT
 # ---- usrloc 集群模式（必须在 clusterer 加载后设置）----
 modparam("usrloc", "cluster_mode", "full-sharing")
 modparam("usrloc", "location_cluster", 1)
-modparam("usrloc", "restart_persistency", "sync-from-cluster")
+modparam("usrloc", "restart_persistency", "load-from-sql")
 modparam("usrloc", "sql_write_mode", "write-through")
 
 # ---- 节点拓扑 ----

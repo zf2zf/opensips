@@ -875,9 +875,11 @@ int insert_ucontact(urecord_t* _r, str* _contact, ucontact_info_t* _ci,
 	        && _ci->pre_replicate_cb(*_c, _ci->pre_replicate_info) != 0)
 		LM_ERR("pre-replication callback returned non-zero\n");
 
+	LM_INFO("USRLOC insert_ucontact: skip_repl=%d, have_repl=%d, sql_wmode=%d, aor=%.*s\n",
+		skip_replication, have_data_replication(), sql_wmode, _r->aor.len, _r->aor.s);
+
 	if (!skip_replication && have_data_replication()) {
-		LM_INFO("USRLOC: replicate_ucontact_insert aor=%.*s\n",
-			_r->aor.len, _r->aor.s);
+		LM_INFO("USRLOC: calling replicate_ucontact_insert\n");
 		replicate_ucontact_insert(_r, _contact, *_c, match);
 	}
 
@@ -887,13 +889,20 @@ int insert_ucontact(urecord_t* _r, str* _contact, ucontact_info_t* _ci,
 	if (!first_contact && exists_ulcb_type(UL_AOR_UPDATE))
 		run_ul_callbacks(UL_AOR_UPDATE, _r, NULL);
 
+	LM_INFO("USRLOC insert_ucontact: checking sql_wmode=%d (WRITE_THROUGH=%d)\n", sql_wmode, SQL_WRITE_THROUGH);
 	if (sql_wmode == SQL_WRITE_THROUGH) {
+		LM_INFO("USRLOC: calling db_insert_ucontact\n");
+		if (persist_urecord_kv_store(_r) != 0)
+			LM_INFO("USRLOC failed to persist latest urecord K/V storage\n");
+
 		if (db_insert_ucontact(*_c,0,0) < 0) {
 			LM_ERR("USRLOC: failed to insert in database\n");
 		} else {
-			LM_INFO("USRLOC: db_insert SUCCESS aor=%.*s\n", _r->aor.len, _r->aor.s);
+			LM_INFO("USRLOC: db_insert_ucontact SUCCESS for aor=%.*s\n", _r->aor.len, _r->aor.s);
 			(*_c)->state = CS_SYNC;
 		}
+	} else {
+		LM_INFO("USRLOC: sql_wmode=%d, NOT writing to DB\n", sql_wmode);
 	}
 
 	return 0;
