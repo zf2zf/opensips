@@ -17,9 +17,7 @@ esac
 case "$1" in
     master)
         iptables -t nat -A PREROUTING -d $vip -p udp --dport 5060 -j DNAT --to-destination $local_ip:5060 2>/dev/null
-        systemctl reload opensips-gb28181
         ;;
     backup|fault)
-        systemctl reload opensips-gb28181
         ;;
 esac

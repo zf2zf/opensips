@@ -105,6 +105,7 @@ VALUES (1, 'sip:$UPSTREAM', 0, 0, 1, 1);
 "
 
 m4 $M4_DEFS "$TEMPLATE_DIR/opensips_proxy.cfg.m4" > "$DEPLOY_DIR/opensips_proxy.cfg"
+m4 $M4_DEFS "$TEMPLATE_DIR/local.cfg.m4" > "$DEPLOY_DIR/local.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/cluster/node_a.cfg.m4" > "$DEPLOY_DIR/cluster/node_a.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/cluster/node_b.cfg.m4" > "$DEPLOY_DIR/cluster/node_b.cfg"
 
