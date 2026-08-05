@@ -219,6 +219,11 @@ route[check_keepalive] {
     lookup("location");
 
     if ($rc > 0) {
+        # 设备已注册：先转发 Keepalive 到上游，再回复设备
+        t_on_reply("handle_nat");
+        if (ds_select_dst(1, 0, "f")) {
+            t_relay();
+        }
         sl_send_reply(200, "OK");
     } else {
         xlog("L_INFO", "KEEPALIVE: device $var(device_id) NOT registered, reply 403\n");
