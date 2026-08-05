@@ -19,8 +19,8 @@ ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/opt/zfnproxy/opensips/etc/dbtext')')
 
 ########### 全局参数 ##########
 
-log_level=4
-xlog_level=4
+log_level=3
+xlog_level=3
 stderror_enabled=yes
 syslog_enabled=yes
 syslog_facility=LOG_LOCAL0
