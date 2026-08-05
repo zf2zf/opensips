@@ -29,8 +29,9 @@ udp_workers=4
 # SIP 监听地址（m4 宏）
 # 监听本地 IP
 socket = udp:LOCAL_IP:SOCKET_PORT
-# 监听 VIP（对外提供服务的地址）
-socket = udp:VIP:SOCKET_PORT
+# 监听 VIP（仅 MASTER 节点，NODE_ID=1）
+ifdef(`NODE_ID',,`define(`NODE_ID', `1')')dnl
+ifelse(NODE_ID, `1', `socket = udp:VIP:SOCKET_PORT')dnl
 
 ########### 模块加载 ##########
 
