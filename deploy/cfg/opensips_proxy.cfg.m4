@@ -19,8 +19,8 @@ ifdef(`DTEXT_PATH',,`define(`DTEXT_PATH', `/opt/zfnproxy/opensips/etc/dbtext')')
 
 ########### 全局参数 ##########
 
-log_level=3
-xlog_level=3
+log_level=4
+xlog_level=4
 stderror_enabled=yes
 syslog_enabled=yes
 syslog_facility=LOG_LOCAL0
@@ -69,12 +69,9 @@ loadmodule "xml.so"
 loadmodule "mi_script.so"
 modparam("mi_script", "pretty_printing", 1)
 
-# usrloc 配置：sql-only 模式，直接操作 SQLite
-# use_domain=false 让 lookup/save 基于 username 匹配，支持跨域查询
+# usrloc 配置基础参数（非集群模式）
 modparam("usrloc", "db_url", "sqlite:///DB_PATH")
-modparam("usrloc", "working_mode_preset", "sql-only")
 modparam("usrloc", "use_domain", false)
-modparam("usrloc", "sql_write_mode", "write-through")
 modparam("usrloc", "nat_bflag", "NAT")
 
 # === 集群模式条件配置 ===
@@ -94,13 +91,11 @@ modparam("clusterer", "seed_fallback_interval", 10)
 # ---- proto_bin 监听 ----
 socket = bin:LOCAL_IP:BIN_PORT
 
-# ---- usrloc 集群模式 ----
-# 注意: 使用 working_mode_preset 会覆盖 sql_write_mode
-# 因此改用独立参数：cluster_mode + sql_write_mode + restart_persistency
+# ---- usrloc 集群模式（必须在 clusterer 加载后设置）----
 modparam("usrloc", "cluster_mode", "full-sharing")
+modparam("usrloc", "location_cluster", 1)
 modparam("usrloc", "restart_persistency", "sync-from-cluster")
 modparam("usrloc", "sql_write_mode", "write-through")
-modparam("usrloc", "location_cluster", 1)
 
 # ---- 节点拓扑 ----
 ifelse(NODE_ID, `1', `include_file "cluster/node_a.cfg"', `include_file "cluster/node_b.cfg"')
