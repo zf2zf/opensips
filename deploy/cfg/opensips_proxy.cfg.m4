@@ -29,9 +29,12 @@ udp_workers=4
 # SIP 监听地址（m4 宏）
 # 监听本地 IP
 socket = udp:LOCAL_IP:SOCKET_PORT
-# 监听 VIP（仅 MASTER 节点，NODE_ID=1）
-ifdef(`NODE_ID',,`define(`NODE_ID', `1')')dnl
-ifelse(NODE_ID, `1', `socket = udp:VIP:SOCKET_PORT')dnl
+
+# VIP 绑定：仅 MASTER 节点绑定，BACKUP 节点跳过
+# m4 条件：只有 NODE_ID=1 (MASTER) 才绑定 VIP
+ifelse(NODE_ID, `1', `
+socket = udp:VIP:SOCKET_PORT
+')
 
 ########### 模块加载 ##########
 
