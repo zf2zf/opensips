@@ -95,7 +95,11 @@ modparam("clusterer", "seed_fallback_interval", 10)
 socket = bin:LOCAL_IP:BIN_PORT
 
 # ---- usrloc 集群模式 ----
-modparam("usrloc", "working_mode_preset", "full-sharing-cluster")
+# 注意: 使用 working_mode_preset 会覆盖 sql_write_mode
+# 因此改用独立参数：cluster_mode + sql_write_mode + restart_persistency
+modparam("usrloc", "cluster_mode", "full-sharing")
+modparam("usrloc", "restart_persistency", "sync-from-cluster")
+modparam("usrloc", "sql_write_mode", "write-through")
 modparam("usrloc", "location_cluster", 1)
 
 # ---- 节点拓扑 ----
