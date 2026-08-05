@@ -6,7 +6,7 @@ set -e
 INSTALL_PREFIX="/opt/zfnproxy/opensips"
 DB_PATH="$INSTALL_PREFIX/data/opensips.db"
 
-MODE="single"
+NODE_ID=0
 LOCAL_IP="127.0.0.1"
 PEER_IP="127.0.0.1"
 VIP=""
@@ -19,30 +19,29 @@ DEPLOY_DIR="$INSTALL_PREFIX/etc"
 TEMPLATE_DIR="$SCRIPT_DIR/../cfg"
 
 usage() {
-    echo "Usage: $0 [single|node_a|node_b] [OPTIONS...]"
+    echo "Usage: $0 [OPTIONS...]"
     echo "  -l, --local-ip      Local IP"
     echo "  -p, --peer-ip       Peer IP (cluster mode)"
     echo "  -v, --vip           Virtual IP (default: local-ip)"
     echo "  -s, --socket-port   SIP port (default: 5060)"
     echo "  -b, --bin-port      BIN port (default: 5566)"
-    echo "  -u, --upstream      Upstream address IP:PORT (default: peer-ip:socket-port)"
+    echo "  -n, --node-id       Node ID: 1=MASTER, 2=BACKUP (default: 1)"
+    echo "  -u, --upstream      Upstream address IP:PORT (required)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 -l 20.20.136.66 -u 1.2.3.4:5060"
+    echo "  $0 -l 20.20.136.66 -p 20.20.136.67 -v 20.20.136.100 -n 1 -u 1.2.3.4:5060"
     exit 1
 }
 
-# First positional arg is MODE
-if [[ "${1:-}" =~ ^(single|node_a|node_b)$ ]]; then
-    MODE="$1"
-    shift
-fi
-
-while getopts ":m:l:p:v:s:b:u:h" opt; do
+while getopts ":l:p:v:s:b:n:u:h" opt; do
     case $opt in
-        m) MODE="$OPTARG" ;;
         l) LOCAL_IP="$OPTARG" ;;
         p) PEER_IP="$OPTARG" ;;
         v) VIP="$OPTARG" ;;
         s) SOCKET_PORT="$OPTARG" ;;
         b) BIN_PORT="$OPTARG" ;;
+        n) NODE_ID="$OPTARG" ;;
         u) UPSTREAM="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
@@ -52,15 +51,9 @@ done
 VIP="${VIP:-$LOCAL_IP}"
 [ -n "$UPSTREAM" ] || { echo "Error: -u/--upstream is required"; usage; }
 
-case "$MODE" in
-    node_a) NODE_ID=1 ;;
-    node_b) NODE_ID=2 ;;
-    *) NODE_ID=1 ;;
-esac
+echo "Generating: node_id=$NODE_ID local_ip=$LOCAL_IP upstream=$UPSTREAM"
 
-echo "Generating: mode=$MODE local_ip=$LOCAL_IP upstream=$UPSTREAM"
-
-M4_DEFS="-DMODE=$MODE -DNODE_ID=$NODE_ID -DLOCAL_IP=$LOCAL_IP -DPEER_IP=$PEER_IP -D VIP=$VIP -DSOCKET_PORT=$SOCKET_PORT -DBIN_PORT=$BIN_PORT -DMPATH=$INSTALL_PREFIX/lib64/opensips/modules/ -DDB_PATH=$DB_PATH"
+M4_DEFS="-DNODE_ID=$NODE_ID -DLOCAL_IP=$LOCAL_IP -DPEER_IP=$PEER_IP -D VIP=$VIP -DSOCKET_PORT=$SOCKET_PORT -DBIN_PORT=$BIN_PORT -DMPATH=$INSTALL_PREFIX/lib64/opensips/modules/ -DDB_PATH=$DB_PATH"
 
 mkdir -p "$DEPLOY_DIR/cluster"
 mkdir -p "$(dirname "$DB_PATH")"

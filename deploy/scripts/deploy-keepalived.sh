@@ -3,7 +3,7 @@
 
 # 配置 keepalived
 deploy_keepalived() {
-    local MODE="$1"
+    local NODE_ID="$1"
     local VIP="$2"
 
     echo "=== Configuring Keepalived ==="
@@ -20,7 +20,7 @@ deploy_keepalived() {
     local KEEPALIVED_DIR="$INSTALL_PREFIX/etc/keepalived"
     mkdir -p "$KEEPALIVED_DIR"
 
-    local CONF_SRC="$SCRIPT_DIR/../keepalived/keepalived.conf.$MODE"
+    local CONF_SRC="$SCRIPT_DIR/../keepalived/keepalived.conf.$NODE_ID"
     if [[ -f "$CONF_SRC" ]]; then
         # 复制配置模板
         cp "$CONF_SRC" /etc/keepalived/keepalived.conf

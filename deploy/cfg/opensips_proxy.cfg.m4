@@ -11,7 +11,7 @@ ifdef(`LOCAL_IP',,`define(`LOCAL_IP', `10.0.0.11')')dnl
 ifdef(`VIP',,`define(`VIP', `10.0.0.10')')dnl
 ifdef(`SOCKET_PORT',,`define(`SOCKET_PORT', `5060')')dnl
 ifdef(`BIN_PORT',,`define(`BIN_PORT', `5070')')dnl
-ifdef(`NODE_ID',,`define(`NODE_ID', `1')')dnl
+ifdef(`NODE_ID',,`define(`NODE_ID', `0')')dnl
 ifdef(`MODE',,`define(`MODE', `single')')dnl
 ifdef(`MPATH',,`define(`MPATH', `/opt/zfnproxy/opensips/lib64/opensips/modules/')')dnl
 ifdef(`DB_PATH',,`define(`DB_PATH', `/opt/zfnproxy/opensips/data/opensips.db')')dnl
@@ -78,10 +78,10 @@ modparam("usrloc", "sql_write_mode", "write-through")
 modparam("usrloc", "nat_bflag", "NAT")
 
 # === 集群模式条件配置 ===
-ifelse(MODE, `cluster', `
+# 使用 NODE_ID 判断：node_id=1 或 2 时启用集群模式
+ifelse(eval(NODE_ID >= 1 && NODE_ID <= 2), 1, `
 # ---- 集群模式额外模块 ----
 loadmodule "proto_bin.so"
-loadmodule "proto_bins.so"
 loadmodule "clusterer.so"
 
 # ---- clusterer 参数 ----
@@ -92,20 +92,14 @@ modparam("clusterer", "node_timeout", 60)
 modparam("clusterer", "seed_fallback_interval", 10)
 
 # ---- proto_bin 监听 ----
-listen = bin:LOCAL_IP:BIN_PORT
+socket = bin:LOCAL_IP:BIN_PORT
 
 # ---- usrloc 集群模式 ----
 modparam("usrloc", "working_mode_preset", "full-sharing-cluster")
 modparam("usrloc", "location_cluster", 1)
 
 # ---- 节点拓扑 ----
-ifelse(NODE_ID, `1', `
-    include_file "cluster/node_a.cfg"
-', `
-    include_file "cluster/node_b.cfg"
-')
-
-xlog("L_INFO", "CLUSTER: starting in cluster mode, node_id=NODE_ID\n");
+ifelse(NODE_ID, `1', `include_file "cluster/node_a.cfg"', `include_file "cluster/node_b.cfg"')
 ')
 
 
