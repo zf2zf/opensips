@@ -1,5 +1,5 @@
 #!/bin/bash
-# 20.20.136.123 节点 B 部署脚本（BACKUP）
+# 20.20.136.205 节点 B 部署脚本（BACKUP）
 
 set -e
 
@@ -9,7 +9,7 @@ cd "$SCRIPT_DIR"
 
 # 部署节点 B（BACKUP）
 ./deploy/scripts/deploy.sh \
-  -l 20.20.136.123 \
+  -l 20.20.136.205 \
   -p 20.20.136.66 \
   -v 20.20.136.100 \
   -s 5060 \
@@ -21,4 +21,4 @@ cd "$SCRIPT_DIR"
 systemctl enable keepalived
 systemctl restart keepalived
 
-echo "=== 节点 B (20.20.136.123) 部署完成 ==="
+echo "=== 节点 B (20.20.136.205) 部署完成 ==="
