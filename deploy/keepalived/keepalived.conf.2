@@ -24,7 +24,7 @@ vrrp_instance VI_1 {
     track_script {
         chk_opensips
     }
-    notify_master "/opt/zfnproxy/opensips/etc/keepalived/notify.sh master"
-    notify_backup "/opt/zfnproxy/opensips/etc/keepalived/notify.sh backup"
-    notify_fault "/opt/zfnproxy/opensips/etc/keepalived/notify.sh fault"
+    # notify_master "/opt/zfnproxy/opensips/etc/keepalived/notify.sh master"
+    # notify_backup "/opt/zfnproxy/opensips/etc/keepalived/notify.sh backup"
+    # notify_fault "/opt/zfnproxy/opensips/etc/keepalived/notify.sh fault"
 }
