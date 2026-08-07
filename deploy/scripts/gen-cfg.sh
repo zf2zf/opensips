@@ -109,4 +109,12 @@ m4 $M4_DEFS "$TEMPLATE_DIR/local.cfg.m4" > "$DEPLOY_DIR/local.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/cluster/node_a.cfg.m4" > "$DEPLOY_DIR/cluster/node_a.cfg"
 m4 $M4_DEFS "$TEMPLATE_DIR/cluster/node_b.cfg.m4" > "$DEPLOY_DIR/cluster/node_b.cfg"
 
+# 生成 nginx 负载均衡配置
+if [[ -n "$PEER_IP" ]]; then
+    mkdir -p "$DEPLOY_DIR/../nginx"
+    m4 -DUPSTREAM1="$LOCAL_IP" -DUPSTREAM2="$PEER_IP" -DSIP_PORT="$SOCKET_PORT" \
+        "$TEMPLATE_DIR/../nginx/sip_proxy.conf.m4" > "$DEPLOY_DIR/../nginx/sip_proxy.conf"
+    echo "Generated nginx config: $DEPLOY_DIR/../nginx/sip_proxy.conf"
+fi
+
 echo "Generated in $DEPLOY_DIR/"

@@ -72,6 +72,27 @@ deploy() {
         deploy_keepalived "$NODE_ID" "$VIP"
     fi
 
+    # 集群模式部署 nginx 负载均衡配置（直接替换 nginx.conf）
+    if [[ "$NODE_ID" != "0" ]] && [[ -n "$PEER_IP" ]]; then
+        local nginx_conf="$DEPLOY_DIR/../nginx/sip_proxy.conf"
+        if [[ -f "$nginx_conf" ]]; then
+            # 备份
+            cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
+            # 直接替换
+            cp "$nginx_conf" /etc/nginx/nginx.conf
+
+            # 检查 nginx 是否运行，运行则 reload，否则 start
+            if pgrep -x nginx > /dev/null 2>&1; then
+                nginx -t && nginx -s reload
+                echo "Reloaded nginx config"
+            else
+                nginx
+                echo "Started nginx"
+            fi
+            echo "Replaced nginx.conf"
+        fi
+    fi
+
     # 验证配置
     "$INSTALL_PREFIX/sbin/opensips" -f "$DEPLOY_DIR/opensips_proxy.cfg"
 

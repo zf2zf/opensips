@@ -30,11 +30,11 @@ udp_workers=4
 # 监听本地 IP
 socket = udp:LOCAL_IP:SOCKET_PORT
 
-# VIP 绑定：仅 MASTER 节点绑定，BACKUP 节点跳过
-# m4 条件：只有 NODE_ID=1 (MASTER) 才绑定 VIP
-ifelse(NODE_ID, `1', `
-socket = udp:VIP:SOCKET_PORT
-')
+# VIP 绑定：已移除
+# 负载均衡由前端 nginx 负责，opensips 仅绑定本地 IP
+# ifelse(NODE_ID, `1', `
+# socket = udp:VIP:SOCKET_PORT
+# ')
 
 ########### 模块加载 ##########
 
