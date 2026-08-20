@@ -30,7 +30,7 @@ udp_workers=4
 # 监听本地 IP，同时通过 alias 让 VIP 也被识别为本机
 # 设备响应 To: <sip:平台ID@VIP> 时，is_myself("$td") 才能正确判断
 socket = udp:LOCAL_IP:SOCKET_PORT
-ifelse(NODE_ID, `0', , `socket = udp:VIP:SOCKET_PORT')
+alias=udp:VIP:SOCKET_PORT
 
 ########### 模块加载 ##########
 
